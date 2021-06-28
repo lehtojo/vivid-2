@@ -10,8 +10,10 @@ Settings {
 	static is_repetion_analysis_enabled: bool
 	static is_unwrapment_analysis_enabled: bool
 	static is_function_inlining_enabled: bool
+	static is_garbage_collector_enabled: bool
 	static is_debugging_enabled: bool
 	static is_verbose_output_enabled: bool
+	static allocation_function: FunctionImplementation
 	static included_folders: List<String>
 
 	static initialize() {
@@ -22,6 +24,7 @@ Settings {
 		is_repetion_analysis_enabled = false
 		is_unwrapment_analysis_enabled = false
 		is_function_inlining_enabled = false
+		is_garbage_collector_enabled = false
 		is_debugging_enabled = false
 		is_verbose_output_enabled = false
 		included_folders = List<String>()

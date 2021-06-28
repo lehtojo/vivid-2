@@ -1,32 +1,36 @@
-NODE_FUNCTION_DEFINITION = 0
-NODE_LINK = 1
-NODE_NUMBER = 2
-NODE_OPERATOR = 3
-NODE_SCOPE = 4
-NODE_TYPE = 5
-NODE_TYPE_DEFINITION = 6
-NODE_UNRESOLVED_IDENTIFIER = 7
-NODE_VARIABLE = 8
-NODE_STRING = 9
-NODE_LIST = 10
-NODE_UNRESOLVED_FUNCTION = 11
-NODE_CONSTRUCTION = 12
-NODE_FUNCTION = 13
-NODE_RETURN = 14
-NODE_PARENTHESIS = 15
-NODE_IF = 16
-NODE_ELSE_IF = 17
-NODE_LOOP = 18
-NODE_CAST = 19
-NODE_COMMAND = 20
-NODE_NEGATE = 21
-NODE_ELSE = 22
-NODE_INCREMENT = 23
-NODE_DECREMENT = 24
-NODE_NOT = 25
-NODE_ACCESSOR = 26
-NODE_INLINE = 27
-NODE_NORMAL = 28
+NODE_FUNCTION_DEFINITION = 1
+NODE_LINK = 2
+NODE_NUMBER = 4
+NODE_OPERATOR = 8
+NODE_SCOPE = 16
+NODE_TYPE = 32
+NODE_TYPE_DEFINITION = 64
+NODE_UNRESOLVED_IDENTIFIER = 128
+NODE_VARIABLE = 256
+NODE_STRING = 512
+NODE_LIST = 1024
+NODE_UNRESOLVED_FUNCTION = 2048
+NODE_CONSTRUCTION = 4096
+NODE_FUNCTION = 8192
+NODE_RETURN = 16384
+NODE_PARENTHESIS = 32768
+NODE_IF = 65536
+NODE_ELSE_IF = 131072
+NODE_LOOP = 262144
+NODE_CAST = 524288
+NODE_COMMAND = 1048576
+NODE_NEGATE = 2097152
+NODE_ELSE = 4194304
+NODE_INCREMENT = 8388608
+NODE_DECREMENT = 16777216
+NODE_NOT = 33554432
+NODE_ACCESSOR = 67108864
+NODE_INLINE = 134217728
+NODE_NORMAL = 268435456
+NODE_CALL = 536870912
+NODE_CONTEXT_INLINE = 1073741824
+NODE_DATA_POINTER = 2147483648
+NODE_STACK_ADDRESS = 4294967296 # 1 <| 32
 
 Node NumberNode {
 	data: large
@@ -53,6 +57,10 @@ Node NumberNode {
 	override try_get_type() {
 		if type == none { type = numbers.get(format) }
 		=> type
+	}
+
+	override copy() {
+		=> NumberNode(format, data, start)
 	}
 
 	override string() {
@@ -153,6 +161,10 @@ Node OperatorNode {
 		}
 	}
 
+	override copy() {
+		=> OperatorNode(operator, start)
+	}
+
 	override string() {
 		=> String('Operator ') + operator.identifier
 	}
@@ -167,6 +179,10 @@ Node ScopeNode {
 		this.context = context
 		this.start = start
 		this.end = end
+	}
+
+	override copy() {
+		=> ScopeNode(context, start, end)
 	}
 
 	override string() {
@@ -196,12 +212,23 @@ Node VariableNode {
 		=> variable.type
 	}
 
+	override copy() {
+		=> VariableNode(variable, start)
+	}
+
 	override string() {
 		=> String('Variable ') + variable.name
 	}
 }
 
 OperatorNode LinkNode {
+	private init(position: Position) {
+		OperatorNode.init(Operators.DOT)
+		this.instance = NODE_LINK
+		this.start = start
+		this.is_resolvable = true
+	}
+
 	init(left: Node, right: Node) {
 		OperatorNode.init(Operators.DOT)
 		add(left)
@@ -266,6 +293,10 @@ OperatorNode LinkNode {
 		=> last.try_get_type()
 	}
 
+	override copy() {
+		=> LinkNode(start)
+	}
+
 	override string() {
 		=> String('Link')
 	}
@@ -294,6 +325,10 @@ Node UnresolvedIdentifier {
 		=> result
 	}
 
+	override copy() {
+		=> UnresolvedIdentifier(value, start)
+	}
+
 	override string() {
 		=> String('Unresolved Identifier ') + value
 	}
@@ -307,6 +342,14 @@ Node UnresolvedFunction {
 		this.instance = NODE_UNRESOLVED_FUNCTION
 		this.name = name
 		this.arguments = Array<Type>()
+		this.start = position
+		this.is_resolvable = true
+	}
+
+	init(name: String, arguments: Array<Type>, position: Position) {
+		this.instance = NODE_UNRESOLVED_FUNCTION
+		this.name = name
+		this.arguments = arguments
 		this.start = position
 		this.is_resolvable = true
 	}
@@ -400,6 +443,10 @@ Node UnresolvedFunction {
 		=> resolve(context, context)
 	}
 
+	override copy() {
+		=> UnresolvedFunction(name, arguments, start)
+	}
+
 	override string() {
 		=> String('Unresolved Function ') + name
 	}
@@ -423,6 +470,10 @@ Node TypeNode {
 		=> type
 	}
 
+	override copy() {
+		=> TypeNode(type, start)
+	}
+
 	override string() {
 		=> String('Type ') + type.name
 	}
@@ -438,12 +489,21 @@ Node TypeDefinitionNode {
 		this.blueprint = blueprint
 		this.start = position
 
+		if blueprint.size == 0 return
 		parse()
 	}
 
 	parse() {
+		# Static types can not be constructed
+		if not type.is_static type.add_runtime_configuration()
+
 		# Create the body of the type
 		parser.parse(this, type, List<Token>(blueprint))
+		blueprint.clear()
+	}
+
+	override copy() {
+		=> TypeDefinitionNode(type, blueprint, start)
 	}
 
 	override string() {
@@ -458,6 +518,10 @@ Node FunctionDefinitionNode {
 		this.instance = NODE_FUNCTION_DEFINITION
 		this.function = function
 		this.start = position
+	}
+
+	override copy() {
+		=> FunctionDefinitionNode(function, start)
 	}
 
 	override string() {
@@ -475,8 +539,19 @@ Node StringNode {
 		this.instance = NODE_STRING
 	}
 
+	init(text: String, identifier: String, position: Position) {
+		this.text = text
+		this.identifier = identifier
+		this.start = position
+		this.instance = NODE_STRING
+	}
+
 	override try_get_type() {
 		=> Link()
+	}
+
+	override copy() {
+		=> StringNode(text, identifier, start)
 	}
 
 	override string() {
@@ -504,6 +579,10 @@ Node FunctionNode {
 		=> function.return_type
 	}
 
+	override copy() {
+		=> FunctionNode(function, start)
+	}
+
 	override string() {
 		=> String('Function Call ') + function.name
 	}
@@ -518,8 +597,17 @@ Node ConstructionNode {
 		add(constructor)
 	}
 
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_CONSTRUCTION
+	}
+
 	override try_get_type() {
 		=> constructor.function.find_type_parent()
+	}
+
+	override copy() {
+		=> ConstructionNode(start)
 	}
 
 	override string() {
@@ -538,6 +626,10 @@ Node ParenthesisNode {
 		=> last.try_get_type()
 	}
 
+	override copy() {
+		=> ParenthesisNode(start)
+	}
+
 	override string() {
 		=> String('Parenthesis')
 	}
@@ -552,6 +644,10 @@ Node ReturnNode {
 
 		# Add the return value, if it exists
 		if node != none add(node)
+	}
+
+	override copy() {
+		=> ReturnNode(none as Node, start)
 	}
 
 	override string() {
@@ -590,6 +686,14 @@ Node IfNode {
 		add(node)
 	}
 
+	init(start: Position) {
+		this.instance = NODE_IF
+		this.start = start
+		this.is_resolvable = true
+	}
+
+	init() { this.instance = NODE_IF }
+
 	override resolve(context: Context) {
 		resolver.resolve(context, condition)
 		resolver.resolve(body.context, body)
@@ -599,7 +703,9 @@ Node IfNode {
 		=> none as Node
 	}
 
-	init() { this.instance = NODE_IF }
+	override copy() {
+		=> IfNode(start)
+	}
 
 	override string() {
 		=> String('If')
@@ -610,6 +716,15 @@ IfNode ElseIfNode {
 	init(context: Context, condition: Node, body: Node, start: Position, end: Position) {
 		IfNode.init(context, condition, body, start, end)
 		this.instance = NODE_ELSE_IF
+	}
+
+	init(start: Position) {
+		IfNode.init(start)
+		this.instance = NODE_ELSE_IF
+	}
+
+	override copy() {
+		=> ElseIfNode(start)
 	}
 
 	override string() {
@@ -629,6 +744,10 @@ Node ListNode {
 	init(position: Position) {
 		this.start = position
 		this.instance = NODE_LIST
+	}
+
+	override copy() {
+		=> ListNode(start)
 	}
 
 	override string() {
@@ -665,6 +784,16 @@ Node LoopNode {
 		add(body)
 	}
 
+	init(context: Context, position: Position, continue_label: Label, start_label: Label, exit_label: Label) {
+		this.context = context
+		this.start = position
+		this.continue_label = continue_label
+		this.start_label = start_label
+		this.exit_label = exit_label
+		this.instance = NODE_LOOP
+		this.is_resolvable = true
+	}
+
 	override resolve(context: Context) {
 		if not is_forever_loop {
 			resolver.resolve(this.context, initialization)
@@ -674,6 +803,10 @@ Node LoopNode {
 
 		resolver.resolve(body.context, body)
 		=> none as Node
+	}
+
+	override copy() {
+		=> LoopNode(context, start, continue_label, start_label, exit_label)
 	}
 
 	override string() {
@@ -690,8 +823,17 @@ Node CastNode {
 		add(type)
 	}
 
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_CAST
+	}
+
 	override try_get_type() {
 		=> last.try_get_type()
+	}
+
+	override copy() {
+		=> CastNode(start)
 	}
 
 	override string() {
@@ -712,6 +854,17 @@ Node CommandNode {
 		if instruction != Keywords.CONTINUE { finished = true }
 	}
 
+	init(instruction: Keyword, position: Position, finished: bool) {
+		this.instruction = instruction
+		this.finished = finished
+		this.start = position
+		this.instance = NODE_COMMAND
+	}
+
+	override copy() {
+		=> CommandNode(instruction, start, finished)
+	}
+
 	override string() {
 		=> instruction.identifier
 	}
@@ -724,8 +877,17 @@ Node NegateNode {
 		add(object)
 	}
 
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_NEGATE
+	}
+
 	override try_get_type() {
 		=> first.try_get_type()
+	}
+
+	override copy() {
+		=> NegateNode(start)
 	}
 
 	override string() {
@@ -751,9 +913,19 @@ Node ElseNode {
 		add(node)
 	}
 
+	init(start: Position) {
+		this.start = start
+		this.instance = NODE_ELSE
+		this.is_resolvable = true
+	}
+
 	override resolve(context: Context) {
 		resolver.resolve(body.context, body)
 		=> none as Node
+	}
+
+	override copy() {
+		=> ElseNode(start)
 	}
 
 	override string() {
@@ -771,8 +943,18 @@ Node IncrementNode {
 		add(destination)
 	}
 
+	init(position: Position, post: bool) {
+		this.instance = NODE_INCREMENT
+		this.start = position
+		this.post = post
+	}
+
 	override try_get_type() {
 		=> first.try_get_type()
+	}
+
+	override copy() {
+		=> IncrementNode(start, post)
 	}
 
 	override string() {
@@ -791,8 +973,18 @@ Node DecrementNode {
 		add(destination)
 	}
 
+	init(position: Position, post: bool) {
+		this.instance = NODE_DECREMENT
+		this.start = position
+		this.post = post
+	}
+
 	override try_get_type() {
 		=> first.try_get_type()
+	}
+
+	override copy() {
+		=> DecrementNode(start, post)
 	}
 
 	override string() {
@@ -808,8 +1000,17 @@ Node NotNode {
 		add(object)
 	}
 
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_NOT
+	}
+
 	override try_get_type() {
 		=> first.try_get_type()
+	}
+
+	override copy() {
+		=> NotNode(start)
 	}
 
 	override string() {
@@ -840,6 +1041,12 @@ Node AccessorNode {
 
 		add(object)
 		add(arguments)
+	}
+
+	init(position: Position) {
+		this.instance = NODE_ACCESSOR
+		this.start = position
+		this.is_resolvable = true
 	}
 
 	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
@@ -874,7 +1081,110 @@ Node AccessorNode {
 		=> type.get_accessor_type()
 	}
 
+	override copy() {
+		=> AccessorNode(start)
+	}
+
 	override string() {
 		=> String('Accessor')
+	}
+}
+
+Node InlineNode {
+	is_context: bool = false
+
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_INLINE
+	}
+
+	override try_get_type() {
+		if last == none => none as Type
+		=> last.try_get_type()
+	}
+
+	override copy() {
+		=> InlineNode(start)
+	}
+
+	override string() {
+		=> String('Inline')
+	}
+}
+
+InlineNode ContextInlineNode {
+	context: Context
+
+	init(context: Context, position: Position) {
+		InlineNode.init(position)
+		this.start = position
+		this.instance = NODE_CONTEXT_INLINE
+		this.is_context = true
+	}
+
+	override copy() {
+		=> ContextInlineNode(context, start)
+	}
+
+	override string() {
+		=> String('Context Inline')
+	}
+}
+
+Node DataPointerNode {
+	data: large
+	offset: large
+	type: Type
+
+	init(data: large, offset: large, position: Position) {
+		this.data = data
+		this.offset = offset
+		this.instance = NODE_DATA_POINTER
+		this.start = position
+		this.type = Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
+	}
+
+	override try_get_type() {
+		=> type
+	}
+
+	override copy() {
+		=> DataPointerNode(data, offset, start)
+	}
+
+	override string() {
+		=> String('Data Pointer')
+	}
+}
+
+Node StackAddressNode {
+	type: Type
+	identity: String
+	bytes => max(type.content_size, 1)
+
+	init(context: Context, type: Type, position: Position) {
+		this.type = type
+		this.identity = context.create_stack_address()
+		this.instance = NODE_STACK_ADDRESS
+		this.start = position
+	}
+
+	init(type: Type, identity: String, position: Position) {
+		this.type = type
+		this.identity = identity
+		this.instance = NODE_STACK_ADDRESS
+		this.start = position
+	}
+
+	override try_get_type() {
+		=> type
+	}
+
+	override copy() {
+		=> StackAddressNode(type, identity, start)
+	}
+
+	override string() {
+		=> String('Stack Allocation ') + type.name
 	}
 }

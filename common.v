@@ -288,3 +288,33 @@ get_all_function_implementations(context: Context) {
 
 	=> implementations
 }
+
+get_edited(editor: Node) {
+	iterator = editor.first
+
+	loop (iterator != none) {
+		if not iterator.match(NODE_CAST) => iterator
+		iterator = iterator.first
+	}
+
+	abort('Editor did not have a destination')
+}
+
+# Summary: Returns whether the specified node represents a statement
+is_statement(node: Node) {
+	type = node.instance
+	=> type == NODE_ELSE or type == NODE_ELSE_IF or type == NODE_IF or type == NODE_LOOP or type == NODE_SCOPE
+}
+
+# Summary: Returns whether the specified node represents a statement condition
+is_condition(node: Node) {
+	statement = node.find(NODE_ELSE_IF | NODE_IF | NODE_LOOP)
+	if statement == none => false
+	
+	=> when(statement.instance) {
+		NODE_IF => statement.(IfNode).condition == node
+		NODE_ELSE_IF => statement.(ElseIfNode).condition == node
+		NODE_LOOP => statement.(LoopNode).condition == node
+		else => false
+	}
+}

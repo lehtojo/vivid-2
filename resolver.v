@@ -268,7 +268,13 @@ are_reports_equal(a: List<Status>, b: List<Status>) {
 }
 
 register_default_functions(context: Context) {
+	allocation_function_overloads = context.get_function(String('allocate'))
+	if allocation_function_overloads == none abort('Missing the allocation function, please implement it or include the standard library')
 
+	type = primitives.create_number(primitives.LARGE, FORMAT_INT64)
+
+	Settings.allocation_function = allocation_function_overloads.get_implementation(type)
+	if Settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
 }
 
 complain(report: List<Status>) {
@@ -327,8 +333,6 @@ resolve(bundle: Bundle) {
 		# Try again only if the errors have changed
 		if are_reports_equal(previous, current) stop
 	}
-
-	debug_print(context)
 
 	# The compiler must not continue if there are errors in the report
 	if current.size > 0 {

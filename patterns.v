@@ -438,13 +438,15 @@ Pattern LinkPattern {
 
 Pattern ListPattern {
 	constant LEFT = 0
-	constant COMMA = 1
-	constant RIGHT = 2
+	constant COMMA = 2
+	constant RIGHT = 4
 
 	init() {
 		# Pattern: ... , ...
 		path.add(TOKEN_TYPE_OBJECT)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_OPERATOR)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_OBJECT)
 
 		priority = 0

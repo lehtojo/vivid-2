@@ -46,6 +46,8 @@ init() {
 	result = resolver.resolve(bundle)
 	if result.problematic complain(result)
 
+	analysis.analyze(bundle)
+
 	end = time()
 	print(to_string([end - start] / 10000.0))
 	println(' ms')

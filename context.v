@@ -21,8 +21,12 @@ LAMBDA_SELF_POINTER_IDENTIFIER = 'lambda'
 
 Indexer {
 	private context_count = 0
+	private hidden_count = 0
+	private stack_count = 0
 
 	context => context_count++
+	hidden => hidden_count++
+	stack => stack_count++
 }
 
 Context {
@@ -67,7 +71,7 @@ Context {
 		this.identifier = String.empty
 		this.name = String.empty
 		this.variables = Map<String, Variable>()
-		this.functions = Map<String, Function>()
+		this.functions = Map<String, FunctionList>()
 		this.types = Map<String, Type>()
 		this.labels = Map<String, Label>()
 		this.subcontexts = List<Context>()
@@ -81,7 +85,7 @@ Context {
 		this.identifier = String.empty
 		this.name = String.empty
 		this.variables = Map<String, Variable>()
-		this.functions = Map<String, Function>()
+		this.functions = Map<String, FunctionList>()
 		this.types = Map<String, Type>()
 		this.labels = Map<String, Label>()
 		this.subcontexts = List<Context>()
@@ -137,6 +141,13 @@ Context {
 		if variables.contains_key(name) => none as Variable
 		variable = Variable(this, type, category, name, MODIFIER_DEFAULT)
 		if not declare(variable) => none as Variable
+		=> variable
+	}
+
+	# Summary: Declares a hidden variable with the specified type
+	declare_hidden(type: Type) {
+		variable = Variable(this, type, VARIABLE_CATEGORY_LOCAL, identity + '.' + to_string(indexer.hidden), MODIFIER_DEFAULT)
+		declare(variable)
 		=> variable
 	}
 
@@ -260,6 +271,10 @@ Context {
 		=> none as Variable
 	}
 
+	create_stack_address() {
+		=> String('stack.') + identity + '.' + to_string(indexer.stack)
+	}
+
 	# Summary: Moves all types, functions and variables from the specified context to this context
 	merge(context: Context) {
 		# Add all types
@@ -354,9 +369,21 @@ Function Destructor {
 	}
 }
 
+RuntimeConfiguration {
+	constant CONFIGURATION_VARIABLE = '.configuration'
+
+	variable: Variable
+
+	init(type: Type) {
+		variable = type.declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
+	}
+}
+
 Context Type {
 	modifiers: normal
 	position: Position
+	format: large = SYSTEM_FORMAT
+	template_arguments: Array<Type>
 
 	initialization: Array<Node> = Array<Node>()
 
@@ -367,10 +394,7 @@ Context Type {
 	virtuals: Map<String, FunctionList> = Map<String, FunctionList>()
 	overrides: Map<String, FunctionList> = Map<String, FunctionList>()
 
-	template_arguments: Array<Type>
-
-	reference_size: large = SYSTEM_BYTES
-	format: large = SYSTEM_FORMAT
+	configuration: RuntimeConfiguration
 
 	is_resolved: bool = true
 
@@ -383,6 +407,22 @@ Context Type {
 	
 	is_generic_type => not has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
 	is_template_type => has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
+
+	reference_size: large = SYSTEM_BYTES
+
+	# Summary: Returns how many bytes this type contains
+	content_size() {
+		bytes = 0
+
+		loop variable in variables {
+			if variable.value.is_static continue
+			bytes += variable.value.type.reference_size
+		}
+
+		loop supertype in supertypes { bytes += supertype.content_size }
+
+		=> bytes
+	}
 
 	init(identity: String) {
 		Context.init(identity, TYPE_CONTEXT)
@@ -409,6 +449,11 @@ Context Type {
 		this.name = name
 		this.identifier = name
 		this.modifiers = modifiers
+	}
+
+	add_runtime_configuration() {
+		if configuration != none return
+		configuration = RuntimeConfiguration(this)
 	}
 
 	virtual clone() {
@@ -611,6 +656,12 @@ FunctionList {
 	}
 
 	get_implementation(parameter_types: List<Type>) {
+		=> get_implementation(parameter_types, Array<Type>(0))
+	}
+
+	get_implementation(parameter: Type) {
+		parameter_types = List<Type>()
+		parameter_types.add(parameter)
 		=> get_implementation(parameter_types, Array<Type>(0))
 	}
 }
@@ -869,17 +920,16 @@ Function TemplateFunction {
 
 Context FunctionImplementation {
 	metadata: Function
-
-	is_constructor => metadata.is_constructor
-	is_static => metadata.is_static
+	node: Node
 	
+	self: Variable
 	parameters: List<Parameter>
 	template_arguments: Array<Type>
 	return_type: Type
 
-	self: Variable
-
-	node: Node
+	is_constructor => metadata.is_constructor
+	is_static => metadata.is_static
+	is_empty => (node == none or node.first == none) and not metadata.is_imported
 
 	init(metadata: Function, return_type: Type, parent: Context) {
 		Context.init(parent, IMPLEMENTATION_CONTEXT)
@@ -1015,7 +1065,7 @@ Type UnresolvedType {
 			else {
 				# Some base types are 'manual template types' such as link meaning they can still receive template arguments even though they are not instances of a template type class
 				component_type = component_type.clone()
-				component_type.template_arguments = component.arguments
+				component_type.template_arguments = component.arguments.to_array()
 				context = component_type
 			}
 		}

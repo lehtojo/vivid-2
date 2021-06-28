@@ -25,7 +25,7 @@ NodeIterator {
 }
 
 Node {
-	instance: small
+	instance: large
 	start: Position
 	parent: Node
 	previous: Node
@@ -34,12 +34,43 @@ Node {
 	last: Node
 	is_resolvable: bool = false
 
+	init() {
+		this.instance = NODE_NORMAL
+	}
+
 	match(instance: large) => this.instance == instance
 
 	match(operator: Operator) {
 		=> instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
 	}
 
+	# Summary: Finds the first parent, which passes the specified filter
+	find_parent(filter: (Node) -> bool) {
+		if parent == none => none as Node
+		if filter(parent) => parent
+		=> parent.find_parent(filter) as Node
+	}
+
+	# Summary: Finds the first parent, whose type is the specified type
+	find_parent(types: large) {
+		if parent == none => none as Node
+		if parent.instance & types != 0 => parent
+		=> parent.find_parent(type) as Node
+	}
+
+	# Summary: Returns all nodes, which pass the specified filter
+	find_all(filter: (Node) -> bool) {
+		result = List<Node>()
+
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if filter(iterator) result.add(iterator)
+			result.add_range(iterator.find_all(filter))
+		}
+
+		=> result
+	}
+
+	# Summary: Finds all nodes, whose type matches the specified type
 	find_all(type: large) {
 		result = List<Node>()
 
@@ -49,6 +80,51 @@ Node {
 		}
 
 		=> result
+	}
+
+	# Summary: Finds all nodes, whose type is one of the specified types
+	find_every(types: large) {
+		result = List<Node>()
+
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if has_flag(types, iterator.instance) result.add(iterator)
+			result.add_range(iterator.find_every(types))
+		}
+
+		=> result
+	}
+
+	# Summary: Returns the first node, whose type matches the specified type
+	find(types: large) {
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if iterator.instance & types != none => iterator
+			
+			result = iterator.find(types) as Node
+			if result != none => result
+		}
+
+		=> none as Node
+	}
+
+	find_context() {
+		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_CONTEXT_INLINE | NODE_TYPE, instance) => this
+		if parent == none => none as Node
+		=> parent.find_context() as Node
+	}
+
+	get_parent_context() {
+		node = find_context()
+
+		=> when(node.instance) {
+			NODE_SCOPE => node.(ScopeNode).context
+			NODE_LOOP => node.(LoopNode).context
+			NODE_CONTEXT_INLINE => node.(ContextInlineNode).context
+			NODE_TYPE => node.(TypeNode).type
+			else => {
+				abort('Invalid context node')
+				none as Context
+			}
+		}
 	}
 
 	add(node: Node) {
@@ -76,6 +152,31 @@ Node {
 		node.detach()
 	}
 
+	insert(node: Node) {
+		parent.insert(this, node)
+	}
+
+	insert(position: Node, child: Node) {
+		if position == none {
+			add(child)
+			return
+		}
+
+		if position == first { first = child }
+
+		left = position.previous
+
+		if left != none { left.next = child }
+
+		position.previous = child
+
+		if child.parent != none child.parent.remove(child)
+
+		child.parent = position.parent
+		child.previous = left
+		child.next = position
+	}
+
 	# Summary: Moves the specified node into the place of this node
 	replace(node: Node) {
 		# No need to replace if the replacement is this node
@@ -100,6 +201,25 @@ Node {
 		node.next = next
 	}
 
+	remove() {
+		=> parent != none and parent.remove(this)
+	}
+
+	remove(child: Node) {
+		if child.parent != this => false
+
+		left = child.previous
+		right = child.next
+
+		if left != none { left.next = right }
+		if right != none { right.previous = left }
+
+		if first == child { first = right }
+		if last == child { last = left }
+
+		=> true
+	}
+
 	# Summary: Removes all references from this node to other nodes
 	detach() {
 		parent = none
@@ -117,6 +237,12 @@ Node {
 		=> type
 	}
 
+	clone() {
+		result = copy()
+		loop child in this { result.add(child.clone()) }
+		=> result
+	}
+
 	# Summary: Tries to resolve the potential error state of the node
 	virtual resolve(context: Context) {
 		=> none as Node
@@ -128,6 +254,10 @@ Node {
 
 	virtual try_get_type() {
 		=> none as Type
+	}
+
+	virtual copy() {
+		=> Node()
 	}
 
 	virtual string() {

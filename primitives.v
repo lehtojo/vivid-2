@@ -31,7 +31,7 @@ Number Link {
 
 	init() {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
-		this.identifier = primitives.LINK_IDENTIFIER
+		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
 	}
 
