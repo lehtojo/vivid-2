@@ -38,7 +38,7 @@ Node {
 		this.instance = NODE_NORMAL
 	}
 
-	match(instance: large) => this.instance == instance
+	match(instances: large) => (instances & this.instance) != 0
 
 	match(operator: Operator) {
 		=> instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
@@ -54,7 +54,7 @@ Node {
 	# Summary: Finds the first parent, whose type is the specified type
 	find_parent(types: large) {
 		if parent == none => none as Node
-		if parent.instance & types != 0 => parent
+		if (parent.instance & types) != 0 => parent
 		=> parent.find_parent(type) as Node
 	}
 
@@ -71,12 +71,12 @@ Node {
 	}
 
 	# Summary: Finds all nodes, whose type matches the specified type
-	find_all(type: large) {
+	find_all(types: large) {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
-			if iterator.instance == type result.add(iterator)
-			result.add_range(iterator.find_all(type))
+			if (iterator.instance & types) != 0 result.add(iterator)
+			result.add_range(iterator.find_all(types))
 		}
 
 		=> result
@@ -97,7 +97,7 @@ Node {
 	# Summary: Returns the first node, whose type matches the specified type
 	find(types: large) {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
-			if iterator.instance & types != none => iterator
+			if (iterator.instance & types) != none => iterator
 			
 			result = iterator.find(types) as Node
 			if result != none => result
@@ -199,6 +199,18 @@ Node {
 		node.parent = parent
 		node.previous = previous
 		node.next = next
+	}
+
+	replace_with_children(root: Node) {
+		iterator = root.first
+
+		loop (iterator != none) {
+			next = iterator.next
+			parent.insert(this, iterator)
+			iterator = next
+		}
+
+		=> remove()
 	}
 
 	remove() {

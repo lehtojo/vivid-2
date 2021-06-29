@@ -1,5 +1,46 @@
 namespace reconstruction
 
+# Summary: Removes redundant parentheses in the specified node tree
+# Example: x = x * (((x + 1))) => x = x * (x + 1)
+remove_redundant_parentheses(root: Node) {
+	if root.match(NODE_PARENTHESIS) or root.match(NODE_LIST) {
+		loop child in root {
+			# Require the child to be a parenthesis node with exactly one child node
+			if not child.match(NODE_PARENTHESIS) or child.first == none or child.first != child.last continue
+			child.replace(child.first)
+		}
+
+		# Remove all parentheses, which block logical operators
+		if root.first != none and root.first.match(NODE_OPERATOR) and root.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL root.replace(root.first)
+	}
+
+	loop child in root { remove_redundant_parentheses(child) }
+}
+
+# Summary: Rewrites increment and decrement operators as action operations if their values are discard.
+# Example 1 (Value is not discarded):
+# x = ++i
+# Example 2 (Value is discarded)
+# Before:
+# loop (i = 0, i < n, i++)
+# After:
+# loop (i = 0, i < n, i += 1)
+rewrite_discarded_increments(root: Node) {
+	increments = root.find_all(NODE_INCREMENT | NODE_DECREMENT)
+
+	loop increment in increments {
+		if common.is_value_used(increment) continue
+		
+		operator = Operators.ASSIGN_ADD
+		if increment.match(NODE_DECREMENT) { operator = Operators.ASSIGN_SUBTRACT }
+
+		increment.replace(OperatorNode(operator, increment.start).set_operands(
+			increment.first,
+			NumberNode(SYSTEM_FORMAT, 1, increment.start)
+		))
+	}
+}
+
 strip_links(root: Node) {
 	links = root.find_all(NODE_LINK)
 
@@ -456,9 +497,35 @@ extract_bool_values(root: Node) {
 	}
 }
 
+# Summary: Finds all inlines nodes, which can be replaced with their own child nodes
+remove_redundant_inline_nodes(root: Node) {
+	inlines = root.find_all(NODE_INLINE | NODE_CONTEXT_INLINE)
+
+	loop iterator in inlines {
+		# If the inline node contains only one child node, the inline node can be replaced with it
+		if iterator.first != none and iterator.first == iterator.last {
+			iterator.replace(iterator.first)
+		}
+		else iterator.parent != none and [common.is_statement(iterator.parent) or iterator.parent.match(NODE_INLINE | NODE_NORMAL)] {
+			iterator.replace_with_children(iterator)
+		}
+		else {
+			continue
+		}
+
+		if not iterator.(InlineNode).is_context continue
+
+		environment = iterator.get_parent_context()
+		environment.merge(iterator.(ContextInlineNode).context)
+	}
+}
+
 reconstruct(implementation: FunctionImplementation, root: Node) {
 	strip_links(root)
+	remove_redundant_parentheses(root)
+	rewrite_discarded_increments(root)
 	extract_expressions(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
+	remove_redundant_inline_nodes(root)
 }
