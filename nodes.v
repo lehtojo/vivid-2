@@ -1119,6 +1119,7 @@ InlineNode ContextInlineNode {
 		InlineNode.init(position)
 		this.start = position
 		this.instance = NODE_CONTEXT_INLINE
+		this.context = context
 		this.is_context = true
 	}
 

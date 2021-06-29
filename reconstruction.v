@@ -19,8 +19,8 @@ strip_links(root: Node) {
 }
 
 get_expression_extract_position(expression: Node) {
-	iterator = expression
-	position = iterator
+	iterator = expression.parent
+	position = expression
 
 	loop (iterator != none) {
 		type = iterator.instance
