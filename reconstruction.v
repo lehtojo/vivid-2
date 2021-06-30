@@ -497,6 +497,74 @@ extract_bool_values(root: Node) {
 	}
 }
 
+# Summary: Tries to build an assignment operator out of the specified edit
+# Examples:
+# x++ => x = x + 1
+# x-- => x = x - 1
+# a *= 2 => a = a * 2
+# b[i] /= 10 => b[i] = b[i] / 10
+try_rewrite_as_assignment_operator(edit: Node) {
+	if common.is_value_used(edit) => none as Node
+	position = edit.start
+
+	=> when(edit.instance) {
+		NODE_INCREMENT => {
+			destination = edit.(IncrementNode).first.clone()
+
+			OperatorNode(Operators.ASSIGN, position).set_operands(
+				destination,
+				OperatorNode(Operators.ADD, position).set_operands(
+					destination.clone(),
+					NumberNode(SYSTEM_FORMAT, 1, position)
+				)
+			)
+		}
+		NODE_DECREMENT => {
+			destination = edit.(DecrementNode).first.clone()
+
+			OperatorNode(Operators.ASSIGN, position).set_operands(
+				destination,
+				OperatorNode(Operators.SUBTRACT, position).set_operands(
+					destination.clone(),
+					NumberNode(SYSTEM_FORMAT, 1, position)
+				)
+			)
+		}
+		NODE_OPERATOR => {
+			if edit.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT => none as Node
+			if edit.(OperatorNode).operator == Operators.ASSIGN => edit
+
+			destination = edit.(OperatorNode).first.clone()
+			type = edit.(OperatorNode).operator.(AssignmentOperator).operator
+
+			if type == none => none as Node
+
+			OperatorNode(Operators.ASSIGN, position).set_operands(
+				destination,
+				OperatorNode(type, position).set_operands(
+					destination.clone(),
+					edit.last.clone()
+				)
+			)
+		}
+
+		else => none as Node
+	}
+}
+
+# Summary: Ensures all edits under the specified node are assignments
+# Example: a += 1 => a = a + 1
+rewrite_edits_as_assignments(root: Node) {
+	edits = root.find_all(i -> i.match(NODE_INCREMENT | NODE_DECREMENT) or [i.instance == NODE_OPERATOR and i.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT])
+
+	loop edit in edits {
+		replacement = try_rewrite_as_assignment_operator(edit)
+		if replacement == none abort('Could not rewrite edit as an assignment operator')
+
+		edit.replace(replacement)
+	}
+}
+
 # Summary: Finds all inlines nodes, which can be replaced with their own child nodes
 remove_redundant_inline_nodes(root: Node) {
 	inlines = root.find_all(NODE_INLINE | NODE_CONTEXT_INLINE)
@@ -527,5 +595,6 @@ reconstruct(implementation: FunctionImplementation, root: Node) {
 	extract_expressions(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
+	rewrite_edits_as_assignments(root)
 	remove_redundant_inline_nodes(root)
 }
