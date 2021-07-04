@@ -273,8 +273,8 @@ register_default_functions(context: Context) {
 
 	type = primitives.create_number(primitives.LARGE, FORMAT_INT64)
 
-	Settings.allocation_function = allocation_function_overloads.get_implementation(type)
-	if Settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
+	settings.allocation_function = allocation_function_overloads.get_implementation(type)
+	if settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
 }
 
 complain(report: List<Status>) {

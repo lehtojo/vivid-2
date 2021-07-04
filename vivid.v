@@ -47,6 +47,10 @@ init() {
 	if result.problematic complain(result)
 
 	analysis.analyze(bundle)
+	if result.problematic complain(result)
+
+	assembler.assemble(bundle)
+	if result.problematic complain(result)
 
 	end = time()
 	print(to_string([end - start] / 10000.0))

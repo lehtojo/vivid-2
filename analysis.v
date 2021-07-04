@@ -15,3 +15,7 @@ analyze(bundle: Bundle) {
 
 	resolver.debug_print(context)
 }
+
+is_used_later(variable: Variable, node: Node) {
+	=> true
+}

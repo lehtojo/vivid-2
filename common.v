@@ -323,3 +323,21 @@ is_condition(node: Node) {
 is_value_used(value: Node) {
 	=> value.parent.match(NODE_CALL | NODE_CAST | NODE_PARENTHESIS | NODE_CONSTRUCTION | NODE_DECREMENT | NODE_FUNCTION | NODE_INCREMENT | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_OPERATOR | NODE_RETURN)
 }
+
+# Summary: Returns how many bits the value requires
+get_bits(value: large, is_decimal: bool) {
+	if is_decimal => SYSTEM_BITS
+
+	if value < 0 {
+		if value < -2147483648 => 64
+		if value < -32768 => 32
+		if value < -128 => 16
+	}
+	else {
+		if value > 2147483647 => 64
+		if value > 32767 => 32
+		if value > 127 => 16
+	}
+
+	=> 8
+}

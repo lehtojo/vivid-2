@@ -33,22 +33,22 @@ NODE_DATA_POINTER = 2147483648
 NODE_STACK_ADDRESS = 4294967296 # 1 <| 32
 
 Node NumberNode {
-	data: large
+	value: large
 	format: large
 	type: Type
 
-	init(format: large, data: large, start: Position) {
+	init(format: large, value: large, start: Position) {
 		this.instance = NODE_NUMBER
 		this.format = format
-		this.data = data
+		this.value = value
 	}
 
 	negate() {
 		if format == FORMAT_DECIMAL {
-			data = data ¤ [1 <| 64]
+			value = value ¤ [1 <| 64]
 		}
 		else {
-			data = -data
+			value = -value
 		}
 
 		=> this
@@ -60,12 +60,12 @@ Node NumberNode {
 	}
 
 	override copy() {
-		=> NumberNode(format, data, start)
+		=> NumberNode(format, value, start)
 	}
 
 	override string() {
-		if format == FORMAT_DECIMAL => String('Decimal Number ') + to_string(bits_to_decimal(data))
-		=> String('Number ') + to_string(data)
+		if format == FORMAT_DECIMAL => String('Decimal Number ') + to_string(bits_to_decimal(value))
+		=> String('Number ') + to_string(value)
 	}
 }
 

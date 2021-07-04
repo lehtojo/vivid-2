@@ -7,7 +7,7 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/build/v.exe",
 			"cwd": "${workspaceRoot}",
-			"programArgs": "C:\\Users\\joona\\vivid\\Vivid\\Examples\\Test.v"
+			"programArgs": "C:\\Users\\joona\\vivid\\Vivid\\Examples\\Example.v"
 		},
 	]
 }

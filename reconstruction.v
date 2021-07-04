@@ -373,7 +373,7 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 	arguments = Node()
 	arguments.add(NumberNode(SYSTEM_FORMAT, size, position))
 
-	if Settings.is_garbage_collector_enabled {
+	if settings.is_garbage_collector_enabled {
 		# TODO: Support garbage collection
 	}
 	else {
@@ -382,7 +382,7 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
 			VariableNode(container.result, position),
 			CastNode(
-				FunctionNode(Settings.allocation_function, position).set_arguments(arguments),
+				FunctionNode(settings.allocation_function, position).set_arguments(arguments),
 				TypeNode(type, position),
 				position
 			)
@@ -450,7 +450,7 @@ find_bool_values(root: Node) {
 		if common.is_statement(node) or node.match(NODE_NORMAL) or common.is_condition(candidate) continue
 
 		# Ensure the parent is not a comparison or a logical operator
-		if node.match(NODE_OPERATOR) and (node.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON or node.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL) continue
+		if node.match(NODE_OPERATOR) and node.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL continue
 		
 		result.add(candidate)
 	}

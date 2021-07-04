@@ -1,0 +1,389 @@
+# Order: From most expensive to least expensive
+HANDLE_MEMORY = 1
+HANDLE_MEDIA_REGISTER = 2
+HANDLE_REGISTER = 4
+HANDLE_EXPRESSION = 8
+HANDLE_MODIFIER = 16
+HANDLE_CONSTANT = 32
+HANDLE_NONE = 64
+
+INSTANCE_NONE = 1
+INSTANCE_CONSTANT_DATA_SECTION = 2
+INSTANCE_DATA_SECTION = 4
+INSTANCE_CONSTANT = 8
+INSTANCE_STACK_VARIABLE = 16
+INSTANCE_MEMORY = 32
+INSTANCE_STACK_MEMORY = 64
+INSTANCE_TEMPORARY_MEMORY = 128
+INSTANCE_COMPLEX_MEMORY = 256
+INSTANCE_EXPRESSION = 512
+INSTANCE_INLINE = 1024
+INSTANCE_REGISTER = 2048
+INSTANCE_MODIFIER = 4096
+INSTANCE_LOWER_12_BITS = 8192
+
+# Summary: Converts the specified size to corresponding size modifier
+to_size_modifier(bytes: large) {
+	=> when(bytes) {
+		1 => 'byte'
+		2 => 'word'
+		4 => 'dword'
+		8 => 'qword'
+		16 => 'xmmword'
+		32 => 'ymmword'
+		else => {
+			abort('Invalid size')
+			'.?'
+		}
+	}
+}
+
+# Summary: Converts the specified size to corresponding data section allocator
+to_data_section_allocator(bytes: large) {
+	=> when(bytes) {
+		1 => '.byte'
+		2 => '.short'
+		4 => '.long'
+		8 => '.quad'
+		16 => '.xword'
+		32 => '.yword'
+		else => {
+			abort('Invalid size')
+			'.?'
+		}
+	}
+}
+
+Handle {
+	type: large
+	instance: large
+	is_precise: bool = false
+	format: large = SYSTEM_FORMAT
+	size: large = SYSTEM_BYTES
+	unsigned => is_unsigned(format)
+
+	init() {
+		type = HANDLE_NONE
+		instance = INSTANCE_NONE
+	}
+
+	init(type: large, instance: large) {
+		this.type = type
+		this.instance = instance
+	}
+
+	init(is_precise: bool, format: large, size: large) {
+		this.is_precise = is_precise
+		this.format = format
+		this.size = size
+	}
+
+	# Summary: Returns all results which the handle requires to be in registers
+	virtual get_register_dependent_results() {
+		=> List<Result>()
+	}
+
+	# Summary: Returns all results used in the handle
+	virtual get_inner_results() {
+		=> List<Result>()
+	}
+
+	virtual use(instruction: Instruction) {}
+
+	virtual equals(other: Handle) {
+		=> this.instance == other.instance and this.format == other.format
+	}
+
+	virtual finalize() {
+		=> Handle()
+	}
+
+	virtual string() {
+		=> String('?')
+	}
+}
+
+Handle ConstantHandle {
+	value: large
+	
+	bits() {
+		=> common.get_bits(value, format == FORMAT_DECIMAL)
+	}
+	
+	init(value: large) {
+		Handle.init(HANDLE_CONSTANT, INSTANCE_CONSTANT)
+		this.value = value
+	}
+
+	init(value: large, format: large) {
+		Handle.init(HANDLE_CONSTANT, INSTANCE_CONSTANT)
+		this.value = value
+		this.format = format
+	}
+
+	init(value: large, format: large, size: large) {
+		Handle.init(HANDLE_CONSTANT, INSTANCE_CONSTANT)
+		this.value = value
+		this.format = format
+		this.size = size
+	}
+
+	string_shared() {
+		if format == FORMAT_DECIMAL => to_string(bits_to_decimal(value)).replace(`,`, `.`)
+		=> to_string(value).replace(`,`, `.`)
+	}
+
+	override string() {
+		if settings.is_x64 => string_shared()
+		=> String('#') + string_shared()
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.format == other.format and this.value == other.(ConstantHandle).value
+	}
+
+	override finalize() {
+		=> ConstantHandle(value, format, size)
+	}
+}
+
+Handle RegisterHandle {
+	register: Register
+
+	init(register: Register) {
+		if register.is_media_register Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER)
+		else Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER)
+
+		this.register = register
+	}
+
+	init(register: Register, format: large, size: large) {
+		if register.is_media_register Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER)
+		else Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER)
+
+		this.register = register
+		this.format = format
+		this.size = size
+	}
+
+	override string() {
+		if size == 0 => register[SYSTEM_BYTES]
+		=> register[size]
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.format == other.format and this.register == other.(RegisterHandle).register
+	}
+
+	override finalize() {
+		=> RegisterHandle(register, format, size)
+	}
+}
+
+Handle MemoryHandle {
+	unit: Unit
+	start: Result
+	offset: large
+
+	init(unit: Unit, start: Result, offset: large) {
+		Handle.init(HANDLE_MEMORY, INSTANCE_MEMORY)
+		this.unit = unit
+		this.start = start
+		this.offset = offset
+	}
+
+	virtual get_absolute_offset() {
+		=> offset
+	}
+
+	override use(instruction: Instruction) {
+		start.use(instruction)
+	}
+
+	default_string() {
+		start: Handle = this.start.value
+		offset: large = get_absolute_offset()
+
+		# TODO: Support inline handless
+		#if start.is_inline {}
+
+		postfix = String('')
+
+		if settings.is_x64 {
+			if offset > 0 { postfix = String('+') + to_string(offset) }
+			else offset < 0 { postfix = to_string(offset) }
+		}
+		else {
+			if offset != 0 { postfix = String(', #') + to_string(offset) }
+		}
+
+		if start.type == HANDLE_REGISTER or start.type == HANDLE_CONSTANT {
+			address = String('[') + start.string() + postfix + ']'
+
+			if is_precise and settings.is_x64 => String(to_size_modifier(size)) + ' ptr ' + address
+			=> address
+		}
+
+		=> String.empty
+	}
+
+	override string() {
+		=> default_string()
+	}
+
+	override get_register_dependent_results() {
+		if start.is_inline => List<Result>()
+
+		all = List<Result>()
+		all.add(start)
+		=> all
+	}
+
+	override get_inner_results() {
+		all = List<Result>()
+		all.add(start)
+		=> all
+	}
+
+	override finalize() {
+		if start.is_standard_register or start.is_constant or start.is_inline => MemoryHandle(unit, Result(start.value, start.format), offset)
+		abort('Start of the memory handle was in invalid format during finalization')
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.start.value.equals(other.(MemoryHandle).start.value) and offset == other.(MemoryHandle).offset
+	}
+}
+
+MemoryHandle StackMemoryHandle {
+	is_absolute: bool
+
+	init(unit: Unit, offset: large, is_absolute: bool) {
+		register = RegisterHandle(unit.get_stack_pointer())
+		MemoryHandle.init(unit, Result(register, SYSTEM_FORMAT), offset)
+
+		this.is_absolute = is_absolute
+		this.instance = INSTANCE_STACK_MEMORY
+	}
+
+	override get_absolute_offset() {
+		if is_absolute => unit.stack_offset + offset
+		=> offset
+	}
+
+	override finalize() {
+		if start.value.(RegisterHandle).register == unit.get_stack_pointer() {
+			=> StackMemoryHandle(unit, offset, is_absolute)
+		}
+
+		abort('Stack memory handle did not use the stack pointer register')
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.offset == other.(StackMemoryHandle).offset and this.is_absolute == other.(StackMemoryHandle).is_absolute
+	}
+}
+
+StackMemoryHandle StackVariableHandle {
+	variable: Variable
+
+	init(unit: Unit, variable: Variable) {
+		StackMemoryHandle.init(unit, variable.alignment, true)
+
+		this.variable = variable
+		this.instance = INSTANCE_STACK_VARIABLE
+
+		if not variable.is_predictable abort('Creating stack variable handles of unpredictable variables is not allowed')
+	}
+
+	override string() {
+		offset = variable.alignment
+		=> default_string()
+	}
+
+	override finalize() {
+		=> StackVariableHandle(unit, variable)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.variable == other.(StackVariableHandle).variable
+	}
+}
+
+StackMemoryHandle TemporaryMemoryHandle {
+	identifier: String
+
+	init(unit: Unit) {
+		StackMemoryHandle.init(unit, 0, true)
+		this.identifier = unit.get_next_identity()
+		this.instance = INSTANCE_TEMPORARY_MEMORY
+	}
+
+	init(unit: Unit, identifier: String) {
+		StackMemoryHandle.init(unit, 0, true)
+		this.identifier = identifier
+		this.instance = INSTANCE_TEMPORARY_MEMORY
+	}
+
+	override finalize() {
+		=> TemporaryMemoryHandle(unit, identifier)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.identifier == other.(TemporaryMemoryHandle).identifier
+	}
+}
+
+Handle DataSectionHandle {
+	constant GLOBAL_OFFSET_TABLE_PREFIX = ':got:'
+
+	identifier: String
+	offset: large
+
+	# Address means whether to use the value of the address or not
+	address: bool = false
+	global_offset_table: bool = false
+
+	init(identifier: String, address: bool) {
+		Handle.init(HANDLE_MEMORY, INSTANCE_DATA_SECTION)
+		this.identifier = identifier
+		this.address = address
+	}
+
+	init(identifier: String, offset: large, address: bool, global_offset_table: bool) {
+		Handle.init(HANDLE_MEMORY, INSTANCE_DATA_SECTION)
+		this.identifier = identifier
+		this.offset = offset
+		this.address = address
+		this.global_offset_table = global_offset_table
+	}
+
+	override string() {
+		# If the value of the address is only required, return it
+		if address {
+			if settings.is_x64 or not global_offset_table => identifier
+			=> String(GLOBAL_OFFSET_TABLE_PREFIX) + identifier
+		}
+
+		# Apply the offset if it is not zero
+		if offset != 0 {
+			postfix = to_string(offset)
+
+			if offset > 0 { postfix = String('+') + postfix }
+
+			if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + postfix + ']'
+			=> String('[rip+') + identifier + postfix + ']'
+		}
+
+		if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + ']'
+		=> String('[rip+') + identifier + ']'
+	}
+
+	override finalize() {
+		=> DataSectionHandle(identifier, offset, address, global_offset_table)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.global_offset_table == other.(DataSectionHandle).global_offset_table
+	}
+}

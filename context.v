@@ -524,6 +524,11 @@ Context Type {
 		=> false
 	}
 
+	get_register_format() {
+		if format == FORMAT_DECIMAL => FORMAT_DECIMAL
+		=> SYSTEM_FORMAT
+	}
+
 	string() {
 		abort(String('Type string() function is not implemented'))
 		=> String('')
@@ -537,7 +542,7 @@ Variable {
 	modifiers: normal
 	position: Position
 	parent: Context
-	alignment: Optional<normal>
+	alignment: normal
 	is_self_pointer: bool = false
 	usages: List<Node> = List<Node>()
 	writes: List<Node> = List<Node>()
@@ -923,13 +928,24 @@ Context FunctionImplementation {
 	node: Node
 	
 	self: Variable
-	parameters: List<Parameter>
 	template_arguments: Array<Type>
 	return_type: Type
 
 	is_constructor => metadata.is_constructor
 	is_static => metadata.is_static
 	is_empty => (node == none or node.first == none) and not metadata.is_imported
+
+	parameters() {
+		result = List<Variable>()
+
+		loop iterator in variables {
+			variable = iterator.value
+			if not variable.is_parameter or variable.is_self_pointer continue
+			result.add(variable)
+		}
+
+		=> result
+	}
 
 	init(metadata: Function, return_type: Type, parent: Context) {
 		Context.init(parent, IMPLEMENTATION_CONTEXT)
@@ -950,8 +966,6 @@ Context FunctionImplementation {
 
 	# Summary: Sets the function parameters
 	set_parameters(parameters: List<Parameter>) {
-		this.parameters = parameters
-
 		loop parameter in parameters {
 			variable = Variable(this, parameter.type, VARIABLE_CATEGORY_PARAMETER, parameter.name, MODIFIER_DEFAULT)
 
@@ -974,6 +988,10 @@ Context FunctionImplementation {
 
 		node = ScopeNode(this, metadata.start, metadata.end)
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+	}
+
+	get_fullname() {
+		=> metadata.name
 	}
 }
 

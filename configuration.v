@@ -70,8 +70,8 @@ collect(files: List<String>, folder: String, recursive: bool) {
 
 # Summary: Initializes the configuration by registering the folders which can be searched through
 initialize() {
-	Settings.included_folders = List<String>()
-	Settings.included_folders.add(io.get_process_folder())
+	settings.included_folders = List<String>()
+	settings.included_folders.add(io.get_process_folder())
 
 	folders = none as List<String>
 
@@ -100,18 +100,18 @@ initialize() {
 	}
 
 	# Ensure all the included folders ends with a separator
-	loop (i = 0, i < Settings.included_folders.size, i++) {
-		folder = Settings.included_folders[i]
+	loop (i = 0, i < settings.included_folders.size, i++) {
+		folder = settings.included_folders[i]
 		if folder.ends_with('/') continue
 
-		Settings.included_folders[i] = folder + '/'
+		settings.included_folders[i] = folder + '/'
 	}
 }
 
 # Summary: Tries to find the specified library using the include folders
 find_library(library: String) {
 
-	loop folder in Settings.included_folders {
+	loop folder in settings.included_folders {
 		filename = folder + library
 
 		if io.exists(filename) => filename
@@ -171,9 +171,9 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		collect(files, folder, true)
 	}
 	else value == '-d' or value == '-debug' {
-		if Settings.is_optimization_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_optimization_enabled => Status('Optimization and debugging can not be enabled at the same time')
 
-		Settings.is_debugging_enabled = true
+		settings.is_debugging_enabled = true
 		bundle.put(String(BUNDLE_DEBUG), true)
 	}
 	else value == '-o' or value == '-output' {
@@ -209,41 +209,41 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		bundle.put(String(BUNDLE_TIME), true)
 	}
 	else value == '-q' or value == '-quiet' {
-		Settings.is_verbose_output_enabled = false
+		settings.is_verbose_output_enabled = false
 	}
 	else value == '-v' or value == '-verbose' {
-		Settings.is_verbose_output_enabled = true
+		settings.is_verbose_output_enabled = true
 	}
 	else value == '-r' or value == '-rebuild' or value == '-force' {
 		bundle.put(String(BUNDLE_REBUILD), true)
 	}
 	else value == '-O' or value == '-O1' {
-		if Settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
 
-		Settings.is_optimization_enabled = true
+		settings.is_optimization_enabled = true
 
-		Settings.is_instruction_analysis_enabled = true
-		Settings.is_mathematical_analysis_enabled = true
-		Settings.is_repetion_analysis_enabled = true
-		Settings.is_unwrapment_analysis_enabled = true
-		Settings.is_function_inlining_enabled = false
+		settings.is_instruction_analysis_enabled = true
+		settings.is_mathematical_analysis_enabled = true
+		settings.is_repetion_analysis_enabled = true
+		settings.is_unwrapment_analysis_enabled = true
+		settings.is_function_inlining_enabled = false
 	}
 	else value == '-O2' {
-		if Settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
 
-		Settings.is_optimization_enabled = true
+		settings.is_optimization_enabled = true
 
-		Settings.is_instruction_analysis_enabled = true
-		Settings.is_mathematical_analysis_enabled = true
-		Settings.is_repetion_analysis_enabled = true
-		Settings.is_unwrapment_analysis_enabled = true
-		Settings.is_function_inlining_enabled = true
+		settings.is_instruction_analysis_enabled = true
+		settings.is_mathematical_analysis_enabled = true
+		settings.is_repetion_analysis_enabled = true
+		settings.is_unwrapment_analysis_enabled = true
+		settings.is_function_inlining_enabled = true
 	}
 	else value == '-x64' {
-		Settings.architecture = ARCHITECTURE_X64
+		settings.architecture = ARCHITECTURE_X64
 	}
 	else value == '-arm64' {
-		Settings.architecture = ARCHITECTURE_ARM64
+		settings.architecture = ARCHITECTURE_ARM64
 	}
 	else value == '-version' {
 		print('Vivid version ')

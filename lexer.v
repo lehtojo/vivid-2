@@ -801,6 +801,14 @@ is_signed(format: large) {
 	=> (format & 1) == 0
 }
 
+to_format(bytes: large) {
+	=> (bytes <| 1) | 1
+}
+
+to_format(bytes: large, unsigned: bool) {
+	=> (bytes <| 1) | unsigned
+}
+
 to_bytes(format: large) {
 	=> (format |> 1) & FORMAT_SIZE_MASK
 }
