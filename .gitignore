@@ -1,2 +1,3 @@
 build/
 libv_x64.obj
+*.asm

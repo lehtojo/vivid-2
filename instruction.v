@@ -194,12 +194,12 @@ Instruction {
 	private validate_handle(handle: Handle, locked: List<Register>) {
 		results = handle.get_register_dependent_results()
 		
-		loop result in results {
-			if not result.is_standard_register {
-				memory.move_to_register(unit, result, SYSTEM_BYTES, false, trace.for(unit, result))
+		loop iterator in results {
+			if not iterator.is_standard_register {
+				memory.move_to_register(unit, iterator, SYSTEM_BYTES, false, trace.for(unit, iterator))
 			}
 
-			locked.add(result.register)
+			locked.add(iterator.register)
 		}
 	}
 
@@ -453,8 +453,7 @@ Instruction {
 		}
 
 		# If any parameters were added, remove the comma from the end
-		# TODO: Enable
-		#if added result.remove(result.length - 1, 1)
+		if added builder.remove(builder.length - 1, builder.length)
 
 		unit.write(builder.string())
 	}

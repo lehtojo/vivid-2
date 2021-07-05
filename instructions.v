@@ -24,30 +24,52 @@ DualParameterInstruction AdditionInstruction {
 
 		if first.is_deactivating() {
 			# Example: add r, c/r/m
-			=> build(
-				instructions.shared.ADD,
-				SYSTEM_BYTES,
-				InstructionParameter(
-					first,
-					FLAG_DESTINATION | FLAG_READS,
-					HANDLE_REGISTER
-				),
-				InstructionParameter(
-					second,
-					FLAG_NONE,
-					HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY
-				)
-			)
+			=> build(instructions.shared.ADD, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 
 		# Example: lea r, [...]
-		#calculation = ExpressionHandle.create_addition(first, second)
+		calculation = ExpressionHandle.create_addition(first, second)
 
-		#build(instructions.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
+		build(instructions.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
 	}
 
 	on_build_arm64() {
 		
+	}
+}
+
+DualParameterInstruction SubtractionInstruction {
+	assigns: bool
+
+	init(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_SUBTRACT)
+		this.assigns = assigns
+	}
+
+	on_build_x64() {
+		flags = FLAG_DESTINATION
+		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
+
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
+			return
+		}
+
+		if assigns {
+			# Example: sub r/[...], c/r
+			=> build(instructions.shared.SUBTRACT, first.size, InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
+		}
+
+		# Example: sub r, c/r/[...]
+		build(instructions.shared.SUBTRACT, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+	}
+
+	on_build_arm64() {
+
+	}
+
+	override on_build() {
+		if settings.is_x64 on_build_x64()
+		on_build_arm64()
 	}
 }
 
@@ -81,6 +103,57 @@ Instruction RequireVariablesInstruction {
 		loop variable in variables {
 			dependencies.add(references.get_variable(unit, variable, ACCESS_READ))
 		}
+	}
+}
+
+Instruction ReturnInstruction {
+	object: Result
+	return_type: Type
+
+	return_register() {
+		if return_type != none and return_type.format == FORMAT_DECIMAL => unit.get_decimal_return_register()
+		=> unit.get_standard_return_register()
+	}
+
+	return_register_handle() {
+		=> RegisterHandle(return_register)
+	}
+
+	init(unit: Unit, object: Result, return_type: Type) {
+		Instruction.init(unit, INSTRUCTION_RETURN)
+
+		this.object = object
+		this.return_type = return_type
+		
+		if object != none dependencies.add(object)
+
+		if return_type == none {
+			this.result.format = SYSTEM_FORMAT
+			return
+		}
+
+		this.result.format = return_type.get_register_format()
+	}
+
+	# Summary: Returns whether the return value is in the wanted return register
+	is_value_in_return_register() {
+		=> object.value.instance == INSTANCE_REGISTER and object.value.(RegisterHandle).register == return_register
+	}
+
+	override on_build() {
+		# 1. Skip if there is no return value
+		# 2. Ensure the return value is in the correct register
+		if object == none or is_value_in_return_register() return
+
+		instruction = MoveInstruction(unit, Result(return_register_handle, return_type.get_register_format()), object)
+		instruction.type = MOVE_RELOCATE
+		unit.add(instruction)
+	}
+
+	build(recover_registers: List<Register>, local_variables_top: large) {
+		builder = StringBuilder()
+		builder.append(instructions.shared.RETURN)
+		Instruction.build(builder.string())
 	}
 }
 
@@ -186,7 +259,7 @@ DualParameterInstruction MoveInstruction {
 		if is_safe { flags_first = flags_first | FLAG_WRITE_ACCESS }
 
 		if type == MOVE_LOAD { flags_first = flags_first | FLAG_ATTACH_TO_DESTINATION }
-		else type == MOVE_RELOCATE { flags_first = flags_first | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
+		else type == MOVE_RELOCATE { flags_second = flags_second | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
 
 		on_build_x64(flags_first, flags_second)
 	}
@@ -198,7 +271,7 @@ DualParameterInstruction MoveInstruction {
 
 	on_post_build_x64() {
 		# Skip decimal formats, since they are correct by default
-		if destination.value.format == FORMAT_DECIMAL or source.value.format == FORMAT_DECIMAL or is_move_instruction_x64() return
+		if destination.value.format == FORMAT_DECIMAL or source.value.format == FORMAT_DECIMAL or not is_move_instruction_x64() return
 
 		is_source_memory_address = source.value != none and source.value.type == HANDLE_MEMORY
 		is_destination_memory_address = destination.value != none and destination.value.type == HANDLE_MEMORY
@@ -210,7 +283,7 @@ DualParameterInstruction MoveInstruction {
 
 		# Return if no conversion is needed
 		if source.value.size == destination.value.size or second.value.type == HANDLE_CONSTANT {
-			operation = instructions.shared.MOVE
+			operation = String(instructions.shared.MOVE)
 			return
 		}
 
@@ -237,13 +310,13 @@ DualParameterInstruction MoveInstruction {
 			# movzx eax, cl (32 <- 8)
 			#
 			# movzx ax, cl (16 <- 8)
-			operation = instructions.x64.UNSIGNED_CONVERSION_MOVE
+			operation = String(instructions.x64.UNSIGNED_CONVERSION_MOVE)
 			return
 		}
 
 		if destination.value.size == 8 and source.value.size == 4 {
 			# movsxd rax, ebx (64 <- 32)
-			operation = instructions.x64.SIGNED_DWORD_CONVERSION_MOVE
+			operation = String(instructions.x64.SIGNED_DWORD_CONVERSION_MOVE)
 			return
 		}
 
@@ -255,7 +328,7 @@ DualParameterInstruction MoveInstruction {
 		# movsx eax, cl (32 <- 8)
 		#
 		# movsx ax, cl (16 <- 8)
-		operation = instructions.x64.SIGNED_CONVERSION_MOVE
+		operation = String(instructions.x64.SIGNED_CONVERSION_MOVE)
 	}
 
 	override on_post_build() {

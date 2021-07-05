@@ -387,3 +387,126 @@ Handle DataSectionHandle {
 		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.global_offset_table == other.(DataSectionHandle).global_offset_table
 	}
 }
+
+Handle ExpressionHandle {
+	multiplicand: Result
+	multiplier: large
+	addition: Result
+	number: large
+
+	static create_addition(left: Result, right: Result) {
+		=> ExpressionHandle(left, 1, right, 0)
+	}
+
+	static create_addition(left: Handle, right: Handle) {
+		=> ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
+	}
+
+	init(multiplicand: Result, multiplier: large, addition: Result, number: large) {
+		Handle.init(HANDLE_EXPRESSION, INSTANCE_EXPRESSION)
+		this.multiplicand = multiplicand
+		this.multiplier = multiplier
+		this.addition = addition
+		this.number = number
+	}
+
+	override use(instruction: Instruction) {
+		multiplicand.use(instruction)
+		if addition != none addition.use(instruction)
+	}
+
+	validate() {
+		if (multiplicand.is_standard_register or multiplicand.is_constant) and (addition == none or [addition.is_standard_register or addition.is_constant]) and multiplier > 0 return
+		abort('Invalid expression handle')
+	}
+
+	string_x64() {
+		expression = String.empty
+		postfix = number
+
+		if multiplicand.is_constant {
+			postfix += multiplicand.value.(ConstantHandle).value * multiplier
+		}
+		else {
+			expression = multiplicand.value.string()
+			if multiplier > 1 { expression = expression + '*' + to_string(multiplier) }
+		}
+
+		if addition != none {
+			if addition.is_constant {
+				postfix += addition.value.(ConstantHandle).value
+			}
+			else expression.length != 0 {
+				expression = expression + '+' + addition.value.string()
+			}
+			else {
+				expression = expression + addition.value.string()
+			}
+		}
+
+		is_empty = expression.length == 0
+
+		if postfix != 0 or is_empty {
+			if postfix > 0 and not is_empty { expression = expression + '+' + to_string(postfix) }
+			else { expression = expression + to_string(postfix) }
+		}
+
+		=> String('[') + expression + ']'
+	}
+
+	string_arm64() {
+		=> none as String
+	}
+
+	override string() {
+		validate()
+		if settings.is_x64 => string_x64()
+		=> string_arm64()
+	}
+
+	override get_register_dependent_results() {
+		all = List<Result>()
+
+		if not multiplicand.is_constant all.add(multiplicand)
+		if addition != none and not (settings.is_x64 and addition.is_constant) all.add(addition)
+
+		=> all
+	}
+
+	override get_inner_results() {
+		all = List<Result>()
+		all.add(multiplicand)
+
+		if addition != none all.add(addition)
+
+		=> all
+	}
+
+	override finalize() {
+		validate()
+
+		if addition == none {
+			=> ExpressionHandle(
+				Result(multiplicand.value, SYSTEM_FORMAT),
+				multiplier,
+				none as Result,
+				number
+			)
+		}
+
+		=> ExpressionHandle(
+			Result(multiplicand.value, SYSTEM_FORMAT),
+			multiplier,
+			Result(addition.value, SYSTEM_FORMAT),
+			number
+		)
+	}
+
+	override equals(other: Handle) {
+		if this.instance != other.instance => false
+		if not this.multiplicand.value.equals(other.(ExpressionHandle).multiplicand.value) => false
+		if this.multiplier != other.(ExpressionHandle).multiplier => false
+		if not this.addition.value.equals(other.(ExpressionHandle).addition.value) => false
+		=> this.number == other.(ExpressionHandle).number
+	}
+}

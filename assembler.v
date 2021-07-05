@@ -650,6 +650,16 @@ Unit {
 		abort('Architecture did not have stack pointer register')
 	}
 
+	get_standard_return_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_RETURN) => register }
+		abort('Architecture did not have standard return register')
+	}
+
+	get_decimal_return_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_DECIMAL_RETURN) => register }
+		abort('Architecture did not have decimal return register')
+	}
+
 	# Summary:  Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
 		=> scope != none and scope.variables.contains_key(variable)
@@ -706,7 +716,8 @@ get_text_section(implementation: FunctionImplementation) {
 
 	# Ensure this function is visible to other units
 	builder.append(EXPORT_DIRECTIVE)
-	builder.append('\n')
+	builder.append(` `)
+	builder.append_line(fullname)
 
 	unit = Unit(implementation)
 	unit.mode = UNIT_MODE_ADD
@@ -736,6 +747,8 @@ get_text_section(implementation: FunctionImplementation) {
 	
 	scope.exit()
 
+	loop instruction in unit.instructions { instruction.reindex() }
+
 	# Build:
 	unit.scope = none
 	unit.stack_offset = 0
@@ -761,9 +774,16 @@ get_text_section(implementation: FunctionImplementation) {
 	# Reset the state after this simulation
 	unit.mode = UNIT_MODE_NONE
 
+	non_volatile_registers = List<Register>()
+	local_memory_top = 0
+
+	loop instruction in unit.instructions {
+		if instruction.type != INSTRUCTION_RETURN continue
+		instruction.(ReturnInstruction).build(non_volatile_registers, local_memory_top)
+	}
+
 	loop instruction in unit.instructions {
 		instruction.finish()
-		builder.append('\n')
 	}
 
 	builder.append(unit.string())
@@ -778,6 +798,8 @@ assemble(context: Context, output_type: large) {
 	loop implementation in implementations {
 		builder.append(get_text_section(implementation))
 	}
+
+	=> builder.string()
 }
 
 assemble(bundle: Bundle) {
@@ -785,7 +807,9 @@ assemble(bundle: Bundle) {
 	#if not (bundle.get_integer(String(BUNDLE_OUTPUT_TYPE)) has output_type) => Status('Output type was not specified')
 	output_type = BINARY_TYPE_EXECUTABLE
 
-	assemble(parse.context, output_type)
+	result = assemble(parse.context, output_type)
+
+	io.write_file('./v.asm', result)
 
 	=> Status()
 }
