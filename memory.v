@@ -178,6 +178,18 @@ clear_register(unit: Unit, target: Register) {
 	target.reset()
 }
 
+# Summary: Sets the value of the register to zero
+zero(unit: Unit, register: Register) {
+	if not register.is_available() clear_register(unit, register)
+
+	handle = RegisterHandle(register)
+
+	instruction = BitwiseInstruction.create_xor(unit, Result(handle, register.format), Result(handle, register.format), register.format, false)
+	instruction.description = String('Sets the value of the destination to zero')
+
+	unit.add(instruction)
+}
+
 # Summary: Copies the specified result to a register
 copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
 	format = FORMAT_DECIMAL

@@ -20,6 +20,7 @@ namespace x64 {
 	constant SIGNED_CONVERSION_MOVE = 'movsx'
 	constant SIGNED_DWORD_CONVERSION_MOVE = 'movsxd'
 	constant SHIFT_LEFT = 'sal'
+	constant SHIFT_RIGHT = 'sar'
 	constant SIGNED_MULTIPLY = 'imul'
 	constant CALL = 'call'
 	constant EXCHANGE = 'xchg'
@@ -39,4 +40,7 @@ namespace x64 {
 	constant JUMP_ZERO = 'jz'
 
 	constant TEST = 'test'
+
+	constant SIGNED_DIVIDE = 'idiv'
+	constant EXTEND_QWORD = 'cqo'
 }

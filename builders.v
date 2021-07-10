@@ -42,6 +42,19 @@ build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool)
 	=> MultiplicationInstruction(unit, left, right, type, assigns).add()
 }
 
+build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assigns: bool) {
+	type = operator.get_type().(Number).type
+
+	access = ACCESS_READ
+	if assigns { access = ACCESS_WRITE }
+
+	left = references.get(unit, operator.first, access)
+	right = references.get(unit, operator.last, ACCESS_READ)
+	unsigned = is_unsigned(operator.first.get_type().format)
+
+	=> DivisionInstruction(unit, modulus, left, right, type, assigns, unsigned).add()
+}
+
 build_assign_operator(unit: Unit, node: OperatorNode) {
 	left = references.get(unit, node.first, ACCESS_WRITE)
 	right = references.get(unit, node.last, ACCESS_READ)
@@ -70,6 +83,12 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 
 	if operator == Operators.MULTIPLY => build_multiplication_operator(unit, node, false)
 	if operator == Operators.ASSIGN_MULTIPLY => build_multiplication_operator(unit, node, true)
+
+	if operator == Operators.DIVIDE => build_division_operator(unit, false, node, false)
+	if operator == Operators.ASSIGN_DIVIDE => build_division_operator(unit, false, node, true)
+
+	if operator == Operators.MODULUS => build_division_operator(unit, true, node, false)
+	if operator == Operators.ASSIGN_MODULUS => build_division_operator(unit, true, node, true)
 	
 	# unit.add_debug_position(node)
 	if operator == Operators.ASSIGN => build_assign_operator(unit, node)

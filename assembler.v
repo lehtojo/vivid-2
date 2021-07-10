@@ -620,8 +620,8 @@ Unit {
 	}
 
 	load_architecture_x64() {
-		volatility_flag = REGISTER_NONE
-		if settings.is_target_windows { volatility_flag = REGISTER_VOLATILE }
+		volatility_flag = REGISTER_VOLATILE
+		if settings.is_target_windows { volatility_flag = REGISTER_NONE }
 
 		base_pointer_flags = REGISTER_NONE
 		if settings.is_debugging_enabled { base_pointer_flags = REGISTER_RESERVED | REGISTER_STACK_POINTER }
@@ -839,6 +839,16 @@ Unit {
 	get_decimal_return_register() {
 		loop register in registers { if has_flag(register.flags, REGISTER_DECIMAL_RETURN) => register }
 		abort('Architecture did not have decimal return register')
+	}
+
+	get_numerator_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_NUMERATOR) => register }
+		abort('Architecture did not have numerator register')
+	}
+
+	get_remainder_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_REMAINDER) => register }
+		abort('Architecture did not have remainder register')
 	}
 
 	# Summary:  Returns whether a value has been assigned to the specified variable

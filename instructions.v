@@ -1085,3 +1085,229 @@ Instruction SetModifiableInstruction {
 		unit.add(instruction)
 	}
 }
+
+ConstantDivision {
+	dividend: Result
+	number: large
+
+	init(dividend: Result, number: Result) {
+		this.dividend = dividend
+		this.number = number.value.(ConstantHandle).value
+	}
+}
+
+# Summary:
+# This instruction divides the two specified operand together and outputs a result.
+# This instruction can act as a remainder operation.
+# This instruction is works on all architectures
+DualParameterInstruction DivisionInstruction {
+	modulus: bool
+	assigns: bool
+	unsigned: bool
+
+	init(unit: Unit, modulus: bool, first: Result, second: Result, format: large, assigns: bool, unsigned: bool) {
+		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_DIVISION)
+		this.modulus = modulus
+		this.unsigned = unsigned
+		this.assigns = assigns
+	}
+
+	# Summary: Ensures the numerator value is in the right register
+	correct_numerator_location() {
+		numerator = unit.get_numerator_register()
+		remainder = unit.get_remainder_register()
+
+		destination = RegisterHandle(numerator)
+
+		if not first.value.equals(destination) {
+			remainder.lock()
+			memory.clear_register(Unit, destination.register)
+			remainder.unlock()
+
+			if assigns and not first.is_memory_address {
+				instruction = MoveInstruction(unit, Result(destination, SYSTEM_FORMAT), first)
+				instruction.type = MOVE_RELOCATE
+				unit.add(instruction)
+				=> first
+			}
+
+			instruction = MoveInstruction(unit, Result(destination, SYSTEM_FORMAT), first)
+			instruction.type = MOVE_COPY
+			=> instruction.add()
+		}
+		else not assigns {
+			if not first.is_deactivating memory.clear_register(unit, destination.register)
+			=> Result(destination, SYSTEM_FORMAT)
+		}
+
+		=> first
+	}
+
+	# Summary: Ensures the remainder register is ready for division or modulus operation
+	prepare_remainder_register() {
+		numerator_register = unit.get_numerator_register()
+		remainder_register = unit.get_remainder_register()
+
+		numerator_register.lock()
+		remainder_register.lock()
+
+		if unsigned {
+			# Clear the remainder register
+			memory.zero(unit, remainder_register)
+		}
+		else {
+			memory.clear_register(unit, remainder_register)
+			unit.add(ExtendNumeratorInstruction(unit))
+		}
+
+		numerator_register.unlock()
+		remainder_register.unlock()
+	}
+
+	# Summary: Builds a modulus operation
+	build_modulus(numerator: Result) {
+		remainder = RegisterHandle(unit.get_remainder_register())
+
+		flags = FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_WRITES | FLAG_READS | FLAG_LOCKED
+		if assigns { flags = flags | FLAG_RELOCATE_TO_DESTINATION }
+
+		# Example: idiv r, r/[...]
+		build(
+			instructions.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
+			InstructionParameter(numerator, flags, HANDLE_REGISTER),
+			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
+			InstructionParameter(Result(remainder, SYSTEM_FORMAT), flags | FLAG_DESTINATION, HANDLE_REGISTER)
+		)
+	}
+
+	# Summary: Builds a division operation
+	build_division(numerator: Result) {
+		remainder = RegisterHandle(unit.get_remainder_register())
+		flags = FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_READS | FLAG_LOCKED
+		if assigns { flags = flags | FLAG_NO_ATTACH }
+
+		# Example: idiv r, r/[...]
+		build(instructions.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
+			InstructionParameter(numerator, flags, HANDLE_REGISTER),
+			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
+			InstructionParameter(Result(remainder, SYSTEM_FORMAT), FLAG_HIDDEN | FLAG_LOCKED | FLAG_WRITES, HANDLE_REGISTER)
+		)
+	}
+
+	# Summary: Tries to express the current instructions as a division instruction where the divisor is a constant
+	try_get_constant_division() {
+		if second.is_constant and second.format != FORMAT_DECIMAL => ConstantDivision(first, second)
+		=> none as ConstantDivision
+	}
+
+	on_build_x64() {
+		# Handle decimal division separately
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
+			# TODO: Support decimals
+			return
+		}
+
+		if not modulus {
+			division = try_get_constant_division()
+
+			if division != none and common.is_power_of_two(division.number) and division.number != 0 {
+				count = ConstantHandle(common.integer_log2(division.number))
+
+				flags = FLAG_NONE
+				if assigns { flags = FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
+
+				operand = memory.load_operand(unit, division.dividend, false, assigns)
+
+				# Example: sar r, c
+				=> build(instructions.x64.SHIFT_RIGHT, SYSTEM_BYTES,
+					InstructionParameter(operand, FLAG_DESTINATION | FLAG_READS | flags, HANDLE_REGISTER),
+					InstructionParameter(Result(count, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT)
+				)
+			}
+		}
+
+		numerator_register = unit.get_numerator_register()
+		remainder_register = unit.get_remainder_register()
+
+		numerator = correct_numerator_location()
+
+		prepare_remainder_register()
+
+		numerator_register.lock()
+		remainder_register.lock()
+
+		if modulus { build_modulus(numerator) }
+		else { build_division(numerator) }
+
+		numerator_register.unlock()
+		remainder_register.unlock()
+	}
+
+	override on_build() {
+		if settings.is_x64 => on_build_x64()
+	}
+}
+
+# Summary:
+# Extends the sign of the quotient register
+# This instruction works only on architecture x86-64
+Instruction ExtendNumeratorInstruction {
+	init(unit: Unit) {
+		Instruction.init(unit, INSTRUCTION_EXTEND_NUMERATOR)
+	}
+
+	override on_build() {
+		numerator = RegisterHandle(unit.get_numerator_register())
+		remainder = RegisterHandle(unit.get_remainder_register())
+
+		# Example: cqo
+		build(
+			instructions.x64.EXTEND_QWORD,
+			0,
+			InstructionParameter(Result(remainder, SYSTEM_FORMAT), FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH | FLAG_HIDDEN | FLAG_LOCKED, HANDLE_REGISTER),
+			InstructionParameter(Result(numerator, SYSTEM_FORMAT), FLAG_HIDDEN | FLAG_LOCKED, HANDLE_REGISTER)
+		)
+	}
+}
+
+DualParameterInstruction BitwiseInstruction {
+	instruction: String
+	assigns: bool
+
+	static create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+		if settings.is_x64 {
+			if format == FORMAT_DECIMAL => none as Instruction
+			=> BitwiseInstruction(unit, instructions.x64.XOR, first, second, format, assigns)
+		}
+	}
+
+	init(unit: Unit, instruction: link, first: Result, second: Result, format: large, assigns: bool) {
+		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_BITWISE)
+		this.instruction = String(instruction)
+		this.description = String('Executes a bitwise operation between the operands')
+		this.assigns = assigns
+	}
+
+	on_build_x64() {
+		flags = FLAG_DESTINATION
+		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
+
+		if first.is_memory_address and assigns {
+			# Example: ... [...], c/r
+			=> build(instruction.text, first.size,
+				InstructionParameter(first, FLAG_READS | flags, HANDLE_MEMORY),
+				InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER)
+			)
+		}
+
+		# Example: ... r, c/r/[...]
+		build(instruction.text, SYSTEM_BYTES,
+			InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER),
+			InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY)
+		)
+	}
+
+	override on_build() {
+		if settings.is_x64 => on_build_x64()
+	}
+}
