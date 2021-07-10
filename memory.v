@@ -225,6 +225,22 @@ consider(unit: Unit, directive: Directive, media_register: bool) {
 	=> none as Register
 }
 
+# Summary: Tries to apply the most important directive
+consider(unit: Unit, directives: List<Directive>, media_register: bool) {
+	register = none as Register
+
+	loop directive in directives {
+		result = consider(unit, directive, media_register)
+
+		if result != none and media_register == result.is_media_register and result.is_available {
+			register = result
+			stop
+		}
+	}
+
+	=> register
+}
+
 # Summary: Determines the next register to use
 get_next_register(unit: Unit, media_register: bool, directives: List<Directive>, is_result: bool) {
 	register = none as Register

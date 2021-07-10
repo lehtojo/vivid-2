@@ -289,6 +289,21 @@ get_all_function_implementations(context: Context) {
 	=> implementations
 }
 
+# Summary: Returns whether the specified is edited
+is_edited(node: Node) {
+	parent = none as Node
+
+	loop (iterator = node.parent, iterator != none, iterator = iterator.parent) {
+		if iterator.instance == NODE_CAST continue
+		parent = iterator
+		stop
+	}
+
+	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT => parent.first == node or node.is_under(parent.first)
+	=> parent.match(NODE_INCREMENT | NODE_DECREMENT)
+}
+
+# Summary: Returns the node which is the destination of the specified edit
 get_edited(editor: Node) {
 	iterator = editor.first
 

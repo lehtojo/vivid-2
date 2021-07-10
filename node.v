@@ -118,6 +118,18 @@ Node {
 		=> none as Node
 	}
 
+	# Summary: Returns a list of nodes, which pass the specified filter. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
+	find_top(filter: (Node) -> bool) {
+		result = List<Node>()
+
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if filter(iterator) { result.add(iterator) }
+			else { result.add_range(iterator.find_top(filter)) }
+		}
+
+		=> result
+	}
+
 	find_context() {
 		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_CONTEXT_INLINE | NODE_TYPE, instance) => this
 		if parent == none => none as Node

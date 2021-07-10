@@ -234,7 +234,7 @@ namespace Operators {
 
 		all = Map<String, Operator>()
 		assignment_operators = Map<String, AssignmentOperator>()
-		operator_overloads = Map<String, Operator>()
+		operator_overloads = Map<Operator, String>()
 
 		add(COLON)
 		add(POWER)

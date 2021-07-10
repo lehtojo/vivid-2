@@ -1044,3 +1044,44 @@ DualParameterInstruction CompareInstruction {
 		if settings.is_x64 => on_build_x64()
 	}
 }
+
+# Summary:
+# Loads the specified variable into a modifiable location if it is constant
+# This instruction works on all architectures
+Instruction SetModifiableInstruction {
+	variable: Variable
+
+	init(unit: Unit, variable: Variable) {
+		Instruction.init(unit, INSTRUCTION_SET_MODIFIABLE)
+		this.variable = variable
+		this.description = String('Ensures the variable is in a modifiable location')
+		this.is_abstract = true
+
+		this.result.format = variable.type.get_register_format()
+	}
+
+	override on_build() {
+		handle = unit.get_variable_value(variable)
+		if handle == none or not handle.is_constant return
+
+		directives = trace.for(unit, handle)
+		is_media_register = handle.format == FORMAT_DECIMAL
+
+		# Try to use the directives to decide the destination register for the variable
+		register = memory.consider(unit, directives, is_media_register)
+
+		# If the directives did not determine the register, try to determine the register manually
+		if register == none {
+			if is_media_register { register = unit.get_next_media_register_without_releasing() }
+			else { register = unit.get_next_register_without_releasing() }
+		}
+
+		# If register could not be determined, the variable must be moved into memory
+		if register == none { result.value = references.create_variable_handle(unit, variable) }
+		else { result.value = RegisterHandle(register) }
+
+		instruction = MoveInstruction(unit, result, handle)
+		instruction.type = MOVE_RELOCATE
+		unit.add(instruction)
+	}
+}

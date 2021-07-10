@@ -76,7 +76,7 @@ start(unit: Unit, node: IfNode) {
 	}
 
 	#Scope.cache(unit, branches, contexts, node.get_parent_context())
-	#Scope.load_constants(unit, node)
+	Scope.load_constants(unit, node)
 
 	end = LabelInstruction(unit, unit.get_next_label())
 	result = build(unit, node, end)
@@ -88,7 +88,7 @@ start(unit: Unit, node: IfNode) {
 build_condition(unit: Unit, condition: Node, failure: Label, active_variables: List<Variable>) {
 	# Load constants which might be edited inside the condition
 	# TODO: Support all constant loads
-	#Scope.load_constants(unit, condition)
+	Scope.load_constants(unit, condition, List<Context>())
 
 	success = unit.get_next_label()
 

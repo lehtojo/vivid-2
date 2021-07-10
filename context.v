@@ -169,6 +169,11 @@ Context {
 		=> none as Type
 	}
 
+	# Summary: Returns whether the specified context is this context or one of the parent contexts
+	is_inside(context: Context) {
+		=> context == this or [parent != none and parent.is_inside(context)]
+	}
+
 	# Summary: Returns whether the specified type is declared inside this context
 	is_local_type_declared(name: String) {
 		=> types.contains_key(name)
@@ -278,7 +283,7 @@ Context {
 	}
 
 	create_label() {
-		=> get_fullname() + '_I' + to_string(indexer.label)
+		=> Label(get_fullname() + '_I' + to_string(indexer.label))
 	}
 
 	create_stack_address() {
@@ -591,6 +596,18 @@ Variable {
 		this.category = category
 		this.modifiers = modifiers
 		this.parent = parent
+	}
+
+	# Summary: Returns whether this variable is edited inside the specified node
+	is_edited_inside(node: Node) {
+		loop write in writes {
+			# If one of the parent nodes of the current write is the specified node, then this variable is edited inside the specified node
+			loop (iterator = write.parent, iterator != none, iterator = iterator.parent) {
+				if iterator == node => true
+			}
+		}
+
+		=> false
 	}
 
 	# Summary: Returns the alignment compared to the specified parent type

@@ -101,11 +101,14 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 	}
 
 	# Load constants which might be edited inside the loop
-	#Scope.load_constants(unit, statement, statement.context, statement.body.context)
+	contexts = List<Context>(2, false)
+	contexts.add(statement.context)
+	contexts.add(statement.body.context)
+	Scope.load_constants(unit, statement, contexts)
 
 	# Register the start and exit label to the loop for control keywords
 	statement.start_label = unit.get_next_label()
-	statement.continue_label = statement.start
+	statement.continue_label = statement.start_label
 	statement.exit_label = unit.get_next_label()
 
 	# Append the start label
@@ -147,7 +150,9 @@ build(unit: Unit, statement: LoopNode) {
 	}
 
 	# Load constants which might be edited inside the loop
-	#Scope.load_constants(unit, statement, statement.body.context)
+	contexts = List<Context>(1, false)
+	contexts.add(statement.body.context)
+	Scope.load_constants(unit, statement, contexts)
 
 	# Try to find a loop control node which targets the current loop
 	# If even one is found, this loop needs a continue label

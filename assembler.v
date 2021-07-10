@@ -233,6 +233,98 @@ Scope {
 	activators: bool = false
 	deactivators: bool = false
 
+	static get_top_local_contexts(root: Node) {
+		nodes = root.find_top(i -> i.instance == NODE_INLINE and i.(InlineNode).is_context) as List<ContextInlineNode>
+		result = List<Context>(nodes.size, false)
+		loop node in nodes { result.add(node.context) }
+		=> result
+	}
+
+	# Summary: Returns true if the variable is not defined inside any of the specified contexts
+	static is_non_local_variable(variable: Variable, local_contexts: List<Context>) {
+		loop context in local_contexts {
+			if variable.parent.is_inside(context) => false
+		}
+
+		=> true
+	}
+
+	# Summary: Returns all variables in the given node tree that are not declared in the given local context
+	static get_all_non_local_variables(roots: List<Node>, local_contexts: List<Context>) {
+		result = List<Variable>()
+
+		loop root in roots {
+			loop usage in root.find_all(NODE_VARIABLE) {
+				variable = usage.(VariableNode).variable
+				if not (variable.is_predictable and is_non_local_variable(variable, local_contexts)) continue
+				result.add(variable)
+			}
+		}
+
+		=> result
+	}
+
+	# Summary: Loads constants which might be edited inside the specified root
+	static load_constants(unit: Unit, root: Node, contexts: List<Context>) {
+		local_contexts = get_top_local_contexts(root)
+		local_contexts.add_range(contexts)
+
+		# Find all variables inside the root node which are edited
+		edited = List<Variable>()
+		roots = List<Node>(1, false)
+		roots.add(root)
+
+		loop variable in get_all_non_local_variables(roots, local_contexts) {
+			if not variable.is_edited_inside(root) continue
+			edited.add(variable)
+		}
+
+		# All edited variables that are constants must be moved into registers or into memory
+		loop variable in edited { unit.add(SetModifiableInstruction(unit, variable)) }
+	}
+
+	# Summary: Loads constants which might be edited inside the specified root
+	static load_constants(unit: Unit, root: IfNode) {
+		edited = List<Variable>()
+		iterator = root
+		local_contexts = get_top_local_contexts(root)
+
+		roots = List<Node>(1, true)
+
+		loop (iterator != none) {
+			# Find all variables inside the root node which are edited
+			roots[0] = iterator
+
+			loop variable in get_all_non_local_variables(roots, local_contexts) {
+				if not variable.is_edited_inside(iterator) continue
+				edited.add(variable)
+			}
+
+			if iterator.instance == NODE_ELSE_IF {
+				iterator = root.(IfNode).successor
+
+				# Retrieve the contexts of the successor
+				if iterator.instance != none { local_contexts = get_top_local_contexts(iterator) }
+			}
+			else {
+				stop
+			}
+		}
+
+		# Remove duplicates
+		loop (i = 0, i < edited.size, i++) {
+			current = edited[i]
+
+			loop (j = i + 1, j < edited.size, j++) {
+				if current != edited[j] continue
+				edited.remove_at(j)
+			}
+		}
+
+		# All edited variables that are constants must be moved into registers or into memory
+		loop variable in edited { unit.add(SetModifiableInstruction(unit, variable)) }
+	}
+
 	# Summary: Returns all variables that the scope must take care of
 	static get_all_active_variables(unit: Unit, roots: List<Node>) {
 		result = List<Variable>()
@@ -798,10 +890,31 @@ Unit {
 
 namespace assembler
 
+load_variable_usages(implementation: FunctionImplementation) {
+	# Reset all local variables
+	loop local in implementation.locals {
+		local.usages.clear()
+		local.writes.clear()
+		local.reads.clear()
+	}
+
+	usages = implementation.node.find_all(NODE_VARIABLE)
+
+	loop usage in usages {
+		variable = usage.(VariableNode).variable
+		if not variable.is_predictable continue
+		
+		if common.is_edited(usage) { variable.writes.add(usage) }
+		else { variable.reads.add(usage) }
+	}
+}
+
 get_text_section(implementation: FunctionImplementation) {
 	builder = StringBuilder()
 
 	fullname = implementation.get_fullname()
+
+	load_variable_usages(implementation)
 
 	# Ensure this function is visible to other units
 	builder.append(EXPORT_DIRECTIVE)
