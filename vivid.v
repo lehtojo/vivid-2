@@ -22,6 +22,7 @@ init() {
 	start = time()
 
 	String.empty = String('')
+	settings.initialize()
 	
 	bundle = Bundle()
 
@@ -49,6 +50,7 @@ init() {
 	analysis.analyze(bundle)
 	if result.problematic complain(result)
 
+	JumpInstruction.initialize()
 	assembler.assemble(bundle)
 	if result.problematic complain(result)
 

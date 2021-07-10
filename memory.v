@@ -1,5 +1,150 @@
 namespace memory
 
+# Summary: Minimizes intersection between the specified move instructions and tries to use exchange instructions
+minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
+	# Find moves that can be replaced with an exchange instruction
+	result = List<DualParameterInstruction>(moves)
+	exchanges = List<DualParameterInstruction>()
+	exchanged_indices = List<large>()
+
+	if settings.is_x64 {
+		loop (i = 0, i < result.size, i++) {
+			loop (j = 0, j < result.size, j++) {
+				if i == j or exchanged_indices.contains(i) or exchanged_indices.contains(j) continue
+
+				current = result[i]
+				other = result[j]
+
+				if current.first.value.equals(other.second.value) and current.second.value.equals(other.first.value) {
+					exchanges.add(ExchangeInstruction(unit, current.second, other.second))
+					exchanged_indices.add(i)
+					exchanged_indices.add(j)
+					stop
+				}
+			}
+		}
+	}
+
+	# Append the created exchanges and remove the moves which were replaced by the exchanges
+	result.add_range(exchanges)
+	
+	loop (i = exchanged_indices.size - 1, i >= 0, i--) {
+		if not exchanged_indices.contains(i) continue
+		exchanged_indices.remove_at(i)
+	}
+
+	# Order the move instructions so that intersections are minimized
+	optimized_indices = List<large>()
+	again = true
+
+	loop (again) {
+		again = false
+
+		loop (i = 0, i < result.size, i++) {
+			loop (j = 0, j < result.size, j++) {
+				if i == j or optimized_indices.contains(i) or optimized_indices.contains(j) continue
+
+				a = result[i]
+				b = result[j]
+
+				if not a.first.value.equals(b.second.value) continue
+
+				# Swap:
+				y = result[j]
+				result.remove_at(j)
+
+				x = result[i]
+				result.remove_at(i)
+
+				result.insert(i, y)
+				result.insert(j, x)
+
+				optimized_indices.add(i)
+				optimized_indices.add(j)
+
+				again = true
+				stop
+			}
+
+			if again stop
+		}
+	}
+
+	=> result
+}
+
+# Summary: Aligns the specified moves so that intersections are minimized
+align(unit: Unit, moves: List<MoveInstruction>) {
+	locks = List<Instruction>()
+	unlocks = List<Instruction>()
+	registers = List<Register>()
+
+	loop move in moves {
+		if move.is_redundant and move.first.is_standard_register {
+			register = move.first.value.(RegisterHandle).register
+			locks.add(LockStateInstruction(unit, register, true))
+			unlocks.add(LockStateInstruction(unit, register, false))
+			registers.add(register)
+		}
+	}
+
+	# Now remove all redundant moves
+	loop (i = moves.size - 1, i >= 0, i--) {
+		if not moves[i].is_redundant continue
+		moves.remove_at(i)
+	}
+
+	aligned = minimize_intersections(unit, moves as List<DualParameterInstruction>) as List<Instruction>
+
+	loop (i = aligned.size - 1, i >= 0, i--) {
+		instruction = aligned[i]
+
+		if instruction.type == INSTRUCTION_EXCHANGE {
+			exchange = instruction as ExchangeInstruction
+
+			first = exchange.first.value.(RegisterHandle).register
+			second = exchange.second.value.(RegisterHandle).register
+
+			aligned.insert(i + 1, LockStateInstruction(unit, second, true))
+			aligned.insert(i + 1, LockStateInstruction(unit, first, true))
+
+			unlocks.add(LockStateInstruction(unit, first, false))
+			unlocks.add(LockStateInstruction(unit, second, false))
+
+			registers.add(first)
+			registers.add(second)
+		}
+		else instruction.type == INSTRUCTION_MOVE {
+			move = instruction as MoveInstruction
+
+			if move.first.is_any_register {
+				register = move.first.value.(RegisterHandle).register
+
+				aligned.insert(i + 1, LockStateInstruction(unit, register, true))
+				unlocks.add(LockStateInstruction(unit, register, false))
+
+				registers.add(register)
+			}
+		}
+		else {
+			abort('Unsupported instruction type found while optimizing relocation')
+		}
+	}
+
+	locks.add_range(aligned)
+	locks.add_range(unlocks)
+	=> locks
+}
+
+# Summary: Loads the operand so that it is ready based on the specified settings
+load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool) {
+	if not assigns => operand
+	if operand.is_memory_address => memory.copy_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
+
+	memory.move_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
+	=> operand
+}
+
 # Summary: Moves the value inside the given register to other register or releases it memory
 clear_register(unit: Unit, target: Register) {
 	if target.is_available() return

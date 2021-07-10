@@ -402,6 +402,12 @@ Handle ExpressionHandle {
 		=> ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
 	}
 
+	static create_memory_address(start: Result, offset: large) {
+		if settings.is_x64 => ExpressionHandle(start, 1, none as Result, offset)
+
+		=> ExpressionHandle(start, 1, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
+	}
+
 	init(multiplicand: Result, multiplier: large, addition: Result, number: large) {
 		Handle.init(HANDLE_EXPRESSION, INSTANCE_EXPRESSION)
 		this.multiplicand = multiplicand

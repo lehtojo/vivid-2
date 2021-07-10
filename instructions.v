@@ -73,6 +73,107 @@ DualParameterInstruction SubtractionInstruction {
 	}
 }
 
+ConstantMultiplication {
+	multiplicand: Result
+	multiplier: large
+
+	init(multiplicand: Result, multiplier: Result) {
+		this.multiplicand = multiplicand
+		this.multiplier = multiplier.value.(ConstantHandle).value
+	}
+}
+
+DualParameterInstruction MultiplicationInstruction {
+	assigns: bool
+
+	init(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_MULTIPLICATION)
+		this.assigns = assigns
+	}
+
+	try_get_constant_multiplication() {
+		if first.value.type == HANDLE_CONSTANT and first.format != FORMAT_DECIMAL => ConstantMultiplication(second, first)
+		if second.value.type == HANDLE_CONSTANT and second.format != FORMAT_DECIMAL => ConstantMultiplication(first, second)
+		=> none as ConstantMultiplication
+	}
+
+	on_build_x64() {
+		flags = FLAG_DESTINATION
+		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
+
+		operand = none as Result
+
+		# Handle decimal multiplication separately
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
+			return
+		}
+
+		multiplication = try_get_constant_multiplication()
+
+		if multiplication != none and multiplication.multiplier > 0 {
+			if not assigns and common.is_power_of_two(multiplication.multiplier) and multiplication.multiplier <= instructions.x64.EVALUATE_MAX_MULTIPLIER and not first.is_deactivating {
+				memory.get_result_register_for(unit, result, false)
+
+				operand = memory.load_operand(unit, multiplication.multiplicand, false, assigns)
+
+				# Example:
+				# mov rax, rcx
+				# imul rax, 4
+				# =>
+				# lea rax, [rcx*4]
+
+				calculation = ExpressionHandle(operand, multiplication.multiplier, none as Result, 0)
+				=> build(instructions.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
+			}
+
+			if common.is_power_of_two(multiplication.multiplier) {
+				handle = ConstantHandle(common.integer_log2(multiplication.multiplier))
+
+				operand = memory.load_operand(unit, multiplication.multiplicand, false, assigns)
+
+				# Example: sal r, c
+				=> build(instructions.x64.SHIFT_LEFT, SYSTEM_BYTES, InstructionParameter(operand, FLAG_READS | flags, HANDLE_REGISTER), InstructionParameter(Result(handle, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT))
+			}
+
+			if common.is_power_of_two(multiplication.multiplier - 1) and multiplication.multiplier - 1 <= instructions.x64.EVALUATE_MAX_MULTIPLIER {
+				operand = memory.load_operand(unit, multiplication.multiplicand, false, assigns)
+
+				destination: Result = none as Result
+
+				if assigns { destination = operand }
+				else {
+					memory.get_result_register_for(unit, result, false)
+					destination = result
+				}
+
+				# Example: imul rax, 3 => lea r, [rax*2+rax]
+				expression = ExpressionHandle(operand, multiplication.multiplier - 1, operand, 0)
+				flags_first = FLAG_DESTINATION | FLAG_WRITE_ACCESS
+
+				if assigns { flags_first = flags_first | FLAG_NO_ATTACH }
+
+				=> build(instructions.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(destination, flags_first, HANDLE_REGISTER), InstructionParameter(Result(expression, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
+			}
+		}
+
+		operand = memory.load_operand(unit, first, false, assigns)
+
+		# Example: imul r, c/r/[...]
+		build(instructions.x64.SIGNED_MULTIPLY, SYSTEM_BYTES, InstructionParameter(operand, FLAG_READS | flags, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+	}
+
+	on_build_arm64() {
+
+	}
+
+	override on_build() {
+		if assigns and first.is_memory_address unit.add(MoveInstruction(unit, first, result), true)
+
+		if settings.is_x64 => on_build_x64()
+		=> on_build_arm64()
+	}
+}
+
 Instruction LabelInstruction {
 	label: Label
 
@@ -455,5 +556,491 @@ Instruction SetVariableInstruction {
 		instruction = MoveInstruction(unit, result, value)
 		instruction.type = MOVE_LOAD
 		unit.add(instruction)
+	}
+}
+
+# Summary:
+# The instruction calls the specified value (for example function label or a register).
+# This instruction is works on all architectures
+Instruction CallInstruction {
+	function: Result
+	return_type: Type
+
+	# Represents the destination handles where the required parameters are passed to
+	destinations: List<Handle> = List<Handle>()
+
+	# This call is a tail call if it uses a jump instruction
+	is_tail_call => operation == instructions.x64.JUMP or operation == instructions.arm64.JUMP_LABEL or operation == instructions.arm64.JUMP_REGISTER
+
+	init(unit: Unit, function: String, return_type: Type) {
+		Instruction.init(unit, INSTRUCTION_CALL)
+
+		this.function = Result(DataSectionHandle(function, true), SYSTEM_FORMAT)
+		this.return_type = return_type
+		this.dependencies.add(this.function)
+		this.description = String('Calls function ') + function
+		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
+
+		if return_type != none {
+			this.result.format = return_type.get_register_format()
+			return
+		}
+
+		this.result.format = SYSTEM_FORMAT
+	}
+
+	init(unit: Unit, function: Result, return_type: Type) {
+		Instruction.init(unit, INSTRUCTION_CALL)
+
+		this.function = function
+		this.return_type = return_type
+		this.dependencies.add(this.function)
+		this.description = String('Calls the function handle')
+		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
+
+		if return_type != none {
+			this.result.format = return_type.get_register_format()
+			return
+		}
+
+		this.result.format = SYSTEM_FORMAT
+	}
+
+	# Summary: Iterates through the volatile registers and ensures that they do not contain any important values which are needed later
+	validate_evacuation() {
+		loop register in unit.volatile_registers {
+			# NOTE: The availability of the register is not checked the standard way since they are usually locked at this stage
+			if register.value == none or not register.value.is_active or register.value.is_deactivating() or register.is_value_copy() continue
+			abort('Register evacuation failed')
+		}
+	}
+
+	# Summary: Prepares the memory handle for use by relocating its inner handles into registers, therefore its use does not require additional steps, except if it is in invalid format
+	# Returns: Returns a list of register locks which must be active while the handle is in use
+	validate_memory_handle(handle: Handle) {
+		results = handle.get_register_dependent_results()
+		locks = List<Register>()
+
+		loop iterator in results {
+			# 1. If the function handle lifetime extends over this instruction, all the inner handles must extend over this instruction as well, therefore a non-volatile register is needed
+			# 2. If lifetime of a inner handle extends over this instruction, it needs a non-volatile register
+			non_volatile = (function.is_active and not function.is_deactivating) or (iterator.is_active and not iterator.is_deactivating)
+			
+			if iterator.is_standard_register and not (non_volatile and iterator.register.is_volatile) continue
+
+			# Request an available register, which is volatile based on the lifetime of the function handle and its inner handles
+			register = none as Register
+
+			if non_volatile { register = unit.get_next_non_volatile_register(false, true) }
+			else { register = unit.get_next_register() }
+
+			# There should always be a register available, since the function call above can release values into memory
+			if register == none abort('Could not validate call memory handle')
+
+			instruction = MoveInstruction(unit, Result(RegisterHandle(register), SYSTEM_FORMAT), iterator)
+			instruction.description = String('Validates a call memory handle')
+			instruction.type = MOVE_RELOCATE
+
+			unit.add(instruction)
+			locks.add(iterator.register)
+		}
+
+		=> locks
+	}
+
+	override on_build() {
+		# Lock all destination registers
+		registers = List<Register>()
+
+		loop iterator in destinations {
+			if iterator.type != HANDLE_REGISTER continue
+			iterator.(RegisterHandle).register.lock()
+			registers.add(iterator.(RegisterHandle).register)
+		}
+
+		locked = List<Register>()
+
+		if settings.is_x64 {
+			if function.is_memory_address {
+				locked = validate_memory_handle(function.value)
+			}
+			else {
+				memory.move_to_register(unit, function, SYSTEM_BYTES, false, trace.for(unit, function))
+				locked.add(function.register)
+			}
+
+			# Ensure the function handle is in the correct format
+			if function.format != SYSTEM_FORMAT {
+				loop register in locked { register.unlock() }
+
+				memory.move_to_register(unit, function, SYSTEM_BYTES, false, trace.for(unit, function))
+				locked.add(function.register)
+			}
+
+			# Now evacuate all the volatile registers before the call
+			unit.add(EvacuateInstruction(unit))
+
+			# If the format of the function handle changes, it means its format is registered incorrectly somewhere
+			if function.format != SYSTEM_FORMAT abort('Invalid function handle format')
+
+			build(instructions.x64.CALL, 0, InstructionParameter(function, FLAG_BIT_LIMIT_64 | FLAG_ALLOW_ADDRESS, HANDLE_REGISTER | HANDLE_MEMORY))
+		}
+		else {
+			
+		}
+
+		loop register in locked { register.unlock() }
+
+		# Validate evacuation since it is very important to be correct
+		validate_evacuation()
+
+		# Now that the call is over, the registers can be unlocked
+		loop register in registers { register.unlock() }
+
+		# After a call all volatile registers might be changed
+		loop register in unit.volatile_registers { register.reset() }
+
+		# Returns value is always in the following handle
+		register = none as Register
+
+		if result.format == FORMAT_DECIMAL { register = unit.get_decimal_return_register() }
+		else { register = unit.get_standard_return_register() }
+
+		result.value = RegisterHandle(register)
+		register.value = result
+	}
+}
+
+Instruction ReorderInstruction {
+	destinations: List<Handle>
+	formats: List<large>
+	sources: List<Result>
+	extracted: bool = false
+
+	init(unit: Unit, destinations: List<Handle>, sources: List<Result>) {
+		Instruction.init(unit, INSTRUCTION_REORDER)
+		this.dependencies = none
+		this.destinations = destinations
+		this.formats = List<large>(destinations.size, false)
+		this.sources = sources
+
+		loop iterator in destinations { formats.add(iterator.format) }
+	}
+
+	override on_build() {
+		instructions = List<MoveInstruction>()
+
+		loop (i = 0, i < destinations.size, i++) {
+			source = sources[i]
+			destination = Result(destinations[i], formats[i])
+
+			instruction = MoveInstruction(unit, destination, source)
+			instruction.is_safe = true
+			instructions.add(instruction)
+		}
+
+		instructions = memory.align(unit, instructions)
+
+		extracted = true
+		loop instruction in instructions { unit.add(instruction) }
+	}
+
+	override get_dependencies() {
+		if extracted => List<Result>()
+		=> sources
+	}
+}
+
+# Summary:
+# Exchanges the locations of the specified values.
+# This instruction works only on architecture x86-64.
+DualParameterInstruction ExchangeInstruction {
+	init(unit: Unit, first: Result, second: Result) {
+		DualParameterInstruction.init(unit, first, second, first.format, INSTRUCTION_EXCHANGE)
+		this.is_usage_analyzed = false
+	}
+
+	override on_build() {
+		# Example: xchg r, r
+		build(instructions.x64.EXCHANGE, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_RELOCATE_TO_SOURCE | FLAG_READS | FLAG_WRITE_ACCESS, HANDLE_REGISTER), InstructionParameter(second, FLAG_SOURCE | FLAG_RELOCATE_TO_DESTINATION | FLAG_WRITES | FLAG_READS, HANDLE_REGISTER))
+	}
+}
+
+# Summary:
+# Sets the lock state of the specified variable
+# This instruction works on all architectures
+Instruction LockStateInstruction {
+	register: Register
+	is_locked: bool
+
+	init(unit: Unit, register: Register, locked: bool) {
+		Instruction.init(unit, INSTRUCTION_LOCK_STATE)
+		this.register = register
+		this.is_locked = locked
+		this.is_abstract = true
+		
+		if is_locked { description = String('Locks a register') }
+		else { description = String('Unlocks a register') }
+	}
+
+	override on_simulate() {
+		register.is_locked = is_locked
+	}
+
+	override on_build() {
+		register.is_locked = is_locked
+	}
+}
+
+# Summary:
+# Ensures that variables and values which are required later are moved to locations which are not affected by call instructions for example
+# This instruction is works on all architectures
+Instruction EvacuateInstruction {
+	init(unit: Unit) {
+		Instruction.init(unit, INSTRUCTION_EVACUATE)
+		this.is_abstract = true
+	}
+
+	override on_build() {
+		# Save all important values in the standard volatile registers
+		loop register in unit.volatile_registers {
+			register.lock()
+
+			# Skip values which are not needed after the call instruction
+			# NOTE: The availability of the register is not checked the standard way since they are usually locked at this stage
+			if register.value == none or not register.value.is_active or register.value.is_deactivating or register.is_value_copy continue
+
+			# Try to get an available non-volatile register
+			destination = none as Handle
+			non_volatile_register = unit.get_next_non_volatile_register(register.is_media_register, false)
+
+			# Use the non-volatile register, if one was found
+			if non_volatile_register != none {
+				destination = RegisterHandle(non_volatile_register)
+			}
+			else {
+				# Since there are no non-volatile registers available, the value must be relocated to stack memory
+				unit.release(register)
+				continue
+			}
+
+			instruction = MoveInstruction(unit, Result(destination, register.format), register.value)
+			instruction.description = String('Evacuates a value')
+			instruction.type = MOVE_RELOCATE
+
+			unit.add(instruction)
+		}
+
+		# Unlock all the volatile registers
+		loop register in unit.volatile_registers { register.unlock() }
+	}
+}
+
+Instruction GetObjectPointerInstruction {
+	variable: Variable
+	start: Result
+	offset: large
+	mode: large
+
+	init(unit: Unit, variable: Variable, start: Result, offset: large, mode: large) {
+		Instruction.init(unit, INSTRUCTION_GET_OBJECT_POINTER)
+		this.variable = variable
+		this.start = start
+		this.offset = offset
+		this.mode = mode
+		this.is_abstract = true
+		this.dependencies.add(start)
+		this.result.format = variable.type.format
+	}
+
+	validate_handle() {
+		# Ensure the start value is a constant or in a register
+		if not start.is_constant and not start.is_inline and not start.is_standard_register {
+			memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
+		}
+	}
+
+	override on_build() {
+		validate_handle()
+
+		if variable.is_inlined() {
+			result.value = ExpressionHandle.create_memory_address(start, offset)
+			result.format = variable.type.format
+			return
+		}
+
+		result.value = MemoryHandle(unit, start, offset)
+		result.format = variable.type.format
+	}
+}
+
+Instruction TemporaryInstruction {
+	init(unit: Unit, type: large) {
+		Instruction.init(unit, type)
+	}
+
+	override on_build() { abort('Tried to build a temporary instruction') }
+	override on_post_build() { abort('Tried to build a temporary instruction') }
+	override on_simulate() { abort('Tried to build a temporary instruction') }
+}
+
+JumpOperatorBinding {
+	signed: link
+	unsigned: link
+
+	init(signed: link, unsigned: link) {
+		this.signed = signed
+		this.unsigned = unsigned
+	}
+}
+
+# Summary:
+# Jumps to the specified label and optionally checks a condition
+# This instruction works on all architectures
+Instruction JumpInstruction {
+	static jumps: Map<ComparisonOperator, JumpOperatorBinding>
+
+	static initialize() {
+		jumps = Map<ComparisonOperator, JumpOperatorBinding>()
+
+		if settings.is_x64 {
+			jumps.add(Operators.GREATER_THAN,     JumpOperatorBinding(instructions.x64.JUMP_GREATER_THAN,           instructions.x64.JUMP_ABOVE))
+			jumps.add(Operators.GREATER_OR_EQUAL, JumpOperatorBinding(instructions.x64.JUMP_GREATER_THAN_OR_EQUALS, instructions.x64.JUMP_ABOVE_OR_EQUALS))
+			jumps.add(Operators.LESS_THAN,        JumpOperatorBinding(instructions.x64.JUMP_LESS_THAN,              instructions.x64.JUMP_BELOW))
+			jumps.add(Operators.LESS_OR_EQUAL,    JumpOperatorBinding(instructions.x64.JUMP_LESS_THAN_OR_EQUALS,    instructions.x64.JUMP_BELOW_OR_EQUALS))
+			jumps.add(Operators.EQUALS,           JumpOperatorBinding(instructions.x64.JUMP_EQUALS,                 instructions.x64.JUMP_ZERO))
+			jumps.add(Operators.NOT_EQUALS,       JumpOperatorBinding(instructions.x64.JUMP_NOT_EQUALS,             instructions.x64.JUMP_NOT_ZERO))
+			return
+		}
+
+		#jumps.add(Operators.GREATER_THAN,     JumpOperatorBinding(instructions.arm64.JUMP_GREATER_THAN,           instructions.arm64.JUMP_GREATER_THAN))
+		#jumps.add(Operators.GREATER_OR_EQUAL, JumpOperatorBinding(instructions.arm64.JUMP_GREATER_THAN_OR_EQUALS, instructions.arm64.JUMP_GREATER_THAN_OR_EQUALS))
+		#jumps.add(Operators.LESS_THAN,        JumpOperatorBinding(instructions.arm64.JUMP_LESS_THAN,              instructions.arm64.JUMP_LESS_THAN))
+		#jumps.add(Operators.LESS_OR_EQUAL,    JumpOperatorBinding(instructions.arm64.JUMP_LESS_THAN_OR_EQUALS,    instructions.arm64.JUMP_LESS_THAN_OR_EQUALS))
+		#jumps.add(Operators.EQUALS,           JumpOperatorBinding(instructions.arm64.JUMP_EQUALS,                 instructions.arm64.JUMP_EQUALS))
+		#jumps.add(Operators.NOT_EQUALS,       JumpOperatorBinding(instructions.arm64.JUMP_NOT_EQUALS,             instructions.arm64.JUMP_NOT_EQUALS))
+	}
+
+	label: Label
+	comparator: ComparisonOperator
+	is_conditional => comparator != none
+	is_signed: bool = true
+
+	init(unit: Unit, label: Label) {
+		Instruction.init(unit, INSTRUCTION_JUMP)
+		this.label = label
+		this.comparator = none
+	}
+
+	init(unit: Unit, comparator: ComparisonOperator, invert: bool, signed: bool, label: Label) {
+		Instruction.init(unit, INSTRUCTION_JUMP)
+		this.label = label
+		this.is_signed = signed
+
+		if invert { this.comparator = comparator.counterpart }
+		else { this.comparator = comparator }
+	}
+
+	invert() {
+		this.comparator = comparator.counterpart
+	}
+
+	override on_build() {
+		instruction = none as link
+
+		if comparator == none {
+			if settings.is_x64 { instruction = instructions.x64.JUMP }
+		}
+		else is_signed {
+			instruction = jumps[comparator].signed
+		}
+		else not is_signed {
+			instruction = jumps[comparator].unsigned
+		}
+
+		build(String(instruction) + ' ' + label.name)
+	}
+}
+
+# Summary:
+# Relocates variables so that their locations match the state of the outer scope
+# This instruction works on all architectures
+Instruction MergeScopeInstruction {
+	container: Scope
+
+	init(unit: Unit, container: Scope) {
+		Instruction.init(unit, INSTRUCTION_MERGE_SCOPE)
+		this.container = container
+		this.description = String('Relocates values so that their locations match the state of the outer scope')
+		this.is_abstract = true
+	}
+
+	get_variable_stack_handle(variable: Variable) {
+		=> Result(references.create_variable_handle(unit, variable), variable.type.format)
+	}
+
+	get_destination_handle(variable: Variable) {
+		if container.outer == none => get_variable_stack_handle(variable)
+		=> container.outer.get_variable_value(variable, true)
+	}
+
+	override on_build() {
+		moves = List<MoveInstruction>()
+
+		loop variable in container.actives {
+			source = unit.get_variable_value(variable, true)
+			if source == none { source = get_variable_stack_handle(variable) }
+
+			# Copy the destination value to prevent any relocation leaks
+			handle = get_destination_handle(variable)
+			destination = Result(handle.value, handle.format)
+
+			if destination.is_constant continue
+
+			# If the only difference between the source and destination, is the size, and the source size is larger than the destination size, no conversion is needed
+			# NOTE: Move instruction should still be created, so that the destination is locked
+			if destination.value.equals(source.value) and to_bytes(destination.format) <= to_bytes(source.format) { source = destination }
+
+			instruction = MoveInstruction(unit, destination, source)
+			instruction.is_safe = true
+			instruction.description = String('Relocates the source value to merge the current scope with the outer scope')
+			instruction.type = MOVE_RELOCATE
+
+			moves.add(instruction)
+		}
+
+		instructions = memory.align(unit, moves)
+
+		loop (i = instructions.size - 1, i >= 0, i--) {
+			unit.add(instructions[i], true)
+		}
+	}
+}
+
+# Summary:
+# This instruction compares the two specified values together and alters the CPU flags based on the comparison
+# This instruction is works on all architectures
+DualParameterInstruction CompareInstruction {
+	init(unit: Unit, first: Result, second: Result) {
+		DualParameterInstruction.init(unit, first, second, SYSTEM_FORMAT, INSTRUCTION_COMPARE)
+		this.description = String('Compares two operands')
+	}
+
+	on_build_x64() {
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
+			return
+		}
+
+		if settings.is_x64 and second.is_constant and second.value.(ConstantHandle).value == 0 {
+			# Example: test r, r
+			=> build(instructions.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER))
+		}
+
+		# Example: cmp r, c/r/[...]
+		build(instructions.shared.COMPARE, min(first.size, second.size), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+	}
+
+	override on_build() {
+		if settings.is_x64 => on_build_x64()
 	}
 }

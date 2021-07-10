@@ -23,10 +23,12 @@ Indexer {
 	private context_count = 0
 	private hidden_count = 0
 	private stack_count = 0
+	private label_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
 	stack => stack_count++
+	label => label_count++
 }
 
 Context {
@@ -92,6 +94,10 @@ Context {
 		this.imports = List<Type>()
 		this.indexer = Indexer()
 		connect(parent)
+	}
+
+	virtual get_fullname() {
+		=> String.empty
 	}
 
 	# Summary: Tries to find the self pointer variable
@@ -269,6 +275,10 @@ Context {
 
 		if parent != none => parent.get_variable(name) as Variable
 		=> none as Variable
+	}
+
+	create_label() {
+		=> get_fullname() + '_I' + to_string(indexer.label)
 	}
 
 	create_stack_address() {
@@ -504,6 +514,12 @@ Context Type {
 		=> result
 	}
 
+	is_supertype_declared(type: Type) {
+		if supertypes.contains(type) => true
+		loop supertype in supertypes { if supertype.is_supertype_declared(type) => true }
+		=> false
+	}
+
 	is_super_function_declared(name: String) {
 		loop supertype in supertypes { if supertype.is_local_function_declared(name) => true }
 		=> false
@@ -542,7 +558,7 @@ Variable {
 	modifiers: normal
 	position: Position
 	parent: Context
-	alignment: normal
+	alignment: normal = 0
 	is_self_pointer: bool = false
 	usages: List<Node> = List<Node>()
 	writes: List<Node> = List<Node>()
@@ -553,7 +569,8 @@ Variable {
 	is_protected => has_flag(modifiers, MODIFIER_PROTECTED)
 	is_private => has_flag(modifiers, MODIFIER_PRIVATE)
 	is_static => has_flag(modifiers, MODIFIER_STATIC)
-
+	
+	is_global => category == VARIABLE_CATEGORY_GLOBAL
 	is_local => category == VARIABLE_CATEGORY_LOCAL
 	is_parameter => category == VARIABLE_CATEGORY_PARAMETER
 	is_member => category == VARIABLE_CATEGORY_MEMBER
@@ -565,12 +582,36 @@ Variable {
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
 
+	# TODO: Inline support
+	is_inlined => false
+
 	init(parent: Context, type: Type, category: normal, name: String, modifiers: normal) {
 		this.name = name
 		this.type = type
 		this.category = category
 		this.modifiers = modifiers
 		this.parent = parent
+	}
+
+	# Summary: Returns the alignment compared to the specified parent type
+	get_alignment(parent: Type) {
+		if this.parent == parent {
+			alignment: large = 0
+			loop supertype in parent.supertypes { alignment += supertype.content_size }
+			alignment += this.alignment
+			=> alignment
+		}
+
+		position: large = 0
+
+		loop supertype in parent.supertypes {
+			alignment: large = get_alignment(supertype)
+			if alignment >= 0 => position + alignment
+
+			position += supertype.content_size
+		}
+
+		=> -1
 	}
 }
 
@@ -947,6 +988,12 @@ Context FunctionImplementation {
 		=> result
 	}
 
+	parameter_types() {
+		result = List<Type>()
+		loop iterator in parameters() { result.add(iterator.type) }
+		=> result
+	}
+
 	init(metadata: Function, return_type: Type, parent: Context) {
 		Context.init(parent, IMPLEMENTATION_CONTEXT)
 
@@ -990,7 +1037,7 @@ Context FunctionImplementation {
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 	}
 
-	get_fullname() {
+	override get_fullname() {
 		=> metadata.name
 	}
 }

@@ -388,7 +388,7 @@ Instruction {
 	}
 
 	reindex() {
-		dependencies = get_all_dependencies()
+		dependencies: List<Result> = get_all_dependencies()
 		loop dependency in dependencies { dependency.use(this) }
 	}
 

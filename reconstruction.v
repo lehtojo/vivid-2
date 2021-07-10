@@ -51,7 +51,7 @@ strip_links(root: Node) {
 			if right.(VariableNode).variable.is_member and not right.(VariableNode).variable.is_static continue
 		}
 		else right.match(NODE_FUNCTION) {
-			if right.(FunctionNode).function.is_member and not right.(FunctionNode).function.is_member and not right.(VariableNode).variable.is_static continue
+			if right.(FunctionNode).function.is_member and not right.(VariableNode).variable.is_static continue
 		}
 		else not right.match(NODE_CONSTRUCTION) continue
 

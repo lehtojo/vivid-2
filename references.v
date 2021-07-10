@@ -46,5 +46,6 @@ get(unit: Unit, node: Node, mode: large) {
 
 	if instance == NODE_VARIABLE => get_variable(unit, node as VariableNode, mode)
 	else instance == NODE_NUMBER => get_constant(unit, node as NumberNode)
+	else instance == NODE_LINK => builders.build_link(unit, node, mode)
 	=> builders.build(unit, node) as Result
 }

@@ -55,7 +55,7 @@ Node {
 	find_parent(types: large) {
 		if parent == none => none as Node
 		if (parent.instance & types) != 0 => parent
-		=> parent.find_parent(type) as Node
+		=> parent.find_parent(types) as Node
 	}
 
 	# Summary: Returns all nodes, which pass the specified filter
@@ -94,6 +94,18 @@ Node {
 		=> result
 	}
 
+	# Summary: Returns the first child node, which pass the specified filter. None is returned, if no child node passes the filter.
+	find(filter: (Node) -> bool) {
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if filter(iterator) => iterator
+
+			result = iterator.find(filter) as Node
+			if result != none => result
+		}
+
+		=> none as Node
+	}
+
 	# Summary: Returns the first node, whose type matches the specified type
 	find(types: large) {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -110,6 +122,17 @@ Node {
 		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_CONTEXT_INLINE | NODE_TYPE, instance) => this
 		if parent == none => none as Node
 		=> parent.find_context() as Node
+	}
+
+	# Summary: Returns whether this node is under the specified node
+	is_under(node: Node) {
+		iterator = parent
+
+		loop (iterator != node and iterator != none) {
+			iterator = iterator.parent
+		}
+
+		=> iterator == node
 	}
 
 	get_parent_context() {

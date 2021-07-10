@@ -233,9 +233,54 @@ Scope {
 	activators: bool = false
 	deactivators: bool = false
 
+	# Summary: Returns all variables that the scope must take care of
+	static get_all_active_variables(unit: Unit, roots: List<Node>) {
+		result = List<Variable>()
+
+		loop iterator in unit.scope.variables {
+			variable = iterator.key
+			added = false
+
+			# 1. If the variable is used inside any of the roots, it must be included
+			loop root in roots {
+				loop usage in variable.usages {
+					if not usage.is_under(root) continue
+					result.add(variable)
+					added = true
+					stop
+				}
+			}
+
+			if added continue
+
+			# 2. If the variable is used after any of the roots, it must be included
+			loop root in roots {
+				if not analysis.is_used_later(variable, root) continue
+				result.add(variable)
+				stop
+			}
+		}
+
+		=> result
+	}
+
+	# Summary: Returns all variables that the scope must take care of
+	static get_all_active_variables(unit: Unit, root: Node) {
+		roots = List<Node>()
+		roots.add(root)
+		=> get_all_active_variables(unit, roots)
+	}
+
 	init(unit: Unit, root: Node) {
 		this.unit = unit
 		this.root = root
+		enter()
+	}
+
+	init(unit: Unit, root: Node, actives: List<Variable>) {
+		this.unit = unit
+		this.root = root
+		this.actives = actives
 		enter()
 	}
 
@@ -264,6 +309,25 @@ Scope {
 		}
 
 		=> transferer
+	}
+
+	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
+	receive_parameter(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, parameter: Variable) {
+		register = none as Register
+
+		if parameter.type.format == FORMAT_DECIMAL {
+			if decimal_parameter_registers.size > 0 { register = decimal_parameter_registers.take_first() }
+		}
+		else {
+			if standard_parameter_registers.size > 0 { register = standard_parameter_registers.take_first() }
+		}
+
+		if register != none {
+			register.value = set_or_create_transition_handle(parameter, RegisterHandle(register), parameter.type.get_register_format())
+		}
+		else {
+			set_or_create_transition_handle(parameter, references.create_variable_handle(unit, parameter), parameter.type.get_register_format())
+		}
 	}
 
 	enter() {
@@ -335,12 +399,18 @@ Scope {
 				register.reset()
 			}
 		}
-		else {
+		else not settings.is_debugging_enabled {
 			# Move all parameters to their expected registers since this is the first scope
-			# decimal_parameter_registers = calls.get_decimal_parameter_registers()
-			# standard_parameter_registers = calls.get_standard_parameter_registers()
+			decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+			standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 
-			# TODO: Complete
+			if (unit.function.is_member and not unit.function.is_static) or unit.function.is_lambda_implementation {
+				receive_parameter(standard_parameter_registers, decimal_parameter_registers, unit.self)
+			}
+
+			loop parameter in unit.function.parameters {
+				receive_parameter(standard_parameter_registers, decimal_parameter_registers, parameter)
+			}
 		}
 	}
 
@@ -413,6 +483,7 @@ UNIT_MODE_BUILD = 2
 Unit {
 	function: FunctionImplementation
 	scope: Scope
+	indexer: Indexer = Indexer()
 	self: Variable
 
 	registers: List<Register> = List<Register>()
@@ -645,6 +716,24 @@ Unit {
 		=> none as Register
 	}
 
+	get_next_non_volatile_register(media_register: bool, release: bool) {
+		loop register in non_volatile_registers { if register.is_available() and register.is_media_register == media_register => register }
+		if not release => none as Register
+
+		loop register in non_volatile_registers {
+			if register.is_releasable(this) and register.is_media_register == media_register {
+				release(register)
+				=> register
+			}
+		}
+
+		=> none as Register
+	}
+
+	get_next_label() {
+		=> Label(function.get_fullname() + '_L' + to_string(indexer.label))
+	}
+
 	get_stack_pointer() {
 		loop register in registers { if has_flag(register.flags, REGISTER_STACK_POINTER) => register }
 		abort('Architecture did not have stack pointer register')
@@ -739,6 +828,8 @@ get_text_section(implementation: FunctionImplementation) {
 		parameters.add(self)
 	}
 
+	unit.add(RequireVariablesInstruction(unit, parameters))
+
 	if settings.is_debugging_enabled {
 		# calls.move_parameters_to_stack(unit)
 	}
@@ -787,6 +878,7 @@ get_text_section(implementation: FunctionImplementation) {
 	}
 
 	builder.append(unit.string())
+	builder.append(`\n`)
 
 	=> builder.string()
 }

@@ -5,6 +5,7 @@ analyze(bundle: Bundle) {
 
 	context = parse.context
 	implementations = common.get_all_function_implementations(context)
+	resolver.debug_print(context)
 
 	loop (i = 0, i < implementations.size, i++) {
 		implementation = implementations[i]
