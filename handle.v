@@ -59,7 +59,7 @@ Handle {
 	instance: large
 	is_precise: bool = false
 	format: large = SYSTEM_FORMAT
-	size: large = SYSTEM_BYTES
+	size => to_bytes(format)
 	unsigned => is_unsigned(format)
 
 	init() {
@@ -385,6 +385,97 @@ Handle DataSectionHandle {
 
 	override equals(other: Handle) {
 		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.global_offset_table == other.(DataSectionHandle).global_offset_table
+	}
+}
+
+Handle ComplexMemoryHandle {
+	start: Result
+	index: Result
+	stride: large
+	offset: large
+
+	init(start: Result, index: Result, stride: large, offset: large) {
+		Handle.init(HANDLE_MEMORY, INSTANCE_COMPLEX_MEMORY)
+		this.start = start
+		this.index = index
+		this.stride = stride
+		this.offset = offset
+
+		if not settings.is_x64 and offset != 0 abort('Arm64 does not support memory handles with multiple offsets')
+	}
+
+	override use(instruction: Instruction) {
+		start.use(instruction)
+		index.use(instruction)
+	}
+
+	override string() {
+		postfix = String.empty
+
+		if index.is_standard_register or index.is_modifier {
+			if settings.is_x64 {
+				postfix = String('+') + index.value.string()
+				if stride != 1 { postfix = postfix + '*' + to_string(stride) }
+			}
+		}
+		else index.value.instance == INSTANCE_CONSTANT {
+			value = index.value.(ConstantHandle).value * stride
+
+			if settings.is_x64 {
+				if value > 0 { postfix = String('+') + to_string(value) }
+				else { postfix = to_string(value) }
+			}
+		}
+		else {
+			=> postfix
+		}
+
+		if offset != 0 {
+			if settings.is_x64 {
+				postfix = postfix + '+' + to_string(offset)
+			}
+			else {
+				=> String.empty
+			}
+		}
+
+		if start.is_standard_register or start.is_constant {
+			address = String('[') + start.value.string() + postfix + ']'
+
+			if is_precise and settings.is_x64 => String(to_size_modifier(size)) + ' ptr ' + address 
+			=> address
+		}
+
+		=> String.empty
+	}
+
+	override get_register_dependent_results() {
+		all = List<Result>()
+		all.add(start)
+
+		if not index.is_constant and not index.is_modifier all.add(index)
+
+		=> all
+	}
+
+	override get_inner_results() {
+		all = List<Result>()
+		all.add(start)
+		all.add(index)
+		=> all
+	}
+
+	override finalize() {
+		=> ComplexMemoryHandle(
+			Result(start.value.finalize(), start.format),
+			Result(index.value.finalize(), index.format),
+			stride,
+			offset
+		)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and start.value.equals(other.(ComplexMemoryHandle).start.value) and index.value.equals(other.(ComplexMemoryHandle).index.value) and stride == other.(ComplexMemoryHandle).stride and offset == other.(ComplexMemoryHandle).offset
 	}
 }
 

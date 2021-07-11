@@ -874,6 +874,40 @@ Instruction GetObjectPointerInstruction {
 	}
 }
 
+Instruction GetMemoryAddressInstruction {
+	format: large
+	start: Result
+	offset: Result
+	stride: large
+
+	init(unit: Unit, format: large, start: Result, offset: Result, stride: large) {
+		Instruction.init(unit, INSTRUCTION_GET_MEMORY_ADDRESS)
+		this.start = start
+		this.offset = offset
+		this.stride = stride
+		this.format = format
+		this.is_abstract = true
+		this.dependencies.add(start)
+		this.dependencies.add(offset)
+
+		result.value = ComplexMemoryHandle(start, offset, stride, 0)
+		result.format = format
+	}
+
+	validate_handle() {
+		# Ensure the start value is a constant or in a register
+		if start.is_constant or start.is_inline or start.is_standard_register return
+		memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
+	}
+
+	override on_build() {
+		validate_handle()
+
+		result.value = ComplexMemoryHandle(start, offset, stride, 0)
+		result.format = format
+	}
+}
+
 Instruction TemporaryInstruction {
 	init(unit: Unit, type: large) {
 		Instruction.init(unit, type)

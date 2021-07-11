@@ -14,23 +14,28 @@ Type Number {
 Number Link {
 	# Summary: Creates a link type which has the specified offset type
 	static get_variant(argument: Type) {
-		link = Link()
-		link.template_arguments = Array<Type>(1)
-		link.template_arguments[0] = argument
+		link = Link(argument)
 		=> link
 	}
 
 	# Summary: Creates a link type which has the specified offset type and the specified name
 	static get_variant(argument: Type, name: String) {
-		link = Link()
+		link = Link(argument)
 		link.name = name
-		link.template_arguments = Array<Type>(1)
-		link.template_arguments[0] = argument
 		=> link
+	}
+
+	init(accessor_type: Type) {
+		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
+		this.template_arguments = Array<Type>(1)
+		this.template_arguments[0] = accessor_type
+		this.identifier = String(primitives.LINK_IDENTIFIER)
+		this.modifiers |= MODIFIER_TEMPLATE_TYPE
 	}
 
 	init() {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
+		this.template_arguments = Array<Type>(0)
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
 	}

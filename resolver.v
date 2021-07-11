@@ -92,6 +92,9 @@ resolve(variable: Variable) {
 			parent = parent.parent
 			if parent == none or not parent.match(Operators.ASSIGN) continue
 		}
+		else {
+			continue
+		}
 
 		# Get the assignment type from the source operand
 		type = parent.last.try_get_type()

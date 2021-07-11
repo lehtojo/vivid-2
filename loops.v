@@ -1,7 +1,7 @@
 namespace loops
 
 # Summary: Builds a loop control instruction such as continue and stop
-build_control_instruction(unit: Unit, node: LoopControlNode) {
+build_control_instruction(unit: Unit, node: CommandNode) {
 	if node.container == none abort('Loop control instruction was not inside a loop')
 
 	# TODO: Condition support
@@ -156,7 +156,7 @@ build(unit: Unit, statement: LoopNode) {
 
 	# Try to find a loop control node which targets the current loop
 	# If even one is found, this loop needs a continue label
-	if (statement.body.find(i -> i.instance == NODE_LOOP_CONTROL and i.(LoopControlNode).instruction == Keywords.CONTINUE and i.(LoopControlNode).container == statement) != none) {
+	if (statement.body.find(i -> i.instance == NODE_COMMAND and i.(CommandNode).instruction == Keywords.CONTINUE and i.(CommandNode).container == statement) != none) {
 		# Append a label which can be used by the continue-commands
 		statement.continue_label = unit.get_next_label()
 		unit.add(LabelInstruction(unit, statement.continue_label))

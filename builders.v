@@ -143,6 +143,13 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 	=> get_member_function_call(unit, node.last as FunctionNode, node.first, type)
 }
 
+build_accessor(unit: Unit, node: AccessorNode, mode: large) {
+	start = references.get(unit, node.first, ACCESS_READ) as Result
+	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
+
+	=> GetMemoryAddressInstruction(unit, node.format, start, offset, node.stride).add()
+}
+
 build_childs(unit: Unit, node: Node) {
 	result = none as Result
 
@@ -156,6 +163,7 @@ build_childs(unit: Unit, node: Node) {
 
 build(unit: Unit, node: Node) {
 	=> when(node.instance) {
+		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_DISABLED => Result()
 		NODE_ELSE => Result()
 		NODE_ELSE_IF => Result()

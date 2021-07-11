@@ -32,9 +32,8 @@ NODE_CONTEXT_INLINE = 1073741824
 NODE_DATA_POINTER = 2147483648
 NODE_STACK_ADDRESS = 4294967296
 NODE_DISABLED = 8589934592
-NODE_LOOP_CONTROL = 17179869184
-NODE_LABEL = 34359738368
-NODE_JUMP = 68719476736 # 1 <| 36
+NODE_LABEL = 17179869184
+NODE_JUMP = 34359738368 # 1 <| 35
 
 Node NumberNode {
 	value: large
@@ -864,7 +863,7 @@ Node CastNode {
 
 Node CommandNode {
 	instruction: Keyword
-	parent_loop => find_parent(NODE_LOOP) as LoopNode
+	container => find_parent(NODE_LOOP) as LoopNode
 	finished: bool = false
 
 	init(instruction: Keyword, position: Position) {
@@ -877,13 +876,42 @@ Node CommandNode {
 
 	init(instruction: Keyword, position: Position, finished: bool) {
 		this.instruction = instruction
-		this.finished = finished
 		this.start = position
+		this.finished = finished
 		this.instance = NODE_COMMAND
+	}
+
+	override resolve(context: Context) {
+		if finished => none as Node
+
+		# Try to find the parent loop
+		container: LoopNode = this.container
+		if container == none => none as Node
+
+		# Continue nodes must execute the action of their parent loops
+		if instruction != Keywords.CONTINUE => none as Node
+
+		# Copy the action node if it is present and it is not empty
+		if container.is_forever_loop or container.action.first == none {
+			finished = true
+			=> none as Node
+		}
+
+		# Execute the action first then the continue
+		result = InlineNode(start)
+		loop iterator in container.action { result.add(iterator.clone()) }
+
+		result.add(CommandNode(instruction, start, true))
+		=> result
 	}
 
 	override copy() {
 		=> CommandNode(instruction, start, finished)
+	}
+
+	override get_status() {
+		if finished and container != none => Status()
+		=> Status('Keyword must be used inside a loop')
 	}
 
 	override string() {
@@ -1211,56 +1239,6 @@ Node StackAddressNode {
 	}
 }
 
-Node LoopControlNode {
-	instruction: Keyword
-	container => find_parent(NODE_LOOP) as LoopNode
-	finished: bool = false
-
-	init(instruction: Keyword, parent: Position) {
-		this.instruction = instruction
-		this.start = position
-		this.instance = NODE_LOOP_CONTROL
-
-		if instruction != Keywords.CONTINUE { finished = true }
-	}
-
-	init(instruction: Keyword, position: Position, finished: bool) {
-		this.instruction = instruction
-		this.start = position
-		this.finished = finished
-		this.instance = NODE_LOOP_CONTROL
-	}
-
-	override resolve(context: Context) {
-		if finished => none as Node
-
-		# Try to find the parent loop
-		container: LoopNode = this.container
-		if container == none => none as Node
-
-		# Continue nodes must execute the action of their parent loops
-		if instruction != Keywords.CONTINUE => none as Node
-
-		# Copy the action node if it is present and it is not empty
-		if container.is_forever_loop or container.action.first == none {
-			finished = true
-			=> none as Node
-		}
-
-		# Execute the action first then the continue
-		result = InlineNode(start)
-		loop iterator in container.action { result.add(iterator.clone()) }
-
-		result.add(LoopControlNode(instruction, start, true))
-		=> result
-	}
-
-	override get_status() {
-		if finished and container != none => Status()
-		=> Status('Keyword must be used inside a loop')
-	}
-}
-
 Node LabelNode {
 	label: Label
 
@@ -1268,6 +1246,10 @@ Node LabelNode {
 		this.label = label
 		this.start = position
 		this.instance = NODE_LABEL
+	}
+
+	override copy() {
+		=> LabelNode(label, start)
 	}
 
 	override string() {
@@ -1288,6 +1270,10 @@ Node JumpNode {
 		this.instance = NODE_JUMP
 		this.label = label
 		this.is_conditional = is_conditional
+	}
+
+	override copy() {
+		=> JumpNode(label, is_conditional)
 	}
 
 	override string() {
