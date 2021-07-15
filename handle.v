@@ -128,6 +128,15 @@ Handle ConstantHandle {
 		this.size = size
 	}
 
+	convert(format: large) {
+		if this.format == format return
+
+		if format == FORMAT_DECIMAL { value = decimal_to_bits(value as decimal) }
+		else { value = bits_to_decimal(value) }
+
+		this.format = format
+	}
+
 	string_shared() {
 		if format == FORMAT_DECIMAL => to_string(bits_to_decimal(value)).replace(`,`, `.`)
 		=> to_string(value).replace(`,`, `.`)
@@ -151,15 +160,15 @@ Handle RegisterHandle {
 	register: Register
 
 	init(register: Register) {
-		if register.is_media_register Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER)
-		else Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER)
+		if register.is_media_register { Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER) }
+		else { Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER) }
 
 		this.register = register
 	}
 
 	init(register: Register, format: large, size: large) {
-		if register.is_media_register Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER)
-		else Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER)
+		if register.is_media_register { Handle.init(HANDLE_MEDIA_REGISTER, INSTANCE_REGISTER) }
+		else { Handle.init(HANDLE_REGISTER, INSTANCE_REGISTER) }
 
 		this.register = register
 		this.format = format

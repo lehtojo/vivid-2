@@ -14,6 +14,13 @@ namespace shared {
 namespace x64 {
 	constant EVALUATE_MAX_MULTIPLIER = 8
 
+	constant DOUBLE_PRECISION_ADD = 'addsd'
+	constant DOUBLE_PRECISION_SUBTRACT = 'subsd'
+	constant DOUBLE_PRECISION_MULTIPLY = 'mulsd'
+	constant DOUBLE_PRECISION_DIVIDE = 'divsd'
+
+	constant NOT = 'not'
+	constant OR = 'or'
 	constant XOR = 'xor'
 	constant EVALUATE = 'lea'
 	constant UNSIGNED_CONVERSION_MOVE = 'movzx'
@@ -43,4 +50,15 @@ namespace x64 {
 
 	constant SIGNED_DIVIDE = 'idiv'
 	constant EXTEND_QWORD = 'cqo'
+
+	constant RAW_MEDIA_REGISTER_MOVE = 'movq'
+	constant MEDIA_REGISTER_BITWISE_XOR = 'pxor'
+	constant CONVERT_INTEGER_TO_DOUBLE_PRECISION = 'cvtsi2sd'
+	constant CONVERT_DOUBLE_PRECISION_TO_INTEGER = 'cvtsd2si'
+	constant DOUBLE_PRECISION_MOVE = 'movsd'
+}
+
+namespace arm64 {
+	constant NOT = 'mvn'
+	constant DECIMAL_NEGATE = 'fneg'
 }

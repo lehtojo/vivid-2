@@ -851,6 +851,11 @@ Unit {
 		abort('Architecture did not have remainder register')
 	}
 
+	get_shift_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_SHIFT) => register }
+		abort('Architecture did not have shift register')
+	}
+
 	# Summary:  Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
 		=> scope != none and scope.variables.contains_key(variable)

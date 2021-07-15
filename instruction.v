@@ -39,6 +39,7 @@ INSTRUCTION_LOCK_STATE = 38
 INSTRUCTION_SET_VARIABLE = 39
 INSTRUCTION_SINGLE_PARAMATER = 40
 INSTRUCTION_SUBTRACT = 41
+INSTRUCTION_SINGLE_PARAMETER = 42
 
 FLAG_NONE = 0
 FLAG_DESTINATION = 1025 # WRITES | 1
@@ -58,7 +59,7 @@ FLAG_ALLOW_ADDRESS = 4096
 FLAG_LOCKED = 8192
 
 create_bit_limit_flag(bits) => FLAG_BIT_LIMIT | (bits <| 24)
-get_bit_limit_from_flags(bits) => FLAG_BIT_LIMIT |> 24
+get_bit_limit_from_flags(bits) => bits |> 24
 
 InstructionParameter {
 	result: Result
@@ -313,7 +314,7 @@ Instruction {
 
 			# If the current parameter is the destination and it is needed later, then it must me copied to another register
 			if protect and parameter.result.is_only_active() {
-				=> memory.copy_to_register(unit, parameter.result, parameter.size, has_flag(parameter.flags, HANDLE_MEDIA_REGISTER), directives)
+				=> memory.copy_to_register(unit, parameter.result, parameter.size, has_flag(parameter.types, HANDLE_MEDIA_REGISTER), directives)
 			}
 
 			=> parameter.result

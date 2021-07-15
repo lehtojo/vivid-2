@@ -1319,7 +1319,7 @@ tokenize(bundle: Bundle) {
 	loop (i = 0, i < files.count, i++) {
 		file = files[i]
 
-		println(file.content)
+		#println(file.content)
 
 		result = get_tokens(file.content, true)
 		if not (result has tokens) => Status(result.value as String)
@@ -1330,7 +1330,7 @@ tokenize(bundle: Bundle) {
 		values = List<String>(file.tokens.size, false)
 		loop token in file.tokens { values.add(to_string(token)) }
 
-		println(String.join(` `, values))
+		#println(String.join(` `, values))
 	}
 
 	=> Status()

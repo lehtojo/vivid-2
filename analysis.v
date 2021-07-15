@@ -5,7 +5,7 @@ analyze(bundle: Bundle) {
 
 	context = parse.context
 	implementations = common.get_all_function_implementations(context)
-	resolver.debug_print(context)
+	#resolver.debug_print(context)
 
 	loop (i = 0, i < implementations.size, i++) {
 		implementation = implementations[i]
@@ -14,7 +14,7 @@ analyze(bundle: Bundle) {
 		reconstruction.reconstruct(implementation, implementation.node)
 	}
 
-	resolver.debug_print(context)
+	#resolver.debug_print(context)
 }
 
 is_used_later(variable: Variable, node: Node) {
