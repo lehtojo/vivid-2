@@ -149,7 +149,7 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 	operator = node.operator
 
 	if operator == Operators.ASSIGN {
-		# unit.add_debug_position(node)
+		unit.add_debug_position(node)
 		=> build_assign_operator(unit, node)
 	}
 
@@ -162,7 +162,7 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 	if operator == Operators.SHIFT_LEFT => build_shift_left(unit, node)
 	if operator == Operators.SHIFT_RIGHT => build_shift_right(unit, node)
 
-	# unit.add_debug_position(node)
+	unit.add_debug_position(node)
 	if operator == Operators.ASSIGN_ADD => build_addition_operator(unit, node, true)
 	if operator == Operators.ASSIGN_SUBTRACT => build_subtraction_operator(unit, node, true)
 	if operator == Operators.ASSIGN_MULTIPLY => build_multiplication_operator(unit, node, true)

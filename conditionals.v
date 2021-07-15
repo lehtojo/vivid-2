@@ -11,7 +11,7 @@ build_body(unit: Unit, body: ScopeNode, active_variables: List<Variable>) {
 	result = builders.build(unit, body)
 
 	# Restore the state after the body
-	#unit.add_debug_position(body.end)
+	unit.add_debug_position(body.end)
 	unit.add(merge)
 
 	scope.exit()
@@ -52,7 +52,7 @@ build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction) {
 }
 
 build(unit: Unit, node: Node, end: LabelInstruction) {
-	#unit.add_debug_position(node)
+	unit.add_debug_position(node)
 
 	if node.match(NODE_IF | NODE_ELSE_IF) => build(unit, node as IfNode, node.(IfNode).condition, end)
 

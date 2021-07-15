@@ -1,5 +1,8 @@
 namespace calls
 
+constant SHADOW_SPACE_SIZE = 32
+constant STACK_ALIGNMENT = 16
+
 get_standard_parameter_register_names(unit: Unit) {
 	result = List<link>(8, false)
 
@@ -108,9 +111,6 @@ pass_argument(destinations: List<Handle>, sources: List<Result>, standard_parame
 	sources.add(value)
 }
 
-constant SHADOW_SPACE_SIZE = 32
-constant STACK_ALIGNMENT = 16
-
 # Summary: Passes the specified parameters to the function using the specified calling convention
 # Returns: Returns the amount of parameters moved to stack
 pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_type: Type, is_self_pointer_required: bool, parameters: List<Node>, parameter_types: List<Type>) {
@@ -181,7 +181,7 @@ build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: 
 }
 
 build(unit: Unit, node: FunctionNode) {
-	# unit.add_debug_position(node)
+	unit.add_debug_position(node)
 
 	self = none as Result
 
@@ -199,6 +199,6 @@ build(unit: Unit, node: FunctionNode) {
 }
 
 build(unit: Unit, self: Result, node: FunctionNode) {
-	# unit.add_debug_position(node)
+	unit.add_debug_position(node)
 	=> build(unit, self, node.parameters, node.function)
 }

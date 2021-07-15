@@ -56,9 +56,13 @@ namespace x64 {
 	constant CONVERT_INTEGER_TO_DOUBLE_PRECISION = 'cvtsi2sd'
 	constant CONVERT_DOUBLE_PRECISION_TO_INTEGER = 'cvtsd2si'
 	constant DOUBLE_PRECISION_MOVE = 'movsd'
+
+	constant PUSH = 'push'
 }
 
 namespace arm64 {
 	constant NOT = 'mvn'
 	constant DECIMAL_NEGATE = 'fneg'
+	constant JUMP_LABEL = 'b'
+	constant JUMP_REGISTER = 'blr'
 }

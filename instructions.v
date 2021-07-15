@@ -692,9 +692,132 @@ Instruction GetVariableInstruction {
 	}
 }
 
+# Summary:
+# Initializes the functions by handling the stack properly
+# This instruction works on all architectures
 Instruction InitializeInstruction {
+	constant DEBUG_FUNCTION_START = '.cfi_startproc'
+	constant DEBUG_CANOCICAL_FRAME_ADDRESS_OFFSET = '.cfi_def_cfa_offset '
+
+	local_memory_top: large
+
 	init(unit: Unit) {
 		Instruction.init(unit, INSTRUCTION_INITIALIZE)
+	}
+
+	get_required_call_memory(call_instructions: List<CallInstruction>) {
+		if call_instructions.size == 0 => 0
+
+		# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
+		max_parameter_memory_offset = -1
+
+		loop call in call_instructions {
+			loop destination in call.destinations {
+				if destination.type != HANDLE_MEMORY continue
+				
+				offset = destination.(MemoryHandle).offset
+				if offset > max_parameter_memory_offset { max_parameter_memory_offset = offset }
+			}
+		}
+
+		# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
+		if max_parameter_memory_offset < 0 {
+			# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
+			if settings.is_target_windows => calls.SHADOW_SPACE_SIZE
+			=> 0
+		}
+
+		=> max_parameter_memory_offset + SYSTEM_BYTES
+	}
+
+	save_registers_x64(builder: StringBuilder, registers: List<Register>) {
+		# Save all used non-volatile registers
+		loop register in registers {
+			builder.append(instructions.x64.PUSH)
+			builder.append(` `)
+			builder.append_line(register[SYSTEM_BYTES])
+			unit.stack_offset += SYSTEM_BYTES
+		}
+	}
+
+	save_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
+
+	build(save_registers: List<Register>, required_local_memory: large) {
+		# Collect all normal call instructions
+		call_instructions = List<CallInstruction>()
+
+		loop instruction in unit.instructions {
+			if instruction.type != INSTRUCTION_CALL or instruction.(CallInstruction).is_tail_call continue
+			call_instructions.add(instruction as CallInstruction)
+		}
+
+		builder = StringBuilder()
+
+		if settings.is_debugging_enabled {
+			builder.append_line(AddDebugPositionInstruction.get_position_instruction(unit.function.metadata.start))
+			builder.append_line(DEBUG_FUNCTION_START)
+		}
+
+		if not settings.is_x64 and call_instructions.size > 0 save_registers.add(unit.get_return_address_register())
+
+		# Save all used non-volatile registers
+		if settings.is_x64 { save_registers_x64(builder, save_registers) }
+		else { save_registers_arm64(builder, save_registers) }
+
+		# Local variables in memory start now
+		local_memory_top = unit.stack_offset
+
+		# Apply the required memory for local variables
+		additional_memory = required_local_memory
+
+		# Allocate memory for calls
+		additional_memory += get_required_call_memory(call_instructions)
+
+		# Apply the additional memory to the stack and calculate the change from the start
+		unit.stack_offset += additional_memory
+
+		# Align the stack:
+
+		# If there are calls, it means they will also push the return address to the stack, which must be taken into account when aligning the stack
+		total = unit.stack_offset
+		if settings.is_x64 and call_instructions.size > 0 { total += SYSTEM_BYTES }
+
+		if total != 0 and total % calls.STACK_ALIGNMENT != 0 {
+			# Apply padding to the memory to make it aligned
+			padding = calls.STACK_ALIGNMENT - (total % calls.STACK_ALIGNMENT)
+
+			unit.stack_offset += padding
+			additional_memory += padding
+		}
+
+		if additional_memory > 0 {
+			stack_pointer = unit.get_stack_pointer()
+
+			if settings.is_x64 {
+				builder.append(instructions.shared.SUBTRACT)
+				builder.append(` `)
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', ')
+				builder.append_line(additional_memory)
+			}
+			else {
+				builder.append(instructions.shared.SUBTRACT)
+				builder.append(` `)
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', ')
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', #')
+				builder.append_line(additional_memory)
+			}
+		}
+
+		# When debugging mode is enabled, the current stack pointer should be saved to the base pointer
+		if settings.is_debugging_enabled {
+			builder.append(DEBUG_CANOCICAL_FRAME_ADDRESS_OFFSET)
+			builder.append_line(unit.stack_offset + SYSTEM_BYTES)
+		}
+
+		Instruction.build(builder.string())
 	}
 }
 
@@ -1660,5 +1783,23 @@ Instruction SingleParameterInstruction {
 
 	override on_build() {
 		if settings.is_x64 => on_build_x64()
+	}
+}
+
+Instruction AddDebugPositionInstruction {
+	constant INSTRUCTION = '.loc'
+
+	position: Position
+
+	static get_position_instruction(position: Position) {
+		=> String(INSTRUCTION) + ' 1 ' + to_string(position.friendly_line) + ' ' + to_string(position.friendly_character)
+	}
+
+	init(unit: Unit, position: Position) {
+		Instruction.init(unit, INSTRUCTION_ADD_DEBUG_POSITION)
+		this.position = position
+		this.operation = get_position_instruction(position)
+		this.state = INSTRUCTION_STATE_BUILT
+		this.description = String('Line: ') + position.friendly_line + String(', Character: ') + position.friendly_character
 	}
 }

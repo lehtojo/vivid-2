@@ -43,7 +43,7 @@ build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction
 	# Build the loop body
 	result = builders.build(unit, statement.body)
 
-	#unit.add_debug_position(statement.body.end)
+	unit.add_debug_position(statement.body.end)
 	unit.add(MergeScopeInstruction(unit, scope))
 
 	=> result
@@ -63,7 +63,7 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction, active
 	# Build the loop body
 	result = builders.build(unit, statement.body)
 	
-	#unit.add_debug_position(statement.body.end)
+	unit.add_debug_position(statement.body.end)
 
 	if not statement.is_forever_loop {
 		# Build the loop action
@@ -128,7 +128,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 
 # Summary: Builds the specified loop
 build(unit: Unit, statement: LoopNode) {
-	#unit.add_debug_position(statement)
+	unit.add_debug_position(statement)
 
 	if statement.is_forever_loop => build_forever_loop(unit, statement)
 

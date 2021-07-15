@@ -856,6 +856,11 @@ Unit {
 		abort('Architecture did not have shift register')
 	}
 
+	get_return_address_register() {
+		loop register in registers { if has_flag(register.flags, REGISTER_RETURN_ADDRESS) => register }
+		abort('Architecture did not have return address register')
+	}
+
 	# Summary:  Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
 		=> scope != none and scope.variables.contains_key(variable)
@@ -896,6 +901,19 @@ Unit {
 		}
 
 		=> none as Variable
+	}
+
+	add_debug_position(node: Node) {
+		=> add_debug_position(node.start)
+	}
+
+	add_debug_position(position: Position) {
+		if not settings.is_debugging_enabled => true
+		if position as link == none => false
+
+		add(AddDebugPositionInstruction(this, position))
+
+		=> true
 	}
 
 	string() {
@@ -996,6 +1014,14 @@ get_text_section(implementation: FunctionImplementation) {
 	non_volatile_registers = List<Register>()
 	local_memory_top = 0
 
+	# Build all initialization instructions
+	loop instruction in unit.instructions {
+		if instruction.type != INSTRUCTION_INITIALIZE continue
+		instruction.(InitializeInstruction).build(non_volatile_registers, local_memory_top)
+		local_memory_top = instruction.(InitializeInstruction).local_memory_top
+	}
+
+	# Build all return instructions
 	loop instruction in unit.instructions {
 		if instruction.type != INSTRUCTION_RETURN continue
 		instruction.(ReturnInstruction).build(non_volatile_registers, local_memory_top)
