@@ -36,7 +36,16 @@ get_standard_parameter_register_names(unit: Unit) {
 	=> result
 }
 
-get_decimal_parameter_register_count(unit: Unit) {
+get_standard_parameter_register_count() {
+	if settings.is_x64 {
+		if settings.is_target_windows => 4
+		=> 6
+	}
+
+	=> 8
+}
+
+get_decimal_parameter_register_count() {
 	if settings.is_x64 {
 		if settings.is_target_windows => 4
 		=> 7
@@ -60,7 +69,7 @@ get_standard_parameter_registers(unit: Unit) {
 
 get_decimal_parameter_registers(unit: Unit) {
 	registers = List<Register>()
-	count = get_decimal_parameter_register_count(unit)
+	count = get_decimal_parameter_register_count()
 
 	loop (i = 0, i < count, i++) {
 		registers.add(unit.media_registers[i])

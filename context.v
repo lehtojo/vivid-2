@@ -545,6 +545,22 @@ Context Type {
 		=> false
 	}
 
+	get_supertype_base_offset(type: Type) {
+		position: large = 0
+		if type == this => Optional<large>(position)
+
+		loop supertype in supertypes {
+			if supertype == type => Optional<large>(position)
+
+			result = supertype.get_supertype_base_offset(type) as Optional<large>
+			if result has offset => Optional<large>(position + offset)
+
+			position += supertype.content_size
+		}
+
+		=> Optional<large>()
+	}
+
 	get_register_format() {
 		if format == FORMAT_DECIMAL => FORMAT_DECIMAL
 		=> SYSTEM_FORMAT

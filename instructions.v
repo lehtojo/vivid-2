@@ -1846,3 +1846,32 @@ Instruction AddDebugPositionInstruction {
 		this.description = String('Line: ') + position.friendly_line + String(', Character: ') + position.friendly_character
 	}
 }
+
+# Summary:
+# Converts the specified number into the specified format
+# This instruction is works on all architectures
+Instruction ConvertInstruction {
+	number: Result
+	integer: bool
+
+	init(unit: Unit, number: Result, integer: bool) {
+		Instruction.init(unit, INSTRUCTION_CONVERT)
+		this.number = number
+		this.integer = integer
+		this.dependencies.add(number)
+		this.is_abstract = true
+		this.description = String('Converts the specified number into the specified format')
+
+		if integer { this.result.format = SYSTEM_FORMAT }
+		else { this.result.format = FORMAT_DECIMAL }
+	}
+
+	override on_build() {
+		memory.get_register_for(unit, result, not integer)
+
+		instruction = MoveInstruction(unit, result, number)
+		instruction.type = MOVE_LOAD
+		instruction.description = String('Loads the specified number into the specified register')
+		unit.add(instruction)
+	}
+}

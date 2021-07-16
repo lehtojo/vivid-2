@@ -708,8 +708,7 @@ Unit {
 
 	write(instruction: String) {
 		builder.append(instruction)
-		# TODO: Enhance
-		builder.append('\n')
+		builder.append(`\n`)
 	}
 
 	release(register: Register) {
@@ -960,6 +959,88 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 	=> registers
 }
 
+align_function(function: FunctionImplementation) {
+	offset = SYSTEM_BYTES
+	if function.metadata.is_member and not function.metadata.is_static { offset += SYSTEM_BYTES }
+
+	if not settings.is_target_windows {
+		standard_register_count = calls.get_standard_parameter_register_count()
+		media_register_count = calls.get_decimal_parameter_register_count()
+
+		if standard_register_count == 0 abort('There were no standard registers reserved for parameter passage')
+
+		# The self pointer uses one standard register
+		if function.variables.contains_key(String(SELF_POINTER_IDENTIFIER)) or function.variables.contains_key(String(LAMBDA_SELF_POINTER_IDENTIFIER)) {
+			standard_register_count--
+		}
+
+		position = SYSTEM_BYTES
+		if settings.is_x64 { position = 0 }
+
+		loop parameter in function.parameters {
+			if not parameter.is_parameter continue
+
+			type = parameter.type
+			if (type.format == FORMAT_DECIMAL and media_register_count-- > 0) or (type.format != FORMAT_DECIMAL and standard_register_count-- > 0) continue
+
+			parameter.alignment = position
+			position += SYSTEM_BYTES
+		}
+	}
+	else {
+		position = offset * SYSTEM_BYTES
+		self = none as Variable
+
+		# Align the this pointer if it exists
+		if function.variables.contains_key(String(SELF_POINTER_IDENTIFIER)) {
+			self = function.variables[String(SELF_POINTER_IDENTIFIER)]
+			self.alignment = position
+			position += SYSTEM_BYTES
+		}
+		else function.variables.contains_key(String(LAMBDA_SELF_POINTER_IDENTIFIER)) {
+			self = function.variables[String(LAMBDA_SELF_POINTER_IDENTIFIER)]
+			self.alignment = position - SYSTEM_BYTES
+			position += SYSTEM_BYTES
+		}
+
+		# Align the other parameters
+		loop parameter in function.parameters {
+			if not parameter.is_parameter continue
+
+			parameter.alignment = position
+			position += SYSTEM_BYTES
+		}
+	}
+}
+
+align_members(type: Type) {
+	position = 0
+
+	# Member variables:
+	loop iterator in type.variables {
+		variable = iterator.value
+		if variable.is_static continue
+		variable.alignment = position
+		position += variable.type.reference_size
+	}
+}
+
+align(context: Context) {
+	# Align all functions
+	functions = common.get_all_function_implementations(context)
+
+	loop function in functions {
+		align_function(function)
+	}
+
+	# Align all types
+	types = common.get_all_types(context)
+
+	loop type in types {
+		align_members(type)
+	}
+}
+
 get_text_section(implementation: FunctionImplementation) {
 	builder = StringBuilder()
 
@@ -1059,6 +1140,8 @@ get_text_section(implementation: FunctionImplementation) {
 }
 
 assemble(context: Context, output_type: large) {
+	align(context)
+
 	implementations = common.get_all_function_implementations(context)
 	builder = StringBuilder()
 
