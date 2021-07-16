@@ -58,6 +58,7 @@ namespace x64 {
 	constant DOUBLE_PRECISION_MOVE = 'movsd'
 
 	constant PUSH = 'push'
+	constant POP = 'pop'
 }
 
 namespace arm64 {

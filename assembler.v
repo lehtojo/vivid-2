@@ -942,6 +942,24 @@ load_variable_usages(implementation: FunctionImplementation) {
 	}
 }
 
+# Summary: Goes through the specified instructions and returns all non-volatile registers
+get_all_used_non_volatile_registers(instructions: List<Instruction>) {
+	registers = List<Register>()
+
+	loop instruction in instructions {
+		loop parameter in instruction.parameters {
+			if not parameter.is_any_register continue
+
+			register = parameter.result.register
+			if register.is_volatile or registers.contains(register) continue
+
+			registers.add(register)
+		}
+	}
+
+	=> registers
+}
+
 get_text_section(implementation: FunctionImplementation) {
 	builder = StringBuilder()
 
@@ -1011,7 +1029,7 @@ get_text_section(implementation: FunctionImplementation) {
 	# Reset the state after this simulation
 	unit.mode = UNIT_MODE_NONE
 
-	non_volatile_registers = List<Register>()
+	non_volatile_registers = get_all_used_non_volatile_registers(unit.instructions)
 	local_memory_top = 0
 
 	# Build all initialization instructions
@@ -1020,6 +1038,9 @@ get_text_section(implementation: FunctionImplementation) {
 		instruction.(InitializeInstruction).build(non_volatile_registers, local_memory_top)
 		local_memory_top = instruction.(InitializeInstruction).local_memory_top
 	}
+
+	# The non-volatile registers must be recovered in reversed order
+	non_volatile_registers.reverse()
 
 	# Build all return instructions
 	loop instruction in unit.instructions {

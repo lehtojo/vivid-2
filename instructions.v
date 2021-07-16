@@ -277,8 +277,46 @@ Instruction ReturnInstruction {
 		unit.add(instruction)
 	}
 
-	build(recover_registers: List<Register>, local_variables_top: large) {
+	restore_registers_x64(builder: StringBuilder, registers: List<Register>) {
+		# Save all used non-volatile registers
+		loop register in registers {
+			builder.append(instructions.x64.POP)
+			builder.append(` `)
+			builder.append_line(register[SYSTEM_BYTES])
+		}
+	}
+
+	restore_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
+
+	build(recover_registers: List<Register>, local_memory_top: large) {
 		builder = StringBuilder()
+		allocated_local_memory = unit.stack_offset - local_memory_top
+
+		if allocated_local_memory > 0 {
+			stack_pointer = unit.get_stack_pointer()
+
+			if settings.is_x64 {
+				builder.append(instructions.shared.ADD)
+				builder.append(` `)
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', ')
+				builder.append_line(allocated_local_memory)
+			}
+			else {
+				builder.append(instructions.shared.ADD)
+				builder.append(` `)
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', ')
+				builder.append(stack_pointer[SYSTEM_BYTES])
+				builder.append(', #')
+				builder.append_line(allocated_local_memory)
+			}
+		}
+
+		# Restore all used non-volatile registers
+		if settings.is_x64 { restore_registers_x64(builder, recover_registers) }
+		else { restore_registers_arm64(builder, recover_registers) }
+
 		builder.append(instructions.shared.RETURN)
 		Instruction.build(builder.string())
 	}
@@ -815,6 +853,11 @@ Instruction InitializeInstruction {
 		if settings.is_debugging_enabled {
 			builder.append(DEBUG_CANOCICAL_FRAME_ADDRESS_OFFSET)
 			builder.append_line(unit.stack_offset + SYSTEM_BYTES)
+		}
+
+		# If the builder ends with a line ending, remove it
+		if builder.length > 0 and builder[builder.length - 1] == `\n` {
+			builder.remove(builder.length - 1, builder.length)
 		}
 
 		Instruction.build(builder.string())
