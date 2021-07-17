@@ -253,6 +253,7 @@ build(unit: Unit, node: Node) {
 		NODE_NEGATE => build_negate(unit, node as NegateNode)
 		NODE_OPERATOR => build_arithmetic(unit, node as OperatorNode)
 		NODE_RETURN => build_return(unit, node as ReturnNode)
+		NODE_STACK_ADDRESS => AllocateStackInstruction(unit, node as StackAddressNode).add()
 		else => build_childs(unit, node)
 	}
 }

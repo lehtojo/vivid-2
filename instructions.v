@@ -1222,7 +1222,7 @@ Instruction GetObjectPointerInstruction {
 
 	validate_handle() {
 		# Ensure the start value is a constant or in a register
-		if not start.is_constant and not start.is_inline and not start.is_standard_register {
+		if not start.is_constant and not start.is_stack_allocation and not start.is_standard_register {
 			memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
 		}
 	}
@@ -1263,7 +1263,7 @@ Instruction GetMemoryAddressInstruction {
 
 	validate_handle() {
 		# Ensure the start value is a constant or in a register
-		if start.is_constant or start.is_inline or start.is_standard_register return
+		if start.is_constant or start.is_stack_allocation or start.is_standard_register return
 		memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
 	}
 
@@ -1873,5 +1873,22 @@ Instruction ConvertInstruction {
 		instruction.type = MOVE_LOAD
 		instruction.description = String('Loads the specified number into the specified register')
 		unit.add(instruction)
+	}
+}
+
+Instruction AllocateStackInstruction {
+	identity: String
+	bytes: large
+
+	init(unit: Unit, node: StackAddressNode) {
+		Instruction.init(unit, INSTRUCTION_ALLOCATE_STACK)
+		this.identity = node.identity
+		this.bytes = node.bytes
+		this.is_abstract = true
+	}
+
+	override on_build() {
+		result.value = StackAllocationHandle(unit, bytes, identity)
+		result.format = SYSTEM_FORMAT
 	}
 }

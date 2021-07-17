@@ -196,7 +196,7 @@ Result {
 
 	is_stack_variable => value.instance == INSTANCE_STACK_VARIABLE
 	is_data_section_handle => value.instance == INSTANCE_DATA_SECTION or value.instance == INSTANCE_CONSTANT_DATA_SECTION
-	is_inline => value.instance == INSTANCE_INLINE
+	is_stack_allocation => value.instance == INSTANCE_STACK_ALLOCATION
 
 	is_unsigned => is_unsigned(format)
 
@@ -1110,11 +1110,28 @@ get_text_section(implementation: FunctionImplementation) {
 	# Reset the state after this simulation
 	unit.mode = UNIT_MODE_NONE
 
-	non_volatile_registers = get_all_used_non_volatile_registers(unit.instructions)
+	# Collect all instructions, which are not abstract
+	instructions = List<Instruction>()
+
+	loop instruction in unit.instructions {
+		if instruction.is_abstract continue
+		instructions.add(instruction)
+	}
+
+	non_volatile_registers = get_all_used_non_volatile_registers(instructions)
 	local_memory_top = 0
 
+	# Append a return instruction at the end if there is no return instruction present
+	if instructions.size == 0 or instructions[instructions.size - 1].type != INSTRUCTION_RETURN {
+		if settings.is_debugging_enabled and unit.function.metadata.end != none {
+			instructions.add(AddDebugPositionInstruction(unit, unit.function.metadata.end))
+		}
+
+		instructions.add(ReturnInstruction(unit, none as Result, none as Type))
+	}
+
 	# Build all initialization instructions
-	loop instruction in unit.instructions {
+	loop instruction in instructions {
 		if instruction.type != INSTRUCTION_INITIALIZE continue
 		instruction.(InitializeInstruction).build(non_volatile_registers, local_memory_top)
 		local_memory_top = instruction.(InitializeInstruction).local_memory_top
@@ -1124,12 +1141,12 @@ get_text_section(implementation: FunctionImplementation) {
 	non_volatile_registers.reverse()
 
 	# Build all return instructions
-	loop instruction in unit.instructions {
+	loop instruction in instructions {
 		if instruction.type != INSTRUCTION_RETURN continue
 		instruction.(ReturnInstruction).build(non_volatile_registers, local_memory_top)
 	}
 
-	loop instruction in unit.instructions {
+	loop instruction in instructions {
 		instruction.finish()
 	}
 

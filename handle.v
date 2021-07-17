@@ -17,7 +17,7 @@ INSTANCE_STACK_MEMORY = 64
 INSTANCE_TEMPORARY_MEMORY = 128
 INSTANCE_COMPLEX_MEMORY = 256
 INSTANCE_EXPRESSION = 512
-INSTANCE_INLINE = 1024
+INSTANCE_STACK_ALLOCATION = 1024
 INSTANCE_REGISTER = 2048
 INSTANCE_MODIFIER = 4096
 INSTANCE_LOWER_12_BITS = 8192
@@ -214,7 +214,7 @@ Handle MemoryHandle {
 		offset: large = get_absolute_offset()
 
 		# TODO: Support inline handless
-		#if start.is_inline {}
+		#if start.is_stack_allocation {}
 
 		postfix = String('')
 
@@ -241,7 +241,7 @@ Handle MemoryHandle {
 	}
 
 	override get_register_dependent_results() {
-		if start.is_inline => List<Result>()
+		if start.is_stack_allocation => List<Result>()
 
 		all = List<Result>()
 		all.add(start)
@@ -255,7 +255,7 @@ Handle MemoryHandle {
 	}
 
 	override finalize() {
-		if start.is_standard_register or start.is_constant or start.is_inline => MemoryHandle(unit, Result(start.value, start.format), offset)
+		if start.is_standard_register or start.is_constant or start.is_stack_allocation => MemoryHandle(unit, Result(start.value, start.format), offset)
 		abort('Start of the memory handle was in invalid format during finalization')
 	}
 
@@ -614,5 +614,53 @@ Handle ExpressionHandle {
 		if this.multiplier != other.(ExpressionHandle).multiplier => false
 		if not this.addition.value.equals(other.(ExpressionHandle).addition.value) => false
 		=> this.number == other.(ExpressionHandle).number
+	}
+}
+
+Handle StackAllocationHandle {
+	unit: Unit
+	offset: large
+	bytes: large
+	identity: String
+
+	absolute_offset => unit.stack_offset + offset
+
+	init(unit: Unit, bytes: large, identity: String) {
+		this.unit = unit
+		this.offset = 0
+		this.bytes = bytes
+		this.identity = identity
+		this.type = HANDLE_EXPRESSION
+		this.instance = INSTANCE_STACK_ALLOCATION
+	}
+
+	init(unit: Unit, offset: large, bytes: large, identity: String) {
+		this.unit = unit
+		this.offset = offset
+		this.bytes = bytes
+		this.identity = identity
+		this.type = HANDLE_EXPRESSION
+		this.instance = INSTANCE_STACK_ALLOCATION
+	}
+
+	override finalize() {
+		=> StackAllocationHandle(unit, offset, bytes, identity)
+	}
+
+	override string() {
+		stack_pointer = unit.get_stack_pointer()
+		offset: large = absolute_offset
+
+		if not settings.is_x64 => stack_pointer[SYSTEM_BYTES] + ', #' + to_string(offset)
+
+		if offset > 0 => String('[') + stack_pointer[SYSTEM_BYTES] + '+' + to_string(offset) + ']'
+		else offset < 0 => String('[') + stack_pointer[SYSTEM_BYTES] + to_string(offset) + ']'
+
+		=> String('[') + stack_pointer[SYSTEM_BYTES] + ']'
+	}
+
+	override equals(other: Handle) {
+		if this.instance != other.instance => false
+		=> this.format == other.format and this.offset == other.(StackAllocationHandle).offset and this.bytes == other.(StackAllocationHandle).bytes and this.identity == other.(StackAllocationHandle).identity
 	}
 }

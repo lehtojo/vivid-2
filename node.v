@@ -240,7 +240,7 @@ Node {
 		iterator = root.first
 
 		loop (iterator != none) {
-			next = iterator.next
+			next: Node = iterator.next
 			parent.insert(this, iterator)
 			iterator = next
 		}
