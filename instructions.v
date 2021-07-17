@@ -1913,7 +1913,6 @@ Instruction DeclareInstruction {
 		if not registerize {
 			result.value = Handle()
 			return
-
 		}
 
 		media_register = variable.type.get_register_format() == FORMAT_DECIMAL
@@ -1926,5 +1925,16 @@ Instruction DeclareInstruction {
 		if media_register { type = HANDLE_MEDIA_REGISTER }
 
 		build('', 0, InstructionParameter(result, FLAG_DESTINATION, type), InstructionParameter(Result(), FLAG_NONE, HANDLE_NONE))
+	}
+}
+
+# Summary:
+# This instruction does nothing. However, this instruction is used for stopping the debugger.
+# This instruction is works on all architectures
+Instruction DebugBreakInstruction {
+	init(unit: Unit) {
+		Instruction.init(unit, INSTRUCTION_DEBUG_BREAK)
+		this.operation = String(instructions.shared.NOP)
+		this.description = String('Debug break')
 	}
 }

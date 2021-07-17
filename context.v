@@ -24,11 +24,13 @@ Indexer {
 	private hidden_count = 0
 	private stack_count = 0
 	private label_count = 0
+	private identity_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
 	stack => stack_count++
 	label => label_count++
+	identity => identity_count++
 }
 
 Context {

@@ -213,8 +213,10 @@ Handle MemoryHandle {
 		start: Handle = this.start.value
 		offset: large = get_absolute_offset()
 
-		# TODO: Support inline handless
-		#if start.is_stack_allocation {}
+		if start.instance == INSTANCE_STACK_ALLOCATION {
+			start = RegisterHandle(unit.get_stack_pointer())
+			offset += start.(StackAllocationHandle).absolute_offset
+		}
 
 		postfix = String('')
 

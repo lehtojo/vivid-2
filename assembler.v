@@ -723,10 +723,7 @@ Unit {
 				handle = references.create_variable_handle(this, iterator.key)
 
 				# The handle must be a memory handle, otherwise anything can happen
-				if handle.type != HANDLE_MEMORY {
-					# TODO: Temporary release
-					#handle = TemporaryMemoryHandle(this)
-				}
+				if handle.type != HANDLE_MEMORY { handle = TemporaryMemoryHandle(this) }
 
 				destination = Result(handle, iterator.key.type.format)
 
@@ -739,13 +736,12 @@ Unit {
 			}
 		}
 		else {
-			# TODO: Temporary release
-			#destination = Result(TemporaryMemoryHandle(this), value.format)
-			#instruction = MoveInstruction(this, destination, value)
-			#instruction.description = String('Releases the value into local memory')
-			#instruction.type = MOVE_RELOCATE
+			destination = Result(TemporaryMemoryHandle(this), value.format)
+			instruction = MoveInstruction(this, destination, value)
+			instruction.description = String('Releases the value into local memory')
+			instruction.type = MOVE_RELOCATE
 
-			#add(instruction)
+			add(instruction)
 		}
 
 		# Now the register is ready for use
@@ -823,6 +819,10 @@ Unit {
 
 	get_next_label() {
 		=> Label(function.get_fullname() + '_L' + to_string(indexer.label))
+	}
+
+	get_next_identity() {
+		function.identity + '.' + to_string(indexer.identity)
 	}
 
 	get_stack_pointer() {
@@ -1128,6 +1128,23 @@ get_text_section(implementation: FunctionImplementation) {
 		}
 
 		instructions.add(ReturnInstruction(unit, none as Result, none as Type))
+	}
+
+	# If debug information is being generated, append a debug information label at the end
+	if settings.is_debugging_enabled {
+		# TODO: Support debug end labels
+		#end = LabelInstruction(unit, Label(debug.get_end(unit.function).name))
+		#end.on_build()
+
+		#instructions.add(end)
+
+		# Find sequential position instructions and separate them using debug break instructions
+		loop (i = instructions.size - 2, i >= 0, i--) {
+			if instructions[i].type != INSTRUCTION_ADD_DEBUG_POSITION continue
+			if instructions[i + 1].type != INSTRUCTION_ADD_DEBUG_POSITION continue
+
+			instructions.insert(i + 1, DebugBreakInstruction(unit))
+		}
 	}
 
 	# Build all initialization instructions
