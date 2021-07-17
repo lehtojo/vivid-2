@@ -227,6 +227,14 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	=> GetMemoryAddressInstruction(unit, node.format, start, offset, node.stride).add()
 }
 
+build_declaration(unit: Unit, node: DeclareNode) {
+	# Do not declare the variable twice
+	if unit.is_initialized(node.variable) => Result()
+
+	result = DeclareInstruction(unit, node.variable, node.registerize).add()
+	=> SetVariableInstruction(unit, node.variable, result).add()
+}
+
 build_childs(unit: Unit, node: Node) {
 	result = none as Result
 
@@ -242,6 +250,7 @@ build(unit: Unit, node: Node) {
 	=> when(node.instance) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)
+		NODE_DECLARE => build_declaration(unit, node as DeclareNode)
 		NODE_DISABLED => Result()
 		NODE_ELSE => Result()
 		NODE_ELSE_IF => Result()

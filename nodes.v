@@ -33,7 +33,8 @@ NODE_DATA_POINTER = 2147483648
 NODE_STACK_ADDRESS = 4294967296
 NODE_DISABLED = 8589934592
 NODE_LABEL = 17179869184
-NODE_JUMP = 34359738368 # 1 <| 35
+NODE_JUMP = 34359738368
+NODE_DECLARE = 68719476736 # 1 <| 36
 
 Node NumberNode {
 	value: large
@@ -1278,5 +1279,29 @@ Node JumpNode {
 
 	override string() {
 		=> String('Jump ') + label.name
+	}
+}
+
+Node DeclareNode {
+	variable: Variable
+	registerize: bool = true
+
+	init(variable: Variable) {
+		this.variable = variable
+		this.instance = NODE_DECLARE
+	}
+
+	init(variable: Variable, position: Position) {
+		this.variable = variable
+		this.start = position
+		this.instance = NODE_DECLARE
+	}
+
+	override copy() {
+		=> DeclareNode(variable, start)
+	}
+
+	override string() {
+		=> String('Declare ') + variable.name
 	}
 }
