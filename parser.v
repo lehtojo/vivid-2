@@ -303,22 +303,27 @@ parse(environment: Context, token: Token) {
 }
 
 parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
+	position = identifier.position
+
 	if context.is_variable_declared(identifier.value, linked) {
 		variable = context.get_variable(identifier.value)
 
-		if variable.is_member and not linked {
-			self = common.get_self_pointer(context, identifier.position)
+		# Static variables must be accessed using their parent types
+		if variable.is_static and not linked => LinkNode(TypeNode(variable.parent as Type, position), VariableNode(variable, position), position)
 
-			=> LinkNode(self, VariableNode(variable, identifier.position), identifier.position)
+		if variable.is_member and not linked {
+			self = common.get_self_pointer(context, position)
+
+			=> LinkNode(self, VariableNode(variable, position), position)
 		}
 
-		=> VariableNode(variable, identifier.position)
+		=> VariableNode(variable, position)
 	}
 
 	# TODO: Property support
-	if context.is_type_declared(identifier.value, linked) => TypeNode(context.get_type(identifier.value), identifier.position)
+	if context.is_type_declared(identifier.value, linked) => TypeNode(context.get_type(identifier.value), position)
 
-	=> UnresolvedIdentifier(identifier.value, identifier.position)
+	=> UnresolvedIdentifier(identifier.value, position)
 }
 
 # Summary: Tries to find a suitable function for the specified settings

@@ -18,5 +18,9 @@ analyze(bundle: Bundle) {
 }
 
 is_used_later(variable: Variable, node: Node) {
+	=> is_used_later(variable, node, false)
+}
+
+is_used_later(variable: Variable, node: Node, self: bool) {
 	=> true
 }

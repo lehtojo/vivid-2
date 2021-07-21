@@ -96,8 +96,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 
 	if not settings.is_debugging_enabled {
 		# Try to cache loop variables
-		# TODO: Caching
-		#Scope.cache(unit, statement)
+		Scope.cache(unit, statement)
 	}
 
 	# Load constants which might be edited inside the loop
@@ -145,8 +144,7 @@ build(unit: Unit, statement: LoopNode) {
 
 	if not settings.is_debugging_enabled {
 		# Try to cache loop variables
-		# TODO: Caching
-		#Scope.cache(unit, statement)
+		Scope.cache(unit, statement)
 	}
 
 	# Load constants which might be edited inside the loop

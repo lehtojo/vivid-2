@@ -62,9 +62,9 @@ collect(files: List<String>, folder: String, recursive: bool) {
 
 	loop file in result {
 		# Skip files which do not end with the language extension
-		if not file.ends_with(LANGUAGE_FILE_EXTENSION) continue
+		if not file.fullname.ends_with(LANGUAGE_FILE_EXTENSION) continue
 		
-		files.add(file)
+		files.add(file.fullname)
 	}
 }
 

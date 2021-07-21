@@ -219,6 +219,17 @@ Result {
 	}
 }
 
+VariableUsageDescriptor {
+	variable: Variable
+	result: Result
+	usages: large
+
+	init(variable: Variable, usages: large) {
+		this.variable = variable
+		this.usages = usages
+	}
+}
+
 Scope {
 	unit: Unit
 	outer: Scope
@@ -361,6 +372,111 @@ Scope {
 		roots = List<Node>()
 		roots.add(root)
 		=> get_all_active_variables(unit, roots)
+	}
+
+	static get_non_local_variable_usage_descriptors(unit: Unit, root: Node, context: Context) {
+		descriptors = List<VariableUsageDescriptor>()
+		variables: List<Node> = root.find_all(NODE_VARIABLE)
+
+		loop iterator in variables {
+			variable = iterator.(VariableNode).variable
+
+			# 1. Analyze only variables, which are not declared inside the specified context
+			# 2. Analyze only predictable variables
+			if variable.parent.is_inside(context) or not variable.is_predictable continue
+
+			merged = false
+
+			# Try to find an existing descriptor with the same variable and merge them by summing their usage counts
+			loop descriptor in descriptors {
+				if descriptor.variable != variable continue
+				descriptor.usages++
+				merged = true
+				stop
+			}
+
+			if merged continue
+
+			# If the descriptor was not merged, add it to the descriptors
+			descriptors.add(VariableUsageDescriptor(variable, 1))
+		}
+
+		=> descriptors
+	}
+
+	# Summary: Returns information about variable usage in the specified loop
+	static get_all_variable_usages(unit: Unit, roots: List<Node>, contexts: List<Context>) {
+		if roots.size != contexts.size abort('Each root must have a corresponding context')
+
+		result = List<VariableUsageDescriptor>()
+
+		loop (i = 0, i < roots.size, i++) {
+			# Get all non-local variables in the loop and their number of usages
+			descriptors = get_non_local_variable_usage_descriptors(unit, roots[i], contexts[i])
+
+			loop descriptor in descriptors {
+				merged = false
+
+				# Try to find an existing descriptor with the same variable and merge them by summing their usage counts
+				loop other in result {
+					if descriptor.variable != other.variable continue
+					other.usages += descriptor.usages
+					merged = true
+					stop
+				}
+
+				# If the descriptor was not merged, add it to the result
+				if not merged result.add(descriptor)
+			}
+		}
+
+		# Now, take only the variables, which have been initialized
+		loop (i = result.size - 1, i >= 0, i--) {
+			descriptor = result[i]
+			if unit.is_initialized(descriptor.variable) continue
+			result.remove_at(i)
+		}
+
+		# Sort the variables based on their number of usages, most used variables first
+		sort<VariableUsageDescriptor>(result, (a: VariableUsageDescriptor, b: VariableUsageDescriptor) -> b.usages - a.usages)
+
+		=> result
+	}
+
+	# Summary: Tries to move most used variables in the specified loop into registers
+	static cache(unit: Unit, root: LoopNode) {
+		roots = List<Node>(1, false)
+		roots.add(root)
+		contexts = List<Context>(1, false)
+		contexts.add(root.body.context)
+		variables: List<VariableUsageDescriptor> = get_all_variable_usages(unit, roots, contexts)
+
+		# If the the loop contains at least one function, the variables should be cached into non-volatile registers
+		non_volatile_mode = root.find(NODE_CALL | NODE_FUNCTION) != none
+
+		unit.add(CacheVariablesInstruction(unit, roots, variables, non_volatile_mode))
+	}
+
+	# Summary: Tries to move most used variables in the specified roots into registers
+	static cache(unit: Unit, roots: List<Node>, contexts: List<Context>, current: Context) {
+		variables: List<VariableUsageDescriptor> = get_all_variable_usages(unit, roots, contexts)
+
+		# Ensure the variables are declared in the current context or in one of its parents
+		loop (i = variables.size - 1, i >= 0, i--) {
+			if current.is_inside(variables[i].variable.parent) continue
+			variables.remove_at(i)
+		}
+
+		# If the the roots contain at least one function, the variables should be cached into non-volatile registers
+		non_volatile_mode = false
+
+		loop root in roots {
+			if root.find(NODE_CALL | NODE_FUNCTION) == none continue
+			non_volatile_mode = true
+			stop
+		}
+
+		unit.add(CacheVariablesInstruction(unit, roots, variables, non_volatile_mode))
 	}
 
 	init(unit: Unit, root: Node) {

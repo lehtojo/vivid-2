@@ -5,9 +5,9 @@
 			"type": "by-gdb",
 			"request": "launch",
 			"name": "Vivid Debug",
-			"program": "${workspaceRoot}/build/v.exe",
+			"program": "${workspaceRoot}/build/v",
 			"cwd": "${workspaceRoot}",
-			"programArgs": "C:\\Users\\joona\\vivid\\Vivid\\Examples\\Example.v"
+			"programArgs": "${workspaceRoot}/run/Run.v"
 		},
 	]
 }

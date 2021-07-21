@@ -75,7 +75,7 @@ start(unit: Unit, node: IfNode) {
 		contexts.add(branch.(IfNode).body.context)
 	}
 
-	#Scope.cache(unit, branches, contexts, node.get_parent_context())
+	Scope.cache(unit, branches, contexts, node.get_parent_context())
 	Scope.load_constants(unit, node)
 
 	end = LabelInstruction(unit, unit.get_next_label())

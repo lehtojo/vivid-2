@@ -346,7 +346,7 @@ namespace Keywords {
 	readonly STOP: Keyword
 	readonly WHEN: Keyword
 
-	private readonly all: Map<String, Keyword>
+	public readonly all: Map<String, Keyword>
 
 	private add(keyword: Keyword) {
 		all.add(keyword.identifier, keyword)

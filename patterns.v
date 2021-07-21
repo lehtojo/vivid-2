@@ -76,6 +76,9 @@ Pattern AssignPattern {
 		}
 
 		variable = context.get_variable(name)
+		
+		# Static variables must be accessed using their parent types
+		if variable.is_static => LinkNode(TypeNode(variable.parent as Type), VariableNode(variable, destination.position), destination.position)
 
 		if variable.is_member {
 			self = common.get_self_pointer(context, destination.position)
