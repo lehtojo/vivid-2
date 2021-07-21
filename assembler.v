@@ -913,9 +913,31 @@ Unit {
 		=> none as Register
 	}
 
+	# Summary: Tries to find an available register without releasing a register to memory, while excluding the specified registers
+	get_next_register_without_releasing(denylist: List<Register>) {
+		loop register in volatile_standard_registers {
+			if not denylist.contains(register) and register.is_available() => register
+		}
+
+		loop register in non_volatile_standard_registers {
+			if not denylist.contains(register) and register.is_available() => register
+		}
+
+		=> none as Register
+	}
+
 	# Summary: Tries to find an available media register without releasing a register to memory
 	get_next_media_register_without_releasing() {
 		loop register in media_registers { if register.is_available() => register }
+		=> none as Register
+	}
+
+	# Summary: Tries to find an available media register without releasing a register to memory, while excluding the specified registers
+	get_next_media_register_without_releasing(denylist: List<Register>) {
+		loop register in media_registers {
+			if not denylist.contains(register) and register.is_available() => register
+		}
+
 		=> none as Register
 	}
 

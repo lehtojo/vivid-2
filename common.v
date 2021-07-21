@@ -143,7 +143,7 @@ consume_block(from: parser.ParserState, destination: List<Token>) {
 	if from.end >= from.all.size => none as Status
 
 	# Clone the tokens from the specified state
-	tokens = from.all.slice(from.end, from.all.size)
+	tokens = clone(from.all.slice(from.end, from.all.size))
 
 	state = parser.ParserState()
 	state.all = tokens

@@ -233,8 +233,20 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 
 # Summary: Tries to apply the most important directive
 consider(unit: Unit, directive: Directive, media_register: bool) {
-	# TODO: Support directives
-	=> none as Register
+	=> when(directive.type) {
+		DIRECTIVE_NON_VOLATILITY => unit.get_next_non_volatile_register(media_register, false)
+		DIRECTIVE_AVOID_REGISTERS => {
+			register = none as Register
+			denylist = directive.(AvoidRegistersDirective).registers
+
+			if media_register { register = unit.get_next_media_register_without_releasing(denylist) }
+			else { register = unit.get_next_register_without_releasing(denylist) }
+
+			register
+		}
+		DIRECTIVE_SPECIFIC_REGISTER => directive.(SpecificRegisterDirective).register
+		else => abort('Unknown directive type encountered') as Register
+	}
 }
 
 # Summary: Tries to apply the most important directive
