@@ -960,7 +960,7 @@ Unit {
 	}
 
 	get_next_identity() {
-		function.identity + '.' + to_string(indexer.identity)
+		=> function.identity + '.' + to_string(indexer.identity)
 	}
 
 	get_stack_pointer() {

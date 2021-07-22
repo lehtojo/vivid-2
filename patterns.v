@@ -954,18 +954,184 @@ Pattern ExpressionVariablePattern {
 	}
 }
 
+Pattern InheritancePattern {
+	# NOTE: There can not be an optional line break since function import return types can be consumed accidentally for example
+	
+	constant INHERITANT = 0
+	constant TEMPLATE_ARGUMENTS = 1
+	constant INHERITOR = 2
+
+	# Pattern: Pattern: $type [<$1, $2, ..., $n>] $type_definition
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 21
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Remove the consumed identifier, so that a whole type can be consumed
+		state.end--
+		state.tokens.remove_at(0)
+
+		if not common.consume_type(state) => false
+
+		# Require the next token to represent a type definition
+		next = state.peek()
+		if next == none or next.type != TOKEN_TYPE_DYNAMIC => false
+
+		node = next.(DynamicToken).node
+		if node.instance != NODE_TYPE_DEFINITION => false
+
+		state.consume()
+		=> true
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		# Load all inheritant tokens
+		inheritant_tokens = List<Token>(tokens.size - 1, false)
+
+		loop (i = 0, i < tokens.size - 1, i++) {
+			inheritant_tokens.add(tokens[i])
+		}
+
+		inheritor_node = tokens[tokens.size - 1].(DynamicToken).node
+		inheritor = inheritor_node.(TypeNode).type
+
+		###
+		TODO: Support template types
+
+		if inheritor.is_template_type {
+			template_type = inheritor as TemplateType
+
+			# If any of the inherited tokens represent a template parameter, the inheritant tokens must be added to the template type
+			# NOTE: Inherited types, which are not dependent on template parameters, can be added as a supertype directly
+			loop token in inheritant_tokens {
+				# Require the token to be an identifier token
+				if token.type != TOKEN_TYPE_IDENTIFIER continue
+
+				# If the token is a template parameter, add the inheritant tokens into the template type blueprint
+				loop template_parameter in template_type.template_parameters {
+					if not (template_parameter == token.value) continue
+
+					template_type.inherited.insert_range(0, inheritant_tokens)
+					=> inheritor_node
+				}
+			}
+		}
+		###
+
+		inheritant = common.read_type(context, inheritant_tokens)
+
+		if inheritant == none {
+			position = inheritant_tokens[0].position
+			state.error = Status(position, 'Can not resolve the inherited type')
+			=> none as Node
+		}
+
+		if not inheritor.is_inheriting_allowed(inheritant) {
+			position = inheritant_tokens[0].position
+			state.error = Status(position, 'Can not inherit the type since it would have caused a cyclic inheritance')
+			=> none as Node
+		}
+
+		inheritor.supertypes.insert(0, inheritant)
+		=> inheritor_node
+	}
+}
+
+Pattern ModifierSectionPattern {
+	constant MODIFIERS = 0
+	constant COLON = 1
+
+	# Pattern: $modifiers :
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_OPERATOR)
+		priority = 20
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		if tokens[MODIFIERS].(KeywordToken).keyword.type != KEYWORD_TYPE_MODIFIER => false
+		=> tokens[COLON].match(Operators.COLON)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		modifiers = tokens[MODIFIERS].(KeywordToken).keyword.(ModifierKeyword).modifier
+		=> SectionNode(modifiers, tokens[MODIFIERS].position)
+	}
+}
+
+Pattern SectionModificationPattern {
+	constant SECTION = 0
+	constant OBJECT = 2
+
+	# Pattern: $section [\n] $object
+	init() {
+		path.add(TOKEN_TYPE_DYNAMIC)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_DYNAMIC)
+		priority = 0
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Require the first consumed token to represent a modifier section
+		if tokens[SECTION].(DynamicToken).node.instance != NODE_SECTION => false
+
+		# Require the next token to represent a variable, function definition, or type definition
+		target = tokens[OBJECT].(DynamicToken).node
+		type = target.instance
+
+		if type != NODE_TYPE_DEFINITION and type != NODE_FUNCTION_DEFINITION and type != NODE_VARIABLE => false
+
+		# Allow member variable assignments as well
+		if not target.match(Operators.ASSIGN) => false
+
+		# Require the destination operand to be a member variable
+		=> target.first.instance != NODE_VARIABLE and target.first.(VariableNode).variable.is_member
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		# Load the section and target node
+		section = tokens[SECTION].(DynamicToken).node as SectionNode
+		target = tokens[OBJECT].(DynamicToken).node
+
+		if target.instance == NODE_VARIABLE {
+			variable = target.(VariableNode).variable
+			modifiers = variable.modifiers
+			variable.modifiers = combine_modifiers(modifiers, section.modifiers) 
+			section.add(target)
+		}
+		else target.instance == NODE_FUNCTION_DEFINITION {
+			function = target.(FunctionDefinitionNode).function
+			modifiers = function.modifiers
+			function.modifiers = combine_modifiers(modifiers, section.modifiers)
+			section.add(target)
+		}
+		else target.instance == NODE_TYPE_DEFINITION {
+			type = target.(TypeDefinitionNode).type
+			modifiers = type.modifiers
+			type.modifiers = combine_modifiers(modifiers, section.modifiers)
+			section.add(target)
+		}
+		else target.instance == NODE_OPERATOR {
+			variable = target.(OperatorNode).first.(VariableNode).variable
+			modifiers = variable.modifiers
+			variable.modifiers = combine_modifiers(modifiers, section.modifiers)
+			section.add(target)
+		}
+
+		=> section
+	}
+}
+
 # CompilesPattern
 # ExtensionFunctionPattern
 # HasPattern
-# InheritancePattern
 # IsPattern
 # IterationLoopPattern
 # LambdaPattern
-# ModifierSectionPattern
 # NamespacePattern
 # OverrideFunctionPattern
 # RangePattern
-# SectionModificationPattern
 # ShortFunctionPattern
 # SpecificModificationPattern
 # TemplateFunctionCallPattern

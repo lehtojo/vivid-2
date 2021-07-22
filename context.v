@@ -563,6 +563,28 @@ Context Type {
 		=> Optional<large>()
 	}
 
+	is_inheriting_allowed(inheritant: Type) {
+		# Type must not inherit itself
+		if inheritant == this => false
+
+		# The inheritant should not have this type as its supertype
+		inheritant_supertypes = inheritant.get_all_supertypes()
+		if inheritant_supertypes.contains(this) => false
+
+		# Deny the inheritance if supertypes already contain the inheritant or if any supertype would be duplicated
+		inheritor_supertypes = get_all_supertypes()
+		
+		# The inheritor can inherit the same type multiple times
+		if inheritor_supertypes.contains(inheritant) => false
+
+		# Look for conflicts between the supertypes of the inheritor and the inheritant
+		loop supertype in inheritant_supertypes {
+			if inheritor_supertypes.contains(supertype) => false
+		}
+
+		=> true
+	}
+
 	get_register_format() {
 		if format == FORMAT_DECIMAL => FORMAT_DECIMAL
 		=> SYSTEM_FORMAT

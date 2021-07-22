@@ -114,6 +114,7 @@ initialize() {
 	add_pattern(TypePattern())
 	add_pattern(ReturnPattern())
 	add_pattern(IfPattern())
+	add_pattern(InheritancePattern())
 	add_pattern(LinkPattern())
 	add_pattern(ListPattern())
 	add_pattern(SingletonPattern())
@@ -129,6 +130,8 @@ initialize() {
 	add_pattern(PostIncrementPattern())
 	add_pattern(PreIncrementPattern())
 	add_pattern(ExpressionVariablePattern())
+	add_pattern(ModifierSectionPattern())
+	add_pattern(SectionModificationPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position

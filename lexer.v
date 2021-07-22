@@ -322,6 +322,19 @@ Keyword ModifierKeyword {
 	}
 }
 
+# Summary: Returns a bit mask, which is used to determine, which modifiers should be excluded when combining modifiers
+get_modifier_excluder(modifiers: large) {
+	if (modifiers & MODIFIER_PRIVATE) != 0 => MODIFIER_PUBLIC | MODIFIER_PROTECTED
+	if (modifiers & MODIFIER_PROTECTED) != 0 => MODIFIER_PUBLIC | MODIFIER_PRIVATE
+	if (modifiers & MODIFIER_PUBLIC) != 0 => MODIFIER_PRIVATE | MODIFIER_PROTECTED
+	=> 0
+}
+
+# Summary: Adds the specified modifier to the specified modifiers
+combine_modifiers(modifiers: large, modifier: large) {
+	=> (modifiers | modifier) & [!get_modifier_excluder(modifier)]
+}
+
 namespace Keywords {
 	readonly AS: Keyword
 	readonly COMPILES: Keyword

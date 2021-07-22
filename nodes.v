@@ -34,7 +34,8 @@ NODE_STACK_ADDRESS = 4294967296
 NODE_DISABLED = 8589934592
 NODE_LABEL = 17179869184
 NODE_JUMP = 34359738368
-NODE_DECLARE = 68719476736 # 1 <| 36
+NODE_DECLARE = 68719476736
+NODE_SECTION = 137438953472 # 1 <| 36
 
 Node NumberNode {
 	value: large
@@ -1388,5 +1389,19 @@ Node DeclareNode {
 
 	override string() {
 		=> String('Declare ') + variable.name
+	}
+}
+
+Node SectionNode {
+	modifiers: large
+
+	init(modifiers: large, position: Position) {
+		this.modifiers = modifiers
+		this.start = position
+		this.instance = NODE_SECTION
+	}
+
+	override equals(other: Node) {
+		=> modifiers == other.(SectionNode).modifiers
 	}
 }
