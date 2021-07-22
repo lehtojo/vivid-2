@@ -58,6 +58,10 @@ Node NumberNode {
 		=> this
 	}
 
+	override equals(other: Node) {
+		=> value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
+	}
+
 	override try_get_type() {
 		if type == none { type = numbers.get(format) }
 		=> type
@@ -152,6 +156,10 @@ Node OperatorNode {
 		=> resolver.get_shared_type(left_type, right_type)
 	}
 
+	override equals(other: Node) {
+		=> operator == other.(OperatorNode).operator and default_equals(other)
+	}
+
 	override try_get_type() {
 		=> when(operator.type) {
 			OPERATOR_TYPE_CLASSIC => get_classic_type()
@@ -185,6 +193,10 @@ Node ScopeNode {
 		this.end = end
 	}
 
+	override equals(other: Node) {
+		=> context.identity == other.(ScopeNode).context.identity and default_equals(other)
+	}
+
 	override copy() {
 		=> ScopeNode(context, start, end)
 	}
@@ -210,6 +222,10 @@ Node VariableNode {
 		this.start = start
 
 		variable.usages.add(this)
+	}
+
+	override equals(other: Node) {
+		=> variable == other.(VariableNode).variable
 	}
 
 	override try_get_type() {
@@ -319,6 +335,10 @@ Node UnresolvedIdentifier {
 	private try_resolve_as_function_pointer(context: Context) {
 		# TODO: Function pointers
 		=> none as Node
+	}
+
+	override equals(other: Node) {
+		=> value == other.(UnresolvedIdentifier).value
 	}
 
 	override resolve(context: Context) {
@@ -443,6 +463,10 @@ Node UnresolvedFunction {
 		=> node
 	}
 
+	override equals(other: Node) {
+		=> name == other.(UnresolvedFunction).name and default_equals(other)
+	}
+
 	override resolve(context: Context) {
 		=> resolve(context, context)
 	}
@@ -468,6 +492,10 @@ Node TypeNode {
 		this.instance = NODE_TYPE
 		this.type = type
 		this.start = position
+	}
+
+	override equals(other: Node) {
+		=> type == other.(TypeNode).type
 	}
 
 	override try_get_type() {
@@ -506,6 +534,10 @@ Node TypeDefinitionNode {
 		blueprint.clear()
 	}
 
+	override equals(other: Node) {
+		=> type == other.(TypeDefinitionNode).type
+	}
+
 	override copy() {
 		=> TypeDefinitionNode(type, blueprint, start)
 	}
@@ -522,6 +554,10 @@ Node FunctionDefinitionNode {
 		this.instance = NODE_FUNCTION_DEFINITION
 		this.function = function
 		this.start = position
+	}
+
+	override equals(other: Node) {
+		=> function == other.(FunctionDefinitionNode).function
 	}
 
 	override copy() {
@@ -548,6 +584,10 @@ Node StringNode {
 		this.identifier = identifier
 		this.start = position
 		this.instance = NODE_STRING
+	}
+
+	override equals(other: Node) {
+		=> text == other.(StringNode).text
 	}
 
 	override try_get_type() {
@@ -577,6 +617,10 @@ Node FunctionNode {
 	set_arguments(arguments: Node) {
 		loop argument in arguments { add(argument) }
 		=> this
+	}
+
+	override equals(other: Node) {
+		=> function == other.(FunctionNode).function and default_equals(other)
 	}
 
 	override try_get_type() {
@@ -906,6 +950,10 @@ Node CommandNode {
 		=> result
 	}
 
+	override equals(other: Node) {
+		=> instruction == other.(CommandNode).instruction
+	}
+
 	override copy() {
 		=> CommandNode(instruction, start, finished)
 	}
@@ -999,6 +1047,10 @@ Node IncrementNode {
 		this.post = post
 	}
 
+	override equals(other: Node) {
+		=> post == other.(IncrementNode).post and default_equals(other)
+	}
+
 	override try_get_type() {
 		=> first.try_get_type()
 	}
@@ -1027,6 +1079,10 @@ Node DecrementNode {
 		this.instance = NODE_DECREMENT
 		this.start = position
 		this.post = post
+	}
+
+	override equals(other: Node) {
+		=> post == other.(DecrementNode).post and default_equals(other)
 	}
 
 	override try_get_type() {
@@ -1148,6 +1204,10 @@ Node InlineNode {
 		this.instance = NODE_INLINE
 	}
 
+	override equals(other: Node) {
+		=> is_context == other.(InlineNode).is_context and default_equals(other)
+	}
+
 	override try_get_type() {
 		if last == none => none as Type
 		=> last.try_get_type()
@@ -1168,9 +1228,14 @@ InlineNode ContextInlineNode {
 	init(context: Context, position: Position) {
 		InlineNode.init(position)
 		this.start = position
-		this.instance = NODE_CONTEXT_INLINE
+		this.instance = NODE_INLINE
 		this.context = context
 		this.is_context = true
+	}
+
+	override equals(other: Node) {
+		if is_context != other.(InlineNode).is_context or context.identity != other.(ContextInlineNode).context.identity => false
+		=> default_equals(other)
 	}
 
 	override copy() {
@@ -1193,6 +1258,10 @@ Node DataPointerNode {
 		this.instance = NODE_DATA_POINTER
 		this.start = position
 		this.type = Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
+	}
+
+	override equals(other: Node) {
+		=> data == other.(DataPointerNode).data and offset == other.(DataPointerNode).offset and type == other.(DataPointerNode).type
 	}
 
 	override try_get_type() {
@@ -1227,6 +1296,10 @@ Node StackAddressNode {
 		this.start = position
 	}
 
+	override equals(other: Node) {
+		=> type == other.(DataPointerNode).type
+	}
+
 	override try_get_type() {
 		=> type
 	}
@@ -1247,6 +1320,10 @@ Node LabelNode {
 		this.label = label
 		this.start = position
 		this.instance = NODE_LABEL
+	}
+
+	override equals(other: Node) {
+		=> label == other.(LabelNode).label
 	}
 
 	override copy() {
@@ -1273,6 +1350,10 @@ Node JumpNode {
 		this.is_conditional = is_conditional
 	}
 
+	override equals(other: Node) {
+		=> label == other.(JumpNode).label and is_conditional == other.(JumpNode).is_conditional
+	}
+
 	override copy() {
 		=> JumpNode(label, is_conditional)
 	}
@@ -1295,6 +1376,10 @@ Node DeclareNode {
 		this.variable = variable
 		this.start = position
 		this.instance = NODE_DECLARE
+	}
+
+	override equals(other: Node) {
+		=> variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
 	}
 
 	override copy() {

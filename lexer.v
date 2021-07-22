@@ -190,6 +190,11 @@ namespace Operators {
 		}
 	}
 
+	get_assignment_operator(operator: Operator) {
+		if assignment_operators.contains_key(operator.identifier) => assignment_operators[operator.identifier]
+		=> none as Operator
+	}
+
 	initialize() {
 		COLON = IndependentOperator(String(':'))
 		POWER = ClassicOperator(String('^'), 15, true)

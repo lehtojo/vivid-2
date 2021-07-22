@@ -11,7 +11,8 @@ analyze(bundle: Bundle) {
 		implementation = implementations[i]
 		if implementation.metadata.is_imported continue
 
-		reconstruction.reconstruct(implementation, implementation.node)
+		reconstruction.start(implementation, implementation.node)
+		reconstruction.end(implementation.node)
 	}
 
 	#resolver.debug_print(context)

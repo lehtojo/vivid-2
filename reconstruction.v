@@ -51,7 +51,7 @@ strip_links(root: Node) {
 			if right.(VariableNode).variable.is_member and not right.(VariableNode).variable.is_static continue
 		}
 		else right.match(NODE_FUNCTION) {
-			if right.(FunctionNode).function.is_member and not right.(VariableNode).variable.is_static continue
+			if right.(FunctionNode).function.is_member and not right.(FunctionNode).function.is_static continue
 		}
 		else not right.match(NODE_CONSTRUCTION) continue
 
@@ -588,7 +588,39 @@ remove_redundant_inline_nodes(root: Node) {
 	}
 }
 
-reconstruct(implementation: FunctionImplementation, root: Node) {
+# Summary:
+# Tries to find assign operations which can be written as action operations
+# Examples: 
+# i = i + 1 => i += 1
+# x = 2 * x => x *= 2
+# this.a = this.a % 2 => this.a %= 2
+construct_assignment_operators(root: Node) {
+	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
+
+	loop assignment in assignments {
+		if assignment.last.instance != NODE_OPERATOR continue
+
+		expression = assignment.last as OperatorNode
+		value = none as Node
+
+		# Ensure either the left or the right operand is the same as the destination of the assignment
+		if expression.first.equals(assignment.first) {
+			value = expression.last
+		}
+		else expression.last.equals(assignment.first) and expression.operator != Operators.DIVIDE and expression.operator != Operators.MODULUS and expression.operator != Operators.SUBTRACT {
+			value = expression.first
+		}
+
+		if value == none continue
+
+		operator = Operators.get_assignment_operator(expression.operator)
+		if operator == none continue
+
+		assignment.replace(OperatorNode(operator, assignment.start).set_operands(assignment.first, value))
+	}
+}
+
+start(implementation: FunctionImplementation, root: Node) {
 	strip_links(root)
 	remove_redundant_parentheses(root)
 	rewrite_discarded_increments(root)
@@ -596,5 +628,10 @@ reconstruct(implementation: FunctionImplementation, root: Node) {
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
+	remove_redundant_inline_nodes(root)
+}
+
+end(root: Node) {
+	construct_assignment_operators(root)
 	remove_redundant_inline_nodes(root)
 }
