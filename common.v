@@ -250,6 +250,26 @@ get_all_types(context: Context) {
 	=> result
 }
 
+# Summary:
+# Collects all functions from the specified context and its subcontexts.
+# NOTE: This function does not return lambda functions.
+get_all_visible_functions(context: Context) {
+	# Collect all functions, constructors, destructors and virtual functions
+	functions = List<Function>()
+
+	loop type in get_all_types(context) {
+		loop a in type.functions { functions.add_range(a.value.overloads) }
+		loop b in type.virtuals { functions.add_range(b.value.overloads) }
+		loop c in type.overrides { functions.add_range(c.value.overloads) }
+		loop d in context.functions { functions.add_range(d.value.overloads) }
+
+		functions.add_range(type.constructors.overloads)
+		functions.add_range(type.destructors.overloads)
+	}
+	
+	=> functions
+}
+
 # Summary: Collects all function implementations from the specified context
 get_all_function_implementations(context: Context) {
 	# Collect all functions, constructors, destructors and virtual functions

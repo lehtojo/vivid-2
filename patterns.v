@@ -1123,13 +1123,169 @@ Pattern SectionModificationPattern {
 	}
 }
 
+Pattern NamespacePattern {
+	# Pattern: $1.$2. ... .$n [\n] [{...}]
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 23
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Require the first token to be a namespace keyword
+		if tokens[0].(KeywordToken).keyword != Keywords.NAMESPACE => false
+
+		loop {
+			# Continue if the next operator is a dot
+			next = state.peek()
+			if next == none or not next.match(Operators.DOT) stop
+
+			# Consume the dot operator
+			state.consume()
+
+			# The next token must be an identifier
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+		}
+
+		# Optionally consume a line ending
+		state.consume_optional(TOKEN_TYPE_END)
+
+		# Optionally consume curly brackets
+		state.consume_optional(TOKEN_TYPE_PARENTHESIS)
+
+		tokens = state.tokens
+		last = tokens[tokens.size - 1]
+		=> last.type == TOKEN_TYPE_NONE or last.match(`{`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		# Save the end index of the name
+		end = tokens.size - 2
+
+		# Collect all the parent types and ensure they all are namespaces
+		types = context.get_parent_types()
+
+		loop type in types {
+			if type.is_static continue
+			state.error = Status(tokens[0].position, 'Can not create a namespace inside a normal type')
+			=> none as Node
+		}
+
+		blueprint = none as List<Token>
+
+		if tokens[tokens.size - 1].type == TOKEN_TYPE_NONE {
+			# Collect all tokens after the name
+			blueprint = List<Token>()
+
+			loop (i = state.end, i < state.all.size, i++) {
+				blueprint.add(state.all[i])
+			}
+
+			state.tokens.add_range(blueprint)
+			state.end += blueprint.size
+		}
+		else {
+			# Get the blueprint from the the curly brackets
+			blueprint = tokens[tokens.size - 1].(ParenthesisToken).tokens
+		}
+
+		# Create the namespace node
+		name = tokens.slice(1, end)
+		=> NamespaceNode(name, blueprint)
+	}
+}
+
+Pattern IterationLoopPattern {
+	constant LOOP = 0
+	constant ITERATOR = 1
+	constant IN = 2
+	constant ITERATED = 3
+	constant BODY = 5
+
+	constant ITERATOR_FUNCTION = 'iterator'
+	constant NEXT_FUNCTION = 'next'
+	constant VALUE_FUNCTION = 'value'
+
+	# Pattern: loop $name in $object [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_OBJECT)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 2
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[LOOP].match(Keywords.LOOP) and tokens[IN].match(Keywords.IN) and tokens[BODY].match(`{`)
+	}
+
+	get_iterator(context: Context, tokens: List<Token>) {
+		identifier = tokens[ITERATOR].(IdentifierToken).value
+		iterator = context.declare(none as Type, VARIABLE_CATEGORY_LOCAL, identifier)
+		iterator.position = tokens[ITERATOR].position
+		=> iterator
+	}
+
+	override build(environment: Context, state: ParserState, tokens: List<Token>) {
+		position = tokens[ITERATOR].position
+
+		iterator = environment.declare_hidden(none as Type)
+		iterator.position = position
+
+		iterated = parser.parse(environment, tokens[ITERATED])
+
+		# The iterator is created by calling the iterator function and using its result
+		initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(iterator, position),
+			LinkNode(iterated, UnresolvedFunction(String(ITERATOR_FUNCTION), position), position)
+		)
+
+		# The condition calls the next function, which returns whether a new element was loaded
+		condition = LinkNode(VariableNode(iterator, position), UnresolvedFunction(String(NEXT_FUNCTION), position), position)
+
+		steps_context = Context(environment, NORMAL_CONTEXT)
+		body_context = Context(steps_context, NORMAL_CONTEXT)
+
+		value = get_iterator(steps_context, tokens)
+
+		# Loads the new value into the value variable
+		load = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(value, position),
+			LinkNode(VariableNode(iterator, position), UnresolvedFunction(String(VALUE_FUNCTION), position), position)
+		)
+
+		# Create the loop steps
+		steps = Node()
+		
+		container = Node()
+		container.add(initialization)
+		steps.add(container)
+
+		container = Node()
+		container.add(condition)
+		steps.add(container)
+
+		steps.add(Node())
+
+		# Create the loop body
+		token = tokens[BODY] as ParenthesisToken
+		body = ScopeNode(body_context, token.position, token.end)
+		body.add(load)
+
+		result = parser.parse(body_context, token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+		loop child in result { body.add(child) }
+
+		=> LoopNode(steps_context, steps, body, tokens[LOOP].position)
+	}
+}
+
 # CompilesPattern
 # ExtensionFunctionPattern
 # HasPattern
 # IsPattern
-# IterationLoopPattern
 # LambdaPattern
-# NamespacePattern
 # OverrideFunctionPattern
 # RangePattern
 # ShortFunctionPattern

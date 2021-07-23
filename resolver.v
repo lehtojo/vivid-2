@@ -329,6 +329,8 @@ resolve(bundle: Bundle) {
 	loop {
 		previous = current
 
+		parser.implement_functions(context, none as SourceFile, false)
+
 		# Try to resolve problems in the node tree and get the status after that
 		resolve_context(context)
 		current = get_report(context, parse.root)

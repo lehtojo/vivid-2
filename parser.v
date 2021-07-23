@@ -132,6 +132,8 @@ initialize() {
 	add_pattern(ExpressionVariablePattern())
 	add_pattern(ModifierSectionPattern())
 	add_pattern(SectionModificationPattern())
+	add_pattern(NamespacePattern())
+	add_pattern(IterationLoopPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -261,8 +263,39 @@ apply_extension_functions(context: Context, root: Node) {
 
 }
 
-implement_functions(context: Context, file: SourceFile) {
+implement_functions(context: Context, file: SourceFile, all: bool) {
+	loop function in common.get_all_visible_functions(context) {
+		# If the file filter is specified, skip all functions which are not defined inside that file
+		if file != none and function.start != none and function.start.file != file continue
 
+		# Skip all functions which are not exported
+		if not all and not function.is_exported continue
+
+		# Template functions can not be implemented
+		if function.is_template_function continue
+
+		# Retrieve the parameter types:
+		# If any of the parameters has an undefined type, the function can not be implemented
+		types = List<Type>()
+
+		loop parameter in function.parameters {
+			type = parameter.type
+
+			if type == none or type.is_unresolved {
+				types = none as List<Type>
+				stop
+			}
+
+			types.add(type)
+		}
+
+		if types == none continue
+
+		# Force implement the current exported function
+		function.get(types)
+	}
+
+	# TODO: Virtual functions
 }
 
 parse(bundle: Bundle) {
@@ -289,6 +322,12 @@ parse(bundle: Bundle) {
 		context.merge(file.context)
 		root.merge(file.root)
 	}
+
+	# Parse all namespaces
+	loop node in root.find_all(NODE_NAMESPACE) { node.(NamespaceNode).parse(context) }
+
+	# Ensure exported and virtual functions are implemented
+	implement_functions(context, none as SourceFile, false)
 
 	if bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE) != BINARY_TYPE_STATIC_LIBRARY {
 		function = context.get_function(String('init'))

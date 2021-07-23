@@ -171,6 +171,19 @@ Context {
 		=> none as Type
 	}
 
+	# Summary: Returns all parent contexts, which represent types
+	get_parent_types() {
+		result = List<Type>()
+		iterator = parent
+
+		loop (iterator != none) {
+			if iterator.is_type result.add(iterator as Type)
+			iterator = iterator.parent 
+		}
+
+		=> result
+	}
+
 	# Summary: Returns whether the specified context is this context or one of the parent contexts
 	is_inside(context: Context) {
 		=> context == this or [parent != none and parent.is_inside(context)]

@@ -35,7 +35,8 @@ NODE_DISABLED = 8589934592
 NODE_LABEL = 17179869184
 NODE_JUMP = 34359738368
 NODE_DECLARE = 68719476736
-NODE_SECTION = 137438953472 # 1 <| 36
+NODE_SECTION = 137438953472
+NODE_NAMESPACE = 274877906944 # 1 <| 37
 
 Node NumberNode {
 	value: large
@@ -1403,5 +1404,62 @@ Node SectionNode {
 
 	override equals(other: Node) {
 		=> modifiers == other.(SectionNode).modifiers
+	}
+}
+
+Node NamespaceNode {
+	name: List<Token>
+	blueprint: List<Token>
+
+	init(name: List<Token>, blueprint: List<Token>) {
+		this.name = name
+		this.blueprint = blueprint
+		this.instance = NODE_NAMESPACE
+	}
+
+	# Summary:
+	# Defines the actual namespace from the stored tokens.
+	# This does not create the body of the namespace.
+	create_namespace(context: Context) {
+		position = this.name[0].position
+
+		loop (i = 0, i < name.size, i += 2) {
+			if this.name[i].type != TOKEN_TYPE_IDENTIFIER abort('Invalid namespace tokens')
+
+			name: String = this.name[i].(IdentifierToken).value
+			type = context.get_type(name)
+
+			context = type
+			if context == none { context = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position) }
+		}
+
+		=> context as Type
+	}
+
+	parse(context: Context) {
+		# Define the actual namespace
+		result = create_namespace(context)
+
+		# Create the body of the namespace
+		parser.parse(this, result, List<Token>(blueprint))
+
+		# Apply the static modifier to the parsed functions and variables
+		loop function in result.functions {
+			loop overload in function.value.overloads {
+				overload.modifiers = overload.modifiers | MODIFIER_STATIC
+			}
+		}
+
+		loop variable in result.variables {
+			variable.value.modifiers = variable.value.modifiers | MODIFIER_STATIC
+		}
+
+		# Parse all the subtypes
+		types = find_all(NODE_TYPE_DEFINITION)
+		loop iterator in types { iterator.(TypeDefinitionNode).parse() }
+
+		# Parse all subnamespaces
+		subnamespaces = find_all(NODE_NAMESPACE)
+		loop subnamespace in subnamespaces { subnamespace.(NamespaceNode).parse(result) }
 	}
 }
