@@ -216,7 +216,12 @@ copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 # Summary: Moves the specified result to a register considering the specified hints
 move_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
 	# Prevents redundant moving to registers
-	if result.value.instance == INSTANCE_REGISTER => result
+	if media_register {
+		if result.value.type == HANDLE_MEDIA_REGISTER => result
+	}
+	else {
+		if result.value.type == HANDLE_REGISTER => result
+	}
 
 	format = FORMAT_DECIMAL
 	if not media_register { format = to_format(size) }
@@ -371,7 +376,7 @@ try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool,
 	else type == HANDLE_MEMORY {
 		if settings.is_x64 and not result.is_data_section_handle => none as Result
 
-		# TODO: Support data section handles on arm64
+		# TODO: Support data section handles on Arm64
 		=> none as Result
 	}
 	else type == HANDLE_NONE {

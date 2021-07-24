@@ -87,7 +87,6 @@ start(unit: Unit, node: IfNode) {
 
 build_condition(unit: Unit, condition: Node, failure: Label, active_variables: List<Variable>) {
 	# Load constants which might be edited inside the condition
-	# TODO: Support all constant loads
 	Scope.load_constants(unit, condition, List<Context>())
 
 	success = unit.get_next_label()

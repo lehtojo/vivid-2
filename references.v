@@ -8,7 +8,6 @@ create_constant_number(value: large, format: large) {
 }
 
 create_variable_handle(unit: Unit, variable: Variable) {
-	handle = none as Handle
 	category = variable.category
 
 	if category == VARIABLE_CATEGORY_PARAMETER => StackVariableHandle(unit, variable)
@@ -17,12 +16,12 @@ create_variable_handle(unit: Unit, variable: Variable) {
 		=> StackVariableHandle(unit, variable)
 	}
 	else category == VARIABLE_CATEGORY_MEMBER {
-		abort('Can not create member variables here')
-		=> none as Handle
+		=> abort('Can not create member variables here') as Handle
 	}
 	else category == VARIABLE_CATEGORY_GLOBAL {
-		# TODO: Support global variables
-		=> none as Handle
+		handle = DataSectionHandle(variable.get_static_name(), false)
+		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		=> handle
 	}
 
 	abort('Unsupported variable category')

@@ -517,7 +517,7 @@ DualParameterInstruction MoveInstruction {
 			if not settings.is_x64 => build_decimal_constant_move_x64(flags_first, flags_second)
 
 			# Move the source value into the data section so that it can be loaded into a media register
-			# second.value = ConstantDataSectionHandle(second.value as ConstantHandle)
+			second.value = ConstantDataSectionHandle(second.value as ConstantHandle)
 		}
 
 		if first.is_memory_address {
@@ -941,8 +941,12 @@ Instruction CallInstruction {
 
 	init(unit: Unit, function: String, return_type: Type) {
 		Instruction.init(unit, INSTRUCTION_CALL)
+		
+		# Support position independent code
+		handle = DataSectionHandle(function, true)
+		if settings.is_position_independent { handle.modifier = DATA_SECTION_PROCEDURE_LINKAGE_TABLE }
 
-		this.function = Result(DataSectionHandle(function, true), SYSTEM_FORMAT)
+		this.function = Result(handle, SYSTEM_FORMAT)
 		this.return_type = return_type
 		this.dependencies.add(this.function)
 		this.description = String('Calls function ') + function
@@ -1429,7 +1433,10 @@ DualParameterInstruction CompareInstruction {
 
 	on_build_x64() {
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
-			return
+			=> build(instructions.x64.DOUBLE_PRECISION_COMPARE, 0,
+				InstructionParameter(first, FLAG_NONE, HANDLE_MEDIA_REGISTER),
+				InstructionParameter(second, FLAG_NONE, HANDLE_MEDIA_REGISTER)
+			)
 		}
 
 		if settings.is_x64 and second.is_constant and second.value.(ConstantHandle).value == 0 {

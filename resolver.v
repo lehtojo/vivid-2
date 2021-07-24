@@ -168,8 +168,6 @@ resolve_context(context: Context) {
 	# Resolve all implementation variables and node trees
 	loop implementation in implementations {
 		if implementation.node == none or implementation.metadata.is_imported continue
-		# TODO: Remove
-		name = implementation.metadata.name
 		resolve_return_type(implementation)
 		resolve_variables(implementation)
 		resolve_tree(implementation, implementation.node)
@@ -222,8 +220,6 @@ get_type_report(type: Type) {
 
 get_function_report(implementation: FunctionImplementation) {
 	errors = List<Status>()
-		# TODO: Remove
-	name = implementation.metadata.name
 
 	loop variable in implementation.locals {
 		if variable.is_resolved continue

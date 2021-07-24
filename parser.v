@@ -152,6 +152,7 @@ initialize() {
 	add_pattern(IterationLoopPattern())
 	add_pattern(TemplateFunctionPattern())
 	add_pattern(TemplateFunctionCallPattern())
+	add_pattern(TemplateTypePattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -403,7 +404,8 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 			loop template_argument in template_arguments { if template_argument.is_unresolved => none as FunctionImplementation }
 
 			if type.is_template_type {
-				abort('Template types are not supported yet')
+				# Since the function name refers to a type, the constructors of the type should be explored next
+				functions = type.(TemplateType).get_variant(template_arguments).constructors
 			}
 			else => none as FunctionImplementation
 		}

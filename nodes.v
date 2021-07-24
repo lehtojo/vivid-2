@@ -60,6 +60,12 @@ Node NumberNode {
 		=> this
 	}
 
+	convert(format: large) {
+		if format == FORMAT_DECIMAL { this.value = decimal_to_bits(value as decimal) }
+		else { this.value = bits_to_decimal(value) }
+		this.format = format
+	}
+
 	override equals(other: Node) {
 		=> value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
 	}

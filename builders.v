@@ -175,10 +175,11 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 
 build_return(unit: Unit, node: ReturnNode) {
 	if node.value != none {
+		value = references.get(unit, node.value, ACCESS_READ)
+
 		from = node.value.get_type()
 		to = unit.function.return_type
-		# TODO: Support casting
-		value = references.get(unit, node.value, ACCESS_READ)
+		value = casts.cast(unit, value, from, to)
 
 		=> ReturnInstruction(unit, value, unit.function.return_type).add()
 	}

@@ -620,11 +620,39 @@ construct_assignment_operators(root: Node) {
 	}
 }
 
+# Summary:
+# Finds assignments which have implicit casts and adds them
+add_assignment_casts(root: Node) {
+	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
+
+	loop assignment in assignments {
+		to = assignment.first.get_type()
+		from = assignment.last.get_type()
+
+		# Skip assignments which do not cast the value
+		if to == from continue
+
+		# If the right operand is a number and it is converted into different kind of number, it can be done without a cast node
+		if assignment.last.instance == NODE_NUMBER and from.is_number and to.is_number {
+			assignment.last.(NumberNode).convert(to.format)
+			continue
+		}
+
+		# Remove the right operand from the assignment
+		value = assignment.last
+		value.remove()
+
+		# Now cast the right operand and add it back
+		assignment.add(CastNode(value, TypeNode(to, value.start), value.start))
+	}
+}
+
 start(implementation: FunctionImplementation, root: Node) {
 	strip_links(root)
 	remove_redundant_parentheses(root)
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
+	add_assignment_casts(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)

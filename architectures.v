@@ -18,6 +18,7 @@ namespace x64 {
 	constant DOUBLE_PRECISION_SUBTRACT = 'subsd'
 	constant DOUBLE_PRECISION_MULTIPLY = 'mulsd'
 	constant DOUBLE_PRECISION_DIVIDE = 'divsd'
+	constant DOUBLE_PRECISION_COMPARE = 'comisd'
 
 	constant NOT = 'not'
 	constant OR = 'or'

@@ -345,15 +345,22 @@ StackMemoryHandle TemporaryMemoryHandle {
 	}
 }
 
+DATA_SECTION_MODIFIER_NONE = 0
+DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE = 1
+DATA_SECTION_PROCEDURE_LINKAGE_TABLE = 2
+
 Handle DataSectionHandle {
-	constant GLOBAL_OFFSET_TABLE_PREFIX = ':got:'
+	constant X64_GLOBAL_OFFSET_TABLE = '@GOTPCREL'
+	constant X64_PROCEDURE_LINKAGE_TABLE = '@PLT'
+
+	constant ARM64_GLOBAL_OFFSET_TABLE_PREFIX = ':got:'
 
 	identifier: String
 	offset: large
 
 	# Address means whether to use the value of the address or not
 	address: bool = false
-	global_offset_table: bool = false
+	modifier: large = DATA_SECTION_MODIFIER_NONE
 
 	init(identifier: String, address: bool) {
 		Handle.init(HANDLE_MEMORY, INSTANCE_DATA_SECTION)
@@ -361,19 +368,44 @@ Handle DataSectionHandle {
 		this.address = address
 	}
 
-	init(identifier: String, offset: large, address: bool, global_offset_table: bool) {
+	init(identifier: String, offset: large, address: bool, modifier: large) {
 		Handle.init(HANDLE_MEMORY, INSTANCE_DATA_SECTION)
 		this.identifier = identifier
 		this.offset = offset
 		this.address = address
-		this.global_offset_table = global_offset_table
+		this.modifier = modifier
 	}
 
 	override string() {
 		# If the value of the address is only required, return it
 		if address {
-			if settings.is_x64 or not global_offset_table => identifier
-			=> String(GLOBAL_OFFSET_TABLE_PREFIX) + identifier
+			if settings.is_x64 {
+				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String.empty
+				if modifier == DATA_SECTION_PROCEDURE_LINKAGE_TABLE => identifier + X64_PROCEDURE_LINKAGE_TABLE
+			}
+			else {
+				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String(ARM64_GLOBAL_OFFSET_TABLE_PREFIX) + identifier
+			}
+
+			=> identifier
+		}
+
+		# When building for Arm64, the code below should not execute
+		if not settings.is_x64 => String.empty
+
+		# If a modifier is attached, the offset is taken into account elsewhere
+		if modifier != DATA_SECTION_MODIFIER_NONE {
+			if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE {
+				if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+				=> String('[rip+') + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+			}
+
+			if modifier == DATA_SECTION_PROCEDURE_LINKAGE_TABLE {
+				if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+				=> String('[rip+') + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+			}
+
+			=> String.empty
 		}
 
 		# Apply the offset if it is not zero
@@ -391,11 +423,55 @@ Handle DataSectionHandle {
 	}
 
 	override finalize() {
-		=> DataSectionHandle(identifier, offset, address, global_offset_table)
+		=> DataSectionHandle(identifier, offset, address, modifier)
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.global_offset_table == other.(DataSectionHandle).global_offset_table
+		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.modifier == other.(DataSectionHandle).modifier
+	}
+}
+
+CONSTANT_TYPE_INTEGER = 0
+CONSTANT_TYPE_DECIMAL = 1
+CONSTANT_TYPE_BYTES = 2
+
+DataSectionHandle ConstantDataSectionHandle {
+	value: large
+	value_type: large
+
+	init(handle: ConstantHandle) {
+		DataSectionHandle.init(handle.string(), false)
+
+		this.value = handle.value
+		this.instance = INSTANCE_CONSTANT_DATA_SECTION
+
+		if handle.format == FORMAT_DECIMAL { value_type = CONSTANT_TYPE_DECIMAL }
+		else { value_type = CONSTANT_TYPE_INTEGER }
+	}
+
+	init(bytes: Array<byte>) {
+		values = List<String>()
+		loop value in bytes { values.add(to_string(value)) }
+
+		DataSectionHandle.init(String('{ ') + String.join(', ', values) + ' }')
+
+		this.value = bytes as large
+		this.instance = INSTANCE_CONSTANT_DATA_SECTION
+		this.value_type = CONSTANT_TYPE_BYTES
+	}
+	
+	init(value: large, value_type: large) {
+		this.value = value
+		this.value_type = value_type
+		this.instance = INSTANCE_CONSTANT_DATA_SECTION
+	}
+
+	override copy() {
+		=> ConstantDataSectionHandle(value, value_type)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
 	}
 }
 

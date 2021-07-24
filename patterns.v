@@ -385,7 +385,8 @@ Pattern LinkPattern {
 		if not tokens[OPERATOR].match(Operators.DOT) => false
 		# Try to consume template arguments
 		if tokens[RIGHT].match(TOKEN_TYPE_IDENTIFIER) {
-			# TODO: Support template arguments
+			backup = state.save()
+			if not common.consume_template_function_call(state) state.restore(backup)
 		}
 
 		=> true
@@ -850,7 +851,7 @@ Pattern ConstructorPattern {
 
 		# Ensure the function matches either a constructor or a destructor
 		descriptor = tokens[HEADER] as FunctionToken
-		if descriptor.name != Keywords.INIT.identifier and descriptor.name != Keywords.DEINIT.identifier => false
+		if not (descriptor.name == Keywords.INIT.identifier) and not (descriptor.name == Keywords.DEINIT.identifier) => false
 
 		# Optionally consume a line ending
 		state.consume_optional(TOKEN_TYPE_END)
@@ -996,9 +997,6 @@ Pattern InheritancePattern {
 		inheritor_node = tokens[tokens.size - 1].(DynamicToken).node
 		inheritor = inheritor_node.(TypeNode).type
 
-		###
-		TODO: Support template types
-
 		if inheritor.is_template_type {
 			template_type = inheritor as TemplateType
 
@@ -1010,14 +1008,13 @@ Pattern InheritancePattern {
 
 				# If the token is a template parameter, add the inheritant tokens into the template type blueprint
 				loop template_parameter in template_type.template_parameters {
-					if not (template_parameter == token.value) continue
+					if not (template_parameter == token.(IdentifierToken).value) continue
 
 					template_type.inherited.insert_range(0, inheritant_tokens)
 					=> inheritor_node
 				}
 			}
 		}
-		###
 
 		inheritant = common.read_type(context, inheritant_tokens)
 
@@ -1327,7 +1324,7 @@ Pattern TemplateFunctionPattern {
 		# Optionally consume a line ending
 		state.consume_optional(TOKEN_TYPE_END)
 
-		# Try to consume curl brackets
+		# Try to consume curly brackets
 		next = state.peek()
 		if next == none => false
 
@@ -1438,6 +1435,71 @@ Pattern TemplateFunctionCallPattern {
 	}
 }
 
+Pattern TemplateTypePattern {
+	constant NAME = 0
+	constant TEMPLATE_PARAMETERS = 1
+	constant BODY = 3
+
+	constant TEMPLATE_PARAMETERS_START = 2
+	constant TEMPLATE_PARAMETERS_END = 3
+
+	# Pattern: $name <$1, $2, ... $n> [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 22
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# TODO: Remove the following duplication with the template function pattern
+		# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
+		next = state.peek()
+		if next == none or not next.match(Operators.LESS_THAN) => false
+		state.consume()
+
+		loop {
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+
+			next = state.peek()
+			if next == none => false
+
+			if next.match(Operators.GREATER_THAN) {
+				state.consume()
+				stop
+			}
+
+			if next.match(Operators.COMMA) {
+				state.consume()
+				continue
+			}
+
+			=> false
+		}
+
+		# Optionally, consume a line ending
+		state.consume_optional(TOKEN_TYPE_END)
+
+		# Consume the body of the template type
+		next = state.peek()
+		=> state.consume(TOKEN_TYPE_PARENTHESIS) and next.(ParenthesisToken).match(`{`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		name = tokens[NAME] as IdentifierToken
+		body = tokens[tokens.size - 1] as ParenthesisToken
+
+		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, tokens.size - TEMPLATE_PARAMETERS_END)
+		template_parameters = common.get_template_parameters(template_parameter_tokens, tokens[TEMPLATE_PARAMETERS].position)
+
+		blueprint = List<Token>(2, false)
+		blueprint.add(name.clone())
+		blueprint.add(body.clone())
+
+		# Create the template type
+		template_type = TemplateType(context, name.value, MODIFIER_DEFAULT, blueprint, template_parameters, name.position)
+		=> TypeDefinitionNode(template_type, List<Token>(), name.position)
+	}
+}
+
 # CompilesPattern
 # ExtensionFunctionPattern
 # HasPattern
@@ -1447,7 +1509,6 @@ Pattern TemplateFunctionCallPattern {
 # RangePattern
 # ShortFunctionPattern
 # SpecificModificationPattern
-# TemplateTypePattern
 # TypeInspectionPattern
 # VirtualFunctionPattern
 # WhenPattern

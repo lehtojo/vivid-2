@@ -657,6 +657,12 @@ Variable {
 		this.parent = parent
 	}
 
+	# Summary: Returns the mangled static name for this variable
+	get_static_name() {
+		# TODO: Support static variable names
+		=> name
+	}
+
 	# Summary: Returns whether this variable is edited inside the specified node
 	is_edited_inside(node: Node) {
 		loop write in writes {
@@ -977,9 +983,23 @@ Context Function {
 	}
 }
 
+TemplateTypeVariant {
+	type: Type
+	arguments: List<Type>
+
+	init(type: Type, arguments: List<Type>) {
+		this.type = type
+		this.arguments = arguments
+	}
+}
+
 Type TemplateType {
-	blueprint: List<Token>
 	template_parameters: List<String>
+
+	inherited: List<Token> = List<Token>()
+	blueprint: List<Token>
+
+	variants: Map<String, TemplateTypeVariant> = Map<String, TemplateTypeVariant>()
 
 	init(context: Context, name: String, modifiers: normal, blueprint: List<Token>, template_parameters: List<String>, position: Position) {
 		Type.init(context, name, modifiers | MODIFIER_TEMPLATE_TYPE, position)
@@ -1001,14 +1021,74 @@ Type TemplateType {
 		}
 	}
 
+	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
+		loop (i = 0, i < tokens.size, i++) {
+			token = tokens[i]
+
+			if token.type == TOKEN_TYPE_IDENTIFIER {
+				j = template_parameters.index_of(token.(IdentifierToken).value)
+				if j == -1 continue
+
+				position = token.position
+
+				tokens.remove_at(i)
+				tokens.insert_range(i, common.get_tokens(arguments[j], position))
+			}
+			else token.type == TOKEN_TYPE_FUNCTION {
+				insert_arguments(token.(FunctionToken).parameters.tokens, arguments)
+			}
+			else token.type == TOKEN_TYPE_PARENTHESIS {
+				insert_arguments(token.(ParenthesisToken).tokens, arguments)
+			}
+		}
+	}
+
+	# Summary: Returns an identifier, which are used to identify template type variants
+	get_variant_identifier(arguments: List<Type>) {
+		names = List<String>(arguments.size, false)
+		loop argument in arguments { names.add(argument.string()) }
+		=> String.join(String(', '), names)
+	}
+
 	try_get_variant(arguments: List<Type>) {
-		abort('Getting template type variants is not supported')
+		identifier = get_variant_identifier(arguments)
+		if variants.contains_key(identifier) => variants[identifier].type
 		=> none as Type
 	}
 
 	create_variant(arguments: List<Type>) {
-		abort('Creating template type variants is not supported')
-		=> none as Type
+		identifier: String = get_variant_identifier(arguments)
+		
+		# Copy the blueprint and insert the specified arguments to their places
+		tokens = clone(inherited)
+
+		blueprint: List<Token> = clone(this.blueprint)
+		blueprint[0].(IdentifierToken).value = name + `<` + identifier + `>`
+
+		tokens.add_range(blueprint)
+
+		# Now, insert the specified arguments to their places
+		insert_arguments(tokens, arguments)
+
+		# Parse the new variant
+		result = parser.parse(parent, tokens, 0, parser.MAX_PRIORITY).first
+		if result == none or result.instance != NODE_TYPE_DEFINITION abort('Invalid template type blueprint')
+
+		# Register the new variant
+		variant = result.(TypeDefinitionNode).type
+		variant.identifier = name
+		variant.modifiers = modifiers
+		variant.template_arguments = arguments
+
+		variants.add(identifier, TemplateTypeVariant(variant, arguments))
+
+		# Parse the body of the new variant
+		result.(TypeDefinitionNode).parse()
+
+		# Finally, add the inherited supertypes to the new variant
+		variant.supertypes.add_range(supertypes)
+
+		=> variant
 	}
 
 	# Summary: Returns a variant with the specified template arguments, creating it if necessary

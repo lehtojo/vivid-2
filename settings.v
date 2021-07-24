@@ -15,6 +15,7 @@ is_garbage_collector_enabled: bool
 is_debugging_enabled: bool
 is_verbose_output_enabled: bool
 is_target_windows: bool
+is_position_independent: bool
 allocation_function: FunctionImplementation
 included_folders: List<String>
 
