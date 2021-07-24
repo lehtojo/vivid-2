@@ -10,7 +10,9 @@ get_self_pointer(context: Context, position: Position) {
 
 # Summary: Reads template parameters from the next tokens inside the specified queue
 # Pattern: <$1, $2, ... $n>
-read_template_arguments(context: Context, tokens: List<Token>) {
+read_template_arguments(context: Context, tokens: List<Token>, offset: large) {
+	tokens = tokens.slice(offset, tokens.size)
+
 	opening = tokens.take_first() as OperatorToken
 	if opening.operator != Operators.LESS_THAN abort('Can not understand the template arguments')
 
@@ -37,7 +39,7 @@ read_type_component(context: Context, tokens: List<Token>) {
 	name = tokens.take_first().(IdentifierToken).value
 
 	if tokens.size > 0 and tokens[0].match(Operators.LESS_THAN) {
-		template_arguments = read_template_arguments(context, tokens)
+		template_arguments = read_template_arguments(context, tokens, 0)
 		=> UnresolvedTypeComponent(name, template_arguments)
 	}
 
@@ -89,7 +91,65 @@ read_type(context: Context, tokens: List<Token>, start: large) {
 	=> read_type(context, tokens.slice(start, tokens.size))
 }
 
-consume_type(state: parser.ParserState) {
+# Summary:
+# Pattern: <$1, $2, ... $n>
+consume_template_arguments(state: ParserState) {
+	# Next there must be the opening of the template parameters
+	next = state.peek()
+	if next == none or not next.match(Operators.LESS_THAN) => false
+	state.consume()
+
+	loop {
+		backup = state.save()
+		if not consume_type(state) state.restore(backup)
+
+		next = state.peek()
+		if not state.consume(TOKEN_TYPE_OPERATOR) => false
+
+		# If the consumed operator is a greater than operator, it means the template arguments have ended
+		if next.match(Operators.GREATER_THAN) => true
+
+		# If the operator is a comma, it means the template arguments have not ended
+		if next.match(Operators.COMMA) continue
+
+		# The template arguments must be invalid
+		=> false
+	}
+}
+
+# Summary:
+# Consumes a template function call except the name in the beginning
+# Pattern: <$1, $2, ... $n> (...)
+consume_template_function_call(state: ParserState) {
+	# Consume pattern: <$1, $2, ... $n>
+	if not consume_template_arguments(state) => false
+
+	# Now there must be function parameters next
+	next = state.peek()
+	if next == none or not next.match(`(`) => false
+
+	state.consume()
+	=> true
+}
+
+# Summary: Consumes a function type
+# Pattern: (...) -> $type
+consume_function_type(state: ParserState) {
+	# Consume a normal parenthesis
+	next = state.peek()
+	if next == none or not next.match(`(`) => false
+	state.consume()
+
+	# Consume an arrow operator
+	next = state.peek()
+	if next == none or not next.match(Operators.ARROW) => false
+	state.consume()
+
+	# Consume the return type
+	=> consume_type(state)
+}
+
+consume_type(state: ParserState) {
 	if not state.consume(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_PARENTHESIS) => false
 
 	loop {
@@ -101,13 +161,14 @@ consume_type(state: parser.ParserState) {
 			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
 		}
 		else next.match(Operators.LESS_THAN) {
-			# TODO: Template arguments
+			if not consume_template_arguments(state) => false
 		}
 		else next.match(`(`) {
-			# TODO: Function type
+			if not consume_function_type(state) => false
 		}
 		else next.match(`[`) {
-			# TODO: Fixed arrays
+			state.consume()
+			=> true
 		}
 		else => true
 	}
@@ -138,14 +199,14 @@ find_condition(start) {
 	abort('Could not find condition')
 }
 
-consume_block(from: parser.ParserState, destination: List<Token>) {
+consume_block(from: ParserState, destination: List<Token>) {
 	# Return an empty list, if there is nothing to be consumed
 	if from.end >= from.all.size => none as Status
 
 	# Clone the tokens from the specified state
 	tokens = clone(from.all.slice(from.end, from.all.size))
 
-	state = parser.ParserState()
+	state = ParserState()
 	state.all = tokens
 
 	consumptions = List<Pair<parser.DynamicToken, large>>()
@@ -215,6 +276,19 @@ consume_block(from: parser.ParserState, destination: List<Token>) {
 
 	destination.add(next)
 	=> none as Status
+}
+
+get_template_parameters(template_parameter_tokens: List<Token>, template_parameter_start: Position) {
+	template_parameters = List<String>()
+
+	loop (i = 0, i < template_parameter_tokens.size, i++) {
+		if i % 2 != 0 continue
+		if template_parameter_tokens[i].type != TOKEN_TYPE_IDENTIFIER abort('Template parameter tokens were invalid')
+
+		template_parameters.add(template_parameter_tokens[i].(IdentifierToken).value)
+	}
+
+	=> template_parameters
 }
 
 try_get_virtual_function_call(self: Node, self_type: Type, name: String, arguments: Node, argument_types: List<Type>) {
@@ -291,9 +365,8 @@ get_all_function_implementations(context: Context) {
 	loop function in functions {
 		loop implementation in function.implementations {
 			implementations.add_range(get_all_function_implementations(implementation))
+			implementations.add(implementation)
 		}
-
-		implementations.add(implementation)
 	}
 
 	# Remove all implementation duplicates
@@ -391,4 +464,55 @@ integer_log2(value: large) {
 		if value == 0 => i
 		i++
 	}
+}
+
+# Summary: Joins the specified token lists with the specified separator
+join(separator: Token, elements: List<List<Token>>) {
+	result = List<Token>()
+
+	loop element in elements {
+		result.add_range(result)
+		result.add(separator)
+	}
+
+	result.remove_at(result.size - 1)
+	=> result
+}
+
+# Summary: Converts the specified type into tokens
+get_tokens(type: Type, position: Position) {
+	result = List<Token>()
+
+	###
+	TODO: Function types
+
+	if type.is_function_type {
+		# ...
+	}
+	###
+
+	if type.parent != none and type.parent.is_type {
+		result.add_range(get_tokens(type.parent, position))
+		result.add(OperatorToken(Operators.DOT, position))
+	}
+
+	if type.is_user_defined { result.add(IdentifierToken(type.identifier, position)) }
+	else { result.add(IdentifierToken(type.name, position)) }
+
+	if type.template_arguments.size > 0 {
+		result.add(OperatorToken(Operators.LESS_THAN, position))
+
+		arguments = List<List<Token>>(type.template_arguments.size, false)
+
+		loop (i = 0, i < arguments.size, i++) {
+			arguments[i] = get_tokens(type.template_arguments[i], position)
+		}
+
+		separator = OperatorToken(Operators.COMMA, position)
+		result.add_range(join(separator, arguments))
+
+		result.add(OperatorToken(Operators.GREATER_THAN, position))
+	}
+
+	=> result
 }

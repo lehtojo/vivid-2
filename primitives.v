@@ -9,6 +9,10 @@ Type Number {
 		this.format = format
 		this.bits = bits
 	}
+
+	override match(other: Type) {
+		=> other.is_number and other.is_primitive and this.identifier == other.(Number).identifier and this.bytes == other.(Number).bytes and this.format == other.(Number).format
+	}
 }
 
 Number Link {
@@ -27,7 +31,7 @@ Number Link {
 
 	init(accessor_type: Type) {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
-		this.template_arguments = Array<Type>(1)
+		this.template_arguments = List<Type>(1, true)
 		this.template_arguments[0] = accessor_type
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
@@ -35,9 +39,13 @@ Number Link {
 
 	init() {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
-		this.template_arguments = Array<Type>(0)
+		this.template_arguments = List<Type>(0, false)
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
+	}
+
+	override match(other: Type) {
+		=> this.name == other.name and this.identifier == other.identifier and get_accessor_type().match(other.(Link).get_accessor_type())
 	}
 
 	override clone() {
@@ -45,7 +53,7 @@ Number Link {
 	}
 
 	override get_accessor_type() {
-		if template_arguments.count > 0 => template_arguments[0]
+		if template_arguments.size > 0 => template_arguments[0]
 		=> primitives.create_number(primitives.U8, FORMAT_UINT8)
 	}
 }

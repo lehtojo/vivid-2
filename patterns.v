@@ -1234,7 +1234,7 @@ Pattern IterationLoopPattern {
 		iterator = environment.declare_hidden(none as Type)
 		iterator.position = position
 
-		iterated = parser.parse(environment, tokens[ITERATED])
+		iterated = parser.parse(environment, tokens[ITERATED]) as Node
 
 		# The iterator is created by calling the iterator function and using its result
 		initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
@@ -1281,6 +1281,163 @@ Pattern IterationLoopPattern {
 	}
 }
 
+Pattern TemplateFunctionPattern {
+	constant NAME = 0
+	constant PARAMETERS_OFFSET = 1
+
+	constant TEMPLATE_PARAMETERS_START = 2
+	constant TEMPLATE_PARAMETERS_END = 4
+
+	# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 23
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
+		next = state.peek()
+		if next == none or not next.match(Operators.LESS_THAN) => false
+		state.consume()
+
+		loop {
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+
+			next = state.peek()
+			if next == none => false
+
+			if next.match(Operators.GREATER_THAN) {
+				state.consume()
+				stop
+			}
+
+			if next.match(Operators.COMMA) {
+				state.consume()
+				continue
+			}
+
+			=> false
+		}
+
+		# Now there must be function parameters next
+		next = state.peek()
+		if next == none or not next.match(`(`) => false
+		state.consume()
+
+		# Optionally consume a line ending
+		state.consume_optional(TOKEN_TYPE_END)
+
+		# Try to consume curl brackets
+		next = state.peek()
+		if next == none => false
+
+		# 1. Support regular function body
+		# 2. Support short template function body
+		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
+			state.consume()
+			=> true
+		}
+
+		=> false
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		name = tokens[NAME] as IdentifierToken
+		blueprint = none as ParenthesisToken
+		start = name.position
+		end = none as Position
+
+		if tokens[tokens.size - 1].match(`{`) {
+			blueprint = tokens[tokens.size - 1] as ParenthesisToken
+			end = blueprint.end
+		}
+
+		# Find the end of the template parameters and collect them
+		template_parameters_end = -1
+
+		loop (i = tokens.size - 1, i >= 0, i--) {
+			if not tokens[i].match(Operators.GREATER_THAN) continue
+			template_parameters_end = i
+			stop
+		}
+
+		if template_parameters_end == -1 {
+			state.error = Status(start, 'Can not find the end of the template parameters')
+			=> none as Node
+		}
+
+		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, template_parameters_end)
+		template_parameters = common.get_template_parameters(template_parameter_tokens, tokens[TEMPLATE_PARAMETERS_START + 1].position)
+
+		if template_parameters.size == 0 {
+			state.error = Status(start, 'Expected at least one template parameter')
+			=> none as Node
+		}
+
+		parenthesis = tokens[template_parameters_end + PARAMETERS_OFFSET] as ParenthesisToken
+		descriptor = FunctionToken(name, parenthesis)
+		descriptor.position = start
+
+		template_function = TemplateFunction(context, MODIFIER_DEFAULT, name.value, template_parameters, parenthesis.tokens, start, end)
+
+		# Initialize the template function by parsing its parameters
+		if not template_function.initialize() {
+			state.error = Status(parenthesis.position, 'Can not understand the parameters')
+			=> none as Node
+		}
+
+		if blueprint == none {
+			# Take the heavy arrow token into the blueprint as well
+			result = List<Token>(1, false)
+			result.add(tokens[tokens.size - 1])
+
+			if not common.consume_block(state, result) {
+				state.error = Status(start, 'Short template function has an empty body')
+				=> none as Node
+			}
+
+			blueprint = ParenthesisToken(result)
+			blueprint.opening = `{`
+		}
+
+		# Save the created blueprint
+		template_function.blueprint.add(descriptor)
+		template_function.blueprint.add(blueprint)
+
+		# Determine the parameters of the template function
+		if not (descriptor.clone().(FunctionToken).get_parameters(template_function) has parameters) {
+			state.error = Status(start, 'Can not determine the parameters of the template function')
+			=> none as Node
+		}
+
+		template_function.parameters.add_range(parameters)
+
+		context.declare(template_function)
+
+		=> FunctionDefinitionNode(template_function, start)
+	}
+}
+
+Pattern TemplateFunctionCallPattern {
+	# Pattern: $name <$1, $2, ... $n> (...)
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> common.consume_template_function_call(state)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		name = tokens[0] as IdentifierToken
+		descriptor = FunctionToken(name, tokens[tokens.size - 1] as ParenthesisToken)
+		descriptor.position = name.position
+		template_arguments = common.read_template_arguments(context, tokens, 1)
+		=> parser.parse_function(context, context, descriptor, template_arguments, false)
+	}
+}
+
 # CompilesPattern
 # ExtensionFunctionPattern
 # HasPattern
@@ -1290,8 +1447,6 @@ Pattern IterationLoopPattern {
 # RangePattern
 # ShortFunctionPattern
 # SpecificModificationPattern
-# TemplateFunctionCallPattern
-# TemplateFunctionPattern
 # TemplateTypePattern
 # TypeInspectionPattern
 # VirtualFunctionPattern

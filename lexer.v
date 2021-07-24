@@ -669,6 +669,12 @@ Token ParenthesisToken {
 		this.tokens = tokens
 	}
 
+	init(tokens: List<Token>) {
+		Token.init(TOKEN_TYPE_PARENTHESIS)
+		this.opening = `(`
+		this.tokens = List<Token>(tokens)
+	}
+
 	get_sections() {
 		sections = List<List<Token>>()
 		if tokens.size == 0 => sections

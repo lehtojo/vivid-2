@@ -362,17 +362,17 @@ Node UnresolvedIdentifier {
 
 Node UnresolvedFunction {
 	name: String
-	arguments: Array<Type>
+	arguments: List<Type>
 
 	init(name: String, position: Position) {
 		this.instance = NODE_UNRESOLVED_FUNCTION
 		this.name = name
-		this.arguments = Array<Type>()
+		this.arguments = List<Type>()
 		this.start = position
 		this.is_resolvable = true
 	}
 
-	init(name: String, arguments: Array<Type>, position: Position) {
+	init(name: String, arguments: List<Type>, position: Position) {
 		this.instance = NODE_UNRESOLVED_FUNCTION
 		this.name = name
 		this.arguments = arguments
@@ -396,7 +396,7 @@ Node UnresolvedFunction {
 		loop argument in this { resolver.resolve(environment, argument) }
 
 		# Try to resolve all the template arguments
-		loop (i = 0, i < arguments.count, i++) {
+		loop (i = 0, i < arguments.size, i++) {
 			result = resolver.resolve(environment, arguments[i])
 			if result == none continue
 			arguments[i] = result
@@ -417,7 +417,7 @@ Node UnresolvedFunction {
 			=> none as Node
 		}
 
-		is_normal_unlinked_call = not linked and arguments.count == 0
+		is_normal_unlinked_call = not linked and arguments.size == 0
 
 		# First, ensure this function can be a lambda call
 		if is_normal_unlinked_call {

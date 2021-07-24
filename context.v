@@ -413,7 +413,7 @@ Context Type {
 	modifiers: normal
 	position: Position
 	format: large = SYSTEM_FORMAT
-	template_arguments: Array<Type>
+	template_arguments: List<Type> = List<Type>()
 
 	initialization: Array<Node> = Array<Node>()
 
@@ -603,9 +603,15 @@ Context Type {
 		=> SYSTEM_FORMAT
 	}
 
-	string() {
-		abort(String('Type string() function is not implemented'))
-		=> String('')
+	virtual match(other: Type) {
+		=> this.name == other.name and this.identity == other.identity
+	}
+
+	virtual string() {
+		names = List<String>()
+		loop iterator in get_parent_types() { names.add(iterator.name) }
+		names.add(name)
+		=> String.join(`.`, names)
 	}
 }
 
@@ -725,10 +731,10 @@ FunctionList {
 		=> casts
 	}
 
-	get_overload(parameter_types: List<Type>, template_arguments: Array<Type>) {
+	get_overload(parameter_types: List<Type>, template_arguments: List<Type>) {
 		candidates = List<Function>()
 
-		if template_arguments.count > 0 {
+		if template_arguments.size > 0 {
 			loop overload in overloads {
 				if not overload.is_template_function or not overload.(TemplateFunction).passes(parameter_types, template_arguments) continue
 				candidates.add(overload)
@@ -761,24 +767,24 @@ FunctionList {
 	}
 
 	get_overload(parameter_types: List<Type>) {
-		=> get_overload(parameter_types, Array<Type>(0))
+		=> get_overload(parameter_types, List<Type>(0))
 	}
 
-	get_implementation(parameter_types: List<Type>, template_arguments: Array<Type>) {
+	get_implementation(parameter_types: List<Type>, template_arguments: List<Type>) {
 		overload = get_overload(parameter_types, template_arguments)
 		if overload == none => none as FunctionImplementation
-		if template_arguments.count > 0 => overload.(TemplateFunction).get(parameter_types, template_arguments)
+		if template_arguments.size > 0 => overload.(TemplateFunction).get(parameter_types, template_arguments)
 		=> overload.get(parameter_types)
 	}
 
 	get_implementation(parameter_types: List<Type>) {
-		=> get_implementation(parameter_types, Array<Type>(0))
+		=> get_implementation(parameter_types, List<Type>(0, false))
 	}
 
 	get_implementation(parameter: Type) {
 		parameter_types = List<Type>()
 		parameter_types.add(parameter)
-		=> get_implementation(parameter_types, Array<Type>(0))
+		=> get_implementation(parameter_types, List<Type>(0, false))
 	}
 }
 
@@ -1016,21 +1022,153 @@ Type TemplateType {
 
 Function TemplateFunction {
 	template_parameters: List<String>
+	header: FunctionToken
+	variants: Map<String, Function> = Map<String, Function>()
 
-	init(parent: Context, modifiers: normal, name: String, template_parameters: List<String>, start: Position, end: Position) {
+	init(parent: Context, modifiers: normal, name: String, template_parameters: List<String>, parameter_tokens: List<Token>, start: Position, end: Position) {
 		Function.init(parent, modifiers | MODIFIER_TEMPLATE_FUNCTION, name, start, end)
 
 		this.template_parameters = template_parameters
+		this.header = FunctionToken(IdentifierToken(name), ParenthesisToken(parameter_tokens))
 	}
 
-	passes(types: List<Type>, template_arguments: Array<Type>) {
-		abort(String('Template function pass function is not implemented'))
+	init(context: Context, modifiers: large, name: String, parameters: large, arguments: large) {
+		Function.init(context, modifiers | MODIFIER_TEMPLATE_FUNCTION, name, none as Position, none as Position)
+
+		# Generate parameter names based on the specified parameter count
+		parameter_tokens = List<Token>(parameters, false)
+
+		loop (i = 0, i < parameters, i++) {
+			parameter_tokens.add(IdentifierToken(String('P') + to_string(i)))
+			parameter_tokens.add(OperatorToken(Operators.COMMA))
+		}
+
+		# Remove the unncecessary comma from the end
+		if parameters > 0 parameters.remove_at(parameters.size - 1)
+
+		header = FunctionToken(IdentifierToken(name), ParenthesisToken(parameter_tokens))
+	}
+
+	# Summary: Creates the parameters of this function in a way that they do not have types
+	initialize() {
+		result = header.get_parameters(Context(String.empty, FUNCTION_CONTEXT))
+
+		if result has parameters {
+			parameters.add_range(parameters)
+			=> true
+		}
+
 		=> false
 	}
 
-	get(parameter_types: List<Type>, template_arguments: Array<Type>) {
-		abort(String('Template function get function is not implemented'))
-		=> false as FunctionImplementation
+	try_get_variant(template_arguments: List<Type>) {
+		names = List<String>()
+		loop template_argument in template_arguments { names.add(template_argument.string()) }
+		identifier = String.join(String(', '), names)
+
+		if variants.contains_key(identifier) => variants[identifier]
+		=> none as FunctionImplementation
+	}
+
+	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
+		loop (i = 0, i < tokens.size, i++) {
+			token = tokens[i]
+
+			if token.type == TOKEN_TYPE_IDENTIFIER {
+				j = template_parameters.index_of(token.(IdentifierToken).value)
+				if j == -1 continue
+
+				position = token.position
+
+				tokens.remove_at(i)
+				tokens.insert_range(i, common.get_tokens(arguments[j], position))
+			}
+			else token.type == TOKEN_TYPE_FUNCTION {
+				insert_arguments(token.(FunctionToken).parameters.tokens, arguments)
+			}
+			else token.type == TOKEN_TYPE_PARENTHESIS {
+				insert_arguments(token.(ParenthesisToken).tokens, arguments)
+			}
+		}
+	}
+
+	create_variant(template_arguments: List<Type>) {
+		names = List<String>()
+		loop template_argument in template_arguments { names.add(template_argument.string()) }
+		identifier = String.join(String(', '), names)
+
+		# Copy the blueprint and insert the specified arguments to their places
+		blueprint: List<Token> = clone(this.blueprint)
+		blueprint[0].(FunctionToken).identifier.value = name + `<` + identifier + `>`
+
+		insert_arguments(blueprint, template_arguments)
+
+		# Parse the new variant
+		result = parser.parse(parent, blueprint, 0, parser.MAX_PRIORITY).first
+		if result == none or result.instance != NODE_FUNCTION_DEFINITION abort('Invalid template function blueprint')
+
+		# Register the new variant
+		variant = result.(FunctionDefinitionNode).function
+		variants.add(identifier, variant)
+		=> variant
+	}
+
+	passes(types: List<Type>) {
+		=> abort('Tried to execute pass function without template parameters') as bool
+	}
+
+	passes(actual_types: List<Type>, template_arguments: List<Type>) {
+		if template_arguments.size != template_parameters.size => false
+
+		# None of the types can be unresolved
+		loop type in actual_types { if type.is_unresolved => false }
+		loop type in template_arguments { if type.is_unresolved => false }
+
+		# Clone the header, insert the template arguments and determine the expected parameters
+		header: FunctionToken = this.header.clone() as FunctionToken
+		insert_arguments(header.parameters.tokens, template_arguments)
+
+		if not (header.get_parameters(Context(this, FUNCTION_CONTEXT)) has expected_parameters) => false
+		if expected_parameters.size != actual_types.size => false
+
+		loop (i = 0, i < actual_types.size, i++) {
+			expected = expected_parameters[i].type
+			if expected == none continue
+
+			actual = actual_types[i]
+			if expected.match(actual) continue
+
+			# If both types are not primitives, either a upcast or downcast must be possible
+			if not expected.is_primitive and not actual.is_primitive {
+				if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
+			}
+			else resolver.get_shared_type(expected, actual) == none {
+				=> false
+			}
+		}
+
+		=> true
+	}
+
+	get(parameter_types: List<Type>) {
+		=> abort('Tried to get overload of template function without template arguments') as FunctionImplementation
+	}
+
+	get(parameter_types: List<Type>, template_arguments: List<Type>) {
+		if template_arguments.size != template_parameters.size abort('Missing template arguments')
+
+		variant = try_get_variant(template_arguments)
+
+		if variant == none {
+			variant = create_variant(template_arguments)
+			if variant == none => none as FunctionImplementation
+		}
+
+		implementation = variant.get(parameter_types)
+		implementation.identifier = name
+		implementation.metadata.modifiers = modifiers
+		implementation.template_arguments = template_arguments
+		=> implementation
 	}
 }
 
@@ -1039,7 +1177,7 @@ Context FunctionImplementation {
 	node: Node
 	
 	self: Variable
-	template_arguments: Array<Type>
+	template_arguments: List<Type>
 	return_type: Type
 
 	is_constructor => metadata.is_constructor
@@ -1069,7 +1207,7 @@ Context FunctionImplementation {
 
 		this.metadata = metadata
 		this.return_type = return_type
-		this.template_arguments = Array<Type>(0)
+		this.template_arguments = List<Type>(0, false)
 
 		this.name = metadata.name
 		this.identifier = metadata.identifier
@@ -1200,7 +1338,7 @@ Type UnresolvedType {
 			else {
 				# Some base types are 'manual template types' such as link meaning they can still receive template arguments even though they are not instances of a template type class
 				component_type = component_type.clone()
-				component_type.template_arguments = component.arguments.to_array()
+				component_type.template_arguments = component.arguments
 				context = component_type
 			}
 		}

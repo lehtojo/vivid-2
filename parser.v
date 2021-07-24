@@ -1,32 +1,28 @@
 BUNDLE_PARSE = 'parse'
 
-Parse {
-	context: Context
-	root: Node
-
-	init(context: Context, root: Node) {
-		this.context = context
-		this.root = root
-	}
-}
-
-namespace parser
-
-# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
-patterns: Array<List<Pattern>>
-
-constant MIN_PRIORITY = 0
-constant MAX_FUNCTION_BODY_PRIORITY = 19
-constant MAX_PRIORITY = 23
-constant PRIORITY_ALL = -1
-
 ParserState {
 	all: List<Token>
 	tokens: List<Token>
-	pattern: Pattern
+	pattern: parser.Pattern
 	start: normal
 	end: normal
 	error: Status
+
+	save() {
+		result = ParserState()
+		result.all = List<Token>(all)
+		result.tokens = List<Token>(tokens)
+		result.start = start
+		result.end = end
+		=> result
+	}
+
+	restore(from: ParserState) {
+		all = from.all
+		tokens = from.tokens
+		start = from.start
+		end = from.end
+	}
 
 	consume() {
 		tokens.add(all[end])
@@ -64,6 +60,26 @@ ParserState {
 		=> none as Token
 	}
 }
+
+Parse {
+	context: Context
+	root: Node
+
+	init(context: Context, root: Node) {
+		this.context = context
+		this.root = root
+	}
+}
+
+namespace parser
+
+# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
+patterns: Array<List<Pattern>>
+
+constant MIN_PRIORITY = 0
+constant MAX_FUNCTION_BODY_PRIORITY = 19
+constant MAX_PRIORITY = 23
+constant PRIORITY_ALL = -1
 
 Pattern {
 	path: List<small> = List<small>()
@@ -134,6 +150,8 @@ initialize() {
 	add_pattern(SectionModificationPattern())
 	add_pattern(NamespacePattern())
 	add_pattern(IterationLoopPattern())
+	add_pattern(TemplateFunctionPattern())
+	add_pattern(TemplateFunctionCallPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -370,17 +388,17 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
 
 # Summary: Tries to find a suitable function for the specified settings
 get_function_by_name(context: Context, name: String, parameters: List<Type>, linked: bool) {
-	=> get_function_by_name(context, name, parameters, Array<Type>(), linked)
+	=> get_function_by_name(context, name, parameters, List<Type>(), linked)
 }
 
 # Summary: Tries to find a suitable function for the specified settings
-get_function_by_name(context: Context, name: String, parameters: List<Type>, template_arguments: Array<Type>, linked: bool) {
+get_function_by_name(context: Context, name: String, parameters: List<Type>, template_arguments: List<Type>, linked: bool) {
 	functions = FunctionList()
 
 	if context.is_type_declared(name, linked) {
 		type = context.get_type(name)
 
-		if template_arguments.count > 0 {
+		if template_arguments.size > 0 {
 			# If there are template arguments and if any of the template parameters is unresolved, then this function should fail
 			loop template_argument in template_arguments { if template_argument.is_unresolved => none as FunctionImplementation }
 
@@ -395,7 +413,7 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 		functions = context.get_function(name)
 
 		# If there are template parameters, then the function should be retrieved based on them
-		if template_arguments.count > 0 => functions.get_implementation(parameters, template_arguments)
+		if template_arguments.size > 0 => functions.get_implementation(parameters, template_arguments)
 	}
 	else => none as FunctionImplementation
 
@@ -404,17 +422,22 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 
 # Summary: Tries to build the specified function token into a node
 parse_function(environment: Context, primary: Context, token: FunctionToken, linked: bool) {
+	=> parse_function(environment, primary, token, List<Type>(), linked)
+}
+
+# Summary: Tries to build the specified function token into a node
+parse_function(environment: Context, primary: Context, token: FunctionToken, template_arguments: List<Type>, linked: bool) {
 	descriptor = token.clone() as FunctionToken
 	arguments = descriptor.parse(environment)
 
 	types = resolver.get_types(arguments)
-	if types == none => UnresolvedFunction(descriptor.name, descriptor.position).set_arguments(arguments)
+	if types == none => UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
 
 	if not linked {
 		# TODO: Lambda calls are not supported yet
 	}
 
-	function = get_function_by_name(primary, descriptor.name, types, linked)
+	function = get_function_by_name(primary, descriptor.name, types, template_arguments, linked)
 
 	if function != none {
 		node = FunctionNode(function, descriptor.position).set_arguments(arguments)
@@ -442,7 +465,7 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, lin
 		# TODO: Virtual functions are not supported yet
 	}
 
-	=> UnresolvedFunction(descriptor.name, descriptor.position).set_arguments(arguments)
+	=> UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
 }
 
 # Summary: Builds the specified parenthesis into a node
