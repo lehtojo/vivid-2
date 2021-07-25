@@ -24,7 +24,7 @@ Bundle {
 	# Summary: Returns whether the specified list contains the specified name
 	private contains(name: String, list) {
 		loop i in list {
-			if (i.key == name) => true
+			if i.key == name => true
 		}
 
 		=> false
@@ -33,7 +33,7 @@ Bundle {
 	# Summary: Tries to find an element with the specified name from the specified list
 	private find<T>(name: String, list) {
 		loop i in list {
-			if (i.key == name) => Optional<T>(i.value)
+			if i.key == name => Optional<T>(i.value)
 		}
 
 		=> Optional<T>()

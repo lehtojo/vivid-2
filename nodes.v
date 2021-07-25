@@ -298,7 +298,7 @@ OperatorNode LinkNode {
 			if types == none => none as Node
 
 			# Try to form a virtual function call
-			result = common.try_get_virtual_function_call(first, primary, function.name, function, types)
+			result = common.try_get_virtual_function_call(first, primary, function.name, function, types, start)
 			if result == none { result = common.try_get_lambda_call(primary, first, function.name, function, types) }
 
 			if result != none {
@@ -392,7 +392,7 @@ Node UnresolvedFunction {
 	}
 
 	private try_resolve_lambda_parameters(primary: Context, argument_types: List<Type>) {
-
+		# TODO: Automatic lambda parameter types
 	}
 
 	resolve(environment: Context, primary: Context) {
@@ -441,7 +441,7 @@ Node UnresolvedFunction {
 
 		# Lastly, try to form a virtual function call if the function could not be found
 		if function == none and is_normal_unlinked_call {
-			result = common.try_get_virtual_function_call(environment, name, this, argument_types)
+			result = common.try_get_virtual_function_call(environment, name, this, argument_types, start)
 
 			if result != none {
 				result.start = start
@@ -1136,24 +1136,20 @@ Node AccessorNode {
 	stride => get_type().reference_size
 	format => get_type().format
 
-	init(object: Node, arguments: Node) {
-		this.instance = NODE_ACCESSOR
-		this.is_resolvable = true
-
-		add(object)
-
-		node = ParenthesisNode()
-		node.add(arguments)
-
-		add(node)
-	}
-
 	init(object: Node, arguments: Node, position: Position) {
 		this.instance = NODE_ACCESSOR
 		this.start = position
 		this.is_resolvable = true
 
 		add(object)
+
+		# Automatically pack the arguments into a parenthesis node, if needed
+		if arguments.instance != NODE_PARENTHESIS {
+			node = ParenthesisNode(position)
+			node.add(arguments)
+			arguments = node
+		}
+
 		add(arguments)
 	}
 
@@ -1467,5 +1463,29 @@ Node NamespaceNode {
 		# Parse all subnamespaces
 		subnamespaces = find_all(NODE_NAMESPACE)
 		loop subnamespace in subnamespaces { subnamespace.(NamespaceNode).parse(result) }
+	}
+}
+
+# Summary: Represents a manual call node which is used for lambda and virtual function calls
+Node CallNode {
+	self => first
+	pointer => first.next
+	parameters => last
+	descriptor: FunctionType
+
+	init(self: Node, pointer: Node, parameters: Node, descriptor: FunctionType, position: Position) {
+		this.descriptor = descriptor
+		this.start = position
+		this.instance = NODE_CALL
+
+		add(self)
+		add(pointer)
+		add(ListNode(parameters.start))
+
+		loop parameter in parameters { last.add(parameter) }
+	}
+
+	override try_get_type() {
+		=> descriptor.return_type
 	}
 }

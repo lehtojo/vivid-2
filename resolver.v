@@ -147,6 +147,48 @@ resolve_return_type(implementation: FunctionImplementation) {
 	implementation.return_type = type
 }
 
+# Summary: Resolves return types of the virtual functions declared in the specified type
+resolve_virtual_functions(type: Type) {
+	overloads = List<VirtualFunction>()
+	loop iterator in type.virtuals { overloads.add_range(iterator.value.overloads as List<VirtualFunction>) }
+
+	# Virtual functions do not have return types defined sometimes, the return types of those virtual functions are dependent on their default implementations
+	loop virtual_function in overloads {
+		if virtual_function.return_type != none continue
+		
+		# Find all overrides with the same name as the virtual function
+		result = type.get_override(virtual_function.name)
+		if result == none continue
+		overloads = result.overloads
+
+		# Take out the expected parameter types
+		expected = List<Type>()
+		loop parameter in virtual_function.parameters { expected.add(parameter.type) }
+
+		loop overload in overloads {
+			# Ensure the actual parameter types match the expected types
+			actual = List<Type>(overload.parameters.size, false)
+			loop parameter in overload.parameters { actual.add(parameter.type) }
+
+			if actual.size != expected.size continue
+
+			skip = false
+
+			loop (i = 0, i < expected.size, i++) {
+				if expected[i].match(actual[i]) continue
+				skip = true
+				stop
+			}
+
+			if skip or overload.implementations.size == 0 continue
+
+			# Now the current overload must be the default implementation for the virtual function
+			virtual_function.return_type = overload.implementations[0].return_type
+			stop
+		}
+	}
+}
+
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context) {
 	types = common.get_all_types(context)
@@ -161,6 +203,8 @@ resolve_context(context: Context) {
 		loop initialization in type.initialization {
 			resolve(type, initialization)
 		}
+
+		resolve_virtual_functions(type)
 	}
 
 	implementations = common.get_all_function_implementations(context)
@@ -290,9 +334,9 @@ complain(report: List<Status>) {
 			else { print('<Source>') }
 
 			print(':')
-			print(to_string(position.line))
+			print(to_string(position.line + 1))
 			print(':')
-			print(to_string(position.character))
+			print(to_string(position.character + 1))
 		}
 
 		print(': Error: ')

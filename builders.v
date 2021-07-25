@@ -236,6 +236,18 @@ build_declaration(unit: Unit, node: DeclareNode) {
 	=> SetVariableInstruction(unit, node.variable, result).add()
 }
 
+build_call(unit: Unit, node: CallNode) {
+	self = references.get(unit, node.self, ACCESS_READ)
+	if node.descriptor.self != none { self = casts.cast(unit, self, node.self.get_type(), node.descriptor.self) }
+
+	function_pointer = references.get(unit, node.pointer, ACCESS_READ)
+
+	self_type = node.descriptor.self
+	if self_type == none { self_type = node.self.get_type() }
+
+	=> calls.build(unit, self, self_type, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
+}
+
 build_childs(unit: Unit, node: Node) {
 	result = none as Result
 
@@ -251,6 +263,7 @@ build(unit: Unit, node: Node) {
 	=> when(node.instance) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)
+		NODE_CALL => build_call(unit, node as CallNode)
 		NODE_DECLARE => build_declaration(unit, node as DeclareNode)
 		NODE_DISABLED => Result()
 		NODE_ELSE => Result()

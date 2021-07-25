@@ -1500,6 +1500,193 @@ Pattern TemplateTypePattern {
 	}
 }
 
+Pattern VirtualFunctionPattern {
+	constant VIRTUAL = 0
+	constant FUNCTION = 1
+	constant COLON = 2
+	constant RETURN_TYPE = 3
+
+	# Pattern: virtual $function [: $type] [\n] [{...}]
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_FUNCTION)
+		path.add(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_OPTIONAL)
+		priority = 22
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		if not tokens[VIRTUAL].match(Keywords.VIRTUAL) or not context.is_type => false
+
+		colon = tokens[COLON]
+
+		# If the colon token is not none, it must represent colon operator and the return type must be consumed successfully
+		if colon.type != TOKEN_TYPE_NONE and [not colon.match(Operators.COLON) or not common.consume_type(state)] => false
+
+		state.consume(TOKEN_TYPE_END)
+
+		# Try to consume a function body, which would be the default implementation of the virtual function
+		next = state.peek()
+		if next == none => true
+
+		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) state.consume()
+		=> true
+	}
+
+	# Summary:
+	# Creates a virtual function which does not have a default implementation
+	create_virtual_function_without_implementation(context: Context, state: ParserState, tokens: List<Token>) {
+		# The default return type is unit, if the return type is not defined
+		return_type = primitives.create_unit()
+		colon = tokens[COLON]
+
+		if colon.type != TOKEN_TYPE_NONE {
+			return_type = common.read_type(context, tokens, RETURN_TYPE)
+
+			if return_type == none {
+				state.error = Status(colon.position, 'Can not resolve return type of the virtual function')
+				=> none as VirtualFunction
+			}
+		}
+
+		descriptor = tokens[FUNCTION] as FunctionToken
+		start = tokens[0].position
+
+		# Ensure there is no other virtual function with the same name as this virtual function
+		type = context.find_type_parent()
+
+		if type == none {
+			state.error = Status(start, 'Missing virtual function type parent')
+			=> none as VirtualFunction
+		}
+
+		if type.is_virtual_function_declared(descriptor.name) {
+			state.error = Status(start, 'Virtual function with same name is already declared in one of the inherited types')
+			=> none as VirtualFunction
+		}
+
+		function = VirtualFunction(type, descriptor.name, return_type, start, none as Position)
+
+		if not (descriptor.get_parameters(function) has parameters) {
+			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
+			=> none as VirtualFunction
+		}
+
+		loop parameter in parameters {
+			if parameter.type != none continue
+			state.error = Status(start, 'All parameters of a virtual function must have a type')
+			=> none as VirtualFunction
+		}
+
+		function.parameters.add_range(parameters)
+
+		type.declare(function)
+		=> function
+	}
+
+	# Summary: Creates a virtual function which does have a default implementation
+	create_virtual_function_with_implementation(context: Context, state: ParserState, tokens: List<Token>) {
+		# Try to resolve the return type
+		return_type = none as Type
+		colon = tokens[COLON]
+
+		if colon.type != TOKEN_TYPE_NONE {
+			return_type = common.read_type(context, tokens, RETURN_TYPE)
+
+			if return_type == none {
+				state.error = Status(colon.position, 'Can not resolve return type of the virtual function')
+				=> none as VirtualFunction
+			}
+		}
+
+		# Get the default implementation of this virtual function
+		blueprint = none as List<Token>
+		end = none as Position
+		last = tokens[tokens.size - 1]
+
+		if last.match(Operators.HEAVY_ARROW) {
+			position = last.position
+			result = common.consume_block(state, blueprint)
+
+			# If the result is not none, something went wrong
+			if result != none {
+				state.error = result
+				=> none as VirtualFunction
+			}
+
+			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
+			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
+		}
+		else {
+			blueprint = last.(ParenthesisToken).tokens
+			end = last.(ParenthesisToken).end
+		}
+
+		descriptor = tokens[FUNCTION] as FunctionToken
+		start = tokens[0].position
+
+		# Ensure there is no other virtual function with the same name as this virtual function
+		type = context.find_type_parent()
+
+		if type == none {
+			state.error = Status(start, 'Missing virtual function type parent')
+			=> none as VirtualFunction
+		}
+
+		if type.is_virtual_function_declared(descriptor.name) {
+			state.error = Status(start, 'Virtual function with same name is already declared in one of the inherited types')
+			=> none as VirtualFunction
+		}
+
+		# Create the virtual function declaration
+		virtual_function = VirtualFunction(type, descriptor.name, return_type, start, none as Position)
+
+		if not (descriptor.get_parameters(virtual_function) has parameters) {
+			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
+			=> none as VirtualFunction
+		}
+
+		loop parameter in parameters {
+			if parameter.type != none continue
+			state.error = Status(start, 'All parameters of a virtual function must have a type')
+			=> none as VirtualFunction
+		}
+
+		virtual_function.parameters.add_range(parameters)
+
+		# Create the default implementation of the virtual function
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, descriptor.position, end)
+
+		# Define the parameters of the default implementation
+		if not (descriptor.get_parameters(function) has implementation_parameters) {
+			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
+			=> none as VirtualFunction
+		}
+
+		function.parameters.add_range(implementation_parameters)
+		
+		# Declare both the virtual function and its default implementation
+		type.declare(virtual_function)
+		context.(Type).declare_override(function)
+
+		=> virtual_function
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		function = none as Function
+
+		if tokens[tokens.size - 1].match(`{`) or tokens[tokens.size - 1].match(Operators.HEAVY_ARROW) {
+			function = create_virtual_function_with_implementation(context, state, tokens)
+		}
+		else {
+			function = create_virtual_function_without_implementation(context, state, tokens)
+		}
+
+		if function == none => none as Node
+
+		=> FunctionDefinitionNode(function, tokens[0].position)
+	}
+}
+
 # CompilesPattern
 # ExtensionFunctionPattern
 # HasPattern
@@ -1510,5 +1697,4 @@ Pattern TemplateTypePattern {
 # ShortFunctionPattern
 # SpecificModificationPattern
 # TypeInspectionPattern
-# VirtualFunctionPattern
 # WhenPattern

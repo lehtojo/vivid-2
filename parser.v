@@ -153,6 +153,7 @@ initialize() {
 	add_pattern(TemplateFunctionPattern())
 	add_pattern(TemplateFunctionCallPattern())
 	add_pattern(TemplateTypePattern())
+	add_pattern(VirtualFunctionPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -312,6 +313,50 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 
 		# Force implement the current exported function
 		function.get(types)
+	}
+
+	# Implement all virtual function overloads
+	loop type in common.get_all_types(context) {
+		# Find all virtual functions
+		virtual_functions = type.get_all_virtual_functions()
+
+		loop virtual_function in virtual_functions {
+			result = type.get_override(virtual_function.name)
+			if result == none continue
+			overloads = result.overloads
+
+			expected = List<Type>()
+			loop parameter in virtual_function.parameters { expected.add(parameter.type) }
+
+			loop overload in overloads {
+				# If the file filter is specified, skip all functions which are not defined inside that file
+				if file != none and (overload.start as link == none or overload.start.file != file) continue
+
+				actual = List<Type>()
+				loop parameter in overload.parameters { actual.add(parameter.type) }
+
+				if actual.size != expected.size continue
+
+				skip = false
+
+				loop (i = 0, i < expected.size, i++) {
+					expected_type = expected[i]
+					if expected_type != none and expected_type.is_resolved and expected_type.match(actual[i]) continue
+					skip = true
+					stop
+				}
+
+				if skip continue
+
+				implementation = overload.get(expected)
+				if implementation == none abort('Could not implement virtual function')
+
+				implementation.virtual_function = virtual_function
+
+				if virtual_function.return_type != none { implementation.return_type = virtual_function.return_type }
+				stop
+			}
+		}
 	}
 
 	# TODO: Virtual functions

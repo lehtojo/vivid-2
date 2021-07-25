@@ -161,6 +161,8 @@ Context {
 
 	# Summary: Tries to find the first parent context which is a type
 	find_type_parent() {
+		if is_type => this as Type
+
 		iterator = parent
 
 		loop (iterator != none) {
@@ -405,7 +407,8 @@ RuntimeConfiguration {
 	variable: Variable
 
 	init(type: Type) {
-		variable = type.declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
+		# TODO: Extend runtime configuration
+		variable = type.(Context).declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
 	}
 }
 
@@ -430,6 +433,7 @@ Context Type {
 
 	is_primitive => has_flag(modifiers, MODIFIER_PRIMITIVE)
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
+	is_function_type => has_flag(modifiers, MODIFIER_FUNCTION_TYPE)
 	is_user_defined => not is_primitive and destructors.overloads.size > 0
 
 	is_unresolved => not is_resolved
@@ -498,7 +502,7 @@ Context Type {
 	add_constructor(constructor: Constructor) {
 		if constructors.overloads.size <= 0 or not constructors.overloads[0].(Constructor).is_default {
 			constructors.add(constructor)
-			declare(constructor)
+			Context.declare(constructor)
 			return
 		}
 
@@ -508,13 +512,13 @@ Context Type {
 		
 		# Declare the specified constructor
 		constructors.add(constructor)
-		declare(constructor)
+		Context.declare(constructor)
 	}
 
 	add_destructor(destructor: Destructor) {
 		if not is_user_defined or not destructors.overloads[0].(Destructor).is_default {
 			destructors.add(destructor)
-			declare(destructor)
+			Context.declare(destructor)
 			return
 		}
 
@@ -524,7 +528,42 @@ Context Type {
 		
 		# Declare the specified destructor
 		destructors.add(destructor)
-		declare(destructor)
+		Context.declare(destructor)
+	}
+
+	# Summary: Declares a virtual function into the context
+	declare(function: VirtualFunction) {
+		entry = none as FunctionList
+
+		if virtuals.contains_key(function.name) {
+			entry = get_virtual_function(function.name)
+			if entry == none abort('Could not retrieve a virtual function list')
+		}
+		else {
+			loop supertype in supertypes {
+				if supertype.is_virtual_function_declared(function.name) abort('Virtual function was already declared in supertypes')
+			}
+
+			entry = FunctionList()
+			virtuals.add(function.name, entry)
+		}
+
+		entry.add(function)
+	}
+
+	# Summary: Declares the specfied virtual function overload
+	declare_override(function: Function) {
+		entry = none as FunctionList
+
+		if overrides.contains_key(function.name) {
+			entry = overrides[function.name]
+		}
+		else {
+			entry = FunctionList()
+			overrides.add(function.name, entry)
+		}
+
+		entry.add(function)
 	}
 
 	# Summary: Returns all supertypes this type inherits
@@ -558,6 +597,49 @@ Context Type {
 		}
 
 		=> false
+	}
+
+	# Summary: Returns whether the specified virtual function is declared in this type or in any of the supertypes
+	is_virtual_function_declared(name: String) {
+		if virtuals.contains_key(name) => true
+		loop supertype in supertypes { if supertype.is_virtual_function_declared(name) => true }
+		=> false
+	}
+
+	# Summary: Retrieves the virtual function list which corresponds the specified name
+	get_virtual_function(name: String) {
+		if virtuals.contains_key(name) => virtuals[name]
+
+		loop supertype in supertypes {
+			result = supertype.get_virtual_function(name) as FunctionList
+			if result != none => result
+		}
+
+		=> none as FunctionList
+	}
+
+	# Summary: Tries to find virtual function overrides with the specified name
+	get_override(name: String) {
+		if overrides.contains_key(name) => overrides[name]
+
+		loop supertype in supertypes {
+			result = supertype.get_override(name) as FunctionList
+			if result != none => result
+		}
+
+		=> none as FunctionList
+	}
+
+	# Summary: Returns all virtual function declarations contained in this type and its supertypese
+	get_all_virtual_functions() {
+		result = List<VirtualFunction>()
+		loop supertype in supertypes { result.add_range(supertype.get_all_virtual_functions()) }
+
+		loop iterator in virtuals {
+			loop overload in iterator.value.overloads { result.add(overload) }
+		}
+
+		=> result
 	}
 
 	get_supertype_base_offset(type: Type) {
@@ -596,6 +678,23 @@ Context Type {
 		}
 
 		=> true
+	}
+
+	# Summary: Finds the first configuration variable in the hierarchy of this type
+	get_configuration_variable() {
+		if supertypes.size > 0 {
+			supertype = supertypes[0]
+
+			loop (supertype.supertypes.size > 0) {
+				supertype = supertype.supertypes[0]
+			}
+
+			if supertype.configuration == none abort('Could not find runtime configuration from an inherited supertype')
+			=> supertype.configuration.variable
+		}
+
+		if configuration == none abort('Could not find runtime configuration')
+		=> configuration.variable
 	}
 
 	get_register_format() {
@@ -773,7 +872,7 @@ FunctionList {
 	}
 
 	get_overload(parameter_types: List<Type>) {
-		=> get_overload(parameter_types, List<Type>(0))
+		=> get_overload(parameter_types, List<Type>())
 	}
 
 	get_implementation(parameter_types: List<Type>, template_arguments: List<Type>) {
@@ -1260,6 +1359,8 @@ Context FunctionImplementation {
 	template_arguments: List<Type>
 	return_type: Type
 
+	virtual_function: VirtualFunction = none
+
 	is_constructor => metadata.is_constructor
 	is_static => metadata.is_static
 	is_empty => (node == none or node.first == none) and not metadata.is_imported
@@ -1431,5 +1532,96 @@ Type UnresolvedType {
 		result = resolve(context)
 		if result == none => none as Type
 		=> result.try_get_type()
+	}
+}
+
+UnresolvedType FunctionType {
+	self: Type
+	parameters: List<Type>
+	return_type: Type
+
+	init(parameters: List<Type>, return_type: Type, position: Position) {
+		UnresolvedType.init(String.empty)
+		this.self = none as Type
+		this.parameters = parameters
+		this.return_type = return_type
+		this.position = position
+	}
+
+	init(self: Type, parameters: List<Type>, return_type: Type, position: Position) {
+		UnresolvedType.init(String.empty)
+		this.self = self
+		this.parameters = parameters
+		this.return_type = return_type
+		this.position = position
+	}
+
+	override resolve(context: Context) {
+		resolved = List<Type>(parameters.size, false)
+
+		loop parameter in parameters {
+			if parameter == none or parameter.is_resolved {
+				resolved.add(none as Type)
+				continue
+			}
+
+			resolved.add(resolver.resolve(context, parameter))
+		}
+
+		loop (i = 0, i < resolved.size, i++) {
+			iterator = resolved[i]
+			if iterator == none continue
+			parameters[i] = iterator
+		}
+
+		=> none as Node
+	}
+
+	override is_resolved() {
+		loop parameter in parameters {
+			if parameter == none or parameter.is_unresolved => false
+		}
+
+		=> true
+	}
+
+	override get_accessor_type() {
+		=> Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64))
+	}
+
+	override match(other: Type) {
+		if not other.is_function_type => false
+		if parameters.size != other.(FunctionType).parameters.size => false
+		if not common.compatible(parameters, other.(FunctionType).parameters) => false
+		=> return_type == other.(FunctionType).return_type or resolver.get_shared_type(return_type, other.(FunctionType).return_type) != none
+	}
+
+	override string() {
+		names = List<String>(parameters.size, false)
+
+		loop parameter in parameters {
+			if parameter == none {
+				names.add(String('?'))
+				continue
+			}
+
+			names.add(parameter.string())
+		}
+
+		return_type_name = none as String
+
+		if return_type != none { return_type_name = return_type.string() }
+		else { return_type_name = String('?') }
+
+		=> String('(') + String.join(String(', '), names) + ') -> ' + return_type_name
+	}
+}
+
+Function VirtualFunction {
+	return_type: Type
+
+	init(type: Type, name: String, return_type: Type, start: Position, end: Position) {
+		Function.init(type, MODIFIER_DEFAULT, name, List<Token>(), start, end)
+		this.return_type = return_type
 	}
 }

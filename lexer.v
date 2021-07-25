@@ -38,6 +38,7 @@ MODIFIER_OUTLINE = 1024
 MODIFIER_INLINE = 2048
 MODIFIER_PRIMITIVE = 4096
 MODIFIER_NUMBER = 8192
+MODIFIER_FUNCTION_TYPE = 16384
 
 MODIFIER_DEFAULT = 1 # MODIFIER_PUBLIC
 
@@ -355,6 +356,7 @@ namespace Keywords {
 	readonly NAMESPACE: Keyword
 	readonly NOT: Keyword
 	readonly OUTLINE: Keyword
+	readonly OVERRIDE: Keyword
 	readonly PRIVATE: Keyword
 	readonly PROTECTED: Keyword
 	readonly PUBLIC: Keyword
@@ -362,6 +364,7 @@ namespace Keywords {
 	readonly RETURN: Keyword
 	readonly STATIC: Keyword
 	readonly STOP: Keyword
+	readonly VIRTUAL: Keyword
 	readonly WHEN: Keyword
 
 	public readonly all: Map<String, Keyword>
@@ -390,6 +393,7 @@ namespace Keywords {
 		NAMESPACE = ModifierKeyword(String('constant'), MODIFIER_CONSTANT)
 		NOT = Keyword(String('not'), KEYWORD_TYPE_NORMAL)
 		OUTLINE = ModifierKeyword(String('outline'), MODIFIER_OUTLINE)
+		OVERRIDE = Keyword(String('override'), KEYWORD_TYPE_NORMAL)
 		PRIVATE = ModifierKeyword(String('private'), MODIFIER_PRIVATE)
 		PROTECTED = ModifierKeyword(String('protected'), MODIFIER_PROTECTED)
 		PUBLIC = ModifierKeyword(String('public'), MODIFIER_PUBLIC)
@@ -397,6 +401,7 @@ namespace Keywords {
 		RETURN = Keyword(String('return'), KEYWORD_TYPE_FLOW)
 		STATIC = ModifierKeyword(String('static'), MODIFIER_STATIC)
 		STOP = Keyword(String('stop'), KEYWORD_TYPE_FLOW)
+		VIRTUAL = Keyword(String('virtual'), KEYWORD_TYPE_NORMAL)
 		WHEN = Keyword(String('when'), KEYWORD_TYPE_FLOW)
 
 		all = Map<String, Keyword>()
@@ -418,6 +423,7 @@ namespace Keywords {
 		add(NAMESPACE)
 		add(NOT)
 		add(OUTLINE)
+		add(OVERRIDE)
 		add(PRIVATE)
 		add(PROTECTED)
 		add(PUBLIC)
@@ -425,6 +431,7 @@ namespace Keywords {
 		add(RETURN)
 		add(STATIC)
 		add(STOP)
+		add(VIRTUAL)
 		add(WHEN)
 	}
 
@@ -682,7 +689,7 @@ Token ParenthesisToken {
 		section = List<Token>()
 
 		loop token in tokens {
-			if (token.match(Operators.COMMA)) {
+			if token.match(Operators.COMMA) {
 				sections.add(section)
 				section = List<Token>()
 				continue

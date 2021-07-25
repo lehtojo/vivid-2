@@ -291,24 +291,158 @@ get_template_parameters(template_parameter_tokens: List<Token>, template_paramet
 	=> template_parameters
 }
 
-try_get_virtual_function_call(self: Node, self_type: Type, name: String, arguments: Node, argument_types: List<Type>) {
-	# TODO: Virtual functions
-	=> none as Node
+# Summary:  Returns whether the specified actual types are compatible with the specified expected types, that is whether the actual types can be casted to match the expected types. This function also requires that the actual parameters are all resolved, otherwise this function returns false.
+compatible(expected_types: List<Type>, actual_types: List<Type>) {
+	if expected_types.size != actual_types.size => false
+
+	loop (i = 0, i < expected_types.size, i++) {
+		expected = expected_types[i]
+		if expected == none continue
+
+		actual = actual_types[i]
+		if expected == actual continue
+
+		if not expected.is_primitive or not actual.is_primitive {
+			if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
+		} 
+		else resolver.get_shared_type(expected, actual) == none => false
+	}
+
+	=> true
 }
 
-try_get_virtual_function_call(environment: Context, name: String, arguments: Node, argument_types: List<Type>) {
-	# TODO: Virtual functions
-	=> none as Node
+# Summary: Tries to build a virtual function call which has a specified owner
+try_get_virtual_function_call(self: Node, self_type: Type, name: String, arguments: Node, argument_types: List<Type>, position: Position) {
+	if not self_type.is_virtual_function_declared(name) => none as CallNode
+
+	# Ensure all the parameters are resolved
+	loop argument_type in argument_types {
+		if argument_type == none or argument_type.is_unresolved => none as CallNode
+	}
+
+	# Try to find a virtual function with the parameter types
+	overload = self_type.get_virtual_function(name).get_overload(argument_types) as VirtualFunction
+	if overload == none or overload.return_type == none => none as CallNode
+
+	required_self_type = overload.find_type_parent()
+	if required_self_type == none abort('Could not retrieve virtual function parent type')
+
+	# Require that the self type has runtime configuration
+	if required_self_type.configuration == none => none as CallNode
+
+	configuration = required_self_type.get_configuration_variable()
+	alignment = required_self_type.get_all_virtual_functions().index_of(overload)
+	if alignment == -1 abort('Could not compute virtual function alignment')
+
+	function_pointer = AccessorNode(LinkNode(self.clone(), VariableNode(configuration)), NumberNode(SYSTEM_FORMAT, alignment + 1, position), position)
+
+	# Cast the self pointer, if neccessary
+	if self_type != required_self_type {
+		self = CastNode(self, TypeNode(required_self_type), self.start)
+	}
+
+	# Determine the parameter types
+	parameter_types = List<Type>(argument_types.size, false)
+	loop parameter in overload.parameters { parameter_types.add(parameter.type) }
+
+	=> CallNode(self, function_pointer, arguments, FunctionType(required_self_type, parameter_types, overload.return_type, position), position)
 }
 
+# Summary: Tries to build a virtual function call which has a specified owner
+try_get_virtual_function_call(environment: Context, self: Node, self_type: Type, descriptor: FunctionToken) {
+	arguments = descriptor.parse(environment)
+	argument_types = List<Type>()
+	loop argument in arguments { argument_types.add(argument.try_get_type()) }
+
+	=> try_get_virtual_function_call(self, self_type, descriptor.name, arguments, argument_types, descriptor.position)
+}
+
+# Summary: Tries to build a virtual function call which has a specified owner
+try_get_virtual_function_call(environment: Context, name: String, arguments: Node, argument_types: List<Type>, position: Position) {
+	if not environment.is_inside_function => none as CallNode
+
+	type = environment.find_type_parent()
+	if type == none => none as CallNode
+
+	self = get_self_pointer(environment, position)
+	=> try_get_virtual_function_call(self, type, name, arguments, argument_types, position)
+}
+
+# Summary: Tries to build a virtual function call which uses the current self pointer
+try_get_virtual_function_call(environment: Context, descriptor: FunctionToken) {
+	if not environment.is_inside_function => none as CallNode
+
+	type = environment.find_type_parent()
+	if type == none => none as CallNode
+
+	self = get_self_pointer(environment, descriptor.position)
+	=> try_get_virtual_function_call(environment, self, type, descriptor)
+}
+
+# Summary: Tries to build a lambda call which is stored inside a specified owner
 try_get_lambda_call(primary: Context, left: Node, name: String, arguments: Node, argument_types: List<Type>) {
-	# TODO: Lambda calls
-	=> none as Node
+	if not primary.is_variable_declared(name) => none as CallNode
+
+	variable = primary.get_variable(name)
+
+	# Require the variable to represent a function
+	if variable.type == none or not variable.type.is_function_type => none as CallNode
+	properties = variable.type as FunctionType
+
+	# Require that the specified argument types pass the required parameter types
+	if not compatible(properties.parameters, argument_types) => none as CallNode
+	
+	position = left.start
+	self = LinkNode(left, VariableNode(variable), position)
+	
+	# Determine where the function pointer is located
+	offset = 1
+	if settings.is_garbage_collector_enabled { offset = 2 }
+
+	# Load the function pointer using the offset
+	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
+	=> CallNode(self, function_pointer, arguments, properties, position)
 }
 
-try_get_lambda_call(primary: Context, name: String, arguments: Node, argument_types: List<Type>) {
-	# TODO: Lambda calls
-	=> none as Node
+# Summary: Tries to build a lambda call which is stored inside the current scope or in the self pointer
+try_get_lambda_call(environment: Context, name: String, arguments: Node, argument_types: List<Type>) {
+	if not environment.is_variable_declared(name) => none as CallNode
+
+	variable = environment.get_variable(name)
+
+	# Require the variable to represent a function
+	if variable.type == none or not variable.type.is_function_type => none as CallNode
+	properties = variable.type as FunctionType
+
+	# Require that the specified argument types pass the required parameter types
+	if not compatible(properties.parameters, argument_types) => none as CallNode
+
+	self = none as Node
+	position = arguments.start
+
+	if variable.is_member {
+		self_pointer = get_self_pointer(environment, position)
+		self = LinkNode(self_pointer, VariableNode(variable), position)
+	}
+	else {
+		self = VariableNode(variable)
+	}
+
+	# Determine where the function pointer is located
+	offset = 1
+	if settings.is_garbage_collector_enabled { offset = 2 }
+
+	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
+	=> CallNode(self, function_pointer, arguments, properties, position)
+}
+
+# Summary: Tries to build a lambda call which is stored inside the current scope or in the self pointer
+try_get_lambda_call(environment: Context, descriptor: FunctionToken) {
+	arguments = descriptor.parse(environment)
+	argument_types = List<Type>()
+	loop argument in arguments { argument_types.add(argument.try_get_type()) }
+
+	=> try_get_lambda_call(environment, descriptor.name, parameters, argument_types)
 }
 
 # Summary: Collects all types and subtypes from the specified context
@@ -515,4 +649,22 @@ get_tokens(type: Type, position: Position) {
 	}
 
 	=> result
+}
+
+# Summary: Returns the position which represents the end of the specified token
+get_end_of_token(token: Token) {
+	end = when(token.type) {
+		TOKEN_TYPE_PARENTHESIS => token.(ParenthesisToken).end
+		TOKEN_TYPE_FUNCTION => token.(FunctionToken).identifier.end
+		TOKEN_TYPE_IDENTIFIER => token.(IdentifierToken).end
+		TOKEN_TYPE_KEYWORD => token.(KeywordToken).end
+		TOKEN_TYPE_NUMBER => token.(NumberToken).end
+		TOKEN_TYPE_OPERATOR => token.(OperatorToken).end
+		TOKEN_TYPE_STRING => token.(StringToken).end
+		else => none as Position
+	}
+
+	if end != none => end
+
+	=> token.position.translate(1)
 }

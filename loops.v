@@ -14,7 +14,7 @@ build_control_instruction(unit: Unit, node: CommandNode) {
 	if node.instruction == Keywords.STOP {
 		label = node.container.exit_label
 	}
-	else if (node.Instruction == Keywords.CONTINUE) {
+	else node.instruction == Keywords.CONTINUE {
 		label = node.container.continue_label
 	}
 	else {
@@ -154,7 +154,7 @@ build(unit: Unit, statement: LoopNode) {
 
 	# Try to find a loop control node which targets the current loop
 	# If even one is found, this loop needs a continue label
-	if (statement.body.find(i -> i.instance == NODE_COMMAND and i.(CommandNode).instruction == Keywords.CONTINUE and i.(CommandNode).container == statement) != none) {
+	if statement.body.find(i -> i.instance == NODE_COMMAND and i.(CommandNode).instruction == Keywords.CONTINUE and i.(CommandNode).container == statement) != none {
 		# Append a label which can be used by the continue-commands
 		statement.continue_label = unit.get_next_label()
 		unit.add(LabelInstruction(unit, statement.continue_label))
