@@ -17,6 +17,7 @@ is_verbose_output_enabled: bool
 is_target_windows: bool
 is_position_independent: bool
 allocation_function: FunctionImplementation
+inheritance_function: FunctionImplementation
 included_folders: List<String>
 
 is_x64 => settings.architecture == ARCHITECTURE_X64

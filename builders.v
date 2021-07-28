@@ -248,6 +248,16 @@ build_call(unit: Unit, node: CallNode) {
 	=> calls.build(unit, self, self_type, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
 }
 
+build_string(unit: Unit, node: StringNode) {
+	# Generate an identifier for the string, if it does not already exist
+	if node.identifier as link == none { node.identifier = unit.get_next_string() }
+
+	handle = DataSectionHandle(node.identifier, true)
+	if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+
+	=> Result(handle, SYSTEM_FORMAT)
+}
+
 build_childs(unit: Unit, node: Node) {
 	result = none as Result
 
@@ -277,6 +287,7 @@ build(unit: Unit, node: Node) {
 		NODE_OPERATOR => build_arithmetic(unit, node as OperatorNode)
 		NODE_RETURN => build_return(unit, node as ReturnNode)
 		NODE_STACK_ADDRESS => AllocateStackInstruction(unit, node as StackAddressNode).add()
+		NODE_STRING => build_string(unit, node as StringNode)
 		else => build_childs(unit, node)
 	}
 }

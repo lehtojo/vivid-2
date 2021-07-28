@@ -36,7 +36,10 @@ NODE_LABEL = 17179869184
 NODE_JUMP = 34359738368
 NODE_DECLARE = 68719476736
 NODE_SECTION = 137438953472
-NODE_NAMESPACE = 274877906944 # 1 <| 37
+NODE_NAMESPACE = 274877906944
+NODE_INSPECTION = 549755813888
+NODE_COMPILES = 1099511627776
+NODE_IS = 2199023255552 # 1 <| 40
 
 Node NumberNode {
 	value: large
@@ -646,6 +649,7 @@ Node FunctionNode {
 
 Node ConstructionNode {
 	constructor => first as FunctionNode
+	is_stack_allocated: bool = false
 
 	init(constructor: FunctionNode, position: Position) {
 		this.start = position
@@ -793,6 +797,16 @@ IfNode ElseIfNode {
 	init(start: Position) {
 		IfNode.init(start)
 		this.instance = NODE_ELSE_IF
+	}
+
+	get_root() {
+		iterator = predecessor
+
+		loop (iterator.instance != NODE_IF) {
+			iterator = iterator.(ElseIfNode).predecessor
+		}
+
+		=> iterator as IfNode
 	}
 
 	override copy() {
@@ -1023,6 +1037,16 @@ Node ElseNode {
 		this.start = start
 		this.instance = NODE_ELSE
 		this.is_resolvable = true
+	}
+
+	get_root() {
+		iterator = predecessor
+
+		loop (iterator.instance != NODE_IF) {
+			iterator = iterator.(ElseIfNode).predecessor
+		}
+
+		=> iterator as IfNode
 	}
 
 	override resolve(context: Context) {
@@ -1487,5 +1511,91 @@ Node CallNode {
 
 	override try_get_type() {
 		=> descriptor.return_type
+	}
+}
+
+INSPECTION_TYPE_NAME = 0
+INSPECTION_TYPE_SIZE = 1
+
+Node InspectionNode {
+	type: large
+	
+	init(type: large, node: Node, position: Position) {
+		this.type = type
+		this.instance = NODE_INSPECTION
+		add(node)
+	}
+
+	override resolve(context: Context) {
+		resolver.resolve(context, first)
+		=> none as Node
+	}
+
+	override get_status() {
+		type: Type = try_get_type()
+		if type == none or type.is_unresolved => Status(start, 'Can not resolve the type of the inspected object')
+		=> Status()
+	}
+
+	override try_get_type() {
+		if type == INSPECTION_TYPE_NAME => Link()
+		=> primitives.create_number(primitives.LARGE, FORMAT_INT64)
+	}
+
+	override string() {
+		if type == INSPECTION_TYPE_NAME => String('Name of')
+		=> String('Size of')
+	}
+}
+
+# Summary: Represents a node which outputs true if the content of the node is compiled successfully otherwise it returns false
+Node CompilesNode {
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_COMPILES
+	}
+
+	override try_get_type() {
+		=> primitives.create_bool()
+	}
+}
+
+Node IsNode {
+	type: Type
+	result => last.(VariableNode).variable
+	
+	has_result_variable => first != last
+
+	init(object: Node, type: Type, variable: Variable, position: Position) {
+		this.type = type
+		this.start = position
+		this.instance = NODE_IS
+
+		add(object)
+		if result != none add(VariableNode(result, position))
+	}
+
+	override try_get_type() {
+		=> primitives.create_bool()
+	}
+
+	override resolve(context: Context) {
+		# Try to resolve the inspected object
+		resolver.resolve(context, first)
+
+		# Try to resolve the type
+		resolved = resolver.resolve(context, type)
+		if resolved != none { type = resolved }
+
+		=> none as Node
+	}
+
+	override get_status() {
+		if type.is_unresolved => Status(start, 'Can not resolve the condition type')
+		=> first.get_status()
+	}
+
+	override string() {
+		=> String('Is')
 	}
 }

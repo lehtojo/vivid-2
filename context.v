@@ -25,12 +25,14 @@ Indexer {
 	private stack_count = 0
 	private label_count = 0
 	private identity_count = 0
+	private string_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
 	stack => stack_count++
 	label => label_count++
 	identity => identity_count++
+	string => string_count++
 }
 
 Context {
@@ -401,14 +403,32 @@ Function Destructor {
 	}
 }
 
+Table {
+	name: String
+	label: Label
+	is_built: bool = false
+	is_section: bool = false
+	subtables: large = 0
+
+	init(name: String) {
+		this.name = name
+		this.label = Label(name)
+	}
+}
+
 RuntimeConfiguration {
 	constant CONFIGURATION_VARIABLE = '.configuration'
+
+	entry: Table
+	descriptor: Table
 
 	variable: Variable
 
 	init(type: Type) {
 		# TODO: Extend runtime configuration
 		variable = type.(Context).declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
+		entry = Table(type.get_fullname() + 'CE')
+		descriptor = Table(type.get_fullname() + 'DE')
 	}
 }
 

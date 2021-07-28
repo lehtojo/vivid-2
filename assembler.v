@@ -955,6 +955,10 @@ Unit {
 		=> none as Register
 	}
 
+	get_next_string() {
+		=> function.get_fullname() + '_S' + to_string(indexer.string)
+	}
+
 	get_next_label() {
 		=> Label(function.get_fullname() + '_L' + to_string(indexer.label))
 	}
@@ -1087,7 +1091,7 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 		loop parameter in instruction.parameters {
 			if not parameter.is_any_register continue
 
-			register = parameter.result.register
+			register = parameter.value.(RegisterHandle).register
 			if register.is_volatile or registers.contains(register) continue
 
 			registers.add(register)

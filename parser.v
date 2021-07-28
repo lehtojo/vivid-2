@@ -154,6 +154,10 @@ initialize() {
 	add_pattern(TemplateFunctionCallPattern())
 	add_pattern(TemplateTypePattern())
 	add_pattern(VirtualFunctionPattern())
+	add_pattern(SpecificModificationPattern())
+	add_pattern(TypeInspectionPattern())
+	add_pattern(CompilesPattern())
+	add_pattern(IsPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -358,8 +362,6 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 			}
 		}
 	}
-
-	# TODO: Virtual functions
 }
 
 parse(bundle: Bundle) {

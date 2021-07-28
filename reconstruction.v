@@ -647,12 +647,141 @@ add_assignment_casts(root: Node) {
 	}
 }
 
+# Summary: Evaluates the values of inspection nodes
+rewrite_inspections(root: Node) {
+	inspections = root.find_all(NODE_INSPECTION) as List<InspectionNode>
+
+	loop inspection in inspections {
+		type = inspection.first.get_type()
+
+		if inspection.instance == INSPECTION_TYPE_NAME {
+			inspection.replace(StringNode(type.string(), inspection.start))
+		}
+		else {
+			inspection.replace(NumberNode(SYSTEM_FORMAT, type.reference_size, inspection.start))
+		}
+	}
+}
+
+# Summary: Returns the first position where a statement can be placed outside the scope of the specified node
+get_insert_position(from: Node) {
+	iterator = from.parent
+	position = from
+
+	loop (iterator.instance != NODE_SCOPE) {
+		position = iterator
+		iterator = iterator.parent
+	}
+
+	# If the position happens to become a conditional statement, the insert position should become before it
+	if position.instance == NODE_ELSE_IF { position = position.(ElseIfNode).get_root() }
+	else position.instance == NODE_ELSE { position = position.(ElseNode).get_root() }
+
+	=> position
+}
+
+# Summary: Creates a condition which passes if the source has the same type as the specified type in runtime
+create_type_condition(source: Node, expected: Type, position: Position) {
+	type = source.get_type()
+
+	if type.configuration == none or expected.configuration == none {
+		# If the configuration of the type is not present, it means that the type can not be inherited
+		# Since the type can not be inherited, this means the result of the condition can be determined
+		=> NumberNode(SYSTEM_FORMAT, (type == expected) as large, position)
+	}
+
+	configuration = type.get_configuration_variable()
+	start = LinkNode(source, VariableNode(configuration))
+
+	arguments = Node()
+	arguments.add(AccessorNode(start, NumberNode(SYSTEM_FORMAT, 0, position), position))
+	arguments.add(DataPointerNode(expected.configuration.descriptor as large, 0, position))
+
+	condition = FunctionNode(settings.inheritance_function, position).set_arguments(arguments)
+	=> condition
+}
+
+# Summary: Rewrites is-expressions so that they use nodes which can be compiled
+rewrite_is_expressions(root: Node) {
+	expressions = root.find_all(NODE_IS) as List<IsNode>
+
+	loop (i = expressions.size - 1, i >= 0, i--) {
+		expression = expressions[i]
+
+		if expression.has_result_variable continue
+
+		expression.replace(create_type_condition(expression.first, expression.type, expression.start))
+		expressions.remove_at(i)
+	}
+
+	loop expression in expressions {
+		position = expression.start
+
+		# Initialize the result variable
+		initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(expression.result),
+			NumberNode(SYSTEM_FORMAT, 0, position)
+		)
+
+		# The result variable must be initialized outside the condition
+		get_insert_position(expression).insert(initialization)
+
+		# Get the context of the expression
+		expression_context = expression.get_parent_context()
+
+		# Declare a variable which is used to store the inspected object
+		object_type = expression.first.get_type()
+		object_variable = expression_context.declare_hidden(object_type)
+
+		# Object variable should be declared
+		initialization = DeclareNode(object_variable, position)
+
+		get_insert_position(expression).insert(initialization)
+
+		# Load the inspected object
+		load = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(object_variable),
+			expression.first
+		)
+
+		assignment_context = Context(expression_context, NORMAL_CONTEXT)
+
+		# Create a condition which passes if the inspected object is the expected type
+		condition = create_type_condition(VariableNode(object_variable), expression.type, position)
+
+		# Create an assignment which assigns the inspected object to the result variable while casting it to the expected type
+		assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(expression.result),
+			CastNode(VariableNode(object_variable), TypeNode(expression.type), position)
+		)
+
+		body = Node()
+		body.add(assignment)
+		conditional_assignment = IfNode(assignment_context, condition, body, position, none as Position)
+
+		# Create a condition which represents the result of the is expression
+		result_condition = OperatorNode(Operators.NOT_EQUALS).set_operands(
+			VariableNode(expression.result),
+			NumberNode(SYSTEM_FORMAT, 0, position)
+		)
+
+		# Replace the expression with the logic above
+		result = InlineNode(position)
+		result.add(load)
+		result.add(conditional_assignment)
+		result.add(result_condition)
+		expression.replace(result)
+	}
+}
+
 start(implementation: FunctionImplementation, root: Node) {
+	rewrite_inspections(root)
 	strip_links(root)
 	remove_redundant_parentheses(root)
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
 	add_assignment_casts(root)
+	rewrite_is_expressions(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)

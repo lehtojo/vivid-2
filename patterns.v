@@ -1687,14 +1687,181 @@ Pattern VirtualFunctionPattern {
 	}
 }
 
-# CompilesPattern
+Pattern SpecificModificationPattern {
+	constant MODIFIER = 0
+	constant OBJECT = 2
+
+	# Pattern: $modifiers [\n] $variable/$function/$type
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_DYNAMIC)
+		priority = PRIORITY_ALL
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		modifier = tokens[MODIFIER] as KeywordToken
+		if modifier.keyword.type != KEYWORD_TYPE_MODIFIER => false
+
+		node = tokens[OBJECT].(DynamicToken).node
+		=> node.match(NODE_CONSTRUCTION | NODE_VARIABLE | NODE_FUNCTION_DEFINITION | NODE_TYPE_DEFINITION) or (node.instance == NODE_LINK and node.last.instance == NODE_CONSTRUCTION)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		modifiers = tokens[MODIFIER].(KeywordToken).keyword.(ModifierKeyword).modifier
+		destination = tokens[OBJECT].(DynamicToken).node
+
+		if destination.instance == NODE_VARIABLE {
+			variable = destination.(VariableNode).variable
+			variable.modifiers = combine_modifiers(variable.modifiers, modifiers)
+		}
+		else destination.instance == NODE_FUNCTION_DEFINITION {
+			if has_flag(modifiers, MODIFIER_IMPORTED) {
+				state.error = Status(tokens[MODIFIER].position, 'Can not add modifier import to a function definition')
+				=> none as Node
+			}
+
+			function = destination.(FunctionDefinitionNode).function
+			function.modifiers = combine_modifiers(function.modifiers, modifiers)
+		}
+		else destination.instance == NODE_TYPE_DEFINITION {
+			type = destination.(TypeDefinitionNode).type
+			type.modifiers = combine_modifiers(type.modifiers, modifiers)
+		}
+		else destination.instance == NODE_CONSTRUCTION {
+			construction = destination as ConstructionNode
+			construction.is_stack_allocated = has_flag(modifiers, MODIFIER_INLINE)
+		}
+		else destination.instance == NODE_LINK {
+			construction = destination.last as ConstructionNode
+			construction.is_stack_allocated = has_flag(modifiers, MODIFIER_INLINE)
+		}
+
+		=> destination
+	}
+}
+
+Pattern TypeInspectionPattern {
+	constant SIZE_INSPECTION_IDENTIFIER = 'sizeof'
+	constant NAME_INSPECTION_IDENTIFIER = 'nameof'
+
+	# Pattern: sizeof($type)/nameof($type)
+	init() {
+		path.add(TOKEN_TYPE_FUNCTION)
+		priority = 18
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		descriptor = tokens[0] as FunctionToken
+		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) => false
+
+		# Create a temporary state which in order to check whether the parameters contains a type
+		state = ParserState()
+		state.all = descriptor.parameters.tokens
+		state.tokens = List<Token>()
+		=> common.consume_type(state) and state.end == state.all.size
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		descriptor = tokens[0] as FunctionToken
+		type = common.read_type(context, descriptor.parameters.tokens)
+
+		if type == none {
+			state.error = Status(descriptor.position, 'Can not resolve the inspected type')
+			=> none as Node
+		}
+
+		position = descriptor.position
+
+		if descriptor.name == NAME_INSPECTION_IDENTIFIER {
+			if type.is_resolved => StringNode(type.string(), position)
+			=> InspectionNode(INSPECTION_TYPE_NAME, TypeNode(type), position)
+		}
+
+		=> InspectionNode(INSPECTION_TYPE_SIZE, TypeNode(type), position)
+	}
+}
+
+Pattern CompilesPattern {
+	constant COMPILES = 0
+	constant CONDITIONS = 2
+
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 5
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[COMPILES].match(Keywords.COMPILES) and tokens[CONDITIONS].match(`{`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		conditions = parser.parse(context, tokens[CONDITIONS].(ParenthesisToken))
+		result = CompilesNode(tokens[COMPILES].position)
+		loop condition in conditions { result.add(condition) }
+		=> result
+	}
+}
+
+# TODO: Test
+Pattern IsPattern {
+	constant KEYWORD = 1
+	constant TYPE = 2
+
+	# Pattern $object is [not] $type [$name]
+	init() {
+		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
+		path.add(TOKEN_TYPE_KEYWORD)
+		priority = 5
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		if not tokens[KEYWORD].match(Keywords.IS) and not tokens[KEYWORD].match(Keywords.IS_NOT) => false
+
+		# Consume the type
+		if not common.consume_type(state) => false
+
+		# Try consuming the result variable
+		state.consume(TOKEN_TYPE_IDENTIFIER)
+		=> true
+	}
+
+	override build(context: Context, state: ParserState, formatted: List<Token>) {
+		negate = formatted[KEYWORD].match(Keywords.IS_NOT)
+
+		source = parser.parse(context, formatted[0])
+		tokens = formatted.slice(TYPE, formatted.size)
+		type = common.read_type(context, tokens, TYPE)
+
+		if type == none {
+			state.error = Status(formatted[TYPE].position, 'Can not understand the type')
+			=> none as Node
+		}
+
+		result = none as Node
+
+		# If there is a token left in the queue, it must be the result variable name
+		if tokens.size > 0 {
+			name = tokens.take_first().(IdentifierToken).value
+			variable = Variable(context, type, VARIABLE_CATEGORY_LOCAL, name, MODIFIER_DEFAULT)
+
+			result = IsNode(source, type, variable, formatted[KEYWORD].position)
+		}
+		else {
+			result = IsNode(source, type, none as Variable, formatted[KEYWORD].position)
+		}
+
+		if negate => NotNode(result, result.start)
+		=> result
+	}
+}
+
 # ExtensionFunctionPattern
 # HasPattern
-# IsPattern
 # LambdaPattern
 # OverrideFunctionPattern
 # RangePattern
 # ShortFunctionPattern
-# SpecificModificationPattern
-# TypeInspectionPattern
 # WhenPattern

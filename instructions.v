@@ -1441,7 +1441,7 @@ DualParameterInstruction CompareInstruction {
 
 		if settings.is_x64 and second.is_constant and second.value.(ConstantHandle).value == 0 {
 			# Example: test r, r
-			=> build(instructions.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER))
+			=> build(instructions.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER))
 		}
 
 		# Example: cmp r, c/r/[...]

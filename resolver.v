@@ -376,7 +376,11 @@ resolve(bundle: Bundle) {
 		current = get_report(context, parse.root)
 
 		# Try again only if the errors have changed
-		if are_reports_equal(previous, current) stop
+		if not are_reports_equal(previous, current) continue
+		if evaluated stop
+
+		evaluator.evaluate(context)
+		evaluated = true
 	}
 
 	# The compiler must not continue if there are errors in the report

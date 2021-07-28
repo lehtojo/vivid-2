@@ -396,12 +396,12 @@ Handle DataSectionHandle {
 		# If a modifier is attached, the offset is taken into account elsewhere
 		if modifier != DATA_SECTION_MODIFIER_NONE {
 			if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE {
-				if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+				if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
 				=> String('[rip+') + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
 			}
 
 			if modifier == DATA_SECTION_PROCEDURE_LINKAGE_TABLE {
-				if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+				if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
 				=> String('[rip+') + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
 			}
 
@@ -414,11 +414,11 @@ Handle DataSectionHandle {
 
 			if offset > 0 { postfix = String('+') + postfix }
 
-			if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + postfix + ']'
+			if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + postfix + ']'
 			=> String('[rip+') + identifier + postfix + ']'
 		}
 
-		if is_precise => String(to_size_modifier(size)) + '[rip+' + identifier + ']'
+		if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + ']'
 		=> String('[rip+') + identifier + ']'
 	}
 
