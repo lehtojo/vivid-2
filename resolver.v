@@ -311,13 +311,23 @@ are_reports_equal(a: List<Status>, b: List<Status>) {
 }
 
 register_default_functions(context: Context) {
+	# Allocation:
 	allocation_function_overloads = context.get_function(String('allocate'))
 	if allocation_function_overloads == none abort('Missing the allocation function, please implement it or include the standard library')
 
-	type = primitives.create_number(primitives.LARGE, FORMAT_INT64)
-
-	settings.allocation_function = allocation_function_overloads.get_implementation(type)
+	settings.allocation_function = allocation_function_overloads.get_implementation(primitives.create_number(primitives.LARGE, FORMAT_INT64))
 	if settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
+
+	# Inheritance:
+	inheritance_function_overloads = context.get_function(String('internal_is'))
+	if inheritance_function_overloads == none abort('Missing the inheritance function, please implement it or include the standard library')
+
+	types = List<Type>(2, false)
+	types.add(Link())
+	types.add(Link())
+	
+	settings.inheritance_function = inheritance_function_overloads.get_implementation(types)
+	if settings.inheritance_function == none abort('Missing the inheritance function, please implement it or include the standard library')
 }
 
 complain(report: List<Status>) {

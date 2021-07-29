@@ -444,7 +444,7 @@ find_bool_values(root: Node) {
 	result = List<Node>()
 
 	loop candidate in candidates {
-		node = candidate.find_parent(i -> [not i.match(NODE_PARENTHESIS)])
+		node = candidate.find_parent(i -> [not i.match(NODE_INLINE | NODE_PARENTHESIS)])
 
 		# Skip the current candidate, if it represents a statement condition
 		if common.is_statement(node) or node.match(NODE_NORMAL) or common.is_condition(candidate) continue
@@ -695,7 +695,7 @@ create_type_condition(source: Node, expected: Type, position: Position) {
 
 	arguments = Node()
 	arguments.add(AccessorNode(start, NumberNode(SYSTEM_FORMAT, 0, position), position))
-	arguments.add(DataPointerNode(expected.configuration.descriptor as large, 0, position))
+	arguments.add(TableDataPointerNode(expected.configuration.descriptor, 0, position))
 
 	condition = FunctionNode(settings.inheritance_function, position).set_arguments(arguments)
 	=> condition
@@ -729,20 +729,28 @@ rewrite_is_expressions(root: Node) {
 		# Get the context of the expression
 		expression_context = expression.get_parent_context()
 
-		# Declare a variable which is used to store the inspected object
-		object_type = expression.first.get_type()
-		object_variable = expression_context.declare_hidden(object_type)
+		object_variable = none as Variable
+		load = none as Node
 
-		# Object variable should be declared
-		initialization = DeclareNode(object_variable, position)
+		if expression.first.instance != NODE_VARIABLE {
+			# Declare a variable which is used to store the inspected object
+			object_type = expression.first.get_type()
+			object_variable = expression_context.declare_hidden(object_type)
 
-		get_insert_position(expression).insert(initialization)
+			# Object variable should be declared
+			initialization = DeclareNode(object_variable, position)
 
-		# Load the inspected object
-		load = OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(object_variable),
-			expression.first
-		)
+			get_insert_position(expression).insert(initialization)
+
+			# Load the inspected object
+			load = OperatorNode(Operators.ASSIGN, position).set_operands(
+				VariableNode(object_variable),
+				expression.first
+			)
+		}
+		else {
+			object_variable = expression.first.(VariableNode).variable
+		}
 
 		assignment_context = Context(expression_context, NORMAL_CONTEXT)
 
@@ -767,7 +775,7 @@ rewrite_is_expressions(root: Node) {
 
 		# Replace the expression with the logic above
 		result = InlineNode(position)
-		result.add(load)
+		if load != none result.add(load)
 		result.add(conditional_assignment)
 		result.add(result_condition)
 		expression.replace(result)

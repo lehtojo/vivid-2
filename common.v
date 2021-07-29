@@ -668,3 +668,33 @@ get_end_of_token(token: Token) {
 
 	=> token.position.translate(1)
 }
+
+# Summary: Creates a function header without return type from the specified values
+# Format: $name($type1, $type2, ... $typen) / $name<$type1, $type2, ... $typen>($type1, $type2, ... $typen)
+to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
+	template_argument_strings = List<String>(template_arguments.size, false)
+
+	loop template_argument in template_arguments {
+		if template_argument == none or template_argument.is_unresolved {
+			template_argument_strings.add(String('?'))
+		}
+		else {
+			template_argument_strings.add(template_argument.string())
+		}
+	}
+
+	argument_strings = List<String>(arguments.size, false)
+
+	loop argument in arguments {
+		if argument == none or argument.is_unresolved {
+			argument_strings.add(String('?'))
+		}
+		else {
+			argument_strings.add(argument.string())
+		}
+	}
+
+	if template_argument_strings.size > 0 => name + `<` + String.join(', ', template_argument_strings) + '>(' + String.join(', ', argument_strings) + `)`
+	
+	=> name + `(` + String.join(', ', argument_strings) + `)`
+}

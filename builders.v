@@ -258,6 +258,24 @@ build_string(unit: Unit, node: StringNode) {
 	=> Result(handle, SYSTEM_FORMAT)
 }
 
+build_data_pointer(node: DataPointerNode) {
+	if node.type == FUNCTION_DATA_POINTER {
+		handle = DataSectionHandle(node.(FunctionDataPointerNode).function.get_fullname(), node.offset, true, DATA_SECTION_MODIFIER_NONE)
+		
+		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		=> Result(handle, SYSTEM_FORMAT)
+	}
+
+	if node.type == TABLE_DATA_POINTER {
+		handle = DataSectionHandle(node.(TableDataPointerNode).table.name, node.offset, true, DATA_SECTION_MODIFIER_NONE)
+
+		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		=> Result(handle, SYSTEM_FORMAT)
+	}
+
+	abort('Could not build data pointer')
+}
+
 build_childs(unit: Unit, node: Node) {
 	result = none as Result
 
@@ -274,6 +292,7 @@ build(unit: Unit, node: Node) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)
 		NODE_CALL => build_call(unit, node as CallNode)
+		NODE_DATA_POINTER => build_data_pointer(node as DataPointerNode)
 		NODE_DECLARE => build_declaration(unit, node as DeclareNode)
 		NODE_DISABLED => Result()
 		NODE_ELSE => Result()

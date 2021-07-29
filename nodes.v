@@ -360,6 +360,10 @@ Node UnresolvedIdentifier {
 		=> result
 	}
 
+	override get_status() {
+		=> Status(start, String('Can not resolve identifier ') + value)
+	}
+
 	override copy() {
 		=> UnresolvedIdentifier(value, start)
 	}
@@ -484,6 +488,12 @@ Node UnresolvedFunction {
 
 	override copy() {
 		=> UnresolvedFunction(name, arguments, start)
+	}
+
+	override get_status() {
+		types = List<Type>()
+		loop iterator in this { types.add(iterator.try_get_type()) }
+		=> Status(start, String('Can not find function ') + common.to_string(name, types, arguments))
 	}
 
 	override string() {
@@ -1275,33 +1285,76 @@ InlineNode ContextInlineNode {
 	}
 }
 
-Node DataPointerNode {
-	data: large
-	offset: large
-	type: Type
+FUNCTION_DATA_POINTER = 0
+TABLE_DATA_POINTER = 1
 
-	init(data: large, offset: large, position: Position) {
-		this.data = data
+Node DataPointerNode {
+	offset: large
+	type: large
+
+	init(type: large, offset: large, position: Position) {
 		this.offset = offset
-		this.instance = NODE_DATA_POINTER
+		this.type = type
 		this.start = position
-		this.type = Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
+		this.instance = NODE_DATA_POINTER
 	}
 
 	override equals(other: Node) {
-		=> data == other.(DataPointerNode).data and offset == other.(DataPointerNode).offset and type == other.(DataPointerNode).type
+		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset
 	}
 
 	override try_get_type() {
-		=> type
+		=> Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
 	}
 
 	override copy() {
-		=> DataPointerNode(data, offset, start)
+		=> DataPointerNode(type, offset, start)
 	}
 
 	override string() {
-		=> String('Data Pointer')
+		=> String('Empty Data Pointer')
+	}
+}
+
+DataPointerNode FunctionDataPointerNode {
+	function: FunctionImplementation
+
+	init(function: FunctionImplementation, offset: large, position: Position) {
+		DataPointerNode.init(FUNCTION_DATA_POINTER, offset, position)
+		this.function = function
+	}
+
+	override equals(other: Node) {
+		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and function == other.(FunctionDataPointerNode).function
+	}
+
+	override copy() {
+		=> FunctionDataPointerNode(function, offset, start)
+	}
+
+	override string() {
+		=> String('Function Data Pointer: ') + function.get_fullname()
+	}
+}
+
+DataPointerNode TableDataPointerNode {
+	table: Table
+
+	init(table: Table, offset: large, position: Position) {
+		DataPointerNode.init(TABLE_DATA_POINTER, offset, position)
+		this.table = table
+	}
+
+	override equals(other: Node) {
+		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and table == other.(TableDataPointerNode).table
+	}
+
+	override copy() {
+		=> TableDataPointerNode(table, offset, start)
+	}
+
+	override string() {
+		=> String('Table Data Pointer: ') + table.name
 	}
 }
 
@@ -1572,7 +1625,7 @@ Node IsNode {
 		this.instance = NODE_IS
 
 		add(object)
-		if result != none add(VariableNode(result, position))
+		if variable != none add(VariableNode(variable, position))
 	}
 
 	override try_get_type() {

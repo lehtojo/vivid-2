@@ -305,6 +305,9 @@ Node {
 
 			# Compare the addresses of both nodes and use the internal comparison function
 			if expected as link != actual as link and not expected.equals(actual) => false
+
+			expected = expected.next
+			actual = actual.next
 		}
 	}
 

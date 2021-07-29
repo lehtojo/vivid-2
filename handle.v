@@ -510,7 +510,7 @@ Handle ComplexMemoryHandle {
 
 			if settings.is_x64 {
 				if value > 0 { postfix = String('+') + to_string(value) }
-				else { postfix = to_string(value) }
+				else value < 0 { postfix = to_string(value) }
 			}
 		}
 		else {

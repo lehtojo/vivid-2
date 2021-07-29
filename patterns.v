@@ -1833,7 +1833,7 @@ Pattern IsPattern {
 
 		source = parser.parse(context, formatted[0])
 		tokens = formatted.slice(TYPE, formatted.size)
-		type = common.read_type(context, tokens, TYPE)
+		type = common.read_type(context, tokens)
 
 		if type == none {
 			state.error = Status(formatted[TYPE].position, 'Can not understand the type')
@@ -1846,6 +1846,7 @@ Pattern IsPattern {
 		if tokens.size > 0 {
 			name = tokens.take_first().(IdentifierToken).value
 			variable = Variable(context, type, VARIABLE_CATEGORY_LOCAL, name, MODIFIER_DEFAULT)
+			context.declare(variable)
 
 			result = IsNode(source, type, variable, formatted[KEYWORD].position)
 		}
