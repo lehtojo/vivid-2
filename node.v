@@ -276,6 +276,71 @@ Node {
 		last = none
 	}
 
+	private static get_nodes_under_shared_parent(a: Node, b: Node) {
+		path_a = List<Node>()
+		path_b = List<Node>()
+
+		loop (iterator = a, iterator != none, iterator = iterator.parent) { path_a.add(iterator) }
+		loop (iterator = b, iterator != none, iterator = iterator.parent) { path_b.add(iterator) }
+		
+		i = 0
+		count = min(path_a.size, path_b.size)
+
+		loop (i < count, i++) {
+			if path_a[i] != path_b[i] stop
+		}
+
+		# The following situation means that the nodes do not have a shared parent
+		if i == 0 => none as Pair<Node, Node>
+
+		# The following situation means that one of the nodes is parent of the other
+		if i == count => Pair<Node, Node>(none as Node, none as Node)
+
+		=> Pair<Node, Node>(path_a[i], path_b[i])
+	}
+
+	# Summary: Returns whether this node is placed before the specified node
+	is_before(other: Node) {
+		positions = get_nodes_under_shared_parent(other, this)
+		if positions == none => false
+		if positions.first == none abort('Nodes did not have a shared parent')
+
+		# If this node is after the specified position node (other), the position node can be found by iterating backwards
+		iterator = positions.value
+		target = positions.key
+
+		if target == iterator => false
+
+		# Iterate backwards and try to find the target node
+		loop (iterator != none) {
+			if iterator == target => false
+			iterator = iterator.previous
+		}
+
+		=> true
+	}
+	
+	# Summary: Returns whether this node is placed after the specified node
+	is_after(other: Node) {
+		positions = get_nodes_under_shared_parent(other, this)
+		if positions == none => false
+		if positions.key == none abort('Nodes did not have a shared parent')
+
+		# If this node is after the specified position node (other), the position node can be found by iterating backwards
+		iterator = positions.value
+		target = positions.key
+
+		if target == iterator => false
+
+		# Iterate backwards and try to find the target node
+		loop (iterator != none) {
+			if iterator == target => true
+			iterator = iterator.previous
+		}
+
+		=> false
+	}
+
 	iterator() => NodeIterator(this)
 
 	get_type() {

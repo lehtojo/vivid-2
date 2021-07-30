@@ -694,7 +694,7 @@ to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
 		}
 	}
 
-	if template_argument_strings.size > 0 => name + `<` + String.join(', ', template_argument_strings) + '>(' + String.join(', ', argument_strings) + `)`
+	if template_argument_strings.size > 0 => name + `<` + String.join(String(', '), template_argument_strings) + '>(' + String.join(String(', '), argument_strings) + `)`
 	
-	=> name + `(` + String.join(', ', argument_strings) + `)`
+	=> name + `(` + String.join(String(', '), argument_strings) + `)`
 }

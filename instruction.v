@@ -342,7 +342,10 @@ Instruction {
 			converted = convert(parameter)
 
 			# Set the result of this instruction to match the parameter, if it is the destination
-			if parameter.is_destination { result.value = converted.value }
+			if parameter.is_destination {
+				result.value = converted.value
+				result.format = converted.format
+			}
 
 			# Prepare the parameter for use
 			validate_handle(converted.value, locked)

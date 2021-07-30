@@ -1080,6 +1080,7 @@ load_variable_usages(implementation: FunctionImplementation) {
 		
 		if common.is_edited(usage) { variable.writes.add(usage) }
 		else { variable.reads.add(usage) }
+		variable.usages.add(usage)
 	}
 }
 
@@ -1102,9 +1103,7 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 }
 
 align_function(function: FunctionImplementation) {
-	offset = SYSTEM_BYTES
-	if function.metadata.is_member and not function.metadata.is_static { offset += SYSTEM_BYTES }
-
+	
 	if not settings.is_target_windows {
 		standard_register_count = calls.get_standard_parameter_register_count()
 		media_register_count = calls.get_decimal_parameter_register_count()
@@ -1130,7 +1129,9 @@ align_function(function: FunctionImplementation) {
 		}
 	}
 	else {
-		position = offset * SYSTEM_BYTES
+		position = SYSTEM_BYTES
+		if function.metadata.is_member and not function.metadata.is_static { position += SYSTEM_BYTES }
+	
 		self = none as Variable
 
 		# Align the this pointer if it exists

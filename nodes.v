@@ -726,6 +726,7 @@ Node ReturnNode {
 }
 
 Node IfNode {
+	condition_container => first
 	condition => common.find_condition(first)
 	body => last as ScopeNode
 
@@ -866,6 +867,8 @@ Node LoopNode {
 	exit_label: Label
 
 	is_forever_loop => first == last
+
+	condition_container => first.first.next
 	
 	condition() {
 		=> common.find_condition(first.first.next)
