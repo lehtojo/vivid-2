@@ -158,6 +158,8 @@ initialize() {
 	add_pattern(TypeInspectionPattern())
 	add_pattern(CompilesPattern())
 	add_pattern(IsPattern())
+	add_pattern(OverrideFunctionPattern())
+	add_pattern(LambdaPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position

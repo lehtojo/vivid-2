@@ -39,7 +39,8 @@ NODE_SECTION = 137438953472
 NODE_NAMESPACE = 274877906944
 NODE_INSPECTION = 549755813888
 NODE_COMPILES = 1099511627776
-NODE_IS = 2199023255552 # 1 <| 40
+NODE_IS = 2199023255552
+NODE_LAMBDA = 4398046511104 # 1 <| 41
 
 Node NumberNode {
 	value: large
@@ -1653,5 +1654,74 @@ Node IsNode {
 
 	override string() {
 		=> String('Is')
+	}
+}
+
+Node LambdaNode {
+	status: Status
+	function: Function
+	implementation: FunctionImplementation
+
+	init(function: Function, position: Position) {
+		this.function = function
+		this.start = position
+		this.status = Status(position, 'Can not resolve parameter types of this lambda')
+		this.instance = NODE_LAMBDA
+	}
+
+	init(implementation: FunctionImplementation, position: Position) {
+		this.implementation = implementation
+		this.function = implementation.metadata
+		this.start = position
+		this.status = Status()
+		this.instance = NODE_LAMBDA
+	}
+
+	get_parameter_types() {
+		parameter_types = List<Type>(function.parameters.size, false)
+		loop parameter in function.parameters { parameter_types.add(parameter.type) }
+		=> parameter_types
+	}
+
+	get_incomplete_type() {
+		return_type = none as Type
+		if implementation != none { return_type = implementation.return_type }
+		=> FunctionType(get_parameter_types(), return_type, start)
+	}
+
+	override resolve(context: Context) {
+		if implementation != none {
+			status = Status()
+			=> none as Node
+		}
+
+		# Try to resolve all parameter types
+		loop parameter in function.parameters {
+			if parameter.type == none continue
+
+			if parameter.type.is_unresolved {
+				# Try to resolve the parameter type
+				type = resolver.resolve(context, parameter.type)
+				if type != none { parameter.type = type }
+			}
+		}
+
+		# Before continuing, ensure all parameters are resolved
+		loop parameter in function.parameters {
+			if parameter.type == none or parameter.type.is_unresolved => none as Node
+		}
+
+		status = Status()
+		implementation = function.implement(get_parameter_types())
+		=> none as Node
+	}
+
+	override try_get_type() {
+		if implementation != none and implementation.return_type != none => get_incomplete_type()
+		=> none as Type
+	}
+
+	override get_status() {
+		=> status
 	}
 }

@@ -26,6 +26,7 @@ Indexer {
 	private label_count = 0
 	private identity_count = 0
 	private string_count = 0
+	private lambda_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
@@ -33,6 +34,7 @@ Indexer {
 	label => label_count++
 	identity => identity_count++
 	string => string_count++
+	lambda => lambda_count++
 }
 
 Context {
@@ -161,6 +163,13 @@ Context {
 		=> variable
 	}
 
+	# Summary: Declares a hidden variable with the specified type and category
+	declare_hidden(type: Type, category: large) {
+		variable = Variable(this, type, category, identity + '.' + to_string(indexer.hidden), MODIFIER_DEFAULT)
+		declare(variable)
+		=> variable
+	}
+
 	# Summary: Tries to find the first parent context which is a type
 	find_type_parent() {
 		if is_type => this as Type
@@ -173,6 +182,20 @@ Context {
 		}
 
 		=> none as Type
+	}
+
+	# Summary: Tries to find the first parent context which is a function implementation
+	find_implementation_parent() {
+		if is_implementation => this as FunctionImplementation
+
+		iterator = parent
+
+		loop (iterator != none) {
+			if iterator.is_implementation => iterator as FunctionImplementation
+			iterator = iterator.parent
+		}
+
+		=> none as FunctionImplementation
 	}
 
 	# Summary: Returns all parent contexts, which represent types
@@ -231,7 +254,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
-	is_variable_declared(name: String) {
+	virtual is_variable_declared(name: String) {
 		if variables.contains_key(name) => true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -288,7 +311,7 @@ Context {
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
-	get_variable(name: String) {
+	get_variable_default(name: String) {
 		if variables.contains_key(name) => variables[name]
 
 		loop (i = 0, i < imports.size, i++) {
@@ -301,12 +324,21 @@ Context {
 		=> none as Variable
 	}
 
+	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
+	virtual get_variable(name: String) {
+		=> get_variable_default(name)
+	}
+
 	create_label() {
 		=> Label(get_fullname() + '_I' + to_string(indexer.label))
 	}
 
 	create_stack_address() {
 		=> String('stack.') + identity + '.' + to_string(indexer.stack)
+	}
+
+	create_lambda() {
+		=> indexer.lambda
 	}
 
 	# Summary: Moves all types, functions and variables from the specified context to this context
@@ -1008,7 +1040,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	implement(parameter_types: List<Type>) {
+	virtual implement(parameter_types: List<Type>) {
 		implementation_parameters = List<Parameter>(types.size, false)
 
 		# Pack parameters with names and types
@@ -1371,6 +1403,39 @@ Function TemplateFunction {
 	}
 }
 
+Function Lambda {
+	init(context: Context, modifiers: large, name: String, blueprint: List<Token>, start: Position, end: Position) {
+		Function.init(context, modifiers, name, blueprint, start, end)
+
+		# Lambdas usually capture variables from the parent context
+		connect(context)
+		context.declare(this)
+	}
+
+	# Summary: Implements the lambda using the specified parameter types
+	override implement(types: List<Type>) {
+		if implementations.size > 0 abort('Tried to implement a lambda twice')
+
+		# Pack parameters with names and types
+		parameters: List<Parameter> = List<Parameter>(this.parameters.size, false)
+
+		loop (i = 0, i < types.size, i++) {
+			parameter = this.parameters[i]
+			parameters.add(Parameter(parameter.name, parameter.position, types[i]))
+		}
+
+		# Create a function implementation
+		implementation = LambdaImplementation(this, none as Type, parent)
+		implementation.set_parameters(parameters)
+
+		# Add the created implementation to the implementations list
+		implementations.add(implementation)
+
+		implementation.implement(blueprint)
+		=> implementation
+	}
+}
+
 Context FunctionImplementation {
 	metadata: Function
 	node: Node
@@ -1434,7 +1499,7 @@ Context FunctionImplementation {
 	}
 
 	# Summary: Implements the function using the given blueprint
-	implement(blueprint: List<Token>) {
+	virtual implement(blueprint: List<Token>) {
 		if metadata.is_member and not metadata.is_static {
 			self = Variable(this, metadata.find_type_parent(), VARIABLE_CATEGORY_PARAMETER, String(SELF_POINTER_IDENTIFIER), MODIFIER_DEFAULT)
 			self.is_self_pointer = true
@@ -1448,6 +1513,99 @@ Context FunctionImplementation {
 
 	override get_fullname() {
 		=> metadata.name
+	}
+}
+
+Variable CapturedVariable {
+	captured: Variable
+
+	init(context: Context, captured: Variable) {
+		Variable.init(context, captured.type, captured.category, captured.name, captured.modifiers)
+		context.declare(this)
+		this.captured = captured
+	}
+}
+
+FunctionImplementation LambdaImplementation {
+	captures: List<CapturedVariable> = List<CapturedVariable>()
+	function: Variable
+	internal_type: Type
+
+	init(metadata: Lambda, return_type: Type, context: Context) {
+		FunctionImplementation.init(metadata, return_type, context)
+	}
+
+	seal() {
+		# 1. If the type is not created, it means that this lambda is not used, therefore this lambda can be skipped
+		# 2. If the function is already created, this lambda is sealed
+		if internal_type == none or function != none return
+
+		self = Variable(this, internal_type, VARIABLE_CATEGORY_PARAMETER, String(LAMBDA_SELF_POINTER_IDENTIFIER), MODIFIER_DEFAULT)
+		self.is_self_pointer = true
+
+		# Declare the function pointer as the first member
+		function = internal_type.declare_hidden(Link(), VARIABLE_CATEGORY_MEMBER)
+
+		# Change all captured variables into member variables so that they are retrieved using the self pointer of this lambda
+		loop capture in captures { capture.category = VARIABLE_CATEGORY_MEMBER }
+
+		# Remove all captured variables from the current context since they must be moved into the internal type of the lambda
+		loop capture in captures { variables.remove(capture.name) }
+
+		# Move all the captured variables into the internal type of the lambda
+		loop capture in captures { internal_type.(Context).declare(capture) }
+
+		# Add the self pointer to all of the usages of the captured variables
+		usages = node.find_all(i -> i.instance == NODE_VARIABLE and captures.contains(i.(VariableNode).variable))
+
+		loop usage in usages { usage.replace(LinkNode(VariableNode(self), usage.clone())) }
+
+		# Align the member variables
+		common.align_members(internal_type)
+	}
+
+	override is_variable_declared(name: String) {
+		=> is_local_variable_declared(name) or get_variable(name) != none
+	}
+
+	override get_variable(name: String) {
+		if is_local_variable_declared(name) => get_variable_default(name)
+
+		# If the variable is declared outside of this implementation, it may need to be captured
+		variable = get_variable_default(name)
+
+		if variable == none => none as Variable
+
+		# The variable can be captured only if it is a local variable or a parameter and it is resolved
+		if variable.is_predictable and variable.is_resolved and not variable.is_constant {
+			captured = CapturedVariable(this, variable)
+			captures.add(captured)
+			=> captured
+		}
+
+		if variable.is_member or variable.is_constant => variable
+		=> none as Variable
+	}
+
+	# Summary: Implements the function using the given blueprint
+	override implement(blueprint: List<Token>) {
+		root = parent
+		loop (root.parent != none) { root = root.parent }
+
+		internal_type = Type(root, identity, MODIFIER_DEFAULT, metadata.start)
+		internal_type.add_runtime_configuration()
+
+		# Add the default constructor and destructor
+		internal_type.add_constructor(Constructor.empty(internal_type, metadata.start, metadata.end))
+		internal_type.add_destructor(Destructor.empty(internal_type, metadata.start, metadata.end))
+
+		node = ScopeNode(this, metadata.start, metadata.end)
+		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+	}
+
+	override get_self_pointer() {
+		if self != none => self
+		=> get_variable(String(SELF_POINTER_IDENTIFIER))
 	}
 }
 
@@ -1563,17 +1721,29 @@ UnresolvedType FunctionType {
 	init(parameters: List<Type>, return_type: Type, position: Position) {
 		UnresolvedType.init(String.empty)
 		this.self = none as Type
+		this.modifiers = MODIFIER_FUNCTION_TYPE
 		this.parameters = parameters
 		this.return_type = return_type
 		this.position = position
+		update_state()
 	}
 
 	init(self: Type, parameters: List<Type>, return_type: Type, position: Position) {
 		UnresolvedType.init(String.empty)
 		this.self = self
+		this.modifiers = MODIFIER_FUNCTION_TYPE
 		this.parameters = parameters
 		this.return_type = return_type
 		this.position = position
+		update_state()
+	}
+
+	update_state() {
+		loop parameter in parameters {
+			if parameter == none or parameter.is_unresolved return
+		}
+
+		is_resolved = true
 	}
 
 	override resolve(context: Context) {
@@ -1594,15 +1764,8 @@ UnresolvedType FunctionType {
 			parameters[i] = iterator
 		}
 
+		update_state()
 		=> none as Node
-	}
-
-	override is_resolved() {
-		loop parameter in parameters {
-			if parameter == none or parameter.is_unresolved => false
-		}
-
-		=> true
 	}
 
 	override get_accessor_type() {

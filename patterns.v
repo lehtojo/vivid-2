@@ -1604,6 +1604,7 @@ Pattern VirtualFunctionPattern {
 		last = tokens[tokens.size - 1]
 
 		if last.match(Operators.HEAVY_ARROW) {
+			blueprint = List<Token>()
 			position = last.position
 			result = common.consume_block(state, blueprint)
 
@@ -1859,10 +1860,169 @@ Pattern IsPattern {
 	}
 }
 
+Pattern OverrideFunctionPattern {
+	constant OVERRIDE = 0
+	constant FUNCTION = 1
+
+	# Pattern 1: override $name (...) [\n] {...}
+	# Pattern 2: override $name (...) [\n] => ...
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_FUNCTION)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		priority = 22
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		if not context.is_type or not tokens[OVERRIDE].match(Keywords.OVERRIDE) => false # Override functions must be inside types
+
+		next = state.peek()
+		if next == none => false
+
+		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
+			state.consume()
+			=> true
+		}
+
+		=> false
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		blueprint = none as List<Token>
+		end = none as Position
+		last = tokens[tokens.size - 1]
+
+		# Load the function blueprint
+		if last.match(Operators.HEAVY_ARROW) {
+			blueprint = List<Token>()
+			position = last.position
+			common.consume_block(state, blueprint)
+			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
+			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
+		}
+		else {
+			blueprint = last.(ParenthesisToken).tokens
+			end = last.(ParenthesisToken).end
+		}
+
+		descriptor = tokens[FUNCTION] as FunctionToken
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, descriptor.position, end)
+		
+		# Parse the function parameters
+		result = descriptor.get_parameters(function)
+
+		if not (result has parameters) {
+			state.error = Status(descriptor.position, 'Could not resolve the parameters')
+			=> none as Node
+		}
+
+		function.parameters.add_range(parameters)
+
+		# Declare the override function and return a function definition node
+		context.(Type).declare_override(function)
+		=> FunctionDefinitionNode(function, descriptor.position)
+	}
+}
+
+Pattern LambdaPattern {
+	constant PARAMETERS = 0
+	constant OPERATOR = 1
+	constant BODY = 3
+
+	# Pattern 1: ($1, $2, ..., $n) -> [\n] ...
+	# Pattern 2: $name -> [\n] ...
+	# Pattern 3: ($1, $2, ..., $n) -> [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_IDENTIFIER)
+		path.add(TOKEN_TYPE_OPERATOR)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# If the parameters are added inside parenthesis, it must be a normal parenthesis
+		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS and not tokens[PARAMETERS].match(`(`) => false
+		if not tokens[OPERATOR].match(Operators.ARROW) => false
+
+		# Try to consume normal curly parenthesis as the body blueprint
+		next = state.peek()
+		if next.match(`{`) state.consume()
+
+		=> true
+	}
+
+	private static get_parameter_tokens(tokens: List<Token>) {
+		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS => tokens[PARAMETERS] as ParenthesisToken
+
+		parameter = tokens[PARAMETERS]
+		parameter_tokens = List<Token>(1, false)
+		parameter_tokens.add(parameter)
+		=> ParenthesisToken(`(`, parameter.position, common.get_end_of_token(parameter), parameter_tokens)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		blueprint = none as List<Token>
+		start = tokens[PARAMETERS].position
+		end = none as Position
+		last = tokens[tokens.size - 1]
+
+		# Load the function blueprint
+		if last.match(`{`) {
+			blueprint = last.(ParenthesisToken).tokens
+			end = last.(ParenthesisToken).end
+		}
+		else {
+			blueprint = List<Token>()
+			position = last.position
+			common.consume_block(state, blueprint)
+			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
+			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
+		}
+
+		environment = context.find_implementation_parent()
+		if environment == none {
+			state.error = Status(start, 'Lambdas must be created inside functions')
+			=> none as Node
+		}
+
+		name = to_string(environment.create_lambda())
+
+		# Create a function token manually since it contains some useful helper functions
+		header = FunctionToken(IdentifierToken(name), get_parameter_tokens(tokens))
+		function = Lambda(environment, MODIFIER_DEFAULT, name, blueprint, start, end)
+
+		# Parse the lambda parameters
+		result = header.get_parameters(function)
+		if not (result has parameters) {
+			state.error = Status(start, 'Could not resolve the parameters')
+			=> none as Node
+		}
+
+		function.parameters.add_range(parameters)
+
+		# The lambda can be implemented already, if all parameters are resolved
+		implement = true
+
+		loop parameter in parameters {
+			if parameter.type != none and parameter.type.is_resolved continue
+			implement = false
+			stop
+		}
+
+		if implement {
+			types = List<Type>(parameters.size, false)
+			loop parameter in parameters { types.add(parameter.type) }
+
+			implementation = function.implement(types)
+			=> LambdaNode(implementation, start)
+		}
+
+		=> LambdaNode(function, start)
+	}
+}
+
 # ExtensionFunctionPattern
 # HasPattern
-# LambdaPattern
-# OverrideFunctionPattern
 # RangePattern
 # ShortFunctionPattern
 # WhenPattern

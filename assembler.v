@@ -1156,18 +1156,6 @@ align_function(function: FunctionImplementation) {
 	}
 }
 
-align_members(type: Type) {
-	position = 0
-
-	# Member variables:
-	loop iterator in type.variables {
-		variable = iterator.value
-		if variable.is_static continue
-		variable.alignment = position
-		position += variable.type.reference_size
-	}
-}
-
 align(context: Context) {
 	# Align all functions
 	functions = common.get_all_function_implementations(context)
@@ -1180,7 +1168,7 @@ align(context: Context) {
 	types = common.get_all_types(context)
 
 	loop type in types {
-		align_members(type)
+		common.align_members(type)
 	}
 }
 

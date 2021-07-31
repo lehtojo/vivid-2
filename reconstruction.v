@@ -782,6 +782,58 @@ rewrite_is_expressions(root: Node) {
 	}
 }
 
+# Summary: Rewrites lambda nodes using simpler nodes
+rewrite_lambda_constructions(root: Node) {
+	constructions = root.find_all(NODE_LAMBDA) as List<LambdaNode>
+
+	loop construction in constructions {
+		position = construction.start
+
+		environment = construction.get_parent_context()
+		implementation = construction.implementation as LambdaImplementation
+		implementation.seal()
+
+		type = implementation.internal_type
+
+		container = create_inline_container(type, construction)
+		allocator = none as Node
+
+		if is_stack_construction_preferred(root, construction) {
+			allocator = CastNode(StackAddressNode(environment, type, position), TypeNode(type), position)
+		}
+		else {
+			arguments = Node()
+			arguments.add(NumberNode(SYSTEM_FORMAT, type.content_size, position))
+			call = FunctionNode(settings.allocation_function, position).set_arguments(arguments)
+
+			allocator = CastNode(call, TypeNode(type), position)
+		}
+
+		allocation = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(container.result), allocator)
+
+		container.node.add(allocation)
+
+		function_pointer_assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+			LinkNode(VariableNode(container.result), VariableNode(implementation.function), position),
+			FunctionDataPointerNode(implementation, 0, position)
+		)
+
+		container.node.add(function_pointer_assignment)
+
+		loop capture in implementation.captures {
+			assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+				LinkNode(VariableNode(container.result), VariableNode(capture), position),
+				VariableNode(capture.captured)
+			)
+
+			container.node.add(assignment)
+		}
+
+		container.node.add(VariableNode(container.result))
+		construction.replace(container.node)
+	}
+}
+
 start(implementation: FunctionImplementation, root: Node) {
 	rewrite_inspections(root)
 	strip_links(root)
@@ -790,6 +842,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	extract_expressions(root)
 	add_assignment_casts(root)
 	rewrite_is_expressions(root)
+	rewrite_lambda_constructions(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)

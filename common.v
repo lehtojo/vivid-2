@@ -46,17 +46,40 @@ read_type_component(context: Context, tokens: List<Token>) {
 	=> UnresolvedTypeComponent(name)
 }
 
+# Summary: Reads a type which represents a function from the specified tokens
+read_function_type(context: Context, tokens: List<Token>, position: Position) {
+	# Dequeue the parameter types
+	parameters = tokens.take_first() as ParenthesisToken
+
+	# Dequeue the arrow operator
+	tokens.take_first()
+
+	# Dequeues the return type
+	return_type = read_type(context, tokens) as Type
+
+	# The return type must exist
+	if return_type == none => none as FunctionType
+
+	# Read all the parameter types
+	parameter_types = List<Type>()
+	parameter_tokens = parameters.tokens
+
+	loop (parameter_tokens.size > 0) {
+		parameter_type = read_type(context, parameter_tokens) as Type
+		if parameter_type == none => none as FunctionType
+		parameter_types.add(parameter_type)
+	} 
+
+	=> FunctionType(parameter_types, return_type, position)
+}
+
 # Summary: Reads a type from the next tokens inside the specified tokens
 # Pattern: $name [<$1, $2, ... $n>]
 read_type(context: Context, tokens: List<Token>) {
 	if tokens.size == 0 => none as Type
 
 	next = tokens[0]
-
-	if next.match(TOKEN_TYPE_PARENTHESIS) {
-		abort('Reading function types is not supported')
-		# => read_function_type(context, tokens)
-	}
+	if next.match(TOKEN_TYPE_PARENTHESIS) => read_function_type(context, tokens, next.position)
 
 	if not next.match(TOKEN_TYPE_IDENTIFIER) => none as Type
 
@@ -199,15 +222,12 @@ find_condition(start) {
 	abort('Could not find condition')
 }
 
-consume_block(from: ParserState, destination: List<Token>) {
+consume_block(state: ParserState, destination: List<Token>) {
 	# Return an empty list, if there is nothing to be consumed
-	if from.end >= from.all.size => none as Status
+	if state.end >= state.all.size => none as Status
 
 	# Clone the tokens from the specified state
-	tokens = clone(from.all.slice(from.end, from.all.size))
-
-	state = ParserState()
-	state.all = tokens
+	tokens = clone(state.all.slice(state.end, state.all.size))
 
 	consumptions = List<Pair<parser.DynamicToken, large>>()
 	context = Context(String('0'), NORMAL_CONTEXT)
@@ -264,8 +284,8 @@ consume_block(from: ParserState, destination: List<Token>) {
 		}
 
 		# Read the consumed tokens from the source state
-		source = from.all
-		end = from.end
+		source = state.all
+		end = state.end
 
 		loop (i = 0, i < consumed, i++) {
 			destination.add(source[end + i])
@@ -493,6 +513,10 @@ get_all_function_implementations(context: Context) {
 		functions.add_range(type.destructors.overloads)
 	}
 
+	loop function in context.functions {
+		functions.add_range(function.value.overloads)
+	}
+
 	implementations = List<FunctionImplementation>()
 
 	# Collect all the implementations from the functions and collect the inner implementations as well such as lambdas
@@ -697,4 +721,17 @@ to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
 	if template_argument_strings.size > 0 => name + `<` + String.join(String(', '), template_argument_strings) + '>(' + String.join(String(', '), argument_strings) + `)`
 	
 	=> name + `(` + String.join(String(', '), argument_strings) + `)`
+}
+
+# Summary: Aligns the member variables of the specified type
+align_members(type: Type) {
+	position = 0
+
+	# Member variables:
+	loop iterator in type.variables {
+		variable = iterator.value
+		if variable.is_static continue
+		variable.alignment = position
+		position += variable.type.reference_size
+	}
 }

@@ -617,12 +617,12 @@ DualParameterInstruction MoveInstruction {
 		is_destination_memory_address = destination.value != none and destination.value.type == HANDLE_MEMORY
 
 		if is_destination_memory_address and not is_source_memory_address {
-			second.value.format = destination.value.format
+			source.value.format = destination.value.format
 			return
 		}
 
 		# Return if no conversion is needed
-		if source.value.size == destination.value.size or second.value.type == HANDLE_CONSTANT {
+		if source.value.size == destination.value.size or source.value.type == HANDLE_CONSTANT {
 			operation = String(instructions.shared.MOVE)
 			return
 		}

@@ -216,12 +216,12 @@ Instruction {
 			if parameter.is_destination and parameter.is_attachable {
 				# There should not be multiple destinations
 				if destination != none abort('Instruction had multiple destinations')
-				destination = parameter.value
+				destination = parameter.value.finalize()
 			}
 
 			if parameter.is_source and parameter.is_attachable {
 				if source != none abort('Instruction had multiple sources')
-				source = parameter.value
+				source = parameter.value.finalize()
 			}
 		}
 
@@ -447,10 +447,8 @@ Instruction {
 			value = parameter.value.string()
 			if value.length == 0 abort('Instruction parameter could not be converted into text')
 			
-			#result.append(` `)
 			builder.append(' ')
 			builder.append(value)
-			#result.append(`,`)
 			builder.append(',')
 
 			added = true
