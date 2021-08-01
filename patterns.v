@@ -239,11 +239,6 @@ Pattern VariableDeclarationPattern {
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		name = tokens[NAME] as IdentifierToken
 
-		values = List<String>(tokens.size, false)
-		loop token in tokens { values.add(to_string(token)) }
-
-		println(String.join(` `, values))
-
 		if context.is_local_variable_declared(name.value) {
 			state.error = Status(name.position, 'Variable already exists')
 			=> none as Node
@@ -632,7 +627,7 @@ Pattern UnarySignPattern {
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		sign = tokens[SIGN].(OperatorToken).operator
 		if sign != Operators.ADD and sign != Operators.SUBTRACT => false
-		if state.start == 0 => false
+		if state.start == 0 => true
 		previous = state.all[state.start - 1]
 		=> previous.type == TOKEN_TYPE_OPERATOR or previous.type == TOKEN_TYPE_KEYWORD
 	}
@@ -2251,4 +2246,157 @@ Pattern ExtensionFunctionPattern {
 	}
 }
 
-# WhenPattern
+Pattern WhenPattern {
+	constant VALUE = 1
+	constant BODY = 3
+
+	constant IF_STATEMENT = 0
+	constant ELSE_IF_STATEMENT = 1
+	constant ELSE_STATEMENT = 2
+
+	# Pattern: when(...) [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Ensure the keyword is the when keyword
+		if not tokens[0].match(Keywords.WHEN) => false
+		if not tokens[VALUE].match(`(`) => false
+
+		=> tokens[BODY].match(`{`)
+	}
+
+	override build(environment: Context, state: ParserState, all: List<Token>) {
+		position = all[0].position
+
+		# Load the inspected value into a variable
+		inspected_value = parser.parse(environment, all[VALUE])
+		inspected_value_variable = environment.declare_hidden(inspected_value.try_get_type())
+		
+		load = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(inspected_value_variable, position), inspected_value)
+
+		tokens = all[BODY].(ParenthesisToken).tokens
+		parser.create_function_tokens(tokens)
+
+		if tokens.size == 0 {
+			state.error = Status(position, 'When-statement can not be empty')
+			=> none as Node
+		}
+
+		sections = List<Node>()
+		type = IF_STATEMENT
+
+		loop (tokens.size > 0) {
+			# Remove all line-endings from the start
+			loop (tokens.size > 0) {
+				token = tokens[0]
+				if token.type != TOKEN_TYPE_END and not token.match(Operators.COMMA) stop
+				tokens.remove_at(0)
+			}
+
+			if tokens.size == 0 stop
+
+			# Find the heavy arrow operator, which marks the start of the executable body, every section must have one
+			index = -1
+			
+			loop (i = 0, i < tokens.size, i++) {
+				if not tokens[i].match(Operators.HEAVY_ARROW) continue
+				index = i
+				stop
+			}
+
+			if index < 0 {
+				state.error = Status(tokens[0].position, 'All sections in when-statements must have a heavy arrow operator')
+				=> none as Node
+			}
+
+			if index == 0 {
+				state.error = Status(tokens[0].position, 'Section condition can not be empty')
+				=> none as Node
+			}
+
+			arrow = tokens[index]
+
+			# Take out the section condition
+			condition_tokens = tokens.slice(0, index)
+			condition = none as Node
+
+			tokens.remove_range(0, index + 1)
+
+			if not condition_tokens[0].match(Keywords.ELSE) {
+				# Insert an equals-operator to the condition, if it does start with a keyword or an operator
+				if not condition_tokens[0].match(TOKEN_TYPE_KEYWORD | TOKEN_TYPE_OPERATOR) {
+					condition_tokens.insert(0, OperatorToken(Operators.EQUALS, condition_tokens[0].position))
+				}
+
+				condition_tokens.insert(0, IdentifierToken(inspected_value_variable.name, position))
+				condition = parser.parse(environment, condition_tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+			}
+			else {
+				type = ELSE_STATEMENT
+			}
+
+			if tokens.size == 0 {
+				state.error = Status(position, 'Missing section body')
+				=> none as Node
+			}
+
+			context = Context(environment, NORMAL_CONTEXT)
+			body = none as Node
+
+			if tokens[0].match(`{`) {
+				parenthesis = tokens.take_first() as ParenthesisToken
+				body = parser.parse(context, parenthesis.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+			}
+			else {
+				# Consume the section body
+				state = ParserState()
+				state.all = tokens
+				result = List<Token>()
+
+				error = common.consume_block(state, result)
+
+				if error != none {
+					state.error = error
+					=> none as Node
+				}
+
+				body = parser.parse(context, result, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+
+				# Remove the consumed tokens
+				tokens.remove_range(0, state.end)
+			}
+
+			# Finish the when-statement, when an else-section is encountered
+			if type == ELSE_STATEMENT {
+				sections.add(ElseNode(context, body, arrow.position, none as Position))
+				stop
+			}
+
+			# If the section is not an else-section, the condition must be present
+			if condition == none {
+				state.error = Status(arrow.position, 'Missing section condition')
+				=> none as Node
+			}
+			
+			# Add the conditional section
+			if type == IF_STATEMENT {
+				sections.add(IfNode(context, condition, body, arrow.position, none as Position))
+				type = ELSE_IF_STATEMENT
+			}
+			else {
+				sections.add(ElseIfNode(context, condition, body, arrow.position, none as Position))
+			}
+		}
+
+		container = InlineNode(position)
+		container.add(load)
+		container.add(WhenNode(VariableNode(inspected_value_variable, position), sections, position))
+		=> container
+	}
+}

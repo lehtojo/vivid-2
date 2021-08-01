@@ -42,7 +42,8 @@ NODE_COMPILES = 1099511627776
 NODE_IS = 2199023255552
 NODE_LAMBDA = 4398046511104
 NODE_HAS = 8796093022208
-NODE_EXTENSION_FUNCTION = 17592186044416 # 1 <| 43
+NODE_EXTENSION_FUNCTION = 17592186044416
+NODE_WHEN = 35184372088832 # 1 <| 44
 
 Node NumberNode {
 	value: large
@@ -67,8 +68,13 @@ Node NumberNode {
 	}
 
 	convert(format: large) {
-		if format == FORMAT_DECIMAL { this.value = decimal_to_bits(value as decimal) }
-		else { this.value = bits_to_decimal(value) }
+		if format == FORMAT_DECIMAL {
+			if this.format != FORMAT_DECIMAL { this.value = decimal_to_bits(value as decimal) }
+		}
+		else {
+			if this.format == FORMAT_DECIMAL { this.value = bits_to_decimal(value) }
+		}
+
 		this.format = format
 	}
 
@@ -1892,5 +1898,92 @@ Node ExtensionFunctionNode {
 	override get_status() {
 		message = String('Can not resolve the destination ') + destination.string() + ' of the extension function'
 		=> Status(start, message)
+	}
+}
+
+Node WhenNode {
+	inspected => first as VariableNode
+	sections => last
+
+	init(value: VariableNode, sections: List<Node>, position: Position) {
+		this.start = position
+		this.instance = NODE_WHEN
+		this.is_resolvable = true
+
+		add(value)
+		add(Node())
+
+		loop section in sections {
+			this.sections.add(section)
+		}
+	}
+
+	get_section_body(section: Node) {
+		=> when(section.instance) {
+			NODE_IF => section.(IfNode).body
+			NODE_ELSE_IF => section.(ElseIfNode).body
+			NODE_ELSE => section.(ElseNode).body
+			else => abort('Unsupported section') as ScopeNode
+		}
+	}
+
+	override resolve(environment: Context) {
+		resolver.resolve(environment, inspected)
+		resolver.resolve(environment, sections)
+
+		if get_status().problematic => none as Node
+
+		container = InlineNode(start)
+
+		section_types = List<Type>()
+		loop section in sections { section_types.add(get_section_body(section).last.get_type()) }
+
+		return_type = resolver.get_shared_type(section_types)
+		if return_type == none => none as Node
+
+		# The return value of the when-statement must be loaded into a separate variable
+		return_value_variable = environment.declare_hidden(return_type)
+		container.add(DeclareNode(return_value_variable, start))
+
+		loop section in sections {
+			body = get_section_body(section)
+
+			# Load the return value of the section to the return value variable
+			value = body.last
+			destination = Node()
+			value.replace(destination)
+
+			destination.replace(OperatorNode(Operators.ASSIGN, value.start).set_operands(VariableNode(return_value_variable, value.start), value))
+			container.add(section)
+		}
+
+		# When-statements are added inside inline nodes
+		parent.add(VariableNode(return_value_variable, start))
+		=> container
+	}
+
+	override get_status() {
+		if inspected.try_get_type() == none => Status(inspected.start, 'Can not resolve the type of the inspected value')
+
+		types = List<Type>()
+
+		loop section in sections {
+			body = get_section_body(section)
+			value = body.last
+
+			if value == none => Status(start, 'When-statement has an empty section')
+
+			type = value.try_get_type()
+			if type == none => Status(value.start, 'Can not resolve the section return type')
+			
+			types.add(type)
+		}
+
+		if resolver.get_shared_type(types) == none => Status(start, 'Sections do not have a shared return type')
+		=> Status()
+	}
+
+	override string() {
+		=> String('When')
 	}
 }

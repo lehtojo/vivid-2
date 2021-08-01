@@ -175,6 +175,7 @@ initialize() {
 	add_pattern(RangePattern())
 	add_pattern(HasPattern())
 	add_pattern(ExtensionFunctionPattern())
+	add_pattern(WhenPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position

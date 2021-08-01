@@ -822,6 +822,13 @@ to_string(token: Token) {
 	=> token.string()
 }
 
+# Summary: Returns a string, which represents the specified tokens
+to_string(tokens: List<Token>) {
+	values = List<String>(tokens.size, false)
+	loop token in tokens { values.add(to_string(token)) }
+	=> String.join(` `, values)
+}
+
 # Summary: Returns whether the format is an unsigned format
 is_unsigned(format: large) {
 	=> (format & 1) != 0
@@ -1350,18 +1357,11 @@ tokenize(bundle: Bundle) {
 	loop (i = 0, i < files.count, i++) {
 		file = files[i]
 
-		#println(file.content)
-
 		result = get_tokens(file.content, true)
 		if not (result has tokens) => Status(result.value as String)
 
 		register_file(tokens, file)
 		file.tokens = tokens
-
-		values = List<String>(file.tokens.size, false)
-		loop token in file.tokens { values.add(to_string(token)) }
-
-		#println(String.join(` `, values))
 	}
 
 	=> Status()
