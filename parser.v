@@ -18,8 +18,10 @@ ParserState {
 	}
 
 	restore(from: ParserState) {
-		all = from.all
-		tokens = from.tokens
+		all.clear()
+		all.add_range(from.all)
+		tokens.clear()
+		tokens.add_range(from.tokens)
 		start = from.start
 		end = from.end
 	}
@@ -172,6 +174,7 @@ initialize() {
 	add_pattern(LambdaPattern())
 	add_pattern(RangePattern())
 	add_pattern(HasPattern())
+	add_pattern(ExtensionFunctionPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
@@ -297,10 +300,13 @@ create_root_context(index: large) {
 	=> context
 }
 
+# Summary: Finds all the extension functions under the specified node and tries to apply them
 apply_extension_functions(context: Context, root: Node) {
-
+	extensions = root.find_all(NODE_EXTENSION_FUNCTION)
+	loop extension in extensions { resolver.resolve(context, extension) }
 }
 
+# Summary: Ensures that exported functions and virtual functions are implemented
 implement_functions(context: Context, file: SourceFile, all: bool) {
 	loop function in common.get_all_visible_functions(context) {
 		# If the file filter is specified, skip all functions which are not defined inside that file
@@ -405,6 +411,9 @@ parse(bundle: Bundle) {
 
 	# Parse all namespaces
 	loop node in root.find_all(NODE_NAMESPACE) { node.(NamespaceNode).parse(context) }
+
+	# Applies all extension function
+	apply_extension_functions(context, root)
 
 	# Ensure exported and virtual functions are implemented
 	implement_functions(context, none as SourceFile, false)

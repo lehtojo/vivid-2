@@ -41,7 +41,8 @@ NODE_INSPECTION = 549755813888
 NODE_COMPILES = 1099511627776
 NODE_IS = 2199023255552
 NODE_LAMBDA = 4398046511104
-NODE_HAS = 8796093022208 # 1 <| 42
+NODE_HAS = 8796093022208
+NODE_EXTENSION_FUNCTION = 17592186044416 # 1 <| 43
 
 Node NumberNode {
 	value: large
@@ -1821,6 +1822,75 @@ Node HasNode {
 		if type == none or type.is_unresolved => Status(source.start, 'Can not resolve the type of the inspected object')
 
 		message = String('Ensure the inspected object has the following functions ') + RUNTIME_HAS_VALUE_FUNCTION_HEADER + ' and ' + RUNTIME_GET_VALUE_FUNCTION_HEADER
+		=> Status(start, message)
+	}
+}
+
+Node ExtensionFunctionNode {
+	destination: Type
+	descriptor: FunctionToken
+	template_parameters: List<String>
+	body: List<Token>
+	end: Position
+
+	init(destination: Type, descriptor: FunctionToken, body: List<Token>, start: Position, end: Position) {
+		this.destination = destination
+		this.descriptor = descriptor
+		this.template_parameters = List<String>()
+		this.body = body
+		this.start = start
+		this.end = end
+		this.instance = NODE_EXTENSION_FUNCTION
+		this.is_resolvable = true
+	}
+
+	init(destination: Type, descriptor: FunctionToken, template_parameters: List<String>, body: List<Token>, start: Position, end: Position) {
+		this.destination = destination
+		this.descriptor = descriptor
+		this.template_parameters = template_parameters
+		this.body = body
+		this.start = start
+		this.end = end
+		this.instance = NODE_EXTENSION_FUNCTION
+		this.is_resolvable = true
+	}
+
+	override resolve(context: Context) {
+		if destination.is_unresolved {
+			resolved = resolver.resolve(context, destination)
+			if resolved == none => none as Node
+			this.destination = resolved
+		}
+
+		function = none as Function
+
+		if template_parameters.size > 0 {
+			function = TemplateFunction(destination, MODIFIER_DEFAULT, descriptor.name, template_parameters, descriptor.parameters.tokens, start, end)
+			function.(TemplateFunction).initialize()
+
+			token = ParenthesisToken(`{`, start, end, body)
+			function.blueprint.add(descriptor)
+			function.blueprint.add(token)
+		}
+		else {
+			function = Function(destination, MODIFIER_DEFAULT, descriptor.name, body, start, end)
+
+			# Parse the parameters
+			result = descriptor.get_parameters(function)
+			if not (result has parameters) => none as Node
+
+			function.parameters.add_range(parameters)
+		}
+
+		# If the destination is a namespace, mark the function as a static function
+		if destination.is_static { function.modifiers = function.modifiers | MODIFIER_STATIC }
+
+		destination.(Context).declare(function)
+		=> FunctionDefinitionNode(function, start)
+	}
+
+	override get_status() {
+		message = String('Can not resolve the destination ') + destination.string() + ' of the extension function'
 		=> Status(start, message)
 	}
 }

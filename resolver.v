@@ -14,7 +14,7 @@ get_shared_type(expected: Type, actual: Type) {
 	}
 
 	expected_all_types = expected.get_all_supertypes()
-	actual_all_types = expected.get_all_supertypes()
+	actual_all_types = actual.get_all_supertypes()
 
 	expected_all_types.add(expected)
 	actual_all_types.add(actual)
@@ -369,7 +369,9 @@ resolve(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to resolve')
 
 	context = parse.context
-	current = get_report(context, parse.root)
+	root = parse.root
+
+	current = get_report(context, root)
 	evaluated = false
 
 	# Find the required functions and save them
@@ -379,11 +381,12 @@ resolve(bundle: Bundle) {
 	loop {
 		previous = current
 
+		parser.apply_extension_functions(context, root)
 		parser.implement_functions(context, none as SourceFile, false)
 
 		# Try to resolve problems in the node tree and get the status after that
 		resolve_context(context)
-		current = get_report(context, parse.root)
+		current = get_report(context, root)
 
 		# Try again only if the errors have changed
 		if not are_reports_equal(previous, current) continue

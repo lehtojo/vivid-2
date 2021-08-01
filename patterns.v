@@ -93,23 +93,41 @@ Pattern FunctionPattern {
 	constant FUNCTION = 0
 	constant BODY = 2
 
+	# Pattern: $name (...) [\n] {...} / =>
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
-		path.add(TOKEN_TYPE_PARENTHESIS)
+		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_OPERATOR)
 
 		priority = 20
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[BODY].match(`{`)
+		=> tokens[BODY].match(`{`) or tokens[BODY].match(Operators.HEAVY_ARROW)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		descriptor = tokens[FUNCTION] as FunctionToken
-		blueprint = tokens[BODY] as ParenthesisToken
 
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, descriptor.position, blueprint.end)
+		blueprint = none as List<Token>
+		start = descriptor.position
+		end = none as Position
+		last = tokens[tokens.size - 1]
+
+		# Load the function blueprint
+		if last.match(`{`) {
+			blueprint = last.(ParenthesisToken).tokens
+			end = last.(ParenthesisToken).end
+		}
+		else {
+			blueprint = List<Token>()
+			position = last.position
+			common.consume_block(state, blueprint)
+			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
+			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
+		}
+
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, start, end)
 		
 		result = descriptor.get_parameters(function)
 		if not (result has parameters) {
@@ -121,11 +139,11 @@ Pattern FunctionPattern {
 
 		conflict = context.declare(function)
 		if conflict != none {
-			state.error = Status(descriptor.position, 'Function conflicts with another function')
+			state.error = Status(start, 'Function conflicts with another function')
 			=> none as Node
 		}
 
-		=> FunctionDefinitionNode(function, descriptor.position)
+		=> FunctionDefinitionNode(function, start)
 	}
 }
 
@@ -220,6 +238,11 @@ Pattern VariableDeclarationPattern {
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		name = tokens[NAME] as IdentifierToken
+
+		values = List<String>(tokens.size, false)
+		loop token in tokens { values.add(to_string(token)) }
+
+		println(String.join(` `, values))
 
 		if context.is_local_variable_declared(name.value) {
 			state.error = Status(name.position, 'Variable already exists')
@@ -2090,6 +2113,142 @@ Pattern HasPattern {
 	}
 }
 
-# ExtensionFunctionPattern
-# ShortFunctionPattern
+Pattern ExtensionFunctionPattern {
+	constant PARAMETERS_OFFSET = 2
+	constant BODY_OFFSET = 0
+
+	constant TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET = 3
+	constant STANDARD_FUNCTION_EXTENSION_LAST_DOT_OFFSET = 3
+
+	# Pattern 1: $T1.$T2. ... .$Tn.$name [<$T1, $T2, ..., $Tn>] () [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 23
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Optionally consume template arguments
+		backup = state.save()
+		if not common.consume_template_arguments(state) state.restore(backup)
+
+		# Ensure the first operator is a dot operator
+		next = state.peek()
+		if next == none or not next.match(Operators.DOT) => false
+		state.consume()
+
+		loop {
+			# If there is a function token after the dot operator, this is the function to be added
+			if state.consume(TOKEN_TYPE_FUNCTION) stop
+
+			# Consume a normal type or a template type
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+
+			# Optionally consume template arguments
+			backup = state.save()
+			if not common.consume_template_arguments(state) state.restore(backup)
+
+			consumed = state.peek()
+
+			if state.consume(TOKEN_TYPE_OPERATOR) {
+				# If an operator was consumed, it must be a dot operator
+				if not consumed.match(Operators.DOT) => false
+				continue
+			}
+
+			consumed = state.peek()
+
+			if state.consume(TOKEN_TYPE_PARENTHESIS) {
+				# If parenthesis were consumed, it must be standard parenthesis
+				if not consumed.match(`(`) => false
+				stop
+			}
+
+			# There is an unexpected token
+			=> false
+		}
+
+		# Optionally consume a line ending
+		state.consume_optional(TOKEN_TYPE_END)
+
+		# The last token must be the body of the function
+		next = state.peek()
+		if not next.match(`{`) => false
+		
+		state.consume()
+		=> true
+	}
+
+	private static is_template_function(tokens: List<Token>) {
+		=> tokens[tokens.size - 1 - PARAMETERS_OFFSET].type != TOKEN_TYPE_FUNCTION
+	}
+
+	private static find_template_arguments_start(tokens: List<Token>) {
+		i = tokens.size - 1 - TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET
+		j = 0
+
+		loop (i >= 0) {
+			token = tokens[i]
+
+			if token.match(Operators.LESS_THAN) { j-- }
+			else token.match(Operators.GREATER_THAN) { j++ }
+
+			if j == 0 stop
+
+			i--
+		}
+
+		=> i
+	}
+
+	private static create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+		# Find the starting index of the template arguments
+		i = find_template_arguments_start(tokens)
+		if i < 0 {
+			state.error = Status(tokens[0].position, 'Invalid template function extension')
+			=> none as Node
+		}
+
+		# Collect all the tokens before the name of the extension function
+		# NOTE: This excludes the dot operator
+		destination = common.read_type(environment, tokens.slice(0, i - 2))
+
+		if destination == none {
+			state.error = Status(tokens[0].position, 'Invalid template function extension')
+			=> none as Node
+		}
+
+		template_parameters_start = i + 1
+		template_parameters_end = tokens.size - 1 - TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET
+		template_parameters = common.get_template_parameters(tokens.slice(template_parameters_start, template_parameters_end), tokens[i].position)
+		
+		name = tokens[i - 1] as IdentifierToken
+		parameters = tokens[tokens.size - 1 - PARAMETERS_OFFSET] as ParenthesisToken
+		body = tokens[tokens.size - 1 - BODY_OFFSET] as ParenthesisToken
+
+		descriptor = FunctionToken(name, parameters)
+		descriptor.position = name.position
+
+		=> ExtensionFunctionNode(destination, descriptor, template_parameters, body.tokens, descriptor.position, body.end)
+	}
+
+	private static create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+		destination = common.read_type(environment, tokens.slice(0, tokens.size - 1 - STANDARD_FUNCTION_EXTENSION_LAST_DOT_OFFSET))
+
+		if destination == none {
+			state.error = Status(tokens[0].position, 'Invalid template function extension')
+			=> none as Node
+		}
+
+		descriptor = tokens[tokens.size - 1 - PARAMETERS_OFFSET] as FunctionToken
+		body = tokens[tokens.size - 1 - BODY_OFFSET] as ParenthesisToken
+
+		=> ExtensionFunctionNode(destination, descriptor, body.tokens, descriptor.position, body.end)
+	}
+
+	override build(environment: Context, state: ParserState, tokens: List<Token>) {
+		if is_template_function(tokens) => create_template_function_extension(environment, state, tokens)
+		=> create_standard_function_extension(environment, state, tokens)
+	}
+}
+
 # WhenPattern
