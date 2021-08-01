@@ -222,12 +222,15 @@ find_condition(start) {
 	abort('Could not find condition')
 }
 
-consume_block(state: ParserState, destination: List<Token>) {
+consume_block(from: ParserState, destination: List<Token>) {
 	# Return an empty list, if there is nothing to be consumed
-	if state.end >= state.all.size => none as Status
+	if from.end >= from.all.size => none as Status
 
 	# Clone the tokens from the specified state
-	tokens = clone(state.all.slice(state.end, state.all.size))
+	tokens = clone(from.all.slice(from.end, from.all.size))
+
+	state = ParserState()
+	state.all = tokens
 
 	consumptions = List<Pair<parser.DynamicToken, large>>()
 	context = Context(String('0'), NORMAL_CONTEXT)
@@ -284,16 +287,19 @@ consume_block(state: ParserState, destination: List<Token>) {
 		}
 
 		# Read the consumed tokens from the source state
-		source = state.all
-		end = state.end
+		source = from.all
+		end = from.end
 
 		loop (i = 0, i < consumed, i++) {
 			destination.add(source[end + i])
 		}
 
+		from.end += consumed
 		=> none as Status
 	}
 
+	# Just consume the first token
+	from.end++
 	destination.add(next)
 	=> none as Status
 }

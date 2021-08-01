@@ -2021,8 +2021,75 @@ Pattern LambdaPattern {
 	}
 }
 
+Pattern RangePattern {
+	constant LEFT = 0
+	constant OPERATOR = 2
+	constant RIGHT = 4
+
+	constant RANGE_TYPE_NAME = 'Range'
+
+	# Pattern: $start [\n] .. [\n] $end
+	init() {
+		path.add(TOKEN_TYPE_OBJECT)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_OBJECT)
+		priority = 5
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[OPERATOR].match(Operators.RANGE)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		left = parser.parse(context, tokens[LEFT])
+		right = parser.parse(context, tokens[RIGHT])
+
+		arguments = Node()
+		arguments.add(left)
+		arguments.add(right)
+
+		=> UnresolvedFunction(String(RANGE_TYPE_NAME), tokens[OPERATOR].position).set_arguments(arguments)
+	}
+}
+
+Pattern HasPattern {
+	constant HAS = 1
+	constant NAME = 2
+
+	# Pattern: $object has $name
+	init() {
+		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		priority = 5
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[HAS].match(Keywords.HAS)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		source = parser.parse(context, tokens[0])
+		name = tokens[NAME] as IdentifierToken
+		position = name.position
+
+		if context.is_local_variable_declared(name.value) {
+			state.error = Status(position, 'Variable already exists')
+			=> none as Node
+		}
+
+		variable = Variable(context, none as Type, VARIABLE_CATEGORY_LOCAL, name.value, MODIFIER_DEFAULT)
+		variable.position = position
+		context.declare(variable)
+
+		result = VariableNode(variable, position)
+
+		=> HasNode(source, result, tokens[HAS].position)
+	}
+}
+
 # ExtensionFunctionPattern
-# HasPattern
-# RangePattern
 # ShortFunctionPattern
 # WhenPattern

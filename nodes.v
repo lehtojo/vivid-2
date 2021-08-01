@@ -40,7 +40,8 @@ NODE_NAMESPACE = 274877906944
 NODE_INSPECTION = 549755813888
 NODE_COMPILES = 1099511627776
 NODE_IS = 2199023255552
-NODE_LAMBDA = 4398046511104 # 1 <| 41
+NODE_LAMBDA = 4398046511104
+NODE_HAS = 8796093022208 # 1 <| 42
 
 Node NumberNode {
 	value: large
@@ -951,6 +952,7 @@ Node CommandNode {
 		this.instruction = instruction
 		this.start = position
 		this.instance = NODE_COMMAND
+		this.is_resolvable = true
 
 		if instruction != Keywords.CONTINUE { finished = true }
 	}
@@ -960,6 +962,7 @@ Node CommandNode {
 		this.start = position
 		this.finished = finished
 		this.instance = NODE_COMMAND
+		this.is_resolvable = true
 	}
 
 	override resolve(context: Context) {
@@ -1580,6 +1583,7 @@ Node InspectionNode {
 	init(type: large, node: Node, position: Position) {
 		this.type = type
 		this.instance = NODE_INSPECTION
+		this.is_resolvable = true
 		add(node)
 	}
 
@@ -1627,6 +1631,7 @@ Node IsNode {
 		this.type = type
 		this.start = position
 		this.instance = NODE_IS
+		this.is_resolvable = true
 
 		add(object)
 		if variable != none add(VariableNode(variable, position))
@@ -1667,6 +1672,7 @@ Node LambdaNode {
 		this.start = position
 		this.status = Status(position, 'Can not resolve parameter types of this lambda')
 		this.instance = NODE_LAMBDA
+		this.is_resolvable = true
 	}
 
 	init(implementation: FunctionImplementation, position: Position) {
@@ -1675,6 +1681,7 @@ Node LambdaNode {
 		this.start = position
 		this.status = Status()
 		this.instance = NODE_LAMBDA
+		this.is_resolvable = true
 	}
 
 	get_parameter_types() {
@@ -1723,5 +1730,97 @@ Node LambdaNode {
 
 	override get_status() {
 		=> status
+	}
+}
+
+Node HasNode {
+	constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
+	constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
+
+	constant RUNTIME_HAS_VALUE_FUNCTION_HEADER = 'has_value(): bool'
+	constant RUNTIME_GET_VALUE_FUNCTION_HEADER = 'get_value(): any'
+
+	source => first
+	result => last as VariableNode
+
+	init(source: Node, result: VariableNode, position: Position) {
+		this.start = position
+		this.instance = NODE_HAS
+		this.is_resolvable = true
+
+		add(source)
+		add(result)
+	}
+
+	override resolve(environment: Context) {
+		position = start
+		resolver.resolve(environment, source)
+
+		type = source.try_get_type()
+		if type == none or type.is_unresolved => none as Node
+
+		has_value_function = type.get_function(String(RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		if has_value_function == none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => none as Node
+
+		get_value_function = type.get_function(String(RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		if get_value_function == none or get_value_function.return_type == none or get_value_function.return_type.is_unresolved => none as Node
+
+		inline_context = Context(environment, NORMAL_CONTEXT)
+
+		source_variable = inline_context.declare_hidden(type)
+		result_variable = inline_context.declare_hidden(primitives.create_bool())
+
+		# Declare the result variable at the start of the function
+		declaration = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(result.variable, position),
+			CastNode(NumberNode(SYSTEM_FORMAT, 0, position), TypeNode(get_value_function.return_type, position), position)
+		)
+
+		reconstruction.get_insert_position(this).insert(declaration)
+
+		# Set the result variable equal to false
+		initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(result_variable, position),
+			NumberNode(SYSTEM_FORMAT, 0, position)
+		)
+
+		# Load the source into a variable
+		load = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(source_variable, position), source)
+
+		# First the function 'has_value(): bool' must return true in order to call the function 'get_value(): any'
+		condition = LinkNode(VariableNode(source_variable, position), FunctionNode(has_value_function, position), position)
+
+		# If the function 'has_value(): bool' returns true, load the value using the function 'get_value(): any' and set the result variable equal to true
+		body = Node()
+		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(result.variable, position),
+			LinkNode(VariableNode(source_variable), FunctionNode(get_value_function, position), position)
+		))
+		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(result_variable, position),
+			NumberNode(SYSTEM_FORMAT, 1, position)
+		))
+
+		assignment_context = Context(environment, NORMAL_CONTEXT)
+		assignment = IfNode(assignment_context, condition, body, position, none as Position)
+
+		result = ContextInlineNode(inline_context, position)
+		result.add(initialization)
+		result.add(load)
+		result.add(assignment)
+		result.add(VariableNode(result_variable))
+		=> result
+	}
+
+	override try_get_type() {
+		=> primitives.create_bool()
+	}
+
+	override get_status() {
+		type = source.try_get_type()
+		if type == none or type.is_unresolved => Status(source.start, 'Can not resolve the type of the inspected object')
+
+		message = String('Ensure the inspected object has the following functions ') + RUNTIME_HAS_VALUE_FUNCTION_HEADER + ' and ' + RUNTIME_GET_VALUE_FUNCTION_HEADER
+		=> Status(start, message)
 	}
 }

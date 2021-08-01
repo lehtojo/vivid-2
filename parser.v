@@ -96,6 +96,16 @@ Token DynamicToken {
 		Token.init(TOKEN_TYPE_DYNAMIC)
 		this.node = node
 	}
+
+	init(node: Node, position: Position) {
+		Token.init(TOKEN_TYPE_DYNAMIC)
+		this.node = node
+		this.position = position
+	}
+
+	override clone() {
+		=> DynamicToken(node, position)
+	}
 }
 
 # Summary: Returns the patterns which have the specified priority
@@ -160,6 +170,8 @@ initialize() {
 	add_pattern(IsPattern())
 	add_pattern(OverrideFunctionPattern())
 	add_pattern(LambdaPattern())
+	add_pattern(RangePattern())
+	add_pattern(HasPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position

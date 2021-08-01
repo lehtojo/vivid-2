@@ -1406,6 +1406,7 @@ Function TemplateFunction {
 Function Lambda {
 	init(context: Context, modifiers: large, name: String, blueprint: List<Token>, start: Position, end: Position) {
 		Function.init(context, modifiers, name, blueprint, start, end)
+		this.type = this.type | LAMBDA_CONTEXT_MODIFIER
 
 		# Lambdas usually capture variables from the parent context
 		connect(context)
@@ -1533,6 +1534,7 @@ FunctionImplementation LambdaImplementation {
 
 	init(metadata: Lambda, return_type: Type, context: Context) {
 		FunctionImplementation.init(metadata, return_type, context)
+		this.type = this.type | LAMBDA_CONTEXT_MODIFIER
 	}
 
 	seal() {
