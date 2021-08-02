@@ -41,6 +41,7 @@ Context {
 	identity: String
 	identifier: String
 	name: String
+	mangle: Mangle
 	type: normal
 
 	variables: Map<String, Variable>
@@ -102,9 +103,17 @@ Context {
 		connect(parent)
 	}
 
-	virtual get_fullname() {
-		=> String.empty
+	# Summary: Returns the mangled name of this context
+	get_fullname() {
+		if mangle == none {
+			mangle = Mangle(none as Mangle)
+			on_mangle(mangle)
+		}
+		
+		=> mangle.value
 	}
+
+	virtual on_mangle(mangle: Mangle) {}
 
 	# Summary: Tries to find the self pointer variable
 	virtual get_self_pointer() {
@@ -484,8 +493,6 @@ Context Type {
 	is_resolved: bool = true
 
 	is_primitive => has_flag(modifiers, MODIFIER_PRIMITIVE)
-	is_number => has_flag(modifiers, MODIFIER_NUMBER)
-	is_function_type => has_flag(modifiers, MODIFIER_FUNCTION_TYPE)
 	is_user_defined => not is_primitive and destructors.overloads.size > 0
 
 	is_unresolved => not is_resolved
@@ -493,6 +500,9 @@ Context Type {
 	
 	is_generic_type => not has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
 	is_template_type => has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
+	is_function_type => has_flag(modifiers, MODIFIER_FUNCTION_TYPE)
+	is_array_type => has_flag(modifiers, MODIFIER_ARRAY_TYPE)
+	is_number => has_flag(modifiers, MODIFIER_NUMBER)
 
 	reference_size: large = SYSTEM_BYTES
 
@@ -752,6 +762,10 @@ Context Type {
 	get_register_format() {
 		if format == FORMAT_DECIMAL => FORMAT_DECIMAL
 		=> SYSTEM_FORMAT
+	}
+
+	override on_mangle(mangle: Mangle) {
+		mangle.add(this)
 	}
 
 	virtual match(other: Type) {
@@ -1132,6 +1146,24 @@ Context Function {
 
 		=> implement(implementation_types)
 	}
+
+	override on_mangle(mangle: Mangle) {
+		if language == LANGUAGE_OTHER {
+			mangle.value = name
+			return
+		}
+
+		if language == LANGUAGE_CPP { mangle.value = String(Mangle.CPP_LANGUAGE_TAG) }
+
+		if is_member {
+			mangle.add(Mangle.START_LOCATION_COMMAND)
+			mangle.add_path(get_parent_types())
+		}
+
+		mangle.add(to_string(name.length) + name)
+
+		if is_member { mangle.add(Mangle.END_COMMAND) }
+	}
 }
 
 TemplateTypeVariant {
@@ -1477,7 +1509,7 @@ Context FunctionImplementation {
 		this.template_arguments = List<Type>(0, false)
 
 		this.name = metadata.name
-		this.identifier = metadata.identifier
+		this.identifier = name
 		
 		connect(parent)
 	}
@@ -1512,8 +1544,40 @@ Context FunctionImplementation {
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 	}
 
-	override get_fullname() {
-		=> metadata.name
+	override on_mangle(mangle: Mangle) {
+		if metadata.language == LANGUAGE_OTHER {
+			mangle.value = name
+			return
+		}
+
+		if metadata.language == LANGUAGE_CPP { mangle.value = String(Mangle.CPP_LANGUAGE_TAG) }
+
+		if is_member {
+			mangle.add(Mangle.START_LOCATION_COMMAND)
+			mangle.add_path(get_parent_types())
+		}
+
+		mangle.add(to_string(identifier.length) + identifier)
+
+		if template_arguments.size > 0 {
+			mangle.add(Mangle.START_TEMPLATE_ARGUMENTS_COMMAND)
+			mangle.add(template_arguments)
+			mangle.add(Mangle.END_COMMAND)
+		}
+
+		if is_member { mangle.add(Mangle.END_COMMAND) }
+
+		# Add the parameters
+		loop parameter in parameters { mangle.add(parameter.type) }
+
+		# If there are no parameters, it must be notified
+		if parameters.size == 0 { mangle.add(Mangle.NO_PARAMETERS_COMMAND) }
+
+		if metadata.language == LANGUAGE_VIVID and not primitives.is_primitive(return_type, primitives.UNIT) {
+			mangle.add(Mangle.PARAMETERS_END)
+			mangle.add(Mangle.START_RETURN_TYPE_COMMAND)
+			mangle.add(return_type)
+		}
 	}
 }
 
@@ -1608,6 +1672,24 @@ FunctionImplementation LambdaImplementation {
 	override get_self_pointer() {
 		if self != none => self
 		=> get_variable(String(SELF_POINTER_IDENTIFIER))
+	}
+
+	override on_mangle(mangle: Mangle) {
+		parent.on_mangle(mangle)
+
+		mangle.add(`_`)
+		mangle.add(name)
+		mangle.add(`_`)
+
+		# Add the parameters
+		loop parameter in parameters { mangle.add(parameter.type) }
+
+		# Add the return type, if it is not unit
+		if primitives.is_primitive(return_type, primitives.UNIT) return
+
+		mangle.add(Mangle.PARAMETERS_END)
+		mangle.add(Mangle.START_RETURN_TYPE_COMMAND)
+		mangle.add(return_type)
 	}
 }
 
