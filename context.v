@@ -444,19 +444,6 @@ Function Destructor {
 	}
 }
 
-Table {
-	name: String
-	label: Label
-	is_built: bool = false
-	is_section: bool = false
-	subtables: large = 0
-
-	init(name: String) {
-		this.name = name
-		this.label = Label(name)
-	}
-}
-
 RuntimeConfiguration {
 	constant CONFIGURATION_VARIABLE = '.configuration'
 
@@ -464,12 +451,16 @@ RuntimeConfiguration {
 	descriptor: Table
 
 	variable: Variable
+	references: Variable
+
+	is_completed: bool = false
 
 	init(type: Type) {
-		# TODO: Extend runtime configuration
 		variable = type.(Context).declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
 		entry = Table(type.get_fullname() + 'CE')
 		descriptor = Table(type.get_fullname() + 'DE')
+
+		entry.add(descriptor)
 	}
 }
 
@@ -493,6 +484,7 @@ Context Type {
 	is_resolved: bool = true
 
 	is_primitive => has_flag(modifiers, MODIFIER_PRIMITIVE)
+	is_imported => has_flag(modifiers, MODIFIER_IMPORTED)
 	is_user_defined => not is_primitive and destructors.overloads.size > 0
 
 	is_unresolved => not is_resolved
@@ -503,6 +495,7 @@ Context Type {
 	is_function_type => has_flag(modifiers, MODIFIER_FUNCTION_TYPE)
 	is_array_type => has_flag(modifiers, MODIFIER_ARRAY_TYPE)
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
+	is_template_type_variant => name.index_of(`<`) != -1
 
 	reference_size: large = SYSTEM_BYTES
 

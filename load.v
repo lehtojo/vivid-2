@@ -13,6 +13,12 @@ SourceFile {
 		this.content = content
 		this.index = index
 	}
+
+	filename() {
+		i = fullname.last_index_of(`/`)
+		if i < 0 { i = 0 }
+		=> fullname.slice(i, fullname.length)
+	}
 }
 
 # Summary: Loads the files which are stored in the specified bundle

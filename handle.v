@@ -38,6 +38,13 @@ to_size_modifier(bytes: large) {
 	}
 }
 
+BYTE_ALLOCATOR = '.byte'
+SHORT_ALLOCATOR = '.short'
+LONG_ALLOCATOR = '.long'
+QUAD_ALLOCATOR = '.quad'
+XWORD_ALLOCATOR = '.xword'
+YWORD_ALLOCATOR = '.yword'
+
 # Summary: Converts the specified size to corresponding data section allocator
 to_data_section_allocator(bytes: large) {
 	=> when(bytes) {
@@ -436,38 +443,59 @@ CONSTANT_TYPE_DECIMAL = 1
 CONSTANT_TYPE_BYTES = 2
 
 DataSectionHandle ConstantDataSectionHandle {
-	value: large
 	value_type: large
 
-	init(handle: ConstantHandle) {
-		DataSectionHandle.init(handle.string(), false)
-
-		this.value = handle.value
+	init(identifier: String, address: bool) {
+		DataSectionHandle.init(identifier, false)
 		this.instance = INSTANCE_CONSTANT_DATA_SECTION
+	}
+}
+
+ConstantDataSectionHandle NumberDataSectionHandle {
+	value: large
+
+	init(handle: ConstantHandle) {
+		ConstantDataSectionHandle.init(handle.string(), false)
+		this.value = handle.value
 
 		if handle.format == FORMAT_DECIMAL { value_type = CONSTANT_TYPE_DECIMAL }
 		else { value_type = CONSTANT_TYPE_INTEGER }
 	}
 
-	init(bytes: Array<byte>) {
-		values = List<String>()
-		loop value in bytes { values.add(to_string(value)) }
-
-		DataSectionHandle.init(String('{ ') + String.join(', ', values) + ' }')
-
-		this.value = bytes as large
-		this.instance = INSTANCE_CONSTANT_DATA_SECTION
-		this.value_type = CONSTANT_TYPE_BYTES
-	}
-	
-	init(value: large, value_type: large) {
+	init(identifier: String, value: large, value_type: large) {
+		ConstantDataSectionHandle.init(identifier, false)
 		this.value = value
 		this.value_type = value_type
-		this.instance = INSTANCE_CONSTANT_DATA_SECTION
 	}
 
 	override copy() {
-		=> ConstantDataSectionHandle(value, value_type)
+		=> NumberDataSectionHandle(identifier, value, value_type)
+	}
+
+	override equals(other: Handle) {
+		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
+	}
+}
+
+ConstantDataSectionHandle ByteArrayDataSectionHandle {
+	value: Array<byte>
+
+	init(bytes: Array<byte>) {
+		values = List<String>()
+		loop value in bytes { values.add(to_string(value)) }
+		ConstantDataSectionHandle.init(String('{ ') + String.join(', ', values) + ' }')
+		this.value = bytes
+		this.value_type = CONSTANT_TYPE_BYTES
+	}
+
+	init(identifier: String, bytes: Array<byte>) {
+		ConstantDataSectionHandle.init(identifier)
+		this.value = bytes
+		this.value_type = CONSTANT_TYPE_BYTES
+	}
+
+	override copy() {
+		=> ByteArrayDataSectionHandle(identifier, value)
 	}
 
 	override equals(other: Handle) {

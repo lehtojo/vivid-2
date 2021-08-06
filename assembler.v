@@ -1,5 +1,3 @@
-constant EXPORT_DIRECTIVE = '.global'
-
 constant REGISTER_NONE = 0
 constant REGISTER_VOLATILE = 1
 constant REGISTER_RESERVED = 2
@@ -1102,6 +1100,30 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 	=> registers
 }
 
+get_all_handles(results: List<Result>) {
+	handles = List<Handle>()
+
+	loop result in results {
+		handles.add(result.value)
+		handles.add_range(get_all_handles(result.value.get_inner_results()))
+	}
+
+	=> handles
+}
+
+get_all_handles(instructions: List<Instruction>) {
+	handles = List<Handle>()
+
+	loop instruction in instructions {
+		loop parameter in instruction.parameters {
+			handles.add(parameter.value)
+			handles.add_range(get_all_handles(parameter.value.get_inner_results()))
+		}
+	}
+
+	=> handles
+}
+
 align_function(function: FunctionImplementation) {
 	
 	if not settings.is_target_windows {
@@ -1172,7 +1194,7 @@ align(context: Context) {
 	}
 }
 
-get_text_section(implementation: FunctionImplementation) {
+get_text_section(implementation: FunctionImplementation, constant_section: List<ConstantDataSectionHandle>) {
 	builder = StringBuilder()
 
 	fullname = implementation.get_fullname()
@@ -1249,6 +1271,7 @@ get_text_section(implementation: FunctionImplementation) {
 		instructions.add(instruction)
 	}
 
+	all_handles = get_all_handles(instructions)
 	non_volatile_registers = get_all_used_non_volatile_registers(instructions)
 	local_memory_top = 0
 
@@ -1301,30 +1324,348 @@ get_text_section(implementation: FunctionImplementation) {
 	builder.append(unit.string())
 	builder.append(`\n`)
 
-	=> builder.string()
-}
-
-assemble(context: Context, output_type: large) {
-	align(context)
-
-	implementations = common.get_all_function_implementations(context)
-	builder = StringBuilder()
-
-	loop implementation in implementations {
-		builder.append(get_text_section(implementation))
+	# Export all constant data
+	loop handle in all_handles {
+		if handle.instance != INSTANCE_CONSTANT_DATA_SECTION continue
+		constant_section.add(handle as ConstantDataSectionHandle)
 	}
 
 	=> builder.string()
 }
 
+constant EXPORT_DIRECTIVE = '.export'
+constant BYTE_ALIGNMENT_DIRECTIVE = '.balign'
+constant POWER_OF_TWO_ALIGNMENT_DIRECTIVE = '.align'
+constant STRING_ALLOCATION_DIRECTIVE = '.string'
+constant BYTE_ZERO_ALLOCATOR = '.zero'
+constant SECTION_RELATIVE_DIRECTIVE = '.secrel'
+constant SECTION_DIRECTIVE = '.section'
+
+group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
+	groups = Map<Tb, List<Ta>>()
+
+	loop item in items {
+		key = key_function(item)
+		
+		if groups.contains_key(key) {
+			groups[key].add(item)
+			continue
+		}
+
+		members = List<Ta>()
+		members.add(item)
+		groups.add(key, members)
+	}
+
+	=> groups
+}
+
+get_static_variables(type: Type) {
+	builder = StringBuilder()
+
+	loop iterator in type.variables {
+		variable = iterator.value
+		if not variable.is_static continue
+
+		name = variable.get_static_name()
+		size = variable.type.reference_size
+
+		builder.append(EXPORT_DIRECTIVE)
+		builder.append(` `)
+		builder.append_line(name)
+
+		if not settings.is_x64 {
+			builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+			builder.append_line(' 3')
+		}
+
+		builder.append(name)
+		builder.append(': ')
+		builder.append(BYTE_ZERO_ALLOCATOR)
+		builder.append(` `)
+		builder.append_line(to_string(size))
+	}
+
+	=> builder.string()
+}
+
+add_table_label(label: TableLabel) {
+	if label.declare => label.name + `:`
+	if label.is_section_relative => String(SECTION_RELATIVE_DIRECTIVE) + to_string(label.size * 8) + ` ` + label.name
+	=> String(to_data_section_allocator(label.size)) + ` ` + label.name
+}
+
+add_table(builder: StringBuilder, table: Table) {
+	if table.is_built return
+	table.is_built = true
+
+	if table.is_section {
+		builder.append(SECTION_DIRECTIVE)
+		builder.append(` `)
+		builder.append_line(table.name)
+	}
+	else {
+		builder.append_line(String(EXPORT_DIRECTIVE) + ` ` + table.name)
+
+		if not settings.is_x64 {
+			builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+			builder.append_line(' 3')
+		}
+
+		builder.append(table.name)
+		builder.append(':\n')
+	}
+
+	subtables = List<Table>()
+
+	loop item in table.items {
+		result = when(item.type) {
+			TABLE_ITEM_STRING => allocate_string(item.(StringTableItem).value)
+			TABLE_ITEM_INTEGER => String(to_data_section_allocator(item.(IntegerTableItem).size)) + ` ` + to_string(item.(IntegerTableItem).value)
+			TABLE_ITEM_TABLE_REFERENCE => String(to_data_section_allocator(SYSTEM_BYTES)) + ` ` + item.(TableReferenceTableItem).value.name
+			TABLE_ITEM_LABEL => String(to_data_section_allocator(SYSTEM_BYTES)) + ` ` + item.(LabelTableItem).value.name
+			TABLE_ITEM_LABEL_OFFSET => String(LONG_ALLOCATOR) + ` ` + item.(LabelOffsetTableItem).value.to.name + ' - ' + item.(LabelOffsetTableItem).value.from.name
+			TABLE_ITEM_TABLE_LABEL => add_table_label(item.(TableLabelTableItem).value)
+			else => abort('Invalid table item') as String
+		}
+
+		builder.append_line(result)
+
+		if item.type == TABLE_ITEM_TABLE_REFERENCE {
+			subtable = item.(TableReferenceTableItem).value
+			if not subtable.is_built subtables.add(subtable)
+		}
+	}
+
+	builder.append('\n\n')
+	
+	# Build the subtables
+	loop subtable in subtables { add_table(builder, subtable) }
+}
+
+allocate_string(text: String) {
+	builder = StringBuilder()
+	builder.append(STRING_ALLOCATION_DIRECTIVE)
+	builder.append(' \"')
+	builder.append(text)
+	builder.append_line('\"')
+	builder.append('.byte 0')
+
+	# TODO: Support special characters
+	=> builder.string()
+}
+
+# Summary: Returns the bytes which represent the specified value
+get_bytes<T>(value: T) {
+	bytes = List<byte>()
+
+	# Here we loop over each byte of the value and add them into the list
+	loop (i = 0, i < sizeof(T), i++) {
+		slide = i * 8
+		mask = 255 <| slide
+		bytes.add([value & mask] |> slide)
+	}
+
+	=> bytes
+}
+
+# Summary: Constructs data section for the specified constants
+get_constant_section(items: List<ConstantDataSectionHandle>) {
+	builder = StringBuilder()
+
+	loop item in items {
+		name = item.identifier
+
+		allocator = none as link
+		text = none as String
+
+		if item.value_type == CONSTANT_TYPE_BYTES {
+			text = item.identifier
+			allocator = BYTE_ALLOCATOR
+		}
+		else {
+			text = item.identifier
+			allocator = QUAD_ALLOCATOR
+		}
+
+		if settings.is_x64 { builder.append_line(String(BYTE_ALIGNMENT_DIRECTIVE) + ' 16') }
+		else { builder.append_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 3') }
+
+		builder.append(name)
+		builder.append_line(`:`)
+		builder.append(allocator)
+		builder.append(` `)
+		builder.append_line(text)
+	}
+
+	=> builder.string()
+}
+
+# Summary: Constructs file specific data sections based on the specified context
+get_data_sections(context: Context) {
+	sections = Map<SourceFile, StringBuilder>()
+	
+	all_types = common.get_all_types(context)
+	loop (i = all_types.size - 1, i >= 0, i--) { if all_types[i].position as link == none all_types.remove_at(i) }
+	types = group_by<Type, SourceFile>(all_types, (i: Type) -> i.position.file)
+
+	# Add static variables
+	loop iterator in types {
+		builder = StringBuilder()
+
+		loop type in iterator.value {
+			builder.append_line(get_static_variables(type))
+			builder.append('\n\n')
+		}
+
+		sections.add(iterator.key, builder)
+	}
+
+	# Add runtime type information
+	loop iterator in types {
+		builder = sections[iterator.key]
+
+		loop type in iterator.value {
+			# 1. Skip if the runtime configuration has not been created
+			# 2. Imported types are already exported
+			# 3. The template type must be a variant
+			if type.configuration == none or type.is_imported or (type.is_template_type and not type.is_template_type_variant) continue
+			add_table(builder, type.configuration.entry)
+		}
+	}
+
+	# Add strings
+	all_implementations = common.get_all_function_implementations(context)
+	loop (i = all_implementations.size - 1, i >= 0, i--) { if all_implementations[i].metadata.is_imported all_implementations.remove_at(i) }
+	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
+
+	loop iterator in implementations {
+		nodes = List<StringNode>()
+
+		loop implementation in iterator.value {
+			if implementation.node == none continue
+			nodes.add_range(implementation.node.find_all(NODE_STRING) as List<StringNode>)
+		}
+
+		builder = none as StringBuilder
+
+		if sections.contains_key(iterator.key) { builder = sections[iterator.key] }
+		else { builder = StringBuilder() }
+
+		loop node in nodes {
+			if node.identifier as link == none continue
+
+			if settings.is_x64 {
+				builder.append(BYTE_ALIGNMENT_DIRECTIVE)
+				builder.append_line(' 16')
+			}
+			else {
+				builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+				builder.append_line(' 3')
+			}
+
+			builder.append(node.identifier)
+			builder.append(':\n')
+			builder.append_line(allocate_string(node.text))
+		}
+
+		sections[iterator.key] = builder
+	}
+
+	=> sections
+}
+
+get_text_sections(context: Context, constant_sections: Map<SourceFile, List<ConstantDataSectionHandle>>) {
+	sections = Map<SourceFile, String>()
+
+	all = common.get_all_function_implementations(context)
+
+	loop (i = all.size - 1, i >= 0, i--) {
+		implementation = all[i]
+		if implementation.metadata.is_imported or implementation.metadata.start as link == none all.remove_at(i)
+	}
+
+	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
+
+	loop iterator in implementations {
+		constant_section = List<ConstantDataSectionHandle>()
+		builder = StringBuilder()
+
+		loop implementation in iterator.value {
+			builder.append(get_text_section(implementation, constant_section))
+			builder.append('\n\n')
+		}
+
+		sections.add(iterator.key, builder.string())
+		constant_sections.add(iterator.key, constant_section)
+	}
+
+	=> sections
+}
+
+# Summary: Removes unnecessary line endings
+beautify(text: String) {
+	builder = StringBuilder()
+	builder.append(text)
+	i = 0
+
+	loop (i < builder.length) {
+		if builder[i] != `\n` {
+			i++
+			continue
+		}
+
+		j = i + 1
+		loop (j < builder.length and builder[j] == `\n`, j++) {}
+
+		if j - i <= 2 {
+			i++
+			continue
+		}
+
+		builder.remove(i + 2, j)
+	}
+
+	=> builder.string()
+}
+
+assemble(context: Context, files: List<SourceFile>, output_type: large) {
+	align(context)
+
+	constant_sections = Map<SourceFile, List<ConstantDataSectionHandle>>()
+	text_sections = get_text_sections(context, constant_sections)
+	data_sections = get_data_sections(context)
+
+	assemblies = Map<SourceFile, String>()
+
+	loop file in files {
+		text_section = String.empty
+		if text_sections.contains_key(file) { text_section = text_sections[file] }
+
+		data_section = String.empty
+		if data_sections.contains_key(file) { data_section = data_sections[file].string() }
+
+		constant_section = String.empty
+		if constant_sections.contains_key(file) { constant_section = get_constant_section(constant_sections[file]) }
+
+		result = text_section + '\n\n' + data_section + '\n\n' + constant_section
+		assemblies.add(file, beautify(result))
+	}
+
+	=> assemblies
+}
+
 assemble(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to assemble')
+	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<Array<SourceFile>> has files) => Status('Missing files')
 	#if not (bundle.get_integer(String(BUNDLE_OUTPUT_TYPE)) has output_type) => Status('Output type was not specified')
 	output_type = BINARY_TYPE_EXECUTABLE
 
-	result = assemble(parse.context, output_type)
+	assemblies = assemble(parse.context, files.to_list(), output_type)
 
-	io.write_file('./v.asm', result)
+	loop iterator in assemblies {
+		io.write_file(String('./') + iterator.key.filename() + '.asm', iterator.value)
+	}
 
 	=> Status()
 }

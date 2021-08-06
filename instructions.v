@@ -517,7 +517,7 @@ DualParameterInstruction MoveInstruction {
 			if not settings.is_x64 => build_decimal_constant_move_x64(flags_first, flags_second)
 
 			# Move the source value into the data section so that it can be loaded into a media register
-			second.value = ConstantDataSectionHandle(second.value as ConstantHandle)
+			second.value = NumberDataSectionHandle(second.value as ConstantHandle)
 		}
 
 		if first.is_memory_address {

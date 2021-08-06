@@ -327,8 +327,108 @@ create_inline_container(type: Type, node: Node) {
 	=> InlineContainer(node, container, instance)
 }
 
+# Summary:
+# Tries to find the override for the specified virtual function and registers it to the specified runtime configuration.
+# This function returns the offset after registering the override function.
+try_register_virtual_function_implementation(type: Type, virtual_function: VirtualFunction, configuration: RuntimeConfiguration, offset: large) {
+	# Find all possible implementations of the virtual function inside the specified type
+	result = type.get_override(virtual_function.name)
+	if result == none => offset
+
+	overloads = result.overloads
+
+	# Retrieve all parameter types of the virtual function declaration
+	expected = List<Type>()
+	loop parameter in virtual_function.parameters { expected.add(parameter.type) }
+
+	# Try to find a suitable implementation for the virtual function from the specified type
+	implementation = none as FunctionImplementation
+
+	loop overload in overloads {
+		actual = List<Type>()
+		loop parameter in overload.parameters { actual.add(parameter.type) }
+
+		if not common.compatible(expected, actual) continue
+
+		implementation = overload.get(expected)
+		stop
+	}
+
+	if implementation == none {
+		# It seems there is no implementation for this virtual function
+		=> offset
+	}
+
+	# Append configuration information only if it is not generated
+	if not configuration.is_completed {
+		configuration.entry.add(Label(implementation.get_fullname() + '_v'))
+	}
+
+	=> offset + SYSTEM_BYTES
+}
+
 copy_type_descriptors(type: Type, supertypes: List<Type>) {
-	descriptors = List<Pair<Type, DataPointerNode>>()
+	if type.configuration == none => List<Pair<Type, DataPointerNode>>()
+
+	configuration = type.configuration
+	descriptor_count = 0
+
+	if type.supertypes.size > 0 { descriptor_count = supertypes.size }
+	else { descriptor_count = supertypes.size + 1 }
+
+	descriptors = List<Pair<Type, DataPointerNode>>(descriptor_count, true)
+
+	if not configuration.is_completed {
+		# Complete the descriptor of the type
+		configuration.descriptor.add(type.content_size)
+		configuration.descriptor.add(type.supertypes.size)
+
+		loop supertype in type.supertypes {
+			if supertype.configuration == none abort('Missing supertype runtime configuration')
+			configuration.descriptor.add(supertype.configuration.descriptor)
+		}
+	}
+
+	if type.supertypes.size == 0 {
+		# Even though there are no supertypes inherited, an instance of this type can be created and casted to a link.
+		# It should be possible to check whether the link represents this type or another
+		descriptors[descriptors.size - 1] = Pair<Type, DataPointerNode>(type, TableDataPointerNode(configuration.entry, 0, none as Position))
+	}
+
+	offset = SYSTEM_BYTES
+
+	# Look for default implementations of virtual functions in the specified type
+	loop iterator in type.virtuals {
+		loop virtual_function in iterator.value.overloads {
+			offset = try_register_virtual_function_implementation(type, virtual_function, configuration, offset)
+		}
+	}
+
+	loop (i = 0, i < supertypes.size, i++) {
+		supertype = supertypes[i]
+
+		# Append configuration information only if it is not generated
+		if not configuration.is_completed {
+			# Begin a new section inside the configuration table
+			configuration.entry.add(configuration.descriptor)
+		}
+
+		# Types should not inherited types which do not have runtime configurations such as standard integers
+		if supertype.configuration == none abort('Type inherited a type which did not have runtime configuration')
+
+		descriptors[i] = Pair<Type, DataPointerNode>(supertype, TableDataPointerNode(configuration.entry, offset, none as Position))
+		offset += SYSTEM_BYTES
+
+		# Iterate all virtual functions of this supertype and connect their implementations
+		perspective = type
+		if i != 0 { perspective = supertype }
+		
+		loop virtual_function in perspective.get_all_virtual_functions() {
+			offset = try_register_virtual_function_implementation(type, virtual_function, configuration, offset)
+		}
+	}
+
+	configuration.is_completed = true
 	=> descriptors
 }
 
