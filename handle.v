@@ -264,7 +264,12 @@ Handle MemoryHandle {
 	}
 
 	override finalize() {
-		if start.is_standard_register or start.is_constant or start.is_stack_allocation => MemoryHandle(unit, Result(start.value, start.format), offset)
+		if start.is_standard_register or start.is_constant or start.is_stack_allocation {
+			handle = MemoryHandle(unit, Result(start.value, start.format), offset)
+			handle.format = format
+			=> handle
+		}
+
 		abort('Start of the memory handle was in invalid format during finalization')
 	}
 
@@ -291,7 +296,9 @@ MemoryHandle StackMemoryHandle {
 
 	override finalize() {
 		if start.value.(RegisterHandle).register == unit.get_stack_pointer() {
-			=> StackMemoryHandle(unit, offset, is_absolute)
+			handle = StackMemoryHandle(unit, offset, is_absolute)
+			handle.format = format
+			=> handle
 		}
 
 		abort('Stack memory handle did not use the stack pointer register')
@@ -320,7 +327,9 @@ StackMemoryHandle StackVariableHandle {
 	}
 
 	override finalize() {
-		=> StackVariableHandle(unit, variable)
+		handle = StackVariableHandle(unit, variable)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -344,7 +353,9 @@ StackMemoryHandle TemporaryMemoryHandle {
 	}
 
 	override finalize() {
-		=> TemporaryMemoryHandle(unit, identifier)
+		handle = TemporaryMemoryHandle(unit, identifier)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -430,7 +441,9 @@ Handle DataSectionHandle {
 	}
 
 	override finalize() {
-		=> DataSectionHandle(identifier, offset, address, modifier)
+		handle = DataSectionHandle(identifier, offset, address, modifier)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -469,7 +482,9 @@ ConstantDataSectionHandle NumberDataSectionHandle {
 	}
 
 	override copy() {
-		=> NumberDataSectionHandle(identifier, value, value_type)
+		handle = NumberDataSectionHandle(identifier, value, value_type)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -495,7 +510,9 @@ ConstantDataSectionHandle ByteArrayDataSectionHandle {
 	}
 
 	override copy() {
-		=> ByteArrayDataSectionHandle(identifier, value)
+		handle = ByteArrayDataSectionHandle(identifier, value)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -581,12 +598,15 @@ Handle ComplexMemoryHandle {
 	}
 
 	override finalize() {
-		=> ComplexMemoryHandle(
+		handle = ComplexMemoryHandle(
 			Result(start.value.finalize(), start.format),
 			Result(index.value.finalize(), index.format),
 			stride,
 			offset
 		)
+
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -698,20 +718,14 @@ Handle ExpressionHandle {
 		validate()
 
 		if addition == none {
-			=> ExpressionHandle(
-				Result(multiplicand.value, SYSTEM_FORMAT),
-				multiplier,
-				none as Result,
-				number
-			)
+			handle = ExpressionHandle(Result(multiplicand.value, SYSTEM_FORMAT), multiplier, none as Result, number)
+			handle.format = format
+			=> handle
 		}
 
-		=> ExpressionHandle(
-			Result(multiplicand.value, SYSTEM_FORMAT),
-			multiplier,
-			Result(addition.value, SYSTEM_FORMAT),
-			number
-		)
+		handle = ExpressionHandle(Result(multiplicand.value, SYSTEM_FORMAT), multiplier, Result(addition.value, SYSTEM_FORMAT), number)
+		handle.format = format
+		=> handle
 	}
 
 	override equals(other: Handle) {
@@ -750,7 +764,9 @@ Handle StackAllocationHandle {
 	}
 
 	override finalize() {
-		=> StackAllocationHandle(unit, offset, bytes, identity)
+		handle = StackAllocationHandle(unit, offset, bytes, identity)
+		handle.format = format
+		=> handle
 	}
 
 	override string() {
