@@ -18,6 +18,7 @@ is_target_windows: bool
 is_position_independent: bool
 allocation_function: FunctionImplementation
 inheritance_function: FunctionImplementation
+initialization_function: FunctionImplementation
 included_folders: List<String>
 
 is_x64 => settings.architecture == ARCHITECTURE_X64
@@ -33,6 +34,6 @@ initialize() {
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
 	is_verbose_output_enabled = false
-	is_target_windows = true
+	is_target_windows = false
 	included_folders = List<String>()
 }

@@ -387,7 +387,7 @@ DualParameterInstruction MoveInstruction {
 			# Example:
 			# mov r, c
 			# movq x, r
-			=> build(instructions.shared.MOVE, 0,
+			=> build(instructions.x64.RAW_MEDIA_REGISTER_MOVE, 0,
 				InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 				InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 			)
@@ -406,7 +406,7 @@ DualParameterInstruction MoveInstruction {
 		# Example:
 		# mov r, c
 		# movq x, r
-		=> build(instructions.shared.MOVE, 0,
+		=> build(instructions.x64.RAW_MEDIA_REGISTER_MOVE, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 			InstructionParameter(Result(handle, SYSTEM_FORMAT), flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 		)

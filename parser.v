@@ -402,6 +402,13 @@ parse(bundle: Bundle) {
 		file.context = context
 	}
 
+	# Parse all type definitions
+	loop (i = 0, i < files.count, i++) {
+		file = files[i]
+		types = file.root.find_all(NODE_TYPE_DEFINITION)
+		loop type in types { type.(TypeDefinitionNode).parse() }
+	}
+
 	context = create_root_context(0)
 	root = ScopeNode(context, none as Position, none as Position)
 

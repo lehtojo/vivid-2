@@ -281,8 +281,6 @@ configure(bundle: Bundle) {
 				continue
 			}
 
-			println(element)
-
 			# Ensure the source file ends with the primary file extension
 			if not element.ends_with(LANGUAGE_FILE_EXTENSION) => Status('Source files must end with the language extension')
 

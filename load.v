@@ -17,7 +17,7 @@ SourceFile {
 	filename() {
 		i = fullname.last_index_of(`/`)
 		if i < 0 { i = 0 }
-		=> fullname.slice(i, fullname.length)
+		=> fullname.slice(i + 1, fullname.length)
 	}
 }
 

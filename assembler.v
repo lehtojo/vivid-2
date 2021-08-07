@@ -1333,13 +1333,63 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	=> builder.string()
 }
 
-constant EXPORT_DIRECTIVE = '.export'
+constant EXPORT_DIRECTIVE = '.global'
 constant BYTE_ALIGNMENT_DIRECTIVE = '.balign'
 constant POWER_OF_TWO_ALIGNMENT_DIRECTIVE = '.align'
 constant STRING_ALLOCATION_DIRECTIVE = '.string'
 constant BYTE_ZERO_ALLOCATOR = '.zero'
 constant SECTION_RELATIVE_DIRECTIVE = '.secrel'
 constant SECTION_DIRECTIVE = '.section'
+constant TEXT_SECTION_DIRECTIVE = '.section .text'
+constant SYNTAX_REQUIREMENT_DIRECTIVE = '.intel_syntax noprefix'
+
+constant X64_ASSEMBLER = 'x64-as'
+constant ARM64_ASSEMBLER = 'arm64-as'
+
+constant X64_LINKER = 'x64-ld'
+constant ARM64_LINKER = 'arm64-ld'
+
+add_linux_x64_header(entry_function_call: String) {
+	builder = StringBuilder()
+	builder.append_line('.global _start')
+	builder.append_line('_start:')
+	builder.append_line(entry_function_call)
+	builder.append_line('mov rax, 60')
+	builder.append_line('xor rdi, rdi')
+	builder.append_line('syscall')
+	builder.append(`\n`)
+	=> builder.string()
+}
+
+add_windows_x64_header(entry_function_call: String) {
+	builder = StringBuilder()
+	builder.append_line('.global main')
+	builder.append_line('main:')
+	builder.append_line(entry_function_call)
+	builder.append(`\n`)
+	=> builder.string()
+}
+
+add_linux_arm64_header(entry_function_call: String) {
+	builder = StringBuilder()
+	builder.append_line('.global _start')
+	builder.append_line('_start:')
+	builder.append_line(entry_function_call)
+	builder.append_line('mov x8, #93')
+	builder.append_line('mov x0, xzr')
+	builder.append_line('svc #0')
+	builder.append(`\n`)
+	=> builder.string()
+}
+
+add_windows_arm64_header(entry_function_call: String) {
+	builder = StringBuilder()
+	builder.append_line('.global main')
+	builder.append_line('main:')
+	builder.append_line(entry_function_call)
+	builder.append(`\n`)
+	=> builder.string()
+}
 
 group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
 	groups = Map<Tb, List<Ta>>()
@@ -1629,6 +1679,46 @@ beautify(text: String) {
 	=> builder.string()
 }
 
+# Summary: Creates an assembler header for the specified file from the specified context. Depending on the situation, the header might be empty or it might have a entry function call and other directives.
+create_header(context: Context, file: SourceFile) {
+	header = StringBuilder()
+	header.append_line(TEXT_SECTION_DIRECTIVE)
+
+	if settings.is_x64 header.append_line(SYNTAX_REQUIREMENT_DIRECTIVE)
+
+	selector = context.get_function(String('init'))
+	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
+
+	overload = selector.overloads[0]
+	if overload.implementations.size == 0 abort('Missing entry function')
+
+	# Now, if an internal initialization function is defined, we need to call it and it is its responsibility to call the user defined entry function
+	entry_function_implementation = overload.implementations[0]
+
+	implementation = entry_function_implementation
+	if settings.initialization_function != none { implementation = settings.initialization_function }
+
+	# Add the entry function call only into the file, which contains the actual entry function
+	if implementation.metadata.start.file != file => header.string()
+
+	if settings.is_x64 {
+		if settings.is_target_windows { header.append(add_windows_x64_header(String(instructions.x64.JUMP) + ` ` + implementation.get_fullname())) }
+		else { header.append(add_linux_x64_header(String(instructions.x64.CALL) + ` ` + implementation.get_fullname())) }
+	}
+	else {
+		if settings.is_target_windows { header.append(add_windows_arm64_header(String(instructions.arm64.JUMP_LABEL) + ` ` + implementation.get_fullname())) }
+		else { header.append(add_linux_arm64_header(String(instructions.arm64.CALL) + ` ` + implementation.get_fullname())) }
+	}
+
+	=> header.string()
+}
+
+run(executable: link, arguments: List<String>) {
+	pid = io.start_process(String(executable), arguments)
+	io.wait_for_exit(pid)
+	=> Status()
+}
+
 assemble(context: Context, files: List<SourceFile>, output_type: large) {
 	align(context)
 
@@ -1639,6 +1729,8 @@ assemble(context: Context, files: List<SourceFile>, output_type: large) {
 	assemblies = Map<SourceFile, String>()
 
 	loop file in files {
+		header = create_header(context, file)
+
 		text_section = String.empty
 		if text_sections.contains_key(file) { text_section = text_sections[file] }
 
@@ -1648,11 +1740,72 @@ assemble(context: Context, files: List<SourceFile>, output_type: large) {
 		constant_section = String.empty
 		if constant_sections.contains_key(file) { constant_section = get_constant_section(constant_sections[file]) }
 
-		result = text_section + '\n\n' + data_section + '\n\n' + constant_section
+		result = header + '\n\n' + text_section + '\n\n' + data_section + '\n\n' + constant_section
 		assemblies.add(file, beautify(result))
 	}
 
 	=> assemblies
+}
+
+# Summary: Compiles the specified input file and exports the result with the specified output filename
+compile_assembly(bundle: Bundle, input_file: String, output_file: String) {
+	keep_assembly = bundle.get_bool(String(BUNDLE_ASSEMBLY), false)
+	arguments = List<String>()
+
+	# Add output file, input file and enable debug information using the arguments
+	arguments.add(String('-o'))
+	arguments.add(output_file)
+	arguments.add(input_file)
+	arguments.add(String('--gdwarf2'))
+
+	# Now determine the assembler to use
+	assembler = ARM64_ASSEMBLER
+	if settings.is_x64 { assembler = X64_ASSEMBLER }
+
+	status = run(assembler, arguments)
+
+	# Delete the assembly file if it was not requested to keep it
+	# TODO: Enable
+	# if not keep_assembly io.delete(input_file)
+
+	=> status
+}
+
+# Summary: Links the specified input file with necessary system files and produces an executable with the specified output filename
+link_object_files(bundle: Bundle, input_files: List<String>, output_file: String) {
+	arguments = List<String>()
+
+	# Determine the standard library object file to use
+	standard_library = 'libv.o'
+	if settings.is_target_windows { standard_library = 'libv.obj' }
+
+	if output_file != BINARY_TYPE_EXECUTABLE {
+		extension = '.so'
+		if settings.is_target_windows { extension = '.dll' }
+
+		arguments.add(String('--shared'))
+		arguments.add(String('-o'))
+		arguments.add(output_file + extension)
+	}
+	else {
+		arguments.add(String('-o'))
+		arguments.add(output_file)
+	}
+
+	# If the target is Windows, we need to add some default system libraries
+	if settings.is_target_windows {
+		arguments.add(String('-lkernel32'))
+		arguments.add(String('-luser32'))
+	}
+
+	arguments.add(String(standard_library))
+	arguments.add_range(input_files)
+
+	# Determine the linker to use
+	linker = ARM64_LINKER
+	if settings.is_x64 { linker = X64_LINKER }
+
+	=> run(linker, arguments)
 }
 
 assemble(bundle: Bundle) {
@@ -1663,9 +1816,30 @@ assemble(bundle: Bundle) {
 
 	assemblies = assemble(parse.context, files.to_list(), output_type)
 
+	# Output the assemblies into their own files
 	loop iterator in assemblies {
-		io.write_file(String('./') + iterator.key.filename() + '.asm', iterator.value)
+		assembly_file = String('./') + iterator.key.filename() + '.asm'
+		io.write_file(assembly_file, iterator.value)
 	}
 
-	=> Status()
+	# Determine the object file extension based on the current platform
+	object_file_extension = '.o'
+	if settings.is_target_windows { object_file_extension = '.obj' }
+
+	object_files = List<String>()
+
+	loop iterator in assemblies {
+		assembly_file = String('./') + iterator.key.filename() + '.asm'
+		object_file = String('./') + iterator.key.filename() + object_file_extension
+		object_files.add(object_file)
+
+		# Compile the assembly file into an object file
+		status = compile_assembly(bundle, assembly_file, object_file)
+
+		# If the compilation failed, we need to abort
+		if status.problematic => status
+	}
+
+	# Finally, we need to link all the object files into a single executable
+	=> link_object_files(bundle, object_files, String('v'))
 }

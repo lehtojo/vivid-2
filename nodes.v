@@ -550,9 +550,6 @@ Node TypeDefinitionNode {
 		this.type = type
 		this.blueprint = blueprint
 		this.start = position
-
-		if blueprint.size == 0 return
-		parse()
 	}
 
 	parse() {

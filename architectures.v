@@ -65,6 +65,7 @@ namespace x64 {
 namespace arm64 {
 	constant NOT = 'mvn'
 	constant DECIMAL_NEGATE = 'fneg'
+	constant CALL = 'bl'
 	constant JUMP_LABEL = 'b'
 	constant JUMP_REGISTER = 'blr'
 }
