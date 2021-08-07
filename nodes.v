@@ -636,9 +636,10 @@ Node FunctionNode {
 
 	init(function: FunctionImplementation, position: Position) {
 		this.function = function
-		# TODO: Add references
 		this.start = position
 		this.instance = NODE_FUNCTION
+
+		function.usages.add(this)
 	}
 
 	set_arguments(arguments: Node) {

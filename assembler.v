@@ -1336,7 +1336,7 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 constant EXPORT_DIRECTIVE = '.global'
 constant BYTE_ALIGNMENT_DIRECTIVE = '.balign'
 constant POWER_OF_TWO_ALIGNMENT_DIRECTIVE = '.align'
-constant STRING_ALLOCATION_DIRECTIVE = '.string'
+constant STRING_ALLOCATION_DIRECTIVE = '.ascii'
 constant BYTE_ZERO_ALLOCATOR = '.zero'
 constant SECTION_RELATIVE_DIRECTIVE = '.secrel'
 constant SECTION_DIRECTIVE = '.section'
@@ -1493,15 +1493,97 @@ add_table(builder: StringBuilder, table: Table) {
 	loop subtable in subtables { add_table(builder, subtable) }
 }
 
+# Summary: Converts the specified hexadecimal string into an integer value
+hexadecimal_to_integer(text: String) {
+	result = 0
+
+	loop (i = 0, i < text.length, i++) {
+		digit = text[i]
+		value = 0
+
+		if digit >= `0` and digit <= `9` { value = digit - `0` }
+		else digit >= `A` or digit <= `F` { value = digit - `A` + 10 }
+		else digit >= `a` or digit <= `f` { value = digit - `a` + 10 }
+		else => Optional<large>()
+
+		result = result * 16 + value
+	}
+
+	=> Optional<large>(result)
+}
+
+# Summary: Returns a list of directives, which allocate the specified string
 allocate_string(text: String) {
 	builder = StringBuilder()
-	builder.append(STRING_ALLOCATION_DIRECTIVE)
-	builder.append(' \"')
-	builder.append(text)
-	builder.append_line('\"')
-	builder.append('.byte 0')
+	position = 0
 
-	# TODO: Support special characters
+	loop (position < text.length) {
+		end = position
+
+		loop (end < text.length and text[end] != `\\`, end++) {}
+
+		buffer = text.slice(position, end)
+		position += buffer.length
+
+		if buffer.length > 0 {
+			builder.append(STRING_ALLOCATION_DIRECTIVE)
+			builder.append(' \"')
+			builder.append(buffer)
+			builder.append_line(`\"`)
+		}
+
+		if position >= text.length stop
+
+		position++ # Skip character '\'
+
+		command = text[position++]
+		length = 0
+		error = none as link
+
+		if command == `x` {
+			length = 2
+			error = 'Can not understand hexadecimal value in a string'
+		}
+		else command == `u` {
+			length = 4
+			error = 'Can not understand Unicode character in a string'
+		}
+		else command == `U` {
+			length = 8
+			error = 'Can not understand Unicode character in a string'
+		}
+		else command == `\\` {
+			builder.append(BYTE_ALLOCATOR)
+			builder.append(` `)
+			builder.append(`\\` as large)
+			continue
+		}
+		else {
+			abort(String('Can not understand string command ') + String(command))
+		}
+
+		hexadecimal = text.slice(position, position + length)
+
+		if not (hexadecimal_to_integer(hexadecimal) has value) abort(error)
+
+		bytes = length / 2
+		allocator = none as link
+
+		if bytes == 1 { allocator = BYTE_ALLOCATOR }
+		else bytes == 2 { allocator = SHORT_ALLOCATOR }
+		else bytes == 4 { allocator = LONG_ALLOCATOR }
+		else bytes == 8 { allocator = QUAD_ALLOCATOR }
+
+		builder.append(allocator)
+		builder.append(` `)
+		builder.append_line(to_string(value))
+
+		position += length
+	}
+
+	builder.append(BYTE_ALLOCATOR)
+	builder.append(' 0')
+
 	=> builder.string()
 }
 

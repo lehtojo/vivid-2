@@ -722,7 +722,7 @@ Instruction GetVariableInstruction {
 	}
 
 	override on_build() {
-		# TODO: Add trace check
+		# TODO: Add trace check?
 		# If the result represents a static variable, it might be needed to load it into a register
 		if variable.is_static and mode == ACCESS_READ {
 			memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))

@@ -468,7 +468,7 @@ try_get_lambda_call(environment: Context, descriptor: FunctionToken) {
 	argument_types = List<Type>()
 	loop argument in arguments { argument_types.add(argument.try_get_type()) }
 
-	=> try_get_lambda_call(environment, descriptor.name, parameters, argument_types)
+	=> try_get_lambda_call(environment, descriptor.name, arguments, argument_types)
 }
 
 # Summary: Collects all types and subtypes from the specified context

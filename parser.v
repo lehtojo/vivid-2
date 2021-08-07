@@ -514,7 +514,13 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 	if types == none => UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
 
 	if not linked {
-		# TODO: Lambda calls are not supported yet
+		# Try to form a lambda function call
+		result = common.try_get_lambda_call(environment, descriptor)
+
+		if result != none {
+			result.start = descriptor.position
+			=> result
+		}
 	}
 
 	function = get_function_by_name(primary, descriptor.name, types, template_arguments, linked)
@@ -542,7 +548,12 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 	# Lastly, try to form a virtual function call if this function call is not linked
 	if not linked {
 		# Try to form a virtual function call
-		# TODO: Virtual functions are not supported yet
+		result = common.try_get_virtual_function_call(environment, descriptor)
+
+		if result != none {
+			result.start = descriptor.position
+			=> result
+		}
 	}
 
 	=> UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)

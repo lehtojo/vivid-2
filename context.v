@@ -455,12 +455,26 @@ RuntimeConfiguration {
 
 	is_completed: bool = false
 
+	get_fullname(type: Type) {
+		builder = StringBuilder()
+		builder.append(type.name)
+
+		supertypes = List<String>()
+		loop supertype in type.get_all_supertypes() { supertypes.add(supertype.name) }
+
+		builder.append(String.join(String('\\x00'), supertypes))
+		builder.append('\\x01')
+
+		=> builder.string()
+	}
+
 	init(type: Type) {
 		variable = type.(Context).declare(Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64)), VARIABLE_CATEGORY_MEMBER, String(CONFIGURATION_VARIABLE))
 		entry = Table(type.get_fullname() + 'CE')
 		descriptor = Table(type.get_fullname() + 'DE')
 
 		entry.add(descriptor)
+		descriptor.add(StringTableItem(get_fullname(type)), false)
 	}
 }
 
@@ -817,8 +831,19 @@ Variable {
 
 	# Summary: Returns the mangled static name for this variable
 	get_static_name() {
-		# TODO: Support static variable names
-		=> name
+		# Request the fullname in order to generate the mangled name object
+		parent.get_fullname()
+
+		mangle: Mangle = parent.mangle.clone()
+		name: String = name.to_lower()
+
+		mangle.add(Mangle.STATIC_VARIABLE_COMMAND)
+		mangle.add(to_string(name.length))
+		mangle.add(name)
+		mangle.add(type)
+		mangle.add(Mangle.END_COMMAND)
+
+		=> mangle.value
 	}
 
 	# Summary: Returns whether this variable is edited inside the specified node
@@ -1465,6 +1490,7 @@ Function Lambda {
 Context FunctionImplementation {
 	metadata: Function
 	node: Node
+	usages: List<FunctionNode> = List<FunctionNode>()
 	
 	self: Variable
 	template_arguments: List<Type>

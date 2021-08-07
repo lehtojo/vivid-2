@@ -451,7 +451,23 @@ Pattern LinkPattern {
 
 		# Try to build the right node as a virtual function or lambda call
 		if right.match(NODE_UNRESOLVED_FUNCTION) {
-			# TODO: Support virtual calls and lambda calls
+			function = right as UnresolvedFunction
+			types = List<Type>()
+			loop argument in function { types.add(argument.try_get_type()) }
+
+			# Try to form a virtual function call
+			position = tokens[OPERATOR].position
+			result = common.try_get_virtual_function_call(left, primary, function.name, function, types, position)
+
+			if result != none => result
+
+			# Try to form a lambda function call
+			result = common.try_get_lambda_call(primary, left, function.name, function, types)
+
+			if result != none {
+				result.start = position
+				=> result
+			}
 		}
 
 		=> LinkNode(left, right, tokens[OPERATOR].position)

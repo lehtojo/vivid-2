@@ -380,8 +380,8 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 
 	if not configuration.is_completed {
 		# Complete the descriptor of the type
-		configuration.descriptor.add(type.content_size)
-		configuration.descriptor.add(type.supertypes.size)
+		configuration.descriptor.add(type.content_size as normal)
+		configuration.descriptor.add(type.supertypes.size as normal)
 
 		loop supertype in type.supertypes {
 			if supertype.configuration == none abort('Missing supertype runtime configuration')
