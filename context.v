@@ -835,7 +835,7 @@ Variable {
 		parent.get_fullname()
 
 		mangle: Mangle = parent.mangle.clone()
-		name: String = name.to_lower()
+		name: String = this.name.to_lower()
 
 		mangle.add(Mangle.STATIC_VARIABLE_COMMAND)
 		mangle.add(to_string(name.length))

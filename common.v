@@ -572,6 +572,29 @@ get_edited(editor: Node) {
 	abort('Editor did not have a destination')
 }
 
+# Summary:
+# Tries to returns the source value which is assigned without any casting or filtering.
+# Returns null if the specified editor is not an assignment operator.
+get_source(node: Node) {
+	loop {
+		# Do not return the cast node since it does not represent the source value
+		if node.match(NODE_CAST) {
+			node = node.(CastNode).first
+			continue
+		}
+
+		# Do not return the following nodes since they do not represent the source value
+		if node.match(NODE_PARENTHESIS | NODE_INLINE) {
+			node = node.last
+			continue
+		}
+
+		stop
+	}
+
+	=> node
+}
+
 # Summary: Returns whether the specified node represents a statement
 is_statement(node: Node) {
 	type = node.instance

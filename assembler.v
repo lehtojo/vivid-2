@@ -1062,26 +1062,6 @@ Unit {
 
 namespace assembler
 
-load_variable_usages(implementation: FunctionImplementation) {
-	# Reset all local variables
-	loop local in implementation.locals {
-		local.usages.clear()
-		local.writes.clear()
-		local.reads.clear()
-	}
-
-	usages = implementation.node.find_all(NODE_VARIABLE)
-
-	loop usage in usages {
-		variable = usage.(VariableNode).variable
-		if not variable.is_predictable continue
-		
-		if common.is_edited(usage) { variable.writes.add(usage) }
-		else { variable.reads.add(usage) }
-		variable.usages.add(usage)
-	}
-}
-
 # Summary: Goes through the specified instructions and returns all non-volatile registers
 get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 	registers = List<Register>()
@@ -1199,7 +1179,7 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 
 	fullname = implementation.get_fullname()
 
-	load_variable_usages(implementation)
+	analysis.load_variable_usages(implementation)
 
 	# Ensure this function is visible to other units
 	builder.append(EXPORT_DIRECTIVE)
@@ -1341,6 +1321,7 @@ constant BYTE_ZERO_ALLOCATOR = '.zero'
 constant SECTION_RELATIVE_DIRECTIVE = '.secrel'
 constant SECTION_DIRECTIVE = '.section'
 constant TEXT_SECTION_DIRECTIVE = '.section .text'
+constant DATA_SECTION_DIRECTIVE = '.section .data'
 constant SYNTAX_REQUIREMENT_DIRECTIVE = '.intel_syntax noprefix'
 
 constant X64_ASSEMBLER = 'x64-as'
@@ -1817,7 +1798,7 @@ assemble(context: Context, files: List<SourceFile>, output_type: large) {
 		if text_sections.contains_key(file) { text_section = text_sections[file] }
 
 		data_section = String.empty
-		if data_sections.contains_key(file) { data_section = data_sections[file].string() }
+		if data_sections.contains_key(file) {  data_section = String(DATA_SECTION_DIRECTIVE) + `\n` + data_sections[file].string() }
 
 		constant_section = String.empty
 		if constant_sections.contains_key(file) { constant_section = get_constant_section(constant_sections[file]) }
@@ -1854,14 +1835,14 @@ compile_assembly(bundle: Bundle, input_file: String, output_file: String) {
 }
 
 # Summary: Links the specified input file with necessary system files and produces an executable with the specified output filename
-link_object_files(bundle: Bundle, input_files: List<String>, output_file: String) {
+link_object_files(bundle: Bundle, input_files: List<String>, output_file: String, output_type: large) {
 	arguments = List<String>()
 
 	# Determine the standard library object file to use
 	standard_library = 'libv.o'
 	if settings.is_target_windows { standard_library = 'libv.obj' }
 
-	if output_file != BINARY_TYPE_EXECUTABLE {
+	if output_type != BINARY_TYPE_EXECUTABLE {
 		extension = '.so'
 		if settings.is_target_windows { extension = '.dll' }
 
@@ -1893,8 +1874,10 @@ link_object_files(bundle: Bundle, input_files: List<String>, output_file: String
 assemble(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to assemble')
 	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<Array<SourceFile>> has files) => Status('Missing files')
-	#if not (bundle.get_integer(String(BUNDLE_OUTPUT_TYPE)) has output_type) => Status('Output type was not specified')
-	output_type = BINARY_TYPE_EXECUTABLE
+	if not (bundle.get_object(String(BUNDLE_OBJECTS)) as Optional<List<String>> has objects) => Status('Missing object files')
+
+	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
+	output_name = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String('v') as link) as String
 
 	assemblies = assemble(parse.context, files.to_list(), output_type)
 
@@ -1908,7 +1891,7 @@ assemble(bundle: Bundle) {
 	object_file_extension = '.o'
 	if settings.is_target_windows { object_file_extension = '.obj' }
 
-	object_files = List<String>()
+	object_files = List<String>(objects)
 
 	loop iterator in assemblies {
 		assembly_file = String('./') + iterator.key.filename() + '.asm'
@@ -1923,5 +1906,5 @@ assemble(bundle: Bundle) {
 	}
 
 	# Finally, we need to link all the object files into a single executable
-	=> link_object_files(bundle, object_files, String('v'))
+	=> link_object_files(bundle, object_files, output_name, output_type)
 }

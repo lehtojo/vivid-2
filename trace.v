@@ -135,3 +135,62 @@ for(unit: Unit, result: Result) {
 	directives.add(AvoidRegistersDirective(avoid))
 	=> directives
 }
+
+# Summary: Returns whether the specified result lives through at least one call
+is_used_after_call(unit: Unit, result: Result) {
+	usages = result.lifetime.usages
+	instructions = unit.instructions
+
+	start = usages.size
+	end = -1
+
+	# Find the last usage
+	loop usage in usages {
+		position = instructions.index_of(usage)
+		if position > end { end = position }
+		if position < start { start = position }
+	}
+
+	if unit.position > start { start = unit.position }
+
+	# Do not process results, which have already expired
+	if start > end => false
+
+	loop (i = start, i < end, i++) {
+		if instructions[i].type == INSTRUCTION_CALL => true
+	}
+
+	=> false
+}
+
+# Summary: Returns whether the specified result stays constant during the lifetime of the specified parent
+is_loading_required(unit: Unit, result: Result) {
+	usages = result.lifetime.usages
+	instructions = unit.instructions
+
+	start = usages.size
+	end = -1
+
+	# Find the last usage
+	loop usage in usages {
+		position = instructions.index_of(usage)
+		if position > end { end = position }
+		if position < start { start = position }
+	}
+
+	if unit.position > start { start = unit.position }
+
+	# Do not process results, which have already expired
+	if start > end => false
+
+	loop (i = start, i < end, i++) {
+		instruction = instructions[i]
+		type = instruction.type
+
+		if type == INSTRUCTION_CALL => true
+		if type == INSTRUCTION_GET_OBJECT_POINTER and instruction.(GetObjectPointerInstruction).mode == ACCESS_WRITE => true
+		if type == INSTRUCTION_GET_MEMORY_ADDRESS and instruction.(GetMemoryAddressInstruction).mode == ACCESS_WRITE => true
+	}
+
+	=> false
+}

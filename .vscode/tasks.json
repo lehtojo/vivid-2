@@ -10,8 +10,32 @@
 			"command": "~/vivid/Vivid/bin/Release/net5.0/Vivid",
 			"args": [
 				"${workspaceFolder}",
+				"${workspaceFolder}/entries/vivid.v",
 				"~/vivid/Vivid/libv/",
 				"~/vivid/Vivid/libv/linux_x64/io.v",
+				"-d",
+				"-f",
+				"-o",
+				"v"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Tests",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}/build/"
+			},
+			"command": "~/vivid/Vivid/bin/Release/net5.0/Vivid",
+			"args": [
+				"${workspaceFolder}",
+				"${workspaceFolder}/entries/tests.v",
+				"~/vivid/Vivid/libv/",
+				"~/vivid/Vivid/libv/linux_x64/io.v",
+				"-a",
 				"-d",
 				"-f",
 				"-o",

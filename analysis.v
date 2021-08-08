@@ -1,9 +1,96 @@
 namespace analysis
 
+# Summary: Loads all variable usages from the specified function
+load_variable_usages(implementation: FunctionImplementation) {
+	# Reset all local variables
+	loop local in implementation.locals {
+		local.usages.clear()
+		local.writes.clear()
+		local.reads.clear()
+	}
+
+	usages = implementation.node.find_all(NODE_VARIABLE)
+
+	loop usage in usages {
+		variable = usage.(VariableNode).variable
+		if not variable.is_predictable continue
+		
+		if common.is_edited(usage) { variable.writes.add(usage) }
+		else { variable.reads.add(usage) }
+		variable.usages.add(usage)
+	}
+}
+
+# Summary: Goes through the usages of the specified variable and classifies them as writes and reads
+classify_variable_usages(variable: Variable) {
+	variable.writes.clear()
+	variable.reads.clear()
+
+	loop usage in variable.usages {
+		if common.is_edited(usage) { variable.writes.add(usage) }
+		else { variable.reads.add(usage) }
+	}
+}
+
+# Summary: Inserts the values of the constants in the specified into their usages
+apply_constants(context: Context) {
+	loop iterator in context.variables {
+		variable = iterator.value
+		if not variable.is_constant continue
+
+		classify_variable_usages(variable)
+
+		if variable.writes.size == 0 {
+			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is never assigned'))
+			exit(1)
+		}
+
+		if variable.writes.size > 1 {
+			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is assigned more than once'))
+			exit(1)
+		}
+
+		write = variable.writes[0].parent
+
+		if write == none or not write.match(Operators.ASSIGN) {
+			resolver.output(Status(variable.position, String('Invalid assignment for constant ') + variable.name))
+			exit(1)
+		}
+
+		value = common.get_source(write.last)
+
+		if not value.match(NODE_NUMBER) and not value.match(NODE_STRING) {
+			resolver.output(Status(variable.position, String('Value assigned to constant ') + variable.name + ' is not a constant'))
+			exit(1)
+		}
+
+		loop usage in variable.reads {
+			destination = usage
+
+			# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
+			# Example:
+			# namespace A { C = 0 }
+			# print(A.C) => print(0)
+			if usage.parent != none and usage.parent.match(NODE_LINK) { destination = usage.parent }
+			destination.replace(write.last.clone())
+		}
+	}
+
+	loop subcontext in context.subcontexts {
+		apply_constants(subcontext)
+	}
+
+	loop type in context.types {
+		apply_constants(type.value)
+	}
+}
+
 analyze(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to analyze')
 
 	context = parse.context
+	apply_constants(context)
+
 	implementations = common.get_all_function_implementations(context)
 	#resolver.debug_print(context)
 

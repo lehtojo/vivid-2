@@ -12,6 +12,7 @@ BUNDLE_TIME = 'time'
 BUNDLE_REBUILD = 'rebuild'
 BUNDLE_SERVICE = 'service'
 BUNDLE_FILENAMES = 'filenames'
+BUNDLE_OBJECTS = 'objects'
 BUNDLE_LIBRARIES = 'libraries'
 
 # All possible output binary types
@@ -30,6 +31,8 @@ COMPILER_VERSION = '1.0'
 
 # The primary file extension of this language
 LANGUAGE_FILE_EXTENSION = '.v'
+WINDOWS_OBJECT_FILE_EXTENSION = '.obj'
+LINUX_OBJECT_FILE_EXTENSION = '.o'
 
 DEFAULT_OUTPUT_NAME = 'v'
 
@@ -260,11 +263,9 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	=> Status()
 }
 
-configure(bundle: Bundle) {
-	arguments = io.get_command_line_arguments()
-	arguments.take_first() # Remove the executable name
-
+configure(bundle: Bundle, arguments: List<String>) {
 	files = List<String>()
+	objects = List<String>()
 	libraries = List<String>()
 
 	loop (arguments.size > 0) {
@@ -273,6 +274,7 @@ configure(bundle: Bundle) {
 		if is_option(element) {
 			result = configure(bundle, arguments, files, libraries, element)
 			if result.problematic => result
+			continue
 		}
 		else io.exists(element) {
 			# If the element represents a folder, source files inside it must be compiled
@@ -282,9 +284,16 @@ configure(bundle: Bundle) {
 			}
 
 			# Ensure the source file ends with the primary file extension
-			if not element.ends_with(LANGUAGE_FILE_EXTENSION) => Status('Source files must end with the language extension')
+			if element.ends_with(LANGUAGE_FILE_EXTENSION) {
+				files.add(element)
+			}
+			else element.ends_with(LINUX_OBJECT_FILE_EXTENSION) or element.ends_with(WINDOWS_OBJECT_FILE_EXTENSION) {
+				objects.add(element)
+			}
+			else {
+				=> Status('Source files must end with the language extension')
+			}
 
-			files.add(element)
 			continue
 		}
 
@@ -297,6 +306,7 @@ configure(bundle: Bundle) {
 	}
 
 	bundle.put(String(BUNDLE_FILENAMES), files as link)
+	bundle.put(String(BUNDLE_OBJECTS), objects as link)
 	bundle.put(String(BUNDLE_LIBRARIES), libraries as link)
 
 	=> Status()

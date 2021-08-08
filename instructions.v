@@ -457,7 +457,7 @@ DualParameterInstruction MoveInstruction {
 
 				=> build(instructions.shared.MOVE, 0,
 					InstructionParameter(first, flags_first, HANDLE_REGISTER),
-					InstructionParameter(second, flags_second, HANDLE_CONSTANT)
+					InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT)
 				)
 			}
 
@@ -1240,8 +1240,25 @@ Instruction GetObjectPointerInstruction {
 			return
 		}
 
-		result.value = MemoryHandle(unit, start, offset)
-		result.format = variable.type.format
+		if not trace.is_loading_required(unit, result) {
+			result.value = MemoryHandle(unit, start, offset)
+			result.format = variable.type.format
+			return
+		}
+
+		if mode == ACCESS_READ {
+			result.value = MemoryHandle(unit, start, offset)
+			result.format = variable.type.format
+
+			memory.move_to_register(unit, result, SYSTEM_BYTES, variable.type.get_register_format() == FORMAT_DECIMAL, trace.for(unit, result))
+		}
+		else {
+			address = Result(ExpressionHandle.create_memory_address(start, offset), SYSTEM_FORMAT)
+			memory.move_to_register(unit, address, SYSTEM_BYTES, false, trace.for(unit, result))
+
+			result.value = MemoryHandle(unit, address, 0)
+			result.format = variable.type.format
+		}
 	}
 }
 
@@ -1250,13 +1267,15 @@ Instruction GetMemoryAddressInstruction {
 	start: Result
 	offset: Result
 	stride: large
+	mode: large
 
-	init(unit: Unit, format: large, start: Result, offset: Result, stride: large) {
+	init(unit: Unit, format: large, start: Result, offset: Result, stride: large, mode: large) {
 		Instruction.init(unit, INSTRUCTION_GET_MEMORY_ADDRESS)
 		this.start = start
 		this.offset = offset
 		this.stride = stride
 		this.format = format
+		this.mode = mode
 		this.is_abstract = true
 		this.dependencies.add(start)
 		this.dependencies.add(offset)
@@ -1274,8 +1293,25 @@ Instruction GetMemoryAddressInstruction {
 	override on_build() {
 		validate_handle()
 
-		result.value = ComplexMemoryHandle(start, offset, stride, 0)
-		result.format = format
+		if not trace.is_loading_required(unit, result) {
+			result.value = ComplexMemoryHandle(start, offset, stride, 0)
+			result.format = format
+			return
+		}
+
+		if mode == ACCESS_READ {
+			result.value = ComplexMemoryHandle(start, offset, stride, 0)
+			result.format = format
+
+			memory.move_to_register(unit, result, SYSTEM_BYTES, format == FORMAT_DECIMAL, trace.for(unit, result))
+		}
+		else {
+			address = Result(ExpressionHandle.create_memory_address(start, offset, stride), SYSTEM_FORMAT)
+			memory.move_to_register(unit, address, SYSTEM_BYTES, false, trace.for(unit, result))
+
+			result.value = MemoryHandle(unit, address, 0)
+			result.format = format
+		}
 	}
 }
 

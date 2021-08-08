@@ -83,6 +83,9 @@ TEXT_TYPE_CHARACTER = 6
 TEXT_TYPE_END = 7
 TEXT_TYPE_UNSPECIFIED = 8
 
+POSITIVE_INFINITY_CONSTANT = 'POSITIVE_INFINITY'
+NEGATIVE_INFINITY_CONSTANT = 'NEGATIVE_INFINITY'
+
 Operator {
 	readonly identifier: String
 	readonly type: tiny
@@ -582,6 +585,7 @@ Token KeywordToken {
 	init(keyword: Keyword, position: Position) {
 		Token.init(TOKEN_TYPE_KEYWORD)
 		this.keyword = keyword
+		this.position = position
 	}
 
 	string() {
@@ -1282,7 +1286,7 @@ parse_token(area: TextArea) {
 		text = area.text
 		if text.length == 2 => Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
 
-		result = get_tokens(text.slice(1, text.length - 1), true)
+		result = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
 		if not (result has tokens) => Error<Token, String>(result.value as String)
 
 		=> Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))

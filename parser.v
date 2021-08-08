@@ -147,6 +147,7 @@ initialize() {
 	add_pattern(ListPattern())
 	add_pattern(SingletonPattern())
 	add_pattern(LoopPattern())
+	add_pattern(ForeverLoopPattern())
 	add_pattern(CastPattern())
 	add_pattern(AccessorPattern())
 	add_pattern(ImportPattern())
@@ -289,16 +290,59 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 			continue
 		}
 
-		if token.type != TOKEN_TYPE_END => Status(token.position, 'Can not understand')
+		if token.type != TOKEN_TYPE_END {
+			=> Status(token.position, 'Can not understand')
+		}
 	}
 
 	=> Status()
 }
 
+# Summary: Creates the root context, which might contain some default types
 create_root_context(index: large) {
 	context = Context(to_string(index), NORMAL_CONTEXT)
 	primitives.inject(context)
 	=> context
+}
+
+# Summary: Creates the root node, which might contain some default initializations
+create_root_node(context: Context) {
+	root = ScopeNode(context, none as Position, none as Position)
+
+	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+	negative_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(NEGATIVE_INFINITY_CONSTANT), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+
+	true_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('true'), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+	false_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('false'), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+
+	context.declare(positive_infinity)
+	context.declare(negative_infinity)
+	context.declare(true_constant)
+	context.declare(false_constant)
+
+	position = none as Position
+
+	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(positive_infinity, position),
+		NumberNode(FORMAT_DECIMAL, POSITIVE_INFINITY, position)
+	))
+
+	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(negative_infinity, position),
+		NumberNode(FORMAT_DECIMAL, NEGATIVE_INFINITY, position)
+	))
+
+	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(true_constant, position),
+		CastNode(NumberNode(SYSTEM_FORMAT, 1, position), TypeNode(primitives.create_bool(), position), position)
+	))
+
+	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(false_constant, position),
+		CastNode(NumberNode(SYSTEM_FORMAT, 0, position), TypeNode(primitives.create_bool(), position), position)
+	))
+
+	=> root
 }
 
 # Summary: Finds all the extension functions under the specified node and tries to apply them
@@ -396,7 +440,9 @@ parse(bundle: Bundle) {
 
 		result = parse(root, context, file.tokens)
 
-		if result.problematic println(result.message)
+		if result.problematic {
+			resolver.output(result)
+		}
 
 		file.root = root
 		file.context = context
@@ -410,7 +456,7 @@ parse(bundle: Bundle) {
 	}
 
 	context = create_root_context(0)
-	root = ScopeNode(context, none as Position, none as Position)
+	root = create_root_node(context)
 
 	loop file in files {
 		context.merge(file.context)

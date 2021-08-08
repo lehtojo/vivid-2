@@ -192,7 +192,8 @@ resolve_virtual_functions(type: Type) {
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context) {
 	types = common.get_all_types(context)
-
+	
+	# Resolve all the types
 	loop type in types {
 		# Resolve all member variables
 		loop iterator in type.variables {
@@ -216,6 +217,9 @@ resolve_context(context: Context) {
 		resolve_variables(implementation)
 		resolve_tree(implementation, implementation.node)
 	}
+
+	# Resolve constants
+	resolve_variables(context)
 }
 
 get_tree_statuses(root: Node) {
@@ -318,6 +322,13 @@ register_default_functions(context: Context) {
 	settings.allocation_function = allocation_function_overloads.get_implementation(primitives.create_number(primitives.LARGE, FORMAT_INT64))
 	if settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
 
+	# Deallocation:
+	deallocation_function_overloads = context.get_function(String('deallocate'))
+	if deallocation_function_overloads == none abort('Missing the deallocation function, please implement it or include the standard library')
+
+	settings.deallocation_function = deallocation_function_overloads.get_implementation(Link())
+	if settings.deallocation_function == none abort('Missing the deallocation function, please implement it or include the standard library')
+
 	# Inheritance:
 	inheritance_function_overloads = context.get_function(String('internal_is'))
 	if inheritance_function_overloads == none abort('Missing the inheritance function, please implement it or include the standard library')
@@ -330,28 +341,30 @@ register_default_functions(context: Context) {
 	if settings.inheritance_function == none abort('Missing the inheritance function, please implement it or include the standard library')
 }
 
-complain(report: List<Status>) {
-	loop status in report {
-		position = status.position
+output(status: Status) {
+	position = status.position
 
-		if position as link == none {
-			print('<Source>:<Line>:<Character>')
-		}
-		else {
-			file = position.file
-
-			if file != none print(file.fullname)
-			else { print('<Source>') }
-
-			print(':')
-			print(to_string(position.line + 1))
-			print(':')
-			print(to_string(position.character + 1))
-		}
-
-		print(': Error: ')
-		println(status.message)
+	if position as link == none {
+		print('<Source>:<Line>:<Character>')
 	}
+	else {
+		file = position.file
+
+		if file != none print(file.fullname)
+		else { print('<Source>') }
+
+		print(':')
+		print(to_string(position.line + 1))
+		print(':')
+		print(to_string(position.character + 1))
+	}
+
+	print(': Error: ')
+	println(status.message)
+}
+
+complain(report: List<Status>) {
+	loop status in report { output(status) }
 }
 
 debug_print(context: Context) {

@@ -17,6 +17,7 @@ is_verbose_output_enabled: bool
 is_target_windows: bool
 is_position_independent: bool
 allocation_function: FunctionImplementation
+deallocation_function: FunctionImplementation
 inheritance_function: FunctionImplementation
 initialization_function: FunctionImplementation
 included_folders: List<String>

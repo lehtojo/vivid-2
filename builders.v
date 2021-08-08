@@ -225,7 +225,7 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	start = references.get(unit, node.first, ACCESS_READ) as Result
 	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
 
-	=> GetMemoryAddressInstruction(unit, node.format, start, offset, node.stride).add()
+	=> GetMemoryAddressInstruction(unit, node.format, start, offset, node.stride, mode).add()
 }
 
 build_declaration(unit: Unit, node: DeclareNode) {

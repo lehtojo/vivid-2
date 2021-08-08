@@ -122,7 +122,14 @@ Pattern FunctionPattern {
 		else {
 			blueprint = List<Token>()
 			position = last.position
-			common.consume_block(state, blueprint)
+			
+			error = common.consume_block(state, blueprint)
+
+			if error != none {
+				state.error = error
+				=> none as Node
+			}
+
 			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
 			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
@@ -423,8 +430,15 @@ Pattern LinkPattern {
 
 		# If the right operand is a parenthesis token, this is a cast expression
 		if tokens[RIGHT].match(TOKEN_TYPE_PARENTHESIS) {
-			# Read the cast type from the parenthesis token
-			abort('Link casting is not supported')
+			# Read the cast type from the content token
+			type = common.read_type(environment, tokens[RIGHT].(ParenthesisToken).tokens)
+
+			if type == none {
+				state.error = Status(tokens[RIGHT].position, 'Can not understand the cast')
+				=> none as Node
+			}
+
+			=> CastNode(left, TypeNode(type, tokens[RIGHT].position), tokens[OPERATOR].position)
 		}
 
 		# Try to retrieve the primary context from the left token
@@ -537,9 +551,9 @@ Pattern LoopPattern {
 	constant FOR_LOOP = 3 # (i = 0, i < 10, i++)
 
 	init() {
-		# Pattern: loop [(...)] [\n] {...}
+		# Pattern: loop (...) [\n] {...}
 		path.add(TOKEN_TYPE_KEYWORD)
-		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_PARENTHESIS)
 
@@ -587,12 +601,8 @@ Pattern LoopPattern {
 		body_context = Context(steps_context, NORMAL_CONTEXT)
 
 		steps_token = tokens[STEPS]
-		steps = none as Node
-
-		if steps_token.type != TOKEN_TYPE_NONE {
-			steps = get_steps(steps_context, state, steps_token as ParenthesisToken)
-			if steps == none => none as Node
-		}
+		steps = get_steps(steps_context, state, steps_token as ParenthesisToken)
+		if steps == none => none as Node
 
 		body_token = tokens[BODY] as ParenthesisToken
 		body = ScopeNode(body_context, body_token.position, body_token.end)
@@ -600,6 +610,36 @@ Pattern LoopPattern {
 		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
 		=> LoopNode(steps_context, steps, body, tokens[KEYWORD].position)
+	}
+}
+
+Pattern ForeverLoopPattern {
+	constant KEYWORD = 0
+	constant BODY = 2
+
+	init() {
+		# Pattern: loop [\n] {...}
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+
+		priority = 1
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		steps_context = Context(context, NORMAL_CONTEXT)
+		body_context = Context(steps_context, NORMAL_CONTEXT)
+
+		body_token = tokens[BODY] as ParenthesisToken
+		body = ScopeNode(body_context, body_token.position, body_token.end)
+
+		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+
+		=> LoopNode(steps_context, none as Node, body, tokens[KEYWORD].position)
 	}
 }
 
@@ -784,7 +824,10 @@ Pattern ImportPattern {
 		next = state.peek()
 
 		# Try to consume a return type
-		if next != none and next.match(Operators.COLON) => common.consume_type(state)
+		if next != none and next.match(Operators.COLON) {
+			state.consume()
+			=> common.consume_type(state)
+		}
 
 		# There is no return type, so add an empty token
 		state.tokens.add(Token(TOKEN_TYPE_NONE))
@@ -974,6 +1017,7 @@ Pattern ExpressionVariablePattern {
 		blueprint.add(tokens[ARROW])
 
 		error = common.consume_block(state, blueprint)
+
 		if error != none {
 			state.error = error
 			=> none as Node
@@ -1128,8 +1172,11 @@ Pattern SectionModificationPattern {
 		if target.instance == NODE_VARIABLE {
 			variable = target.(VariableNode).variable
 			modifiers = variable.modifiers
-			variable.modifiers = combine_modifiers(modifiers, section.modifiers) 
+			variable.modifiers = combine_modifiers(modifiers, section.modifiers)
 			section.add(target)
+
+			# Static variables are categorized as global variables
+			if has_flag(modifiers, MODIFIER_STATIC) { variable.category = VARIABLE_CATEGORY_GLOBAL }
 		}
 		else target.instance == NODE_FUNCTION_DEFINITION {
 			function = target.(FunctionDefinitionNode).function
@@ -1422,8 +1469,10 @@ Pattern TemplateFunctionPattern {
 			result = List<Token>(1, false)
 			result.add(tokens[tokens.size - 1])
 
-			if not common.consume_block(state, result) {
-				state.error = Status(start, 'Short template function has an empty body')
+			error = common.consume_block(state, result)
+
+			if error != none {
+				state.error = error
 				=> none as Node
 			}
 
@@ -1640,11 +1689,11 @@ Pattern VirtualFunctionPattern {
 		if last.match(Operators.HEAVY_ARROW) {
 			blueprint = List<Token>()
 			position = last.position
-			result = common.consume_block(state, blueprint)
+			error = common.consume_block(state, blueprint)
 
 			# If the result is not none, something went wrong
-			if result != none {
-				state.error = result
+			if error != none {
+				state.error = error
 				=> none as VirtualFunction
 			}
 
@@ -1749,6 +1798,9 @@ Pattern SpecificModificationPattern {
 		if destination.instance == NODE_VARIABLE {
 			variable = destination.(VariableNode).variable
 			variable.modifiers = combine_modifiers(variable.modifiers, modifiers)
+
+			# Static variables are categorized as global variables
+			if has_flag(modifiers, MODIFIER_STATIC) { variable.category = VARIABLE_CATEGORY_GLOBAL }
 		}
 		else destination.instance == NODE_FUNCTION_DEFINITION {
 			if has_flag(modifiers, MODIFIER_IMPORTED) {
@@ -1930,7 +1982,14 @@ Pattern OverrideFunctionPattern {
 		if last.match(Operators.HEAVY_ARROW) {
 			blueprint = List<Token>()
 			position = last.position
-			common.consume_block(state, blueprint)
+
+			error = common.consume_block(state, blueprint)
+
+			if error != none {
+				state.error = error
+				=> none as Node
+			}
+
 			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
 			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
@@ -2008,7 +2067,14 @@ Pattern LambdaPattern {
 		else {
 			blueprint = List<Token>()
 			position = last.position
-			common.consume_block(state, blueprint)
+
+			error = common.consume_block(state, blueprint)
+
+			if error != none {
+				state.error = error
+				=> none as Node
+			}
+
 			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
 			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
