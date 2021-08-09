@@ -37,7 +37,7 @@ get_variable(unit: Unit, node: VariableNode, mode: large) {
 }
 
 get_constant(unit: Unit, node: NumberNode) {
-	=> GetConstantInstruction(unit, node.value, node.type == FORMAT_DECIMAL).add()
+	=> GetConstantInstruction(unit, node.value, node.format == FORMAT_DECIMAL).add()
 }
 
 get(unit: Unit, node: Node, mode: large) {

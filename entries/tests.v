@@ -94,8 +94,18 @@ arithmetic(optimization: large) {
 	log = execute('arithmetic')
 }
 
+decimals(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'decimals.v'))
+	compile('decimals', files, optimization, true)
+
+	log = execute('decimals')
+}
+
 init() {
 	println('Arithmetic')
 	arithmetic(0)
+	println('Decimals')
+	decimals(0)
 	=> 0
 }

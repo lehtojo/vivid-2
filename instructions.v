@@ -514,7 +514,7 @@ DualParameterInstruction MoveInstruction {
 		}
 
 		if second.is_constant {
-			if not settings.is_x64 => build_decimal_constant_move_x64(flags_first, flags_second)
+			if settings.is_x64 => build_decimal_constant_move_x64(flags_first, flags_second)
 
 			# Move the source value into the data section so that it can be loaded into a media register
 			second.value = NumberDataSectionHandle(second.value as ConstantHandle)
@@ -680,7 +680,7 @@ Instruction GetConstantInstruction {
 	value: large
 	format: large
 
-	init(unit: Unit, value: large, is_decimal: large) {
+	init(unit: Unit, value: large, is_decimal: bool) {
 		Instruction.init(unit, INSTRUCTION_GET_CONSTANT)
 		
 		this.value = value
