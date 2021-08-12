@@ -74,7 +74,9 @@ resolve_tree(context: Context, node: Node) {
 }
 
 # Summary: Tries to resolve the type of the specified variable
-resolve(variable: Variable) {
+resolve(variable: Variable) {# Skip resolved variables
+	if variable.type != none return
+
 	types = List<Type>()
 
 	loop usage in variable.usages {

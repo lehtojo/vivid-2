@@ -55,7 +55,7 @@ namespace x64 {
 	constant RAW_MEDIA_REGISTER_MOVE = 'movq'
 	constant MEDIA_REGISTER_BITWISE_XOR = 'pxor'
 	constant CONVERT_INTEGER_TO_DOUBLE_PRECISION = 'cvtsi2sd'
-	constant CONVERT_DOUBLE_PRECISION_TO_INTEGER = 'cvtsd2si'
+	constant CONVERT_DOUBLE_PRECISION_TO_INTEGER = 'cvttsd2si'
 	constant DOUBLE_PRECISION_MOVE = 'movsd'
 
 	constant PUSH = 'push'
@@ -68,4 +68,7 @@ namespace arm64 {
 	constant CALL = 'bl'
 	constant JUMP_LABEL = 'b'
 	constant JUMP_REGISTER = 'blr'
+
+	constant SHIFT_LEFT = 'lsl'
+	constant SHIFT_RIGHT = 'asr'
 }

@@ -1104,8 +1104,45 @@ get_all_handles(instructions: List<Instruction>) {
 	=> handles
 }
 
+# Summary: Collects all variables which are saved using stack memory handles
+get_all_saved_local_variables(handles: List<Handle>) {
+	variables = List<Variable>()
+
+	loop handle in handles {
+		if handle.instance != INSTANCE_STACK_VARIABLE continue
+		
+		variable = handle.(StackVariableHandle).variable
+		if variable.is_parameter continue
+
+		variables.add(variable)
+	}
+
+	=> variables.distinct()
+}
+
+# Summary: Collects all temporary memory handles from the specified handle list
+get_all_temporary_handles(handles: List<Handle>) {
+	temporary_handles = List<TemporaryMemoryHandle>()
+
+	loop handle in handles {
+		if handle.instance == INSTANCE_TEMPORARY_MEMORY temporary_handles.add(handle as TemporaryMemoryHandle)
+	}
+
+	=> temporary_handles
+}
+
+# Summary: Collects all stack allocation handles from the specified handle list
+get_all_stack_allocation_handles(handles: List<Handle>) {
+	stack_allocation_handles = List<StackAllocationHandle>()
+
+	loop handle in handles {
+		if handle.instance == INSTANCE_STACK_ALLOCATION stack_allocation_handles.add(handle as StackAllocationHandle)
+	}
+
+	=> stack_allocation_handles
+}
+
 align_function(function: FunctionImplementation) {
-	
 	if not settings.is_target_windows {
 		standard_register_count = calls.get_standard_parameter_register_count()
 		media_register_count = calls.get_decimal_parameter_register_count()
@@ -1171,6 +1208,49 @@ align(context: Context) {
 
 	loop type in types {
 		common.align_members(type)
+	}
+}
+
+# Summary: Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
+align_local_memory(local_variables: List<Variable>, temporary_handles: List<TemporaryMemoryHandle>, stack_allocation_handles: List<StackAllocationHandle>, top: normal) {
+	position = -top
+
+	# Used local variables:
+	loop variable in local_variables {
+		position -= variable.type.reference_size
+		variable.alignment = position
+	}
+
+	# Temporary handles:
+	loop (temporary_handles.size > 0) {
+		handle = stack_allocation_handles[0]
+		identity = handle.identity
+		position -= handle.size
+
+		# Find all instances of this temporary handle and align them to the same position, then remove them from the list
+		loop (i = temporary_handles.size - 1, i >= 0, i--) {
+			handle = stack_allocation_handles[i]
+			if not (handle.identity == identity) continue
+
+			handle.offset = position
+			temporary_handles.remove_at(i)
+		}
+	}
+
+	# Stack allocation handles:
+	loop (stack_allocation_handles.size > 0) {
+		handle = stack_allocation_handles[0]
+		identity = handle.identity
+		position -= handle.bytes
+
+		# Find all instances of this temporary handle and align them to the same position, then remove them from the list
+		loop (i = stack_allocation_handles.size - 1, i >= 0, i--) {
+			handle = stack_allocation_handles[i]
+			if not (handle.identity == identity) continue
+
+			handle.offset = position
+			stack_allocation_handles.remove_at(i)
+		}
 	}
 }
 
@@ -1252,8 +1332,16 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	}
 
 	all_handles = get_all_handles(instructions)
+	local_variables = get_all_saved_local_variables(all_handles)
+	temporary_handles = get_all_temporary_handles(all_handles)
+	stack_allocation_handles = get_all_stack_allocation_handles(all_handles)
 	non_volatile_registers = get_all_used_non_volatile_registers(instructions)
-	local_memory_top = 0
+
+	required_local_memory = 0
+
+	loop local_variable in local_variables { required_local_memory += local_variable.type.reference_size }
+	loop temporary_handle in temporary_handles { required_local_memory += temporary_handle.size }
+	loop stack_allocation_handle in stack_allocation_handles { required_local_memory += stack_allocation_handle.bytes }
 
 	# Append a return instruction at the end if there is no return instruction present
 	if instructions.size == 0 or instructions[instructions.size - 1].type != INSTRUCTION_RETURN {
@@ -1281,10 +1369,12 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 		}
 	}
 
+	local_memory_top = 0
+
 	# Build all initialization instructions
 	loop instruction in instructions {
 		if instruction.type != INSTRUCTION_INITIALIZE continue
-		instruction.(InitializeInstruction).build(non_volatile_registers, local_memory_top)
+		instruction.(InitializeInstruction).build(non_volatile_registers, required_local_memory)
 		local_memory_top = instruction.(InitializeInstruction).local_memory_top
 	}
 
@@ -1296,6 +1386,9 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 		if instruction.type != INSTRUCTION_RETURN continue
 		instruction.(ReturnInstruction).build(non_volatile_registers, local_memory_top)
 	}
+
+	# Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
+	align_local_memory(local_variables, temporary_handles, stack_allocation_handles, local_memory_top)
 
 	loop instruction in instructions {
 		instruction.finish()
@@ -1335,8 +1428,8 @@ add_linux_x64_header(entry_function_call: String) {
 	builder.append_line('.global _start')
 	builder.append_line('_start:')
 	builder.append_line(entry_function_call)
+	builder.append_line('mov rdi, rax')
 	builder.append_line('mov rax, 60')
-	builder.append_line('xor rdi, rdi')
 	builder.append_line('syscall')
 	builder.append(`\n`)
 	=> builder.string()
@@ -1357,7 +1450,6 @@ add_linux_arm64_header(entry_function_call: String) {
 	builder.append_line('_start:')
 	builder.append_line(entry_function_call)
 	builder.append_line('mov x8, #93')
-	builder.append_line('mov x0, xzr')
 	builder.append_line('svc #0')
 	builder.append(`\n`)
 	=> builder.string()
@@ -1777,7 +1869,8 @@ create_header(context: Context, file: SourceFile) {
 }
 
 run(executable: link, arguments: List<String>) {
-	pid = io.start_process(String(executable), arguments)
+	command = String(executable) + ` ` + String.join(` `, arguments)
+	pid = io.shell(command)
 	io.wait_for_exit(pid)
 	=> Status()
 }
@@ -1851,6 +1944,7 @@ link_object_files(bundle: Bundle, input_files: List<String>, output_file: String
 		arguments.add(output_file + extension)
 	}
 	else {
+		if settings.is_target_windows { output_file = output_file + '.exe' }
 		arguments.add(String('-o'))
 		arguments.add(output_file)
 	}
@@ -1859,6 +1953,8 @@ link_object_files(bundle: Bundle, input_files: List<String>, output_file: String
 	if settings.is_target_windows {
 		arguments.add(String('-lkernel32'))
 		arguments.add(String('-luser32'))
+		arguments.add(String('-L C:/Windows/System32'))
+		arguments.add(String('-e main'))
 	}
 
 	arguments.add(String(standard_library))
@@ -1883,7 +1979,7 @@ assemble(bundle: Bundle) {
 
 	# Output the assemblies into their own files
 	loop iterator in assemblies {
-		assembly_file = String('./') + iterator.key.filename() + '.asm'
+		assembly_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + '.asm'
 		io.write_file(assembly_file, iterator.value)
 	}
 
@@ -1894,8 +1990,8 @@ assemble(bundle: Bundle) {
 	object_files = List<String>(objects)
 
 	loop iterator in assemblies {
-		assembly_file = String('./') + iterator.key.filename() + '.asm'
-		object_file = String('./') + iterator.key.filename() + object_file_extension
+		assembly_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + '.asm'
+		object_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + object_file_extension
 		object_files.add(object_file)
 
 		# Compile the assembly file into an object file

@@ -484,7 +484,7 @@ Context Type {
 	format: large = SYSTEM_FORMAT
 	template_arguments: List<Type> = List<Type>()
 
-	initialization: Array<Node> = Array<Node>()
+	initialization: List<Node> = List<Node>()
 
 	constructors: FunctionList = FunctionList()
 	destructors: FunctionList = FunctionList()
@@ -913,7 +913,7 @@ FunctionList {
 		casts = 0
 
 		loop (i = 0, i < parameter_types.size, i++) {
-			if candidate.parameters[i].type != none or candidate.parameters[i].type == parameter_types[i] continue
+			if candidate.parameters[i].type == none or candidate.parameters[i].type.match(parameter_types[i]) continue
 			casts++
 		}
 

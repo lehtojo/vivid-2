@@ -367,8 +367,8 @@ DualParameterInstruction MoveInstruction {
 	}
 
 	build_decimal_constant_move_x64(flags_first, flags_second) {
-		instruction = instructions.shared.MOVE
-		if first.is_memory_address { instruction = instructions.x64.RAW_MEDIA_REGISTER_MOVE }
+		instruction = instructions.x64.RAW_MEDIA_REGISTER_MOVE
+		if first.is_memory_address { instruction = instructions.shared.MOVE }
 
 		if type == MOVE_RELOCATE {
 			handle = second.value as ConstantHandle
@@ -387,7 +387,10 @@ DualParameterInstruction MoveInstruction {
 			# Example:
 			# mov r, c
 			# movq x, r
-			=> build(instructions.x64.RAW_MEDIA_REGISTER_MOVE, 0,
+			#
+			# mov r, c
+			# mov [...], r
+			=> build(instruction, 0,
 				InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 				InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 			)
@@ -406,7 +409,10 @@ DualParameterInstruction MoveInstruction {
 		# Example:
 		# mov r, c
 		# movq x, r
-		=> build(instructions.x64.RAW_MEDIA_REGISTER_MOVE, 0,
+		#
+		# mov r, c
+		# mov [...], r
+		=> build(instruction, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 			InstructionParameter(Result(handle, SYSTEM_FORMAT), flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 		)
@@ -441,7 +447,7 @@ DualParameterInstruction MoveInstruction {
 			else settings.is_x64 {
 				# Examples: cvtsi2sd r, [...]
 
-				build(instructions.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION, 0,
+				build(instructions.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION, SYSTEM_BYTES,
 					InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
 					InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_MEMORY)
 				)
@@ -463,7 +469,7 @@ DualParameterInstruction MoveInstruction {
 
 			# Examples: cvttsd2si r, x/[...]
 
-			build(instructions.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER, 0,
+			build(instructions.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER, SYSTEM_BYTES,
 				InstructionParameter(first, flags_first, HANDLE_REGISTER),
 				InstructionParameter(second, flags_second, HANDLE_MEDIA_REGISTER	 | HANDLE_MEMORY)
 			)
@@ -481,6 +487,9 @@ DualParameterInstruction MoveInstruction {
 						InstructionParameter(second, flags_second, HANDLE_CONSTANT)
 					)
 				}
+
+				# Load the value from memory into a register and use the system size, because if it is smaller than the destination value size, it might not be sign extended
+				if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 				# Example: mov [...], r
 				=> build(instructions.shared.MOVE, 0,
@@ -544,6 +553,36 @@ DualParameterInstruction MoveInstruction {
 			build(instructions.x64.XOR, SYSTEM_BYTES, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_HIDDEN, HANDLE_CONSTANT))
 		}
 		else first.is_memory_address and not (first.is_data_section_handle and first.value.(DataSectionHandle).address) {
+			if first.is_data_section_handle and first.value.(DataSectionHandle).address abort('Destination can not be an address value')
+
+			# Prepare the destination handle, if it has a modifier
+			if first.is_data_section_handle and first.value.(DataSectionHandle).modifier != DATA_SECTION_MODIFIER_NONE {
+				# Save the data section handle offset
+				offset = first.value.(DataSectionHandle).offset
+
+				address = Result()
+				memory.get_register_for(unit, address, false)
+
+				# Example:
+				# mov rax, [rip+x@GOTPCREL]
+				# mov qword ptr [rax+8], 1
+				build(
+					instructions.shared.MOVE, 0,
+					InstructionParameter(address, FLAG_DESTINATION | FLAG_RELOCATE_TO_DESTINATION | FLAG_WRITE_ACCESS, HANDLE_REGISTER),
+					InstructionParameter(first, FLAG_NONE, HANDLE_MEMORY)
+				)
+
+				first.value = MemoryHandle(unit, address, offset)
+
+				instruction = MoveInstruction(Unit, first, second)
+				instruction.type = type
+				unit.add(instruction, true)
+				return
+			}
+			
+			# Load the value from memory into a register and use the system size, because if it is smaller than the destination value size, it might not be sign extended
+			if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
+
 			# Examples: mov [...], c / mov [...], r
 			build(instructions.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_MEMORY), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
@@ -1565,7 +1604,7 @@ DualParameterInstruction DivisionInstruction {
 
 		if not first.value.equals(destination) {
 			remainder.lock()
-			memory.clear_register(Unit, destination.register)
+			memory.clear_register(unit, destination.register)
 			remainder.unlock()
 
 			if assigns and not first.is_memory_address {

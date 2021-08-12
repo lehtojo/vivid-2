@@ -7,12 +7,12 @@
 			"options": {
 				"cwd": "${workspaceFolder}/build/"
 			},
-			"command": "~/vivid/Vivid/bin/Release/net5.0/Vivid",
+			"command": "Vivid.exe",
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/vivid.v",
-				"~/vivid/Vivid/libv/",
-				"~/vivid/Vivid/libv/linux_x64/io.v",
+				"${workspaceFolder}/libv/",
+				"${workspaceFolder}/libv/windows_x64/io.v",
 				"-d",
 				"-f",
 				"-o",
@@ -29,12 +29,13 @@
 			"options": {
 				"cwd": "${workspaceFolder}/build/"
 			},
-			"command": "~/vivid/Vivid/bin/Release/net5.0/Vivid",
+			"command": "Vivid.exe",
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/tests.v",
-				"~/vivid/Vivid/libv/",
-				"~/vivid/Vivid/libv/linux_x64/io.v",
+				"${workspaceFolder}/tests/assert.v",
+				"${workspaceFolder}/libv/",
+				"${workspaceFolder}/libv/windows_x64/io.v",
 				"-a",
 				"-d",
 				"-f",

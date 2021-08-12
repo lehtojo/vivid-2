@@ -12,6 +12,16 @@ remove_redundant_parentheses(root: Node) {
 
 		# Remove all parentheses, which block logical operators
 		if root.first != none and root.first.match(NODE_OPERATOR) and root.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL root.replace(root.first)
+
+		# 1. Ensure the current parenthesis is the only child node of its parent
+		# 2. Ensure the current parenthesis has only one child node
+		# => The current parenthesis is redundant and it can be replaced with its child node
+		if root.parent.first == root.parent.last and root.first == root.last {
+			child = root.first
+			root.replace(child)
+			remove_redundant_parentheses(child)
+			return
+		}
 	}
 
 	loop child in root { remove_redundant_parentheses(child) }
@@ -659,7 +669,10 @@ rewrite_edits_as_assignments(root: Node) {
 
 	loop edit in edits {
 		replacement = try_rewrite_as_assignment_operator(edit)
-		if replacement == none abort('Could not rewrite edit as an assignment operator')
+
+		if replacement == none {
+			abort('Could not rewrite editor as an assignment operator')
+		}
 
 		edit.replace(replacement)
 	}

@@ -3,6 +3,6 @@ export special_multiplications(a: large, b: large) {
 }
 
 init() { 
-	special_multiplications(1, 1)
+	are_equal(1802, special_multiplications(7, 100))
 	=> 1
 }

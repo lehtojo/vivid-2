@@ -178,7 +178,7 @@ is_loading_required(unit: Unit, result: Result) {
 		if position < start { start = position }
 	}
 
-	if unit.position > start { start = unit.position }
+	if unit.position > start { start = unit.position + 1 }
 
 	# Do not process results, which have already expired
 	if start > end => false

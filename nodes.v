@@ -58,7 +58,7 @@ Node NumberNode {
 
 	negate() {
 		if format == FORMAT_DECIMAL {
-			value = value ¤ [1 <| 64]
+			value = value ¤ [1 <| 63]
 		}
 		else {
 			value = -value
@@ -559,6 +559,9 @@ Node TypeDefinitionNode {
 		# Create the body of the type
 		parser.parse(this, type, List<Token>(blueprint))
 		blueprint.clear()
+
+		# Add all member initializations
+		type.initialization.add_range(find_top(i -> i.match(Operators.ASSIGN)))
 	}
 
 	override equals(other: Node) {

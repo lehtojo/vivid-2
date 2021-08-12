@@ -80,13 +80,14 @@ namespace internal {
 		pid: normal
 		uid: u32
 		status: normal
+		reserved: large[2]
 	}
 
 	constant ID_TYPE_PID = 1
 	constant WAIT_OPTIONS_EXITED = 4
 
 	# Summary: Waits for the specified process to change the its state
-	import 'C' system_wait_id(id_type: large, id: large, information: SignalInformation, options: large): large
+	import 'C' system_wait_id(id_type: large, id: large, information: SignalInformation, options: large, unknown: link): large
 
 	constant FILE_TYPE_MASK = 61440
 
@@ -130,6 +131,8 @@ namespace internal {
 	# On failure, -1 is returned.
 	# When the end of the directory is reached, 0 is returned.
 	import 'C' system_get_directory_entries(file_descriptor: large, buffer: link, size: large): large
+
+	import 'C' system_get_working_folder(buffer: link, size: large): link
 }
 
 FolderItem {
@@ -409,7 +412,7 @@ shell(command: String) {
 # Summary: Waits for the specified process to exit
 wait_for_exit(pid: large) {
 	information = inline internal.SignalInformation()
-	internal.system_wait_id(internal.ID_TYPE_PID, pid, information, internal.WAIT_OPTIONS_EXITED)
+	internal.system_wait_id(internal.ID_TYPE_PID, pid, information, internal.WAIT_OPTIONS_EXITED, none)
 	=> information.status
 }
 
@@ -441,6 +444,19 @@ export get_process_folder() {
 	
 	# Include the separator to the folder path
 	=> filename.slice(0, i + 1)
+}
+
+# Summary: Returns the current working folder of the running process
+export get_process_working_folder() {
+	buffer = allocate(50)
+	size = 50
+
+	loop {
+		if internal.system_get_working_folder(buffer, size) != 0 => String.from(buffer, length_of(buffer))
+		deallocate(buffer)
+		size = size * 2
+		buffer = allocate(size)
+	}
 }
 
 # Summary: Returns the list of the arguments passed to this application

@@ -351,7 +351,11 @@ Instruction {
 			validate_handle(converted.value, locked)
 
 			# Prevents other parameters from stealing the register of the current parameter in the middle of this instruction
-			if converted.value.instance == INSTANCE_REGISTER locked.add(converted.register)
+			if converted.value.instance == INSTANCE_REGISTER {
+				register = converted.register
+				register.lock()
+				locked.add(register)
+			}
 
 			format = converted.format
 
@@ -370,7 +374,7 @@ Instruction {
 		on_post_build()
 
 		# Unlock the register locks since the instruction has been executed
-		loop register in locked { register.is_locked = false }
+		loop register in locked { register.unlock() }
 	}
 
 	build(operation: link, size: large, parameter: InstructionParameter) {

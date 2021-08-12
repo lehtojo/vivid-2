@@ -16,8 +16,16 @@ SourceFile {
 
 	filename() {
 		i = fullname.last_index_of(`/`)
-		if i < 0 { i = 0 }
 		=> fullname.slice(i + 1, fullname.length)
+	}
+
+	filename_without_extension() {
+		start = fullname.last_index_of(`/`) + 1
+
+		end = fullname.last_index_of(`.`)
+		if end <= start { end = fullname.length }
+
+		=> fullname.slice(start, end)
 	}
 }
 

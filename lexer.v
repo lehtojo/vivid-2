@@ -217,7 +217,7 @@ namespace Operators {
 		EQUALS = ComparisonOperator(String('=='), 8)
 		NOT_EQUALS = ComparisonOperator(String('!='), 8)
 		BITWISE_AND = ClassicOperator(String('&'), 7, true)
-		BITWISE_XOR = ClassicOperator(String('¤'), 6, true)
+		BITWISE_XOR = ClassicOperator(String('\xA4'), 6, true)
 		BITWISE_OR = ClassicOperator(String('|'), 5, true)
 		RANGE = IndependentOperator(String('..'))
 		LOGICAL_AND = Operator(String('and'), OPERATOR_TYPE_LOGICAL, 4)
@@ -230,7 +230,7 @@ namespace Operators {
 		ASSIGN_DIVIDE = AssignmentOperator(String('/='), DIVIDE, 1)
 		ASSIGN_MODULUS = AssignmentOperator(String('%='), MODULUS, 1)
 		ASSIGN_BITWISE_AND = AssignmentOperator(String('&='), BITWISE_AND, 1)
-		ASSIGN_BITWISE_XOR = AssignmentOperator(String('¤='), BITWISE_XOR, 1)
+		ASSIGN_BITWISE_XOR = AssignmentOperator(String('\xA4='), BITWISE_XOR, 1)
 		ASSIGN_BITWISE_OR = AssignmentOperator(String('|='), ASSIGN_BITWISE_OR, 1)
 		EXCLAMATION = IndependentOperator(String('!'))
 		COMMA = IndependentOperator(String(','))
@@ -970,7 +970,7 @@ get_closing(opening: char) {
 
 # Returns whether the specified character is an operator
 is_operator(i: char) {
-	=> i >= 33 and i <= 47 and i != COMMENT and i != STRING or i >= 58 and i <= 63 or i == 94 or i == 124 or i == 126 or i == `¤`
+	=> i >= 33 and i <= 47 and i != COMMENT and i != STRING or i >= 58 and i <= 63 or i == 94 or i == 124 or i == 126 or i == 164
 }
 
 # Summary:
@@ -1303,7 +1303,31 @@ parse_token(area: TextArea) {
 }
 
 # Summary: Join all sequential modifier keywords into one token
-join(tokens: List<Token>) {}
+join(tokens: List<Token>) {
+	loop (i = tokens.size - 2, i >= 0, i--) {
+		# Require both the current and the next tokens to be modifier keywords
+		a = tokens[i]
+		b = tokens[i + 1]
+
+		if a.type != TOKEN_TYPE_KEYWORD or b.type != TOKEN_TYPE_KEYWORD continue
+
+		x = a.(KeywordToken).keyword
+		y = b.(KeywordToken).keyword
+
+		if x.type != KEYWORD_TYPE_MODIFIER or y.type != KEYWORD_TYPE_MODIFIER continue
+
+		# Combine the two modifiers into one token, and remove the second token
+		x.(ModifierKeyword).modifier = x.(ModifierKeyword).modifier | y.(ModifierKeyword).modifier
+		tokens.remove_at(i + 1)
+	}
+}
+
+preprocess(text: String) {
+	builder = StringBuilder()
+	builder.append(text)
+	builder.replace('\xC2\xA4', '\xA4') # Simplify U+00A4 (currency sign), so that XOR operations are supported
+	=> builder.string()
+}
 
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, join: bool) {
@@ -1314,6 +1338,8 @@ get_tokens(text: String, join: bool) {
 get_tokens(text: String, anchor: Position, join: bool) {
 	tokens = List<Token>()
 	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
+
+	text = preprocess(text)
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())

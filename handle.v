@@ -338,28 +338,28 @@ StackMemoryHandle StackVariableHandle {
 }
 
 StackMemoryHandle TemporaryMemoryHandle {
-	identifier: String
+	identity: String
 
 	init(unit: Unit) {
 		StackMemoryHandle.init(unit, 0, true)
-		this.identifier = unit.get_next_identity()
+		this.identity = unit.get_next_identity()
 		this.instance = INSTANCE_TEMPORARY_MEMORY
 	}
 
-	init(unit: Unit, identifier: String) {
+	init(unit: Unit, identity: String) {
 		StackMemoryHandle.init(unit, 0, true)
-		this.identifier = identifier
+		this.identity = identity
 		this.instance = INSTANCE_TEMPORARY_MEMORY
 	}
 
 	override finalize() {
-		handle = TemporaryMemoryHandle(unit, identifier)
+		handle = TemporaryMemoryHandle(unit, identity)
 		handle.format = format
 		=> handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identifier == other.(TemporaryMemoryHandle).identifier
+		=> this.instance == other.instance and this.identity == other.(TemporaryMemoryHandle).identity
 	}
 }
 

@@ -1,10 +1,10 @@
 namespace loops
 
-# Summary: Builds a loop control instruction such as continue and stop
-build_control_instruction(unit: Unit, node: CommandNode) {
-	if node.container == none abort('Loop control instruction was not inside a loop')
+# Summary: Builds a loop command such as continue and stop
+build_command(unit: Unit, node: CommandNode) {
+	if node.container == none abort('Loop command was not inside a loop')
 
-	# TODO: Condition support
+	# TODO: Support conditions
 	#if node.condition != none arithmetic.build_condition(unit, node.condition)
 
 	unit.add(MergeScopeInstruction(unit, node.container.scope))
@@ -18,11 +18,12 @@ build_control_instruction(unit: Unit, node: CommandNode) {
 		label = node.container.continue_label
 	}
 	else {
-		abort('Unknown loop control instruction')
+		abort('Unknown loop command')
 	}
 
-	if label == none abort('Missing control node label')
+	if label == none abort('Missing command node label')
 
+	# TODO: Support conditions
 	#if node.condition != none => JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
 
 	=> JumpInstruction(unit, label).add()

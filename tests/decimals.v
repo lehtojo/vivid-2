@@ -36,7 +36,7 @@ export decimal_division_with_constant(a: decimal) {
 
 init() {
 	are_equal(5.859, decimal_addition(3.141, 2.718))
-	are_equal(0.42300000000000004, decimal_subtraction(3.141, 2.718))
+	are_equal(0.423, decimal_subtraction(3.141, 2.718))
 	are_equal(8.5372380000000003, decimal_multiplication(3.141, 2.718))
 	are_equal(1.1556291390728477, decimal_division(3.141, 2.718))
 

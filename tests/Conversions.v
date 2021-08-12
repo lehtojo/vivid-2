@@ -258,5 +258,164 @@ export assign_division_2(a: large, b: large, c: large, d: large, i: A, j: A, k: 
 }
 
 init() {
-	casts_4(1.0)
+	are_equal(6.0, automatic_number_conversion(3))
+	are_equal(-15.0, automatic_number_conversion(-15))
+	are_equal(1.0, automatic_number_conversion(0))
+
+	are_equal(7.0, casts_1(7))
+	are_equal(123, casts_2(123.456))
+	are_equal(100, casts_3(100))
+
+	result = casts_4(100)
+	are_equal(100, result.a)
+	are_equal(101, result.b)
+	are_equal(102, result.c)
+	are_equal(103, result.d)
+	are_equal(104.0, result.e)
+
+	baz = create_baz()
+	are_equal(baz, casts_5(baz))
+	are_equal(baz + 11, casts_6(baz))
+
+	baz.e = -3.0
+	are_not_equal(baz + 11, automatic_cast_1(baz))
+
+	baz.e = 2.5
+	are_equal(baz + 11, automatic_cast_1(baz))
+
+	baz.a = 10
+	baz.b = 1000
+	baz.c = 505
+	baz.d = 505
+
+	are_equal(1010.0, automatic_cast_2(baz))
+
+	baz.c = 0
+	are_equal(505.0, automatic_cast_2(baz))
+
+	(baz as link<decimal>)[0] = 3.14159
+	are_equal((bytes as link<tiny>)[0], automatic_conversion_1(baz))
+	are_equal((bytes as link<small>)[0], automatic_conversion_2(baz))
+	are_equal((bytes as link<normal>)[0], automatic_conversion_3(baz))
+	are_equal((bytes as link<large>)[0], automatic_conversion_4(baz))
+	are_equal(3, automatic_conversion_5(baz))
+
+	are_equal(0, automatic_conversion_1(none as link))
+	are_equal(0, automatic_conversion_2(none as link))
+	are_equal(0, automatic_conversion_3(none as link))
+	are_equal(0, automatic_conversion_4(none as link))
+	are_equal(0, automatic_conversion_5(none as link))
+
+	b = B()
+	b.a = 66
+	b.y = 33
+	b.z = 99.99
+
+	a = A()
+	a.b = b
+
+	are_equal(8, assign_addition_1(3, 5, a, 2))
+	are_equal(68, b.x)
+	are_equal(35, b.y)
+	are_equal(101.99, b.z)
+
+	are_equal(-13, assign_subtraction_1(-3, 10, a, 2))
+	are_equal(66, b.x)
+	are_equal(33, b.y)
+	are_equal(99.99, b.z)
+
+	are_equal(143, assign_multiplication_1(11, 13, a, -144))
+	are_equal(-9504, b.x)
+	are_equal(-4752, b.y)
+	are_equal(-14398.56, b.z)
+
+	are_equal(-17, assign_division_1(493, -29, a, -48))
+	are_equal(198, b.x)
+	are_equal(99, b.y)
+	are_equal(299.96999999999997, b.z)
+
+	are_equal(2, assign_remainder_1(11, 3, a, 10))
+	are_equal(8, b.x)
+	are_equal(9, b.y)
+
+	are_equal(66191461, assign_bitwise_or_1(66191360, 101, a, 18834)) # (1010 <| 16) | 101L ... (1010 <| 16, 101, a, 0x4992)
+	are_equal(18842, b.x) # 8 | 0x4992
+	are_equal(18843, b.y) # 9 | 0x4992
+
+	are_equal(0, assign_bitwise_and_1(528280977408, 21037056, a, 8466)) # (123 <| 32) & (321 <| 16) ... (123 <| 32, 321 <| 16, a, 0x2112)
+	are_equal(274, b.x) # (8 | 0x4992) & 0x2112
+	are_equal(274, b.y) # (9 | 0x4992) & 0x2112
+
+	are_equal(1, assign_bitwise_xor_1(15996, 15997, a, 274)) # 0x3E7C, 0x3E7D, a, 0x0112
+	are_equal(0, b.x)
+	are_equal(0, b.y)
+
+	ib = B()
+	ib.x = 9
+	ib.y = 16
+	ib.z = 9.16
+
+	i = A()
+	i.b = ib
+
+	jb = B()
+	jb.x = 36
+	jb.y = 49
+	jb.z = 36.49
+
+	j = A()
+	j.b = jb
+
+	kb = B()
+	kb.x = 2809
+	kb.y = 2916
+	kb.z = 2809.2916
+
+	k = A()
+	k.b = kb
+
+	lb = B()
+	lb.x = 49
+	lb.y = 36
+	lb.z = 49.36
+
+	l = A()
+	l.b = lb
+
+	are_equal(-181950390720, assign_multiplication_2(9, 36, 2809, 49, i, j, k, l))
+
+	are_equal(18, ib.x)
+	are_equal(32, ib.y)
+	are_equal(18.32, ib.z)
+
+	are_equal(180, jb.x)
+	are_equal(245, jb.y)
+	are_equal(182.45, jb.z)
+
+	are_equal(143259, kb.x)
+	are_equal(17644, kb.y)
+	are_equal(143273.8716, kb.z)
+
+	are_equal(-392, lb.x)
+	are_equal(-288, lb.y)
+	are_equal(-394.88, lb.z)
+
+	are_equal(-22400, assign_division_2(100, 40, 357, 64, i, j, k, l))
+
+	are_equal(9, ib.x)
+	are_equal(16, ib.y)
+	are_equal(9.16, ib.z)
+
+	are_equal(36, jb.x)
+	are_equal(49, jb.y)
+	are_equal(36.49, jb.z)
+
+	are_equal(2809, kb.x)
+	are_equal(345, kb.y)
+	are_equal(2809.2916000000005, kb.z)
+
+	are_equal(49, lb.x)
+	are_equal(36, lb.y)
+	are_equal(49.36, lb.z)
+	=> 1
 }

@@ -17,7 +17,7 @@ export y(a: large, b: large) {
 }
 
 init() {
-	x(1, 1)
-	y(0, 0)
+	are_equal(197, x(26, 16))
+	are_equal(414.414, y(8, 13))
 	=> 1
 }

@@ -5,7 +5,7 @@
 			"type": "by-gdb",
 			"request": "launch",
 			"name": "Vivid Debug",
-			"program": "${workspaceRoot}/build/v",
+			"program": "${workspaceRoot}/build/v.exe",
 			"cwd": "${workspaceRoot}",
 			"programArgs": "${workspaceRoot}/run/Run.v"
 		},

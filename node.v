@@ -283,6 +283,9 @@ Node {
 		loop (iterator = a, iterator != none, iterator = iterator.parent) { path_a.add(iterator) }
 		loop (iterator = b, iterator != none, iterator = iterator.parent) { path_b.add(iterator) }
 		
+		path_a.reverse()
+		path_b.reverse()
+
 		i = 0
 		count = min(path_a.size, path_b.size)
 
@@ -302,8 +305,8 @@ Node {
 	# Summary: Returns whether this node is placed before the specified node
 	is_before(other: Node) {
 		positions = get_nodes_under_shared_parent(other, this)
-		if positions == none => false
-		if positions.first == none abort('Nodes did not have a shared parent')
+		if positions == none abort('Nodes did not have a shared parent')
+		if positions.key == none => false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
 		iterator = positions.value
@@ -323,8 +326,8 @@ Node {
 	# Summary: Returns whether this node is placed after the specified node
 	is_after(other: Node) {
 		positions = get_nodes_under_shared_parent(other, this)
-		if positions == none => false
-		if positions.key == none abort('Nodes did not have a shared parent')
+		if positions == none abort('Nodes did not have a shared parent')
+		if positions.key == none => false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
 		iterator = positions.value

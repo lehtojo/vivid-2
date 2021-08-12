@@ -299,6 +299,9 @@ Pattern IfPattern {
 		keyword = tokens[KEYWORD].(KeywordToken).keyword
 		if keyword != Keywords.IF and keyword != Keywords.ELSE => false
 
+		# Prevents else-if from thinking that a body is a condition
+		if tokens[CONDITION].match(`{`) => false
+
 		# Try to consume curly brackets
 		next = state.peek()
 		if next == none => false

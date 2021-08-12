@@ -292,6 +292,7 @@ build(unit: Unit, node: Node) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)
 		NODE_CALL => build_call(unit, node as CallNode)
+		NODE_COMMAND => loops.build_command(unit, node as CommandNode)
 		NODE_DATA_POINTER => build_data_pointer(node as DataPointerNode)
 		NODE_DECLARE => build_declaration(unit, node as DeclareNode)
 		NODE_DISABLED => Result()
