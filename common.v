@@ -769,6 +769,7 @@ align_members(type: Type) {
 		variable = iterator.value
 		if variable.is_static continue
 		variable.alignment = position
+		variable.is_aligned = true
 		position += variable.type.reference_size
 	}
 }

@@ -35,6 +35,6 @@ initialize() {
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
 	is_verbose_output_enabled = false
-	is_target_windows = true
+	is_target_windows = false
 	included_folders = List<String>()
 }

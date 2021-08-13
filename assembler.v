@@ -486,7 +486,7 @@ Scope {
 	init(unit: Unit, root: Node, actives: List<Variable>) {
 		this.unit = unit
 		this.root = root
-		this.actives = actives
+		this.actives = List<Variable>(actives)
 		enter()
 	}
 
@@ -1114,11 +1114,7 @@ get_all_saved_local_variables(handles: List<Handle>) {
 
 	loop handle in handles {
 		if handle.instance != INSTANCE_STACK_VARIABLE continue
-		
-		variable = handle.(StackVariableHandle).variable
-		if variable.is_parameter continue
-
-		variables.add(variable)
+		variables.add(handle.(StackVariableHandle).variable)
 	}
 
 	=> variables.distinct()
@@ -1169,8 +1165,8 @@ align_function(function: FunctionImplementation) {
 			standard_register_count--
 		}
 
-		position = SYSTEM_BYTES
-		if settings.is_x64 { position = 0 }
+		position = 0
+		if settings.is_x64 { position = SYSTEM_BYTES }
 
 		loop parameter in function.parameters {
 			if not parameter.is_parameter continue
@@ -1179,6 +1175,7 @@ align_function(function: FunctionImplementation) {
 			if (type.format == FORMAT_DECIMAL and media_register_count-- > 0) or (type.format != FORMAT_DECIMAL and standard_register_count-- > 0) continue
 
 			parameter.alignment = position
+			parameter.is_aligned = true
 			position += SYSTEM_BYTES
 		}
 	}
@@ -1192,6 +1189,7 @@ align_function(function: FunctionImplementation) {
 		if function.variables.contains_key(String(SELF_POINTER_IDENTIFIER)) {
 			self = function.variables[String(SELF_POINTER_IDENTIFIER)]
 			self.alignment = position
+			self.is_aligned = true
 			position += SYSTEM_BYTES
 		}
 		else function.variables.contains_key(String(LAMBDA_SELF_POINTER_IDENTIFIER)) {
@@ -1205,6 +1203,7 @@ align_function(function: FunctionImplementation) {
 			if not parameter.is_parameter continue
 
 			parameter.alignment = position
+			parameter.is_aligned = true
 			position += SYSTEM_BYTES
 		}
 	}
@@ -1232,19 +1231,21 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 
 	# Used local variables:
 	loop variable in local_variables {
+		if variable.is_aligned continue
+
 		position -= variable.type.reference_size
 		variable.alignment = position
 	}
 
 	# Temporary handles:
 	loop (temporary_handles.size > 0) {
-		handle = stack_allocation_handles[0]
+		handle = temporary_handles[0]
 		identity = handle.identity
 		position -= handle.size
 
 		# Find all instances of this temporary handle and align them to the same position, then remove them from the list
 		loop (i = temporary_handles.size - 1, i >= 0, i--) {
-			handle = stack_allocation_handles[i]
+			handle = temporary_handles[i]
 			if not (handle.identity == identity) continue
 
 			handle.offset = position
@@ -1375,7 +1376,11 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 
 	required_local_memory = 0
 
-	loop local_variable in local_variables { required_local_memory += local_variable.type.reference_size }
+	loop local_variable in local_variables {
+		if local_variable.is_aligned continue
+		required_local_memory += local_variable.type.reference_size
+	}
+
 	loop temporary_handle in temporary_handles { required_local_memory += temporary_handle.size }
 	loop stack_allocation_handle in stack_allocation_handles { required_local_memory += stack_allocation_handle.bytes }
 

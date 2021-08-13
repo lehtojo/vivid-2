@@ -428,16 +428,41 @@ Function Constructor {
 		this.is_default = is_default
 	}
 
+	# Summary: Adds the member variable initializations to the specified constructor implementation
+	add_member_initializations(implementation: FunctionImplementation) {
+		root = implementation.node
+		parent: Type = this.parent as Type
+
+		loop (i = parent.initialization.size - 1, i >= 0, i--) {
+			initialization = parent.initialization[i]
+
+			# Skip initializations of static and constant variables
+			if initialization.match(Operators.ASSIGN) {
+				edited = common.get_edited(initialization)
+
+				if edited.match(NODE_VARIABLE) {
+					variable = edited.(VariableNode).variable
+					if variable.is_static or variable.is_constant continue
+				}
+			}
+
+			root.insert(root.first, initialization)
+		}
+	}
+
+	# Summary: Adds the member variable initializations for all existing implementations.
+	# NOTE: This should not be executed twice, as it will cause duplicate initializations.
+	add_member_initializations() {
+		loop implementation in implementations {
+			add_member_initializations(implementation)
+		}
+	}
+
 	override implement(types: List<Type>) {
 		# Implement the constructor and then add the parent type initializations to the beginning of the function body
 		implementation = Function.implement_default(types)
-		root = implementation.node
-		parent: Type = find_type_parent()
-
-		loop (i = parent.initialization.size - 1, i >= 0, i--) {
-			root.insert(root.first, parent.initialization[i])
-		}
-
+		implementation.return_type = primitives.create_unit()
+		add_member_initializations(implementation)
 		=> implementation
 	}
 }
@@ -454,6 +479,12 @@ Function Destructor {
 		Function.init(context, modifiers, Keywords.DEINIT.identifier, start, end)
 		this.type |= DESTRUCTOR_CONTEXT_MODIFIER
 		this.is_default = is_default
+	}
+
+	override implement(types: List<Type>) {
+		implementation = Function.implement_default(types)
+		implementation.return_type = primitives.create_unit()
+		=> implementation
 	}
 }
 
@@ -808,6 +839,7 @@ Variable {
 	position: Position
 	parent: Context
 	alignment: normal = 0
+	is_aligned: bool = false
 	is_self_pointer: bool = false
 	usages: List<Node> = List<Node>()
 	writes: List<Node> = List<Node>()

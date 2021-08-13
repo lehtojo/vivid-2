@@ -330,12 +330,12 @@ stack(optimization: large) {
 	assembly = load_assembly_function('stack.stack', '_V12multi_returnxx_rx')
 	j = 0
 
-	# There should be five 'add rsp, 40' or 'ldp' instructions
+	# There should be five 'add rsp, ...' or 'ldp' instructions
 	loop (i = 0, i < 4, i++) {
-		if settings.is_x64 { j = assembly.index_of(String('add rsp, 40'), j) }
+		if settings.is_x64 { j = assembly.index_of(String('add rsp, '), j) }
 		else { j = assembly.index_of(String('ldp'), j) }
 
-		if j < 0 abort('Assembly output did not contain five \'add rsp, 40\' or \'ldp\' instructions')
+		if j < 0 abort('Assembly output did not contain five \'add rsp, ...\' or \'ldp\' instructions')
 		j++
 	}
 }
@@ -388,7 +388,29 @@ fibonacci(optimization: large) {
 	}
 }
 
+pi(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'pi.v'))
+	files.add_range(get_standard_library_utility())
+	compile('pi', files, optimization, false)
+
+	log = execute('pi')
+
+	if not (io.read_file(project_file('tests', 'pi.txt')) has bytes) {
+		println('Could not load expected Pi function output')
+	}
+
+	expected = String.from(bytes.data, bytes.count)
+
+	if not (log == expected) {
+		println('Pi function did not produce the correct output')
+	}
+}
+
 init() {
+	println('Pi')
+	pi(0)
+
 	println('Arithmetic')
 	arithmetic(0)
 	println('Assignment')

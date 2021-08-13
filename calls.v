@@ -136,7 +136,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 
 	# On Windows x64 a 'shadow space' is allocated for the first four parameters
 	offset = 0
-	if settings.is_x64 { offset = SHADOW_SPACE_SIZE }
+	if settings.is_target_windows { offset = SHADOW_SPACE_SIZE }
 
 	position = StackMemoryHandle(unit, offset, false)
 

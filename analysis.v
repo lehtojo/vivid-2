@@ -131,7 +131,7 @@ is_inside_branch_condition(perspective: Node, branch: Node) {
 	else branch.instance == NODE_ELSE_IF {
 		=> perspective == branch.(ElseIfNode).condition_container or perspective.is_under(branch.(ElseIfNode).condition_container)
 	}
-	else branch.instance == NODE_ELSE {
+	else branch.instance == NODE_LOOP {
 		=> perspective == branch.(LoopNode).condition_container or perspective.is_under(branch.(LoopNode).condition_container) 
 	}
 

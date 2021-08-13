@@ -562,6 +562,11 @@ Node TypeDefinitionNode {
 
 		# Add all member initializations
 		type.initialization.add_range(find_top(i -> i.match(Operators.ASSIGN)))
+
+		# Add member initialization to the constructors that have been created before loading the member initializations
+		loop constructor in type.constructors.overloads {
+			constructor.(Constructor).add_member_initializations()
+		}
 	}
 
 	override equals(other: Node) {
