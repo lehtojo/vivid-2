@@ -27,6 +27,7 @@ Indexer {
 	private identity_count = 0
 	private string_count = 0
 	private lambda_count = 0
+	private constant_value_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
@@ -35,6 +36,7 @@ Indexer {
 	identity => identity_count++
 	string => string_count++
 	lambda => lambda_count++
+	constant_value => constant_value_count++
 }
 
 Context {
@@ -417,7 +419,6 @@ Function Constructor {
 
 	static empty(context: Context, start: Position, end: Position) {
 		constructor = Constructor(context, MODIFIER_DEFAULT, start, end, true)
-		constructor.implement(List<Type>())
 		=> constructor
 	}
 
@@ -426,6 +427,19 @@ Function Constructor {
 		this.type |= CONSTRUCTOR_CONTEXT_MODIFIER
 		this.is_default = is_default
 	}
+
+	override implement(types: List<Type>) {
+		# Implement the constructor and then add the parent type initializations to the beginning of the function body
+		implementation = Function.implement_default(types)
+		root = implementation.node
+		parent: Type = find_type_parent()
+
+		loop (i = parent.initialization.size - 1, i >= 0, i--) {
+			root.insert(root.first, parent.initialization[i])
+		}
+
+		=> implementation
+	}
 }
 
 Function Destructor {
@@ -433,7 +447,6 @@ Function Destructor {
 
 	static empty(context: Context, start: Position, end: Position) {
 		constructor = Destructor(context, MODIFIER_DEFAULT, start, end, true)
-		constructor.implement(List<Type>())
 		=> constructor
 	}
 
@@ -772,7 +785,7 @@ Context Type {
 	}
 
 	override on_mangle(mangle: Mangle) {
-		mangle.add(this)
+		mangle.add(this, 0, true)
 	}
 
 	virtual match(other: Type) {
@@ -1072,7 +1085,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	virtual implement(parameter_types: List<Type>) {
+	implement_default(parameter_types: List<Type>) {
 		implementation_parameters = List<Parameter>(types.size, false)
 
 		# Pack parameters with names and types
@@ -1090,6 +1103,11 @@ Context Function {
 		implementation.implement(clone(blueprint))
 
 		=> implementation
+	}
+
+	# Summary: Implements the function with the specified parameter types
+	virtual implement(parameter_types: List<Type>) {
+		=> implement_default(parameter_types)
 	}
 
 	# Summary: Returns whether the specified parameter types can be used to implement this function

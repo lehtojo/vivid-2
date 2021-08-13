@@ -193,6 +193,7 @@ Node {
 
 	insert(position: Node, child: Node) {
 		if position == none {
+			if child.parent != none child.parent.remove(child)
 			add(child)
 			return
 		}

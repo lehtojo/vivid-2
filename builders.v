@@ -123,7 +123,15 @@ build_not(unit: Unit, node: NotNode) {
 build_negate(unit: Unit, node: NegateNode) {
 	is_decimal = node.get_type().format == FORMAT_DECIMAL
 
-	if settings.is_x64 and is_decimal {}
+	if settings.is_x64 and is_decimal {
+		# Define a constant which negates decimal values
+		bytes = Array<byte>(16)
+		bytes[0] = 128
+		bytes[8] = 128
+
+		negator = Result(ByteArrayDataSectionHandle(bytes), FORMAT_INT128)
+		=> BitwiseInstruction.create_xor(unit, references.get(unit, node.first, ACCESS_READ), negator, FORMAT_DECIMAL, false).add()
+	}
 
 	=> SingleParameterInstruction.create_negate(unit, references.get(unit, node.first, ACCESS_READ), is_decimal).add()
 }

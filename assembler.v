@@ -532,7 +532,7 @@ Scope {
 			register.value = set_or_create_transition_handle(parameter, RegisterHandle(register), parameter.type.get_register_format())
 		}
 		else {
-			set_or_create_transition_handle(parameter, references.create_variable_handle(unit, parameter), parameter.type.get_register_format())
+			set_or_create_transition_handle(parameter, references.create_variable_handle(unit, parameter, ACCESS_WRITE), parameter.type.get_register_format())
 		}
 	}
 
@@ -834,7 +834,7 @@ Unit {
 				if iterator.value != value continue
 
 				# Get the default handle of the variable
-				handle = references.create_variable_handle(this, iterator.key)
+				handle = references.create_variable_handle(this, iterator.key, ACCESS_WRITE)
 
 				# The handle must be a memory handle, otherwise anything can happen
 				if handle.type != HANDLE_MEMORY { handle = TemporaryMemoryHandle(this) }
@@ -959,6 +959,10 @@ Unit {
 
 	get_next_label() {
 		=> Label(function.get_fullname() + '_L' + to_string(indexer.label))
+	}
+
+	get_next_constant() {
+		=> function.get_fullname() + '_C' + to_string(indexer.constant_value)
 	}
 
 	get_next_identity() {
@@ -1142,6 +1146,17 @@ get_all_stack_allocation_handles(handles: List<Handle>) {
 	=> stack_allocation_handles
 }
 
+# Summary: Collects all constant data section handles from the specified handle list
+get_all_constant_data_section_handles(handles: List<Handle>) {
+	constant_data_section_handles = List<ConstantDataSectionHandle>()
+
+	loop handle in handles {
+		if handle.instance == INSTANCE_CONSTANT_DATA_SECTION constant_data_section_handles.add(handle as ConstantDataSectionHandle)
+	}
+
+	=> constant_data_section_handles
+}
+
 align_function(function: FunctionImplementation) {
 	if not settings.is_target_windows {
 		standard_register_count = calls.get_standard_parameter_register_count()
@@ -1243,13 +1258,33 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 		identity = handle.identity
 		position -= handle.bytes
 
-		# Find all instances of this temporary handle and align them to the same position, then remove them from the list
+		# Find all instances of this stack allocation handle and align them to the same position, then remove them from the list
 		loop (i = stack_allocation_handles.size - 1, i >= 0, i--) {
 			handle = stack_allocation_handles[i]
 			if not (handle.identity == identity) continue
 
 			handle.offset = position
 			stack_allocation_handles.remove_at(i)
+		}
+	}
+}
+
+# Summary: Allocates a data section identifier for each identical constant data section handle
+allocate_constant_data_section_handles(unit: Unit, constant_data_section_handles: List<ConstantDataSectionHandle>) {
+	loop (i = 0, i < constant_data_section_handles.size, i++) {
+		handle = constant_data_section_handles[i]
+		identifier = handle.identifier
+
+		data_section_identifier = unit.get_next_constant()
+		handle.identifier = data_section_identifier
+
+		# Find all instances of this data section handle and give them the data section identifier as well
+		loop (j = constant_data_section_handles.size - 1, j > i, j--) {
+			handle = constant_data_section_handles[i]
+			if not (handle.identifier == identifier) continue
+
+			handle.identifier = data_section_identifier
+			constant_data_section_handles.remove_at(j)
 		}
 	}
 }
@@ -1335,6 +1370,7 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	local_variables = get_all_saved_local_variables(all_handles)
 	temporary_handles = get_all_temporary_handles(all_handles)
 	stack_allocation_handles = get_all_stack_allocation_handles(all_handles)
+	constant_data_section_handles = get_all_constant_data_section_handles(all_handles)
 	non_volatile_registers = get_all_used_non_volatile_registers(instructions)
 
 	required_local_memory = 0
@@ -1390,6 +1426,9 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	# Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
 	align_local_memory(local_variables, temporary_handles, stack_allocation_handles, local_memory_top)
 
+	# Allocate all constant data section handles
+	allocate_constant_data_section_handles(unit, constant_data_section_handles)
+
 	loop instruction in instructions {
 		instruction.finish()
 	}
@@ -1397,11 +1436,8 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	builder.append(unit.string())
 	builder.append(`\n`)
 
-	# Export all constant data
-	loop handle in all_handles {
-		if handle.instance != INSTANCE_CONSTANT_DATA_SECTION continue
-		constant_section.add(handle as ConstantDataSectionHandle)
-	}
+	# Export all constant data section handles
+	constant_section.add_range(constant_data_section_handles)
 
 	=> builder.string()
 }
@@ -1566,25 +1602,6 @@ add_table(builder: StringBuilder, table: Table) {
 	loop subtable in subtables { add_table(builder, subtable) }
 }
 
-# Summary: Converts the specified hexadecimal string into an integer value
-hexadecimal_to_integer(text: String) {
-	result = 0
-
-	loop (i = 0, i < text.length, i++) {
-		digit = text[i]
-		value = 0
-
-		if digit >= `0` and digit <= `9` { value = digit - `0` }
-		else digit >= `A` or digit <= `F` { value = digit - `A` + 10 }
-		else digit >= `a` or digit <= `f` { value = digit - `a` + 10 }
-		else => Optional<large>()
-
-		result = result * 16 + value
-	}
-
-	=> Optional<large>(result)
-}
-
 # Summary: Returns a list of directives, which allocate the specified string
 allocate_string(text: String) {
 	builder = StringBuilder()
@@ -1685,11 +1702,13 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 		text = none as String
 
 		if item.value_type == CONSTANT_TYPE_BYTES {
-			text = item.identifier
+			values = List<String>()
+			loop value in item.(ByteArrayDataSectionHandle).value { values.add(to_string(value)) }
+			text = String.join(String(', '), values)
 			allocator = BYTE_ALLOCATOR
 		}
 		else {
-			text = item.identifier
+			text = to_string(item.(NumberDataSectionHandle).value)
 			allocator = QUAD_ALLOCATOR
 		}
 

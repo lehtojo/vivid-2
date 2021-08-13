@@ -632,7 +632,7 @@ DualParameterInstruction MoveInstruction {
 		flags_first = FLAG_DESTINATION
 		flags_second = FLAG_NONE
 
-		if is_safe { flags_first = flags_first | FLAG_WRITE_ACCESS }
+		if not is_safe { flags_first = flags_first | FLAG_WRITE_ACCESS }
 
 		if type == MOVE_LOAD { flags_first = flags_first | FLAG_ATTACH_TO_DESTINATION }
 		else type == MOVE_RELOCATE { flags_second = flags_second | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
@@ -756,7 +756,7 @@ Instruction GetVariableInstruction {
 		this.is_abstract = true
 		this.description = String('Load variable ') + variable.name
 
-		result.value = references.create_variable_handle(unit, variable)
+		result.value = references.create_variable_handle(unit, variable, mode)
 		result.format = variable.type.format
 	}
 
@@ -1455,12 +1455,12 @@ Instruction MergeScopeInstruction {
 		this.is_abstract = true
 	}
 
-	get_variable_stack_handle(variable: Variable) {
-		=> Result(references.create_variable_handle(unit, variable), variable.type.format)
+	get_variable_stack_handle(variable: Variable, mode: large) {
+		=> Result(references.create_variable_handle(unit, variable, mode), variable.type.format)
 	}
 
 	get_destination_handle(variable: Variable) {
-		if container.outer == none => get_variable_stack_handle(variable)
+		if container.outer == none => get_variable_stack_handle(variable, ACCESS_WRITE)
 		=> container.outer.get_variable_value(variable, true)
 	}
 
@@ -1469,7 +1469,7 @@ Instruction MergeScopeInstruction {
 
 		loop variable in container.actives {
 			source = unit.get_variable_value(variable, true)
-			if source == none { source = get_variable_stack_handle(variable) }
+			if source == none { source = get_variable_stack_handle(variable, ACCESS_READ) }
 
 			# Copy the destination value to prevent any relocation leaks
 			handle = get_destination_handle(variable)
@@ -1560,7 +1560,7 @@ Instruction SetModifiableInstruction {
 		}
 
 		# If register could not be determined, the variable must be moved into memory
-		if register == none { result.value = references.create_variable_handle(unit, variable) }
+		if register == none { result.value = references.create_variable_handle(unit, variable, ACCESS_WRITE) }
 		else { result.value = RegisterHandle(register) }
 
 		instruction = MoveInstruction(unit, result, handle)
@@ -1771,7 +1771,7 @@ DualParameterInstruction BitwiseInstruction {
 
 	static create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
 		if settings.is_x64 {
-			if format == FORMAT_DECIMAL => none as Instruction
+			if format == FORMAT_DECIMAL => BitwiseInstruction(unit, instructions.x64.DOUBLE_PRECISION_XOR, first, second, format, assigns)
 			=> BitwiseInstruction(unit, instructions.x64.XOR, first, second, format, assigns)
 		}
 	}
@@ -1841,6 +1841,15 @@ DualParameterInstruction BitwiseInstruction {
 	}
 
 	on_build_x64() {
+		if instruction == instructions.x64.DOUBLE_PRECISION_XOR {
+			if assigns abort('Assigning bitwise XOR-operation on media registers is not allowed')
+
+			=> build(instruction.text, 0,
+				InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_MEDIA_REGISTER),
+				InstructionParameter(second, FLAG_NONE, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY)
+			)
+		}
+
 		if first.is_memory_address and assigns => build_shift_x64()
 		
 		flags = FLAG_DESTINATION

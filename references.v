@@ -7,7 +7,7 @@ create_constant_number(value: large, format: large) {
 	=> ConstantHandle(value, format)
 }
 
-create_variable_handle(unit: Unit, variable: Variable) {
+create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 	category = variable.category
 
 	if category == VARIABLE_CATEGORY_PARAMETER => StackVariableHandle(unit, variable)
@@ -16,7 +16,7 @@ create_variable_handle(unit: Unit, variable: Variable) {
 		=> StackVariableHandle(unit, variable)
 	}
 	else category == VARIABLE_CATEGORY_MEMBER {
-		=> abort('Can not create member variables here') as Handle
+		abort('Can not access member variables here')
 	}
 	else category == VARIABLE_CATEGORY_GLOBAL {
 		handle = DataSectionHandle(variable.get_static_name(), false)
@@ -33,6 +33,14 @@ get_variable(unit: Unit, variable: Variable, mode: large) {
 }
 
 get_variable(unit: Unit, node: VariableNode, mode: large) {
+	if node.variable.is_member {
+		if unit.self == none abort('Missing self pointer')
+
+		self = VariableNode(unit.self, node.start)
+		member = VariableNode(node.variable, node.start)
+		=> builders.build_link(unit, LinkNode(self, member, node.start), mode)
+	}
+
 	=> get_variable(unit, node.variable, mode)
 }
 

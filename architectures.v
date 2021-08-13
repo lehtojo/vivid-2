@@ -19,6 +19,7 @@ namespace x64 {
 	constant DOUBLE_PRECISION_MULTIPLY = 'mulsd'
 	constant DOUBLE_PRECISION_DIVIDE = 'divsd'
 	constant DOUBLE_PRECISION_COMPARE = 'comisd'
+	constant DOUBLE_PRECISION_XOR = 'xorpd'
 
 	constant NOT = 'not'
 	constant OR = 'or'

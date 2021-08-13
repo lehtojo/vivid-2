@@ -2252,7 +2252,7 @@ Pattern ExtensionFunctionPattern {
 
 		# The last token must be the body of the function
 		next = state.peek()
-		if not next.match(`{`) => false
+		if next != none and not next.match(`{`) => false
 		
 		state.consume()
 		=> true

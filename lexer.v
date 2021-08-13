@@ -64,7 +64,7 @@ LINE_ENDING = `\n`
 COMMENT = `#`
 STRING = `\'`
 # MULTILINE_COMMENT
-MULTILINE_COMMENT = '##'
+MULTILINE_COMMENT = '###'
 CHARACTER = `\x60`
 DECIMAL_SEPARATOR = `.`
 EXPONENT_SEPARATOR = `e`
@@ -755,7 +755,9 @@ Token FunctionToken {
 		loop (tokens.size > 0) {
 			# Ensure the name is valid
 			name = tokens.take_first()
-			if name == none or not name.match(TOKEN_TYPE_IDENTIFIER) => Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			if name == none or not name.match(TOKEN_TYPE_IDENTIFIER) {
+				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			}
 			
 			next = tokens.take_first()
 			
@@ -765,7 +767,9 @@ Token FunctionToken {
 			}
 
 			# If there are tokens left and the next token is not a comma, it must represent a parameter type
-			if not next.match(Operators.COLON) => Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			if not next.match(Operators.COLON) {
+				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			}
 
 			parameter_type = common.read_type(context, tokens)
 			if parameter_type == none => Error<List<Parameter>, String>(String('Can not understand the parameter type'))
@@ -773,7 +777,9 @@ Token FunctionToken {
 			result.add(Parameter(name.(IdentifierToken).value, name.position, parameter_type))
 
 			# If there are tokens left, the next token must be a comma and it must be removed before starting over
-			if tokens.size > 0 and not tokens.take_first().match(Operators.COMMA) => Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			if tokens.size > 0 and not tokens.take_first().match(Operators.COMMA) {
+				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+			}
 		}
 
 		loop parameter in result {
@@ -1100,7 +1106,29 @@ is_multiline_comment(text: String, start: Position) {
 # Summary: Skips the current comment and returns the position
 skip_comment(text: String, start: Position) {
 	if is_multiline_comment(text, start) {
-		require(false, 'Multiline comments are not supported yet')
+		end = text.index_of(MULTILINE_COMMENT, start.local + MULTILINE_COMMENT_LENGTH)
+		if end == -1 abort('Multiline comment does not have a closing')
+
+		# Skip to the end of the multiline comment
+		end += MULTILINE_COMMENT_LENGTH
+
+		# Count how many line endings there are in the multiline comment
+		comment = text.slice(start.local, end)
+		lines = 0
+
+		loop (i = 0, i < comment.length, i++) {
+			if comment[i] == `\n` lines++
+		}
+
+		# Determine the index of the last line ending inside the multiline comment
+		last_line_ending = comment.last_index_of(`\n`)
+
+		# If the 'multiline comment' is actually expressed in a single line, handle it separetely
+		if last_line_ending == -1 => Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
+
+		last_line_ending += start.local # The index must be relative to the whole text
+		last_line_ending++ # Skip the line ending
+		=> Position(start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
 	}
 
 	i = text.index_of(LINE_ENDING, start.local)
@@ -1136,9 +1164,28 @@ skip_character_value(text: String, start: Position) {
 	=> skip_closures(CHARACTER, text, start)
 }
 
+# Summary: Converts the specified hexadecimal string into an integer value
+hexadecimal_to_integer(text: String) {
+	result = 0
+
+	loop (i = 0, i < text.length, i++) {
+		digit = text[i]
+		value = 0
+
+		if digit >= `0` and digit <= `9` { value = digit - `0` }
+		else digit >= `A` or digit <= `F` { value = digit - `A` + 10 }
+		else digit >= `a` or digit <= `f` { value = digit - `a` + 10 }
+		else => Optional<large>()
+
+		result = result * 16 + value
+	}
+
+	=> Optional<large>(result)
+}
+
 # Summary: Returns a list of tokens which represents the specified text
 get_special_character_value(text: String) {
-	command = text[0]
+	command = text[1]
 	length = 0
 	error = ''
 
@@ -1160,8 +1207,11 @@ get_special_character_value(text: String) {
 
 	hexadecimal = text.slice(2, text.length)
 	
-	if hexadecimal.length != length => Error<large, String>(String('Invalid character'))
-	if as_number(hexadecimal) has value => Ok<large, String>(value)
+	if hexadecimal.length != length {
+		=> Error<large, String>(String('Invalid character'))
+	}
+
+	if hexadecimal_to_integer(hexadecimal) has value => Ok<large, String>(value)
 
 	=> Error<large, String>(String(error))
 }
@@ -1178,7 +1228,9 @@ get_character_value(text: String, position: Position) {
 	}
 
 	if text.length == 2 and text[1] == `\\` => Ok<large, String>(`\\`)
-	if text.length <= 2 => Error<large, String>(String('Invalid character'))
+	if text.length <= 2 {
+		=> Error<large, String>(String('Invalid character'))
+	}
 
 	=> get_special_character_value(text)
 }
@@ -1213,7 +1265,9 @@ get_next_token(text: String, start: Position) {
 	}
 	else area.type == TEXT_TYPE_STRING {
 		end = skip_string(text, area.start)
-		if end as link == none => Error<TextArea, String>(String('Can not find the end of the string'))
+		if end as link == none {
+			=> Error<TextArea, String>(String('Can not find the end of the string'))
+		}
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
@@ -1322,10 +1376,42 @@ join(tokens: List<Token>) {
 	}
 }
 
+# Summary: Preprocesses the specified text, meaning that a more suitable version of the text is returned for tokenization
 preprocess(text: String) {
 	builder = StringBuilder()
 	builder.append(text)
 	builder.replace('\xC2\xA4', '\xA4') # Simplify U+00A4 (currency sign), so that XOR operations are supported
+
+	# Converts all special characters in the text to use the hexadecimal character format:
+	# Start from the second last character and look for special characters
+	loop (i = builder.length - 2, i >= 0, i--) {
+		# Special characters start with '\\'
+		if builder[i] != `\\` continue
+
+		# Skip occurrences where there are two sequential '\\' characters
+		# Example: '\\\\n' = \n != '\\\x0A'
+		if i - 1 >= 0 and builder[i - 1] == `\\` continue
+
+		value = when(builder[i + 1]) {
+			`a` => '\\x07'
+			`b` => '\\x08'
+			`f` => '\\x0C'
+			`n` => '\\x0A'
+			`r` => '\\x0D'
+			`t` => '\\x09'
+			`v` => '\\x0B'
+			`e` => '\\x1B'
+			`\"` => '\\x22'
+			`\'` => '\\x27'
+			else => none as link
+		}
+
+		if value == none continue
+
+		builder.remove(i, i + 2)
+		builder.insert(i, value)
+	}
+
 	=> builder.string()
 }
 

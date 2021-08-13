@@ -30,12 +30,12 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 
 	arguments = List<String>()
 	arguments.add_range(source_files)
-	arguments.add(project_file('libv', 'Core.v'))
 	arguments.add(String('-a'))
 	arguments.add(String('-o'))
 	arguments.add(String(UNIT_TEST_PREFIX) + output)
 
 	if prebuilt {
+		arguments.add(project_file('libv', 'Core.v'))
 		objects = io.get_folder_files(io.get_process_working_folder() + '/prebuilt/', false)
 		loop object in objects { arguments.add(object.fullname) }
 	}
@@ -160,6 +160,19 @@ get_function_from_assembly(assembly: String, function: link) {
 	if start == -1 or end == -1 abort('Could not load the specified function from assembly')
 
 	=> assembly.slice(start, end)
+}
+
+get_standard_library_utility() {
+	files = List<String>()
+	files.add(project_file('tests', 'assert.v'))
+	files.add(project_file('libv', 'Core.v'))
+	files.add(project_file('libv', 'Console.v'))
+	files.add(project_file('libv', 'String.v'))
+	files.add(project_file('libv', 'StringBuilder.v'))
+	files.add(project_file('libv', 'List.v'))
+	files.add(project_file('libv', 'Array.v'))
+	files.add(project_file('libv', 'Exceptions.v'))
+	=> files
 }
 
 arithmetic(optimization: large) {
@@ -354,6 +367,27 @@ memory_operations(optimization: large) {
 	are_equal(6, get_memory_address_count(get_function_from_assembly(assembly, '_V14memory_case_13P6Objectx')))
 }
 
+templates(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'templates.v'))
+	compile('templates', files, optimization, true)
+
+	log = execute('templates')
+}
+
+fibonacci(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'fibonacci.v'))
+	files.add_range(get_standard_library_utility())
+	compile('fibonacci', files, optimization, false)
+
+	log = execute('fibonacci')
+
+	if not (log == '0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n') {
+		println('Fibonacci function did not produce the correct output')
+	}
+}
+
 init() {
 	println('Arithmetic')
 	arithmetic(0)
@@ -393,5 +427,11 @@ init() {
 	stack(0)
 	println('Memory')
 	memory_operations(0)
+	println('Templates')
+	templates(0)
+	#println('Extensions')
+	#extensions(0)
+	println('Fibonacci')
+	fibonacci(0)
 	=> 0
 }

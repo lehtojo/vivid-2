@@ -11,8 +11,12 @@ get_self_pointer(context: Context, position: Position) {
 # Summary: Reads template parameters from the next tokens inside the specified queue
 # Pattern: <$1, $2, ... $n>
 read_template_arguments(context: Context, tokens: List<Token>, offset: large) {
-	tokens = tokens.slice(offset, tokens.size)
+	=> read_template_arguments(context, tokens.slice(offset, tokens.size))
+}
 
+# Summary: Reads template parameters from the next tokens inside the specified queue
+# Pattern: <$1, $2, ... $n>
+read_template_arguments(context: Context, tokens: List<Token>) {
 	opening = tokens.take_first() as OperatorToken
 	if opening.operator != Operators.LESS_THAN abort('Can not understand the template arguments')
 
@@ -39,7 +43,7 @@ read_type_component(context: Context, tokens: List<Token>) {
 	name = tokens.take_first().(IdentifierToken).value
 
 	if tokens.size > 0 and tokens[0].match(Operators.LESS_THAN) {
-		template_arguments = read_template_arguments(context, tokens, 0)
+		template_arguments = read_template_arguments(context, tokens)
 		=> UnresolvedTypeComponent(name, template_arguments)
 	}
 
@@ -500,8 +504,12 @@ get_all_visible_functions(context: Context) {
 		functions.add_range(type.constructors.overloads)
 		functions.add_range(type.destructors.overloads)
 	}
+
+	loop function in context.functions {
+		functions.add_range(function.value.overloads)
+	}
 	
-	=> functions
+	=> functions.distinct()
 }
 
 # Summary: Collects all function implementations from the specified context

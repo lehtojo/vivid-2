@@ -481,7 +481,7 @@ ConstantDataSectionHandle NumberDataSectionHandle {
 		this.value_type = value_type
 	}
 
-	override copy() {
+	override finalize() {
 		handle = NumberDataSectionHandle(identifier, value, value_type)
 		handle.format = format
 		=> handle
@@ -498,18 +498,18 @@ ConstantDataSectionHandle ByteArrayDataSectionHandle {
 	init(bytes: Array<byte>) {
 		values = List<String>()
 		loop value in bytes { values.add(to_string(value)) }
-		ConstantDataSectionHandle.init(String('{ ') + String.join(', ', values) + ' }')
+		ConstantDataSectionHandle.init(String('{ ') + String.join(String(', '), values) + ' }', false)
 		this.value = bytes
 		this.value_type = CONSTANT_TYPE_BYTES
 	}
 
 	init(identifier: String, bytes: Array<byte>) {
-		ConstantDataSectionHandle.init(identifier)
+		ConstantDataSectionHandle.init(identifier, false)
 		this.value = bytes
 		this.value_type = CONSTANT_TYPE_BYTES
 	}
 
-	override copy() {
+	override finalize() {
 		handle = ByteArrayDataSectionHandle(identifier, value)
 		handle.format = format
 		=> handle

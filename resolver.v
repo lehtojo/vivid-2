@@ -112,6 +112,20 @@ resolve(variable: Variable) {# Skip resolved variables
 	variable.type = shared
 }
 
+# Summary: Resolves the parameters of the specified function
+resolve(function: Function) {
+	# Resolve the parameters
+	loop parameter in function.parameters {
+		type = parameter.type
+		if type == none or type.is_resolved continue
+
+		type = resolve(function, type)
+		if type == none continue
+
+		parameter.type = type
+	}
+}
+
 # Summary: Tries to resolve all the locals in the specified context
 resolve_variables(context: Context) {
 	loop local in context.locals { resolve(local) }
@@ -193,6 +207,9 @@ resolve_virtual_functions(type: Type) {
 
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context) {
+	functions = common.get_all_visible_functions(context)
+	loop function in functions { resolve(function) }
+
 	types = common.get_all_types(context)
 	
 	# Resolve all the types
