@@ -797,6 +797,8 @@ Unit {
 			instructions.insert(position, instruction)
 		}
 
+		instruction.reindex()
+
 		instruction.scope = scope
 		instruction.result.use(instruction)
 

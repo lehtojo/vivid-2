@@ -28,45 +28,22 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 	# Append the created exchanges and remove the moves which were replaced by the exchanges
 	result.add_range(exchanges)
 	
-	loop (i = exchanged_indices.size - 1, i >= 0, i--) {
+	loop (i = result.size - 1, i >= 0, i--) {
 		if not exchanged_indices.contains(i) continue
-		exchanged_indices.remove_at(i)
+		result.remove_at(i)
 	}
 
 	# Order the move instructions so that intersections are minimized
-	optimized_indices = List<large>()
-	again = true
+	loop (i = 0, i < result.size, i++) {
+		loop (j = i + 1, j < result.size, j++) {
+			a = result[i]
+			b = result[j]
 
-	loop (again) {
-		again = false
+			if not a.first.value.equals(b.second.value) continue
 
-		loop (i = 0, i < result.size, i++) {
-			loop (j = 0, j < result.size, j++) {
-				if i == j or optimized_indices.contains(i) or optimized_indices.contains(j) continue
-
-				a = result[i]
-				b = result[j]
-
-				if not a.first.value.equals(b.second.value) continue
-
-				# Swap:
-				y = result[j]
-				result.remove_at(j)
-
-				x = result[i]
-				result.remove_at(i)
-
-				result.insert(i, y)
-				result.insert(j, x)
-
-				optimized_indices.add(i)
-				optimized_indices.add(j)
-
-				again = true
-				stop
-			}
-
-			if again stop
+			# Swap:
+			result[i] = b
+			result[j] = a
 		}
 	}
 

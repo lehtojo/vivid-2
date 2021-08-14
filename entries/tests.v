@@ -408,9 +408,6 @@ pi(optimization: large) {
 }
 
 init() {
-	println('Pi')
-	pi(0)
-
 	println('Arithmetic')
 	arithmetic(0)
 	println('Assignment')
@@ -455,5 +452,7 @@ init() {
 	#extensions(0)
 	println('Fibonacci')
 	fibonacci(0)
+	println('Pi')
+	pi(0)
 	=> 0
 }

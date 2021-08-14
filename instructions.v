@@ -1152,7 +1152,10 @@ Instruction ReorderInstruction {
 		instructions = memory.align(unit, instructions)
 
 		extracted = true
-		loop instruction in instructions { unit.add(instruction) }
+
+		loop (i = instructions.size - 1, i >= 0, i--) {
+			unit.add(instructions[i], true)
+		}
 	}
 
 	override get_dependencies() {
@@ -1468,12 +1471,12 @@ Instruction MergeScopeInstruction {
 		moves = List<MoveInstruction>()
 
 		loop variable in container.actives {
-			source = unit.get_variable_value(variable, true)
+			source: Result = unit.get_variable_value(variable, true)
 			if source == none { source = get_variable_stack_handle(variable, ACCESS_READ) }
 
 			# Copy the destination value to prevent any relocation leaks
 			handle = get_destination_handle(variable)
-			destination = Result(handle.value, handle.format)
+			destination: Result = Result(handle.value, handle.format)
 
 			if destination.is_constant continue
 
