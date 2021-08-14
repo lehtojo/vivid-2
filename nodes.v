@@ -1528,8 +1528,8 @@ Node NamespaceNode {
 			name: String = this.name[i].(IdentifierToken).value
 			type = context.get_type(name)
 
-			context = type
-			if context == none { context = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position) }
+			if type == none { context = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position) }
+			else { context = type }
 		}
 
 		=> context as Type

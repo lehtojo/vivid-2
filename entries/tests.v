@@ -384,7 +384,7 @@ fibonacci(optimization: large) {
 	log = execute('fibonacci')
 
 	if not (log == '0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n') {
-		println('Fibonacci function did not produce the correct output')
+		println('Fibonacci unit test did not produce the correct output')
 	}
 }
 
@@ -397,13 +397,39 @@ pi(optimization: large) {
 	log = execute('pi')
 
 	if not (io.read_file(project_file('tests', 'pi.txt')) has bytes) {
-		println('Could not load expected Pi function output')
+		println('Could not load the expected Pi unit test output')
 	}
 
 	expected = String.from(bytes.data, bytes.count)
 
 	if not (log == expected) {
-		println('Pi function did not produce the correct output')
+		println('Pi unit test did not produce the correct output')
+	}
+}
+
+namespaces(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'namespaces.v'))
+	files.add_range(get_standard_library_utility())
+	compile('namespaces', files, optimization, false)
+
+	log = execute('namespaces')
+
+	if not (log == 'Apple\nBanana\nFactory Foo.Apple\nFactory Foo.Apple\nFactory Foo.Apple\n') {
+		println('Namespaces unit test did not produce the correct output')
+	}
+}
+
+extensions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'extensions.v'))
+	files.add_range(get_standard_library_utility())
+	compile('extensions', files, optimization, false)
+
+	log = execute('extensions')
+
+	if not (log == 'Decimal seems to be larger than tiny\nFactory created new Foo.Bar.Counter\n7\n') {
+		println('Extensions unit test did not produce the correct output')
 	}
 }
 
@@ -448,11 +474,13 @@ init() {
 	memory_operations(0)
 	println('Templates')
 	templates(0)
-	#println('Extensions')
-	#extensions(0)
 	println('Fibonacci')
 	fibonacci(0)
 	println('Pi')
 	pi(0)
+	println('Namespaces')
+	namespaces(0)
+	println('Extensions')
+	extensions(0)
 	=> 0
 }

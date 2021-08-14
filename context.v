@@ -233,13 +233,23 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context
-	is_local_function_declared(name: String) {
+	is_local_function_declared_default(name: String) {
 		=> functions.contains_key(name)
 	}
 
+	# Summary: Returns whether the specified function is declared inside this context
+	virtual is_local_function_declared(name: String) {
+		=> is_local_function_declared_default(name)
+	}
+
 	# Summary: Returns whether the specified variable is declared inside this context
-	is_local_variable_declared(name: String) {
+	is_local_variable_declared_default(name: String) {
 		=> variables.contains_key(name)
+	}
+
+	# Summary: Returns whether the specified variable is declared inside this context
+	virtual is_local_variable_declared(name: String) {
+		=> is_local_variable_declared_default(name)
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts
@@ -254,7 +264,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts
-	is_function_declared(name: String) {
+	is_function_declared_default(name: String) {
 		if functions.contains_key(name) => true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -264,8 +274,13 @@ Context {
 		=> parent != none and parent.is_function_declared(name)
 	}
 
+	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts
+	virtual is_function_declared(name: String) {
+		=> is_function_declared_default(name)
+	}
+
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
-	virtual is_variable_declared(name: String) {
+	is_variable_declared_default(name: String) {
 		if variables.contains_key(name) => true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -273,6 +288,11 @@ Context {
 		}
 
 		=> parent != none and parent.is_variable_declared(name)
+	}
+
+	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
+	virtual is_variable_declared(name: String) {
+		=> is_variable_declared_default(name)
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts depending on the specified flag
@@ -308,7 +328,7 @@ Context {
 	}
 
 	# Summary: Returns the specified function by searching it from the local types, imports and parent types
-	get_function(name: String) {
+	get_function_default(name: String) {
 		if functions.contains_key(name) => functions[name]
 
 		loop (i = 0, i < imports.size, i++) {
@@ -319,6 +339,11 @@ Context {
 
 		if parent != none => parent.get_function(name) as FunctionList
 		=> none as FunctionList
+	}
+
+	# Summary: Returns the specified function by searching it from the local types, imports and parent types
+	virtual get_function(name: String) {
+		=> get_function_default(name)
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
@@ -697,11 +722,26 @@ Context Type {
 		=> false
 	}
 
+	is_super_variable_declared(name: String) {
+		loop supertype in supertypes { if supertype.is_local_variable_declared(name) => true }
+		=> false
+	}
+
+	get_super_function(name: String) {
+		loop supertype in supertypes { if supertype.is_local_function_declared(name) => supertype.get_function(name) }
+		=> none as FunctionList
+	}
+
+	get_super_variable(name: String) {
+		loop supertype in supertypes { if supertype.is_local_variable_declared(name) => supertype.get_variable(name) }
+		=> none as Variable
+	}
+
 	# Summary: Returns whether the type contains a function, which overloads the specified operator
 	is_operator_overloaded(operator: Operator) {
 		if not Operators.operator_overloads.contains_key(operator) => false
 		overload = Operators.operator_overloads[operator]
-		=> is_local_function_declared(name) or is_super_function_declared(name)
+		=> is_local_function_declared(overload) or is_super_function_declared(overload)
 	}
 
 	is_type_inherited(type: Type) {
@@ -717,6 +757,32 @@ Context Type {
 		if virtuals.contains_key(name) => true
 		loop supertype in supertypes { if supertype.is_virtual_function_declared(name) => true }
 		=> false
+	}
+
+	override is_function_declared(name: String) {
+		=> is_function_declared_default(name) or is_super_function_declared(name)
+	}
+
+	override is_local_function_declared(name: String) {
+		=> functions.contains_key(name) or is_super_function_declared(name)
+	}
+
+	override is_variable_declared(name: String) {
+		=> is_variable_declared_default(name) or is_super_variable_declared(name)
+	}
+
+	override is_local_variable_declared(name: String) {
+		=> variables.contains_key(name) or is_super_variable_declared(name)
+	}
+
+	override get_function(name: String) {
+		if is_local_function_declared_default(name) or not is_super_function_declared(name) => get_function_default(name)
+		=> get_super_function(name)
+	}
+
+	override get_variable(name: String) {
+		if is_local_variable_declared_default(name) or not is_super_variable_declared(name) => get_variable_default(name)
+		=> get_super_variable(name)
 	}
 
 	# Summary: Retrieves the virtual function list which corresponds the specified name

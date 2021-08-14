@@ -420,16 +420,30 @@ Pattern LinkPattern {
 		=> true
 	}
 
-	private build_template_function_call() {
-		abort('Template function call is not supported yet')
-		=> none as LinkNode
+	private build_template_function_call(context: Context, tokens: List<Token>, left: Node) {
+		# Load the properties of the template function call
+		name = tokens[RIGHT].(IdentifierToken)
+		descriptor = FunctionToken(name, tokens[tokens.size - 1] as ParenthesisToken)
+		descriptor.position = name.position
+		template_arguments = common.read_template_arguments(context, tokens, RIGHT + 1)
+
+		primary = left.try_get_type()
+
+		if primary != none {
+			right = parser.parse_function(context, primary, descriptor, template_arguments, true)
+			=> LinkNode(left, right, tokens[OPERATOR].position)
+		}
+
+		right = UnresolvedFunction(name.value, template_arguments, descriptor.position)
+		right.(UnresolvedFunction).set_arguments(descriptor.parse(context))
+		=> LinkNode(left, right, tokens[OPERATOR].position)
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
-		# When there are more tokens than the standard count, it means a template function has been consumed
-		if tokens.size != STANDARD_TOKEN_COUNT => build_template_function_call()
-
 		left = parser.parse(environment, tokens[LEFT])
+
+		# When there are more tokens than the standard count, it means a template function has been consumed
+		if tokens.size != STANDARD_TOKEN_COUNT => build_template_function_call(environment, tokens, left)
 
 		# If the right operand is a parenthesis token, this is a cast expression
 		if tokens[RIGHT].match(TOKEN_TYPE_PARENTHESIS) {
