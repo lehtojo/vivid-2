@@ -13,7 +13,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 
 	# Determine whether the cast is a up cast
 	if to.is_type_inherited(from) {
-		if not (from.get_supertype_base_offset(to) has offset) abort('Could not compute base offset of a super type while building up cast')
+		if not (to.get_supertype_base_offset(from) has offset) abort('Could not compute base offset of a super type while building up cast')
 		if offset == 0 => result
 
 		=> AdditionInstruction(unit, result, Result(ConstantHandle(-offset), SYSTEM_FORMAT), result.format, false).add()

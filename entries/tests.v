@@ -407,6 +407,15 @@ pi(optimization: large) {
 	}
 }
 
+inheritance(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'inheritance.v'))
+	files.add_range(get_standard_library_utility())
+	compile('inheritance', files, optimization, false)
+
+	log = execute('inheritance')
+}
+
 namespaces(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'namespaces.v'))
@@ -430,6 +439,25 @@ extensions(optimization: large) {
 
 	if not (log == 'Decimal seems to be larger than tiny\nFactory created new Foo.Bar.Counter\n7\n') {
 		println('Extensions unit test did not produce the correct output')
+	}
+}
+
+virtuals(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'virtuals.v'))
+	files.add_range(get_standard_library_utility())
+	compile('virtuals', files, optimization, false)
+
+	log = execute('virtuals')
+
+	if not (io.read_file(project_file('virtuals', 'virtuals.txt')) has bytes) {
+		println('Could not load the expected Virtuals unit test output')
+	}
+
+	expected = String.from(bytes.data, bytes.count)
+
+	if not (log == expected) {
+		println('Virtuals unit test did not produce the correct output')
 	}
 }
 
@@ -478,9 +506,13 @@ init() {
 	fibonacci(0)
 	println('Pi')
 	pi(0)
+	println('Inheritance')
+	inheritance(0)
 	println('Namespaces')
 	namespaces(0)
 	println('Extensions')
 	extensions(0)
+	println('Virtuals')
+	virtuals(0)
 	=> 0
 }

@@ -760,6 +760,82 @@ add_assignment_casts(root: Node) {
 	}
 }
 
+# Summary:
+# Returns whether the node uses the local self pointer.
+# This function assumes the node is a member object.
+is_using_local_self_pointer(node: Node) {
+	link = node.parent
+
+	# Take into account the following situation:
+	# Inheritant Inheritor {
+	#   init() { 
+	#     Inheritant.init()
+	#     Inheritant.member = 0
+	#   }
+	# }
+	if link.first.instance == NODE_TYPE => true
+
+	# Take into account the following situation:
+	# Namespace.Inheritant Inheritor {
+	#   init() { 
+	#     Namespace.Inheritant.init()
+	#     Namespace.Inheritant.member = 0
+	#   }
+	# }
+	=> link.first.instance == NODE_LINK and link.first.last == NODE_TYPE
+}
+
+# Summary: Adds default constructors to all supertypes, if the specified function implemenation represents a constructor
+add_default_constructors(iterator: FunctionImplementation) {
+	# Ensure the function represents a constructor or a destructor
+	if not iterator.is_constructor and not iterator.is_destructor return
+
+	supertypes = iterator.metadata.parent.(Type).supertypes
+	position = iterator.metadata.start
+
+	loop supertype in supertypes {
+		# Get all the constructor or destructor overloads of the current supertype
+		overloads = none as List<Function>
+		if iterator.is_constructor { overloads = supertype.constructors.overloads }
+		else { overloads = supertype.destructors.overloads }
+
+		# Check if there is already a function call using any of the overloads above, if so, no need to generate another call
+		calls = iterator.node.find_all(NODE_FUNCTION) as List<FunctionNode>
+
+		# Determine whether the user calls any of the supertype constructors manually
+		is_supertype_constructor_called = false
+
+		loop call in calls {
+			if not overloads.contains(call.function.metadata) and not is_using_local_self_pointer(call) continue
+			is_supertype_constructor_called = true
+			stop
+		}
+
+		if is_supertype_constructor_called continue
+
+		# Get the implementation which requires no arguments
+		implementation = none as FunctionImplementation
+		if iterator.is_constructor { implementation = supertype.constructors.get_implementation(List<Type>()) }
+		else { implementation = supertype.destructors.get_implementation(List<Type>()) }
+
+		# 1. If such implementation can not be found, no automatic call for the current supertype can be generated
+		# 2. If the implementation is empty, there is now use calling it
+		if implementation == none or implementation.is_empty continue
+
+		# Next try to get the self pointer, this should not fail
+		self = common.get_self_pointer(iterator, position)
+		if self == none continue
+
+		# Add the default call
+		if iterator.is_constructor {
+			iterator.node.insert(iterator.node.first, LinkNode(self, FunctionNode(implementation, position), position))
+		}
+		else {
+			iterator.node.add(LinkNode(self, FunctionNode(implementation, position), position))
+		}
+	}
+}
+
 # Summary: Evaluates the values of inspection nodes
 rewrite_inspections(root: Node) {
 	inspections = root.find_all(NODE_INSPECTION) as List<InspectionNode>
@@ -948,6 +1024,7 @@ rewrite_lambda_constructions(root: Node) {
 }
 
 start(implementation: FunctionImplementation, root: Node) {
+	add_default_constructors(implementation)
 	rewrite_inspections(root)
 	strip_links(root)
 	remove_redundant_parentheses(root)

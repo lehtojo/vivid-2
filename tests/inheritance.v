@@ -1,6 +1,6 @@
 Animal {
-	energy = 100i16
-	hunger = 0i8
+	energy: small = 100
+	hunger: tiny = 0
 
 	move() {
 		--energy
@@ -91,18 +91,59 @@ Salmon_Gang {
 }
 
 init() {
-	=> true
-
-	gang = Salmon_Gang(10)
-
 	animal = get_animal()
-	fish = get_fish()
-	salmon = get_salmon()
+	are_equal(100, animal.energy)
+	are_equal(0, animal.hunger)
 
-	animal_moves(animal)
-	fish_moves(fish)
+	fish = get_fish()
+	are_equal(1, fish.speed)
+	are_equal(0, fish.velocity)
+	are_equal(1500, fish.weight)
+
+	salmon = get_salmon()
+	are_equal(false, salmon.is_hiding)
+	are_equal(5000, salmon.weight)
+
+	animal_moves(salmon)
+	are_equal(99, salmon.energy)
+	are_equal(1, salmon.hunger)
+
+	fish_moves(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(5, salmon.velocity)
+	are_equal(98, salmon.energy)
+	are_equal(2, salmon.hunger)
+
 	fish_swims(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(5, salmon.velocity)
+	are_equal(97, salmon.energy)
+	are_equal(3, salmon.hunger)
+
 	fish_stops(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(0, salmon.velocity)
+
 	fish_hides(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(0, salmon.velocity)
+	are_equal(96, salmon.energy)
+	are_equal(4, salmon.hunger)
+	are_equal(true, salmon.is_hiding)
+
+	# The fish should not move since it is hiding
+	fish_moves(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(0, salmon.velocity)
+	are_equal(96, salmon.energy)
+	are_equal(4, salmon.hunger)
+	are_equal(true, salmon.is_hiding)
+
 	fish_stops_hiding(salmon)
+	are_equal(5, salmon.speed)
+	are_equal(5, salmon.velocity)
+	are_equal(94, salmon.energy)
+	are_equal(6, salmon.hunger)
+	are_equal(false, salmon.is_hiding)
+	=> 1
 }

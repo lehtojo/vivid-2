@@ -1129,6 +1129,7 @@ Context Function {
 	implementations: List<FunctionImplementation> = List<FunctionImplementation>()
 
 	is_constructor => has_flag(type, CONSTRUCTOR_CONTEXT_MODIFIER)
+	is_destructor => has_flag(type, DESTRUCTOR_CONTEXT_MODIFIER)
 	is_public => has_flag(modifiers, MODIFIER_PUBLIC)
 	is_protected => has_flag(modifiers, MODIFIER_PROTECTED)
 	is_private => has_flag(modifiers, MODIFIER_PRIVATE)
@@ -1615,6 +1616,7 @@ Context FunctionImplementation {
 	virtual_function: VirtualFunction = none
 
 	is_constructor => metadata.is_constructor
+	is_destructor => metadata.is_destructor
 	is_static => metadata.is_static
 	is_empty => (node == none or node.first == none) and not metadata.is_imported
 
