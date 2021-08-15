@@ -126,8 +126,8 @@ build_negate(unit: Unit, node: NegateNode) {
 	if settings.is_x64 and is_decimal {
 		# Define a constant which negates decimal values
 		bytes = Array<byte>(16)
-		bytes[0] = 128
-		bytes[8] = 128
+		bytes[7] = 128
+		bytes[15] = 128
 
 		negator = Result(ByteArrayDataSectionHandle(bytes), FORMAT_INT128)
 		=> BitwiseInstruction.create_xor(unit, references.get(unit, node.first, ACCESS_READ), negator, FORMAT_DECIMAL, false).add()

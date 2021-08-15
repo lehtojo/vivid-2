@@ -505,7 +505,17 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
 		=> VariableNode(variable, position)
 	}
 
-	# TODO: Property support
+	if context.is_property_declared(identifier.value, linked) {
+		implementation = context.get_property(identifier.value).get(List<Type>())
+
+		if implementation.is_member and not implementation.is_static and not linked {
+			self = common.get_self_pointer(context, position)
+			=> LinkNode(self, FunctionNode(implementation, position), position)
+		}
+
+		=> FunctionNode(implementation, position)
+	}
+
 	if context.is_type_declared(identifier.value, linked) => TypeNode(context.get_type(identifier.value), position)
 
 	=> UnresolvedIdentifier(identifier.value, position)

@@ -252,6 +252,11 @@ Context {
 		=> is_local_variable_declared_default(name)
 	}
 
+	# Summary: Returns whether the specified property is declared inside this context
+	is_local_property_declared(name: String) {
+		=> is_local_function_declared(name) and get_function(name).get_overload(List<Type>()) != none
+	}
+
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts
 	is_type_declared(name: String) {
 		if types.contains_key(name) => true
@@ -295,6 +300,11 @@ Context {
 		=> is_variable_declared_default(name)
 	}
 
+	# Summary: Returns whether the specified property is declared inside this context or in the parent contexts
+	is_property_declared(name: String) {
+		=> is_function_declared(name) and get_function(name).get_overload(List<Type>()) != none
+	}
+
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts depending on the specified flag
 	is_type_declared(name: String, local: bool) {
 		if local => is_local_type_declared(name)
@@ -311,6 +321,12 @@ Context {
 	is_variable_declared(name: String, local: bool) {
 		if local => is_local_variable_declared(name)
 		=> is_variable_declared(name)
+	}
+
+	# Summary: Returns whether the specified property is declared inside this context or in the parent contexts depending on the specified flag
+	is_property_declared(name: String, local: bool) {
+		if local => is_local_property_declared(name)
+		=> is_property_declared(name)
 	}
 
 	# Summary: Returns the specified type by searching it from the local types, imports and parent types
@@ -363,6 +379,11 @@ Context {
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
 	virtual get_variable(name: String) {
 		=> get_variable_default(name)
+	}
+
+	# Summary: Returns the specified property by searching it from the local types, imports and parent types
+	get_property(name: String) {
+		=> get_function(name).get_overload(List<Type>())
 	}
 
 	create_label() {

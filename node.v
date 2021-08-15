@@ -130,6 +130,18 @@ Node {
 		=> result
 	}
 
+	# Summary: Returns a list of nodes, whose type is the specified node type. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
+	find_top(types: large) {
+		result = List<Node>()
+
+		loop (iterator = first, iterator != none, iterator = iterator.next) {
+			if (iterator.instance & types) != none { result.add(iterator) }
+			else { result.add_range(iterator.find_top(types)) }
+		}
+
+		=> result
+	}
+
 	find_context() {
 		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_CONTEXT_INLINE | NODE_TYPE, instance) => this
 		if parent == none => none as Node
@@ -349,7 +361,9 @@ Node {
 
 	get_type() {
 		type = try_get_type()
-		if type == none abort(String('Could not get node type'))
+		if type == none {
+			abort(String('Could not get node type'))
+		}
 		=> type
 	}
 

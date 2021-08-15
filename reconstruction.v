@@ -84,7 +84,7 @@ get_expression_extract_position(expression: Node) {
 		# { x = b(i), a(x) } and { y = d(j), c(y) }
 		if type == NODE_OPERATOR and iterator.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL {
 			scope = InlineNode(position.start)
-			position.insert(scope)
+			position.replace(scope)
 			scope.add(position)
 			stop
 		}
@@ -760,6 +760,40 @@ add_assignment_casts(root: Node) {
 	}
 }
 
+# Summary: Rewrites supertypes accesses so that they can be compiled
+# Example:
+# Base Inheritor {
+# 	a: large
+# 
+# 	init() {
+# 		Base.a = 1
+# 		# The expression is rewritten as:
+# 		this.a = 1
+# 		# The rewritten expression still refers to the same member variable even though Inheritor has its own member variable a
+# 	}
+# }
+rewrite_super_accessors(root: Node) {
+	links = root.find_top(NODE_LINK) as List<LinkNode>
+
+	loop link in links {
+		if not is_using_local_self_pointer(link.last) continue
+
+		if link.last.instance == NODE_FUNCTION {
+			node = link.last as FunctionNode
+			if node.function.is_static or not node.function.is_member continue
+		}
+		else link.last.instance == NODE_VARIABLE {
+			node = link.last as VariableNode
+			if node.variable.is_static or not node.variable.is_member continue
+		}
+		else {
+			continue
+		}
+
+		link.first.replace(common.get_self_pointer(link.get_parent_context(), link.first.start))
+	}
+}
+
 # Summary:
 # Returns whether the node uses the local self pointer.
 # This function assumes the node is a member object.
@@ -1031,6 +1065,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
 	add_assignment_casts(root)
+	rewrite_super_accessors(root)
 	rewrite_is_expressions(root)
 	rewrite_lambda_constructions(root)
 	rewrite_constructions(root)

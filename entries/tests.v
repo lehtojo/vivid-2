@@ -450,7 +450,7 @@ virtuals(optimization: large) {
 
 	log = execute('virtuals')
 
-	if not (io.read_file(project_file('virtuals', 'virtuals.txt')) has bytes) {
+	if not (io.read_file(project_file('tests', 'virtuals.txt')) has bytes) {
 		println('Could not load the expected Virtuals unit test output')
 	}
 
@@ -461,6 +461,34 @@ virtuals(optimization: large) {
 	}
 }
 
+expression_variables(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'expression_variables.v'))
+	files.add_range(get_standard_library_utility())
+	compile('expression_variables', files, optimization, false)
+
+	log = execute('expression_variables')
+
+	if not (io.read_file(project_file('tests', 'expression_variables.txt')) has bytes) {
+		println('Could not load the expected Expression variables unit test output')
+	}
+
+	expected = String.from(bytes.data, bytes.count)
+
+	if not (log == expected) {
+		println('Expression variables unit test did not produce the correct output')
+	}
+}
+
+iteration(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'iteration.v'))
+	files.add_range(get_standard_library_utility())
+	compile('iteration', files, optimization, false)
+
+	log = execute('iteration')
+}
+
 init() {
 	println('Arithmetic')
 	arithmetic(0)
@@ -468,33 +496,33 @@ init() {
 	assignment(0)
 	println('Bitwise')
 	bitwise(0)
-	println('Conditionally Changing Constant')
+	println('Conditionally changing constant')
 	conditionally_changing_constant(0)
 	#println('Conversions')
 	#conversions(0)
 	println('Conditionals')
 	conditionals_statements(0)
-	println('Constant Permanence')
+	println('Constant permanence')
 	constant_permanence(0)
 	println('Decimals')
 	decimals(0)
 	println('Evacuation')
 	evacuation(0)
-	println('Large Functions')
+	println('Large functions')
 	large_functions(0)
 	println('Linkage')
 	linkage(0)
-	println('Logical Operators')
+	println('Logical operators')
 	logical_operators(0)
 	println('Loops')
 	loops_statements(0)
 	println('Objects')
 	objects(0)
-	println('Register Utilization')
+	println('Register utilization')
 	register_utilization(0)
 	println('Scopes')
 	scopes(0)
-	println('Special Multiplications')
+	println('Special multiplications')
 	special_multiplications(0)
 	println('Stack')
 	stack(0)
@@ -514,5 +542,9 @@ init() {
 	extensions(0)
 	println('Virtuals')
 	virtuals(0)
+	println('Expression variables')
+	expression_variables(0)
+	println('Iteration')
+	iteration(0)
 	=> 0
 }

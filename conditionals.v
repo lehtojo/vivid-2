@@ -173,12 +173,20 @@ build_condition_instructions(unit: Unit, instructions: List<Instruction>, active
 }
 
 TemporaryInstruction TemporaryCompareInstruction {
+	private root: Node
 	private comparison: Node
 	private first => comparison.first
 	private last => comparison.last
 
 	init(unit: Unit, comparison: Node) {
 		TemporaryInstruction.init(unit, INSTRUCTION_TEMPORARY_COMPARE)
+		this.root = none as Node
+		this.comparison = comparison
+	}
+
+	init(unit: Unit, root: Node, comparison: Node) {
+		TemporaryInstruction.init(unit, INSTRUCTION_TEMPORARY_COMPARE)
+		this.root = root
 		this.comparison = comparison
 	}
 
@@ -188,6 +196,14 @@ TemporaryInstruction TemporaryCompareInstruction {
 
 		# Merges all changes that happen in the scope with the outer scope
 		merge = MergeScopeInstruction(unit, scope)
+
+		if root != none {
+			# Build the code surrounding the comparison
+			instance = comparison.instance
+			comparison.instance = NODE_DISABLED
+			builders.build(unit, root)
+			comparison.instance = instance
+		}
 
 		# Build the body
 		left = references.get(unit, first, ACCESS_READ)
@@ -212,7 +228,24 @@ build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
 		if type == OPERATOR_TYPE_COMPARISON => build_comparison(unit, operation, success, failure) as List<Instruction>
 	}
 
-	if condition.match(NODE_PARENTHESIS) => build_condition(unit, condition.first, success, failure) as List<Instruction>
+	if condition.instance == NODE_PARENTHESIS => build_condition(unit, condition.last, success, failure) as List<Instruction>
+
+	if condition.instance == NODE_INLINE {
+		comparison = common.get_source(condition)
+
+		if comparison.instance == NODE_OPERATOR and comparison.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON {
+			first_type = comparison.first.get_type()
+			second_type = comparison.last.get_type()
+			unsigned = (first_type.format == FORMAT_DECIMAL or second_type.format == FORMAT_DECIMAL) or (is_unsigned(first_type.format) and is_unsigned(second_type.format))
+
+			instructions = List<Instruction>()
+			instructions.add(TemporaryCompareInstruction(unit, condition, comparison))
+			instructions.add(JumpInstruction(unit, comparison.(OperatorNode).operator as ComparisonOperator, false, not unsigned, success))
+			instructions.add(JumpInstruction(unit, failure))
+
+			=> instructions
+		}
+	}
 
 	replacement = OperatorNode(Operators.NOT_EQUALS, condition.start)
 	condition.replace(replacement)

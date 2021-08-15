@@ -1172,13 +1172,13 @@ Pattern SectionModificationPattern {
 		target = tokens[OBJECT].(DynamicToken).node
 		type = target.instance
 
-		if type != NODE_TYPE_DEFINITION and type != NODE_FUNCTION_DEFINITION and type != NODE_VARIABLE => false
+		if type == NODE_TYPE_DEFINITION or type == NODE_FUNCTION_DEFINITION or type == NODE_VARIABLE => true
 
 		# Allow member variable assignments as well
 		if not target.match(Operators.ASSIGN) => false
 
 		# Require the destination operand to be a member variable
-		=> target.first.instance != NODE_VARIABLE and target.first.(VariableNode).variable.is_member
+		=> target.first.instance == NODE_VARIABLE and target.first.(VariableNode).variable.is_member
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2149,7 +2149,7 @@ Pattern RangePattern {
 	init() {
 		path.add(TOKEN_TYPE_OBJECT)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
-		path.add(TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_OPERATOR)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_OBJECT)
 		priority = 5
@@ -2266,7 +2266,7 @@ Pattern ExtensionFunctionPattern {
 
 		# The last token must be the body of the function
 		next = state.peek()
-		if next != none and not next.match(`{`) => false
+		if next == none or not next.match(`{`) => false
 		
 		state.consume()
 		=> true

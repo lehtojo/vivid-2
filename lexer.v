@@ -874,11 +874,7 @@ has_flag(flags: large, flag: large) {
 # Summary: Removes the exponent or the number type from the specified string
 private get_number_part(text: String) {
 	i = 0
-	
-	loop (i < text.length, i++) {
-		if is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR continue
-	}
-
+	loop (i < text.length and [is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR], i++) {}
 	=> text.slice(0, i)
 }
 
@@ -939,10 +935,14 @@ private get_number_format(text: String) {
 		else => FORMAT_INT64
 	}
 
-	s = i
-	loop (is_digit(text[++i])) {}
+	# Take all the digits, which represent the bit size
+	j = ++i
+	loop (j < text.length and is_digit(text[j++])) {}
 
-	if as_number(text.slice(s, i)) has bits => get_format(bits, unsigned)
+	# If digits were captured and the number can be parsed, return a format, which matches it
+	if j > i and as_number(text.slice(i, j)) has bits => get_format(bits, unsigned)
+
+	# Return the default format
 	=> get_format(SYSTEM_BITS, unsigned)
 }
 
@@ -953,15 +953,26 @@ try_create_number_token(text: String, position: Position) {
 	if text.index_of(DECIMAL_SEPARATOR) != -1 {
 		if not (as_decimal(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
 
-		loop (i = 0, i < exponent, i++) { value *= 10 }
+		# Apply the exponent
+		scale = 1.0
+		loop (i = 0, i < abs(exponent), i++) { scale *= 10 }
+
+		if exponent >= 0 { value *= scale }
+		else { value /= scale }
 
 		=> Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
 	}
 	else {
 		if not (as_number(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
 
-		loop (i = 0, i < exponent, i++) { value *= 10 }
+		# Apply the exponent
+		scale = 1
+		loop (i = 0, i < abs(exponent), i++) { scale *= 10 }
 
+		if exponent >= 0 { value *= scale }
+		else { value /= scale }
+
+		# Determine the number format
 		format = get_number_format(text)
 		
 		=> Ok<NumberToken, String>(NumberToken(value, format, text.length, position))
@@ -1279,7 +1290,9 @@ get_next_token(text: String, start: Position) {
 		result = get_character_value(text.slice(area.start.local, area.end.local), area.start)
 		if not (result has value) => Error<TextArea, String>(result.value as String)
 
-		area.text = to_string(result.value)
+		bits = common.get_bits(value, false)
+
+		area.text = to_string(result.value) + SIGNED_TYPE_SEPARATOR + to_string(bits)
 		area.type = TEXT_TYPE_NUMBER
 		=> Ok<TextArea, String>(area)
 	}

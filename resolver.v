@@ -74,8 +74,18 @@ resolve_tree(context: Context, node: Node) {
 }
 
 # Summary: Tries to resolve the type of the specified variable
-resolve(variable: Variable) {# Skip resolved variables
-	if variable.type != none return
+resolve(variable: Variable) {
+	if variable.type != none {
+		# If the variable is already resolved, there is no need to do anything
+		if variable.type.is_resolved return
+
+		# Try to resolve the variable type
+		resolved = resolve(variable.parent, variable.type)
+		if resolved == none return
+
+		variable.type = resolved
+		return
+	}
 
 	types = List<Type>()
 
@@ -133,6 +143,10 @@ resolve_variables(context: Context) {
 
 # Summary: Tries to resolve the return type of the specified implementation based on its return statements
 resolve_return_type(implementation: FunctionImplementation) {
+	# Do not resolve the return type if it is already resolved.
+	# This also prevents virtual function overrides from overriding the return type, enforced by the virtual function declaration
+	if implementation.return_type != none return
+
 	statements = implementation.node.find_all(NODE_RETURN)
 
 	# If there are no return statements, the return type of the implementation must be unit

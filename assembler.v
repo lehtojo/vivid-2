@@ -1292,6 +1292,29 @@ allocate_constant_data_section_handles(unit: Unit, constant_data_section_handles
 	}
 }
 
+# Summary: Creates the virtual function entry label, which is used to convert the passed self pointer to a suitable type
+add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, fullname: String) {
+	unit.add(LabelInstruction(unit, Label(fullname + Mangle.VIRTUAL_FUNCTION_POSTFIX)))
+
+	# Do not try to convert the self pointer, if it is not used
+	if unit.self.usages.size == 0 return
+
+	# Cast the self pointer to the type, which contains the implementation of the virtual function
+	from = implementation.virtual_function.find_type_parent()
+	to = implementation.find_type_parent()
+
+	# NOTE: The type 'from' must be one of the subtypes of 'to'
+	if not (to.get_supertype_base_offset(from) has alignment) or alignment < 0 abort('Could not add virtual function header')
+
+	if alignment != 0 {
+		self = references.get_variable(unit, unit.self, ACCESS_WRITE)
+		offset = GetConstantInstruction(unit, alignment, false).add()
+
+		# Convert the self pointer to the type 'to' by offsetting it by the alignment
+		unit.add(SubtractionInstruction(unit, self, offset, SYSTEM_FORMAT, true))
+	}
+}
+
 get_text_section(implementation: FunctionImplementation, constant_section: List<ConstantDataSectionHandle>) {
 	builder = StringBuilder()
 
@@ -1308,6 +1331,15 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	unit.mode = UNIT_MODE_ADD
 
 	scope = Scope(unit, implementation.node)
+
+	# Add virtual function header, if the implementation overrides a virtual function
+	if implementation.virtual_function != none {
+		builder.append(EXPORT_DIRECTIVE)
+		builder.append(` `)
+		builder.append(fullname)
+		builder.append_line(Mangle.VIRTUAL_FUNCTION_POSTFIX)
+		add_virtual_function_header(unit, implementation, fullname)
+	}
 
 	# Append the function name to the output as a label
 	unit.add(LabelInstruction(unit, Label(fullname)))
