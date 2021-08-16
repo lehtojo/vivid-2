@@ -1239,7 +1239,7 @@ Context Function {
 			if expected == none continue
 
 			actual = types[i]
-			if expected == actual continue
+			if expected.match(actual) continue
 
 			if not expected.is_primitive or not actual.is_primitive {
 				if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
@@ -1272,7 +1272,7 @@ Context Function {
 			if parameter_type == none or parameter_type.is_unresolved => none as FunctionImplementation
 		}
 
-		implementation_types = List<Type>(parameter_types.size, false)
+		implementation_types = List<Type>(parameter_types.size, true)
 
 		# Override the parameter types with forced parameter types
 		loop (i = 0, i < parameter_types.size, i++) {
@@ -1289,7 +1289,7 @@ Context Function {
 				a = implementation_types[i]
 				b = implementation.parameters[i].type
 
-				if a != b {
+				if not a.match(b) {
 					matches = false
 					stop
 				}
@@ -2018,7 +2018,7 @@ UnresolvedType FunctionType {
 		if not other.is_function_type => false
 		if parameters.size != other.(FunctionType).parameters.size => false
 		if not common.compatible(parameters, other.(FunctionType).parameters) => false
-		=> return_type == other.(FunctionType).return_type or resolver.get_shared_type(return_type, other.(FunctionType).return_type) != none
+		=> common.compatible(return_type, other.(FunctionType).return_type)
 	}
 
 	override string() {

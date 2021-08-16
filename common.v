@@ -72,7 +72,8 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 		parameter_type = read_type(context, parameter_tokens) as Type
 		if parameter_type == none => none as FunctionType
 		parameter_types.add(parameter_type)
-	} 
+		parameter_tokens.take_first() # Consume the comma, if there are tokens left
+	}
 
 	=> FunctionType(parameter_types, return_type, position)
 }
@@ -321,6 +322,20 @@ get_template_parameters(template_parameter_tokens: List<Token>, template_paramet
 	=> template_parameters
 }
 
+# Summary: Returns whether the two specified types are compatible
+compatible(expected: Type, actual: Type) {
+	if expected == none or actual == none or expected.is_unresolved or actual.is_unresolved => false
+
+	if expected.match(actual) => true
+
+	if not expected.is_primitive or not actual.is_primitive {
+		if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
+	} 
+	else resolver.get_shared_type(expected, actual) == none => false
+
+	=> true
+}
+
 # Summary:  Returns whether the specified actual types are compatible with the specified expected types, that is whether the actual types can be casted to match the expected types. This function also requires that the actual parameters are all resolved, otherwise this function returns false.
 compatible(expected_types: List<Type>, actual_types: List<Type>) {
 	if expected_types.size != actual_types.size => false
@@ -330,7 +345,7 @@ compatible(expected_types: List<Type>, actual_types: List<Type>) {
 		if expected == none continue
 
 		actual = actual_types[i]
-		if expected == actual continue
+		if expected.match(actual) continue
 
 		if not expected.is_primitive or not actual.is_primitive {
 			if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false

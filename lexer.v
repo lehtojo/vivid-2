@@ -772,7 +772,10 @@ Token FunctionToken {
 			}
 
 			parameter_type = common.read_type(context, tokens)
-			if parameter_type == none => Error<List<Parameter>, String>(String('Can not understand the parameter type'))
+
+			if parameter_type == none {
+				=> Error<List<Parameter>, String>(String('Can not understand the parameter type'))
+			}
 
 			result.add(Parameter(name.(IdentifierToken).value, name.position, parameter_type))
 

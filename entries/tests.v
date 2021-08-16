@@ -489,6 +489,25 @@ iteration(optimization: large) {
 	log = execute('iteration')
 }
 
+lambdas(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'lambdas.v'))
+	files.add_range(get_standard_library_utility())
+	compile('lambdas', files, optimization, false)
+
+	log = execute('lambdas')
+
+	if not (io.read_file(project_file('tests', 'lambdas.txt')) has bytes) {
+		println('Could not load the expected Lambdas unit test output')
+	}
+
+	expected = String.from(bytes.data, bytes.count)
+
+	if not (log == expected) {
+		println('Lambdas unit test did not produce the correct output')
+	}
+}
+
 init() {
 	println('Arithmetic')
 	arithmetic(0)
@@ -546,5 +565,7 @@ init() {
 	expression_variables(0)
 	println('Iteration')
 	iteration(0)
+	println('Lambdas')
+	lambdas(0)
 	=> 0
 }
