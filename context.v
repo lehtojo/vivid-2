@@ -105,6 +105,20 @@ Context {
 		connect(parent)
 	}
 
+	init(identity: String, type: normal, profile: tiny) {
+		this.identity = identity
+		this.type = type
+		this.identifier = String.empty
+		this.name = String.empty
+		this.variables = Map<String, Variable>(profile)
+		this.functions = Map<String, FunctionList>(profile)
+		this.types = Map<String, Type>(profile)
+		this.labels = Map<String, Label>(profile)
+		this.subcontexts = List<Context>()
+		this.imports = List<Type>()
+		this.indexer = Indexer()
+	}
+
 	# Summary: Returns the mangled name of this context
 	get_fullname() {
 		if mangle == none {
@@ -402,14 +416,14 @@ Context {
 	merge(context: Context) {
 		# Add all types
 		loop type in context.types {
-			types.add(type.key, type.value)
+			types.try_add(type.key, type.value)
 			type.value.parent = this
 		}
 
 		# Add all functions
 		loop function in context.functions {
 			# If the function can not be added, add all of its overloads
-			if not functions.add(function.key, function.value) {
+			if not functions.try_add(function.key, function.value) {
 				overloads = functions[function.key]
 				
 				# Try to add the overloads separately
@@ -428,7 +442,7 @@ Context {
 
 		# Add all variables
 		loop variable in context.variables {
-			variables.add(variable.key, variable.value)
+			variables.try_add(variable.key, variable.value)
 			variable.value.parent = this
 		}
 
@@ -552,6 +566,7 @@ RuntimeConfiguration {
 		supertypes = List<String>()
 		loop supertype in type.get_all_supertypes() { supertypes.add(supertype.name) }
 
+		builder.append('\\x00')
 		builder.append(String.join(String('\\x00'), supertypes))
 		builder.append('\\x01')
 
@@ -580,8 +595,8 @@ Context Type {
 	destructors: FunctionList = FunctionList()
 	supertypes: List<Type> = List<Type>()
 
-	virtuals: Map<String, FunctionList> = Map<String, FunctionList>()
-	overrides: Map<String, FunctionList> = Map<String, FunctionList>()
+	virtuals: Map<String, FunctionList>
+	overrides: Map<String, FunctionList>
 
 	configuration: RuntimeConfiguration
 
@@ -629,6 +644,8 @@ Context Type {
 		this.modifiers = modifiers
 		this.position = position
 		this.supertypes = List<Type>()
+		this.virtuals = Map<String, FunctionList>()
+		this.overrides = Map<String, FunctionList>()
 
 		add_constructor(Constructor.empty(this, position, position))
 		add_destructor(Destructor.empty(this, position, position))
@@ -642,6 +659,17 @@ Context Type {
 		this.name = name
 		this.identifier = name
 		this.modifiers = modifiers
+		this.virtuals = Map<String, FunctionList>()
+		this.overrides = Map<String, FunctionList>()
+	}
+
+	init(name: String, modifiers: normal, profile: tiny) {
+		Context.init(name, TYPE_CONTEXT, profile)
+		this.name = name
+		this.identifier = name
+		this.modifiers = modifiers
+		this.virtuals = Map<String, FunctionList>(profile)
+		this.overrides = Map<String, FunctionList>(profile)
 	}
 
 	add_runtime_configuration() {

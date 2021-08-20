@@ -4,7 +4,7 @@ Type Number {
 	unsigned => is_unsigned(format)
 
 	init(format: large, bits: normal, name: String) {
-		Type.init(name, MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_NUMBER)
+		Type.init(name, MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_NUMBER, 0)
 		this.reference_size = bits / 8
 		this.format = format
 		this.bits = bits

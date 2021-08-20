@@ -509,8 +509,8 @@ Token {
 		this.type = type
 	}
 
-	match(type: large) {
-		=> this.type == type
+	match(types: large) {
+		=> (this.type & types) != 0
 	}
 
 	string() {

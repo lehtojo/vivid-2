@@ -508,7 +508,28 @@ lambdas(optimization: large) {
 	}
 }
 
+is_expressions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'is.v'))
+	files.add(project_file('libv', 'Math.v'))
+	files.add_range(get_standard_library_utility())
+	compile('is', files, optimization, false)
+
+	log = execute('is')
+}
+
+whens_expressions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'whens.v'))
+	files.add_range(get_standard_library_utility())
+	compile('whens', files, optimization, false)
+
+	log = execute('whens')
+}
+
 init() {
+	println('Whens')
+	whens_expressions(0)
 	println('Arithmetic')
 	arithmetic(0)
 	println('Assignment')
@@ -567,5 +588,7 @@ init() {
 	iteration(0)
 	println('Lambdas')
 	lambdas(0)
+	println('Is')
+	is_expressions(0)
 	=> 0
 }

@@ -453,12 +453,23 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	))
 
 	supertypes = type.get_all_supertypes()
+
+	# Remove supertypes, which cause a configuration variable duplication
+	loop (i = 0, i < supertypes.size, i++) {
+		current = supertypes[i].get_configuration_variable()
+
+		loop (j = supertypes.size - 1, j >= i + 1, j--) {
+			if current != supertypes[j].get_configuration_variable() continue
+			supertypes.remove_at(j)
+		}
+	}
+
 	descriptors = copy_type_descriptors(type, supertypes)
 
 	# Register the runtime configurations
 	loop iterator in descriptors {
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.configuration.variable, position), position),
+			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.get_configuration_variable(), position), position),
 			iterator.value
 		))
 	}
@@ -500,12 +511,23 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 	}
 
 	supertypes = type.get_all_supertypes()
+
+	# Remove supertypes, which cause a configuration variable duplication
+	loop (i = 0, i < supertypes.size, i++) {
+		current = supertypes[i].get_configuration_variable()
+
+		loop (j = supertypes.size - 1, j >= i + 1, j--) {
+			if current != supertypes[j].get_configuration_variable() continue
+			supertypes.remove_at(j)
+		}
+	}
+
 	descriptors = copy_type_descriptors(type, supertypes)
 
 	# Register the runtime configurations
 	loop iterator in descriptors {
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.configuration.variable, position)),
+			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.get_configuration_variable(), position)),
 			iterator.value
 		))
 	}

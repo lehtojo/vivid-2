@@ -7,7 +7,7 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/build/v",
 			"cwd": "${workspaceRoot}",
-			"programArgs": "${workspaceRoot}/run/Run.v"
+			"programArgs": "${workspaceRoot}/tests/is.v ${workspaceRoot}/libv/ ${workspaceRoot}/tests/assert.v -o v"
 		},
 	]
 }

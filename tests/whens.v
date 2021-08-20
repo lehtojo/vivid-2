@@ -73,8 +73,36 @@ export range_when(x: large) {
 }
 
 init() {
-	numerical_when(0)
+	are_equal(49, numerical_when(7))
+	are_equal(9, numerical_when(3))
+	are_equal(-1, numerical_when(1))
+
+	are_equal(42, numerical_when(42))
+	are_equal(-100, numerical_when(-100))
+	are_equal(0, numerical_when(0))
+
+	are_equal(0, string_when(String('Foo')))
+	are_equal(1, string_when(String('Bar')))
+	are_equal(2, string_when(String('Baz')))
+	are_equal(-1, string_when(String('Bababui')))
+
 	boo = create_boo()
-	is_when(boo)
+	baba = create_baba(42)
+	bui = create_bui(777)
+	bababui = create_bababui(-123, 321)
+
+	are_equal(-1, is_when(boo))
+	are_equal(1764, is_when(baba))
+	are_equal(1554, is_when(bui))
+	are_equal(4856409, is_when(bababui))
+
+	are_equal(10, range_when(10))
+	are_equal(121, range_when(11))
+	are_equal(10000, range_when(100))
+	are_equal(-6, range_when(-6))
+	are_equal(-14, range_when(-7))
+	are_equal(-16, range_when(-8))
+	are_equal(-84, range_when(-42))
+	are_equal(3, range_when(3))
 	=> 1
 }

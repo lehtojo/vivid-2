@@ -343,8 +343,6 @@ Pattern IfPattern {
 }
 
 Pattern ElsePattern {
-	constant ELSE = 0
-
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
@@ -353,7 +351,23 @@ Pattern ElsePattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if tokens[ELSE].(KeywordToken).keyword != Keywords.ELSE => false
+		# Ensure there is an (else) if-statement before this else-statement
+		if state.start == 0 => false
+		token = state.all[state.start - 1]
+
+		# If the previous token represents an (else) if-statement, just continue
+		if token.type != TOKEN_TYPE_DYNAMIC or not token.(DynamicToken).node.match(NODE_IF | NODE_ELSE_IF) {
+			# The previous token must be a line ending in order for this pass function to succeed
+			if token.type != TOKEN_TYPE_END or state.start == 1 => false
+
+			# Now, the token before the line ending must be an (else) if-statement in order for this pass function to succeed
+			token = state.all[state.start - 2]
+			if token.type != TOKEN_TYPE_DYNAMIC or not token.(DynamicToken).node.match(NODE_IF | NODE_ELSE_IF) => false
+		}
+
+		# Ensure the keyword is the else-keyword
+		if tokens[0].(KeywordToken).keyword != Keywords.ELSE => false
+
 		next = state.peek()
 		if next == none => false
 		if next.match(`{`) state.consume()
@@ -361,7 +375,7 @@ Pattern ElsePattern {
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
-		start = tokens[ELSE].position
+		start = tokens[0].position
 		end = none as Position
 
 		body = none as List<Token>
@@ -506,6 +520,8 @@ Pattern LinkPattern {
 }
 
 Pattern ListPattern {
+	static constant ID = 1
+
 	constant LEFT = 0
 	constant COMMA = 2
 	constant RIGHT = 4
@@ -519,6 +535,7 @@ Pattern ListPattern {
 		path.add(TOKEN_TYPE_OBJECT)
 
 		priority = 0
+		id = ID
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1193,7 +1210,7 @@ Pattern SectionModificationPattern {
 			section.add(target)
 
 			# Static variables are categorized as global variables
-			if has_flag(modifiers, MODIFIER_STATIC) { variable.category = VARIABLE_CATEGORY_GLOBAL }
+			if has_flag(section.modifiers, MODIFIER_STATIC) { variable.category = VARIABLE_CATEGORY_GLOBAL }
 		}
 		else target.instance == NODE_FUNCTION_DEFINITION {
 			function = target.(FunctionDefinitionNode).function
@@ -2453,12 +2470,12 @@ Pattern WhenPattern {
 				body = parser.parse(context, parenthesis.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 			}
 			else {
-				# Consume the section body
+				# Consume the section body, but disable the list pattern so that commas at the end of sections do not join anything
 				state = ParserState()
 				state.all = tokens
 				result = List<Token>()
 
-				error = common.consume_block(state, result)
+				error = common.consume_block(state, result, ListPattern.ID)
 
 				if error != none {
 					state.error = error

@@ -86,6 +86,7 @@ constant PRIORITY_ALL = -1
 Pattern {
 	path: List<small> = List<small>()
 	priority: tiny
+	id: large
 
 	virtual passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny): bool
 	virtual build(context: Context, state: ParserState, tokens: List<Token>): Node
@@ -226,6 +227,22 @@ next(context: Context, tokens: List<Token>, priority: normal, start: large, stat
 		# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
 		loop (i = 0, i < all.size, i++) {
 			pattern = all[i]
+			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) => true
+		}
+	}
+
+	=> false
+}
+
+# Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
+next(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState, disabled: large) {
+	all = patterns[priority]
+
+	loop (start < tokens.size, start++) {
+		# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
+		loop (i = 0, i < all.size, i++) {
+			pattern = all[i]
+			if (disabled & pattern.id) != 0 continue
 			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) => true
 		}
 	}

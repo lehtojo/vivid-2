@@ -1853,7 +1853,8 @@ DualParameterInstruction BitwiseInstruction {
 			)
 		}
 
-		if first.is_memory_address and assigns => build_shift_x64()
+		# TODO: Add unsigned versions
+		if instruction == instructions.x64.SHIFT_LEFT or instruction == instructions.x64.SHIFT_RIGHT => build_shift_x64()
 		
 		flags = FLAG_DESTINATION
 		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }

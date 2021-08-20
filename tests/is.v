@@ -175,6 +175,35 @@ init() {
 	set(array, car, 2)
 	set(array, banana, 3)
 
+	are_equal(false, can_use(john, pig))
+	are_equal(false, can_use(john, bus))
+	are_equal(true, can_use(john, car))
+	are_equal(false, can_use(john, banana))
+
+	are_equal(true, can_use(max, pig))
+	are_equal(false, can_use(max, bus))
+	are_equal(false, can_use(max, car))
+	are_equal(false, can_use(max, banana))
+
+	are_equal(false, can_use(gabe, pig))
+	are_equal(true, can_use(gabe, bus))
+	are_equal(true, can_use(gabe, car))
+	are_equal(false, can_use(gabe, banana))
+
+	are_equal(true, can_use(steve, pig))
+	are_equal(false, can_use(steve, bus))
+	are_equal(false, can_use(steve, car))
+	are_equal(false, can_use(steve, banana))
+
 	get_reliable_vehicles(array, -1000000)
-	=> true
+
+	vehicles = get_reliable_vehicles(array, 10)
+
+	are_equal(car as Vehicle as link, choose_vehicle(john, vehicles, 7000) as link)
+	are_equal(car as Vehicle as link, choose_vehicle(max, vehicles, 1000) as link)
+	are_equal(car as Vehicle as link, choose_vehicle(gabe, vehicles, 3000) as link)
+
+	vehicle = choose_vehicle(steve, vehicles, 3000)
+
+	are_equal(true, is_pig(vehicle))
 }

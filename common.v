@@ -228,6 +228,10 @@ find_condition(start) {
 }
 
 consume_block(from: ParserState, destination: List<Token>) {
+	=> consume_block(from, destination, 0)
+}
+
+consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 	# Return an empty list, if there is nothing to be consumed
 	if from.end >= from.all.size => none as Status
 
@@ -242,7 +246,7 @@ consume_block(from: ParserState, destination: List<Token>) {
 
 	loop (priority = parser.MAX_FUNCTION_BODY_PRIORITY, priority >= parser.MIN_PRIORITY, priority--) {
 		loop {
-			if not parser.next(context, tokens, priority, 0, state) stop
+			if not parser.next(context, tokens, priority, 0, state, disabled) stop
 			
 			state.error = none
 			node = state.pattern.build(context, state, state.tokens)
@@ -514,7 +518,6 @@ get_all_visible_functions(context: Context) {
 		loop a in type.functions { functions.add_range(a.value.overloads) }
 		loop b in type.virtuals { functions.add_range(b.value.overloads) }
 		loop c in type.overrides { functions.add_range(c.value.overloads) }
-		loop d in context.functions { functions.add_range(d.value.overloads) }
 
 		functions.add_range(type.constructors.overloads)
 		functions.add_range(type.destructors.overloads)
@@ -536,7 +539,6 @@ get_all_function_implementations(context: Context) {
 		loop a in type.functions { functions.add_range(a.value.overloads) }
 		loop b in type.virtuals { functions.add_range(b.value.overloads) }
 		loop c in type.overrides { functions.add_range(c.value.overloads) }
-		loop d in context.functions { functions.add_range(d.value.overloads) }
 
 		functions.add_range(type.constructors.overloads)
 		functions.add_range(type.destructors.overloads)
@@ -556,17 +558,7 @@ get_all_function_implementations(context: Context) {
 		}
 	}
 
-	# Remove all implementation duplicates
-	loop (i = 0, i < implementations.size, i++) {
-		implementation = implementations[i]
-
-		loop (j = implementations.size - 1, j > i, j--) {
-			if implementation != implementations[j] continue
-			implementations.remove_at(j)
-		}
-	}
-
-	=> implementations
+	=> implementations.distinct()
 }
 
 # Summary: Returns whether the specified is edited

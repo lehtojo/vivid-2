@@ -33,7 +33,7 @@ get_variable(unit: Unit, variable: Variable, mode: large) {
 }
 
 get_variable(unit: Unit, node: VariableNode, mode: large) {
-	if node.variable.is_member {
+	if node.variable.is_member and not node.variable.is_static {
 		if unit.self == none abort('Missing self pointer')
 
 		self = VariableNode(unit.self, node.start)
