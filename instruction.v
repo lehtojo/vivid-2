@@ -479,8 +479,8 @@ Instruction {
 		all = List<Result>()
 		loop parameter in parameters { all.add(parameter.result) }
 
-		if dependencies == none all.add_range(get_dependencies())
-		else all.add_range(dependencies)
+		if dependencies == none { all.add_range(get_dependencies()) }
+		else { all.add_range(dependencies) }
 		
 		=> all
 	}

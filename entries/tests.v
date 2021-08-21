@@ -537,8 +537,6 @@ conversions(optimization: large) {
 }
 
 init() {
-	println('Whens')
-	whens_expressions(0)
 	println('Arithmetic')
 	arithmetic(0)
 	println('Assignment')
@@ -599,5 +597,7 @@ init() {
 	lambdas(0)
 	println('Is')
 	is_expressions(0)
+	println('Whens')
+	whens_expressions(0)
 	=> 0
 }

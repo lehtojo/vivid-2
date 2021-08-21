@@ -877,7 +877,6 @@ Node LoopNode {
 	action => first.last
 
 	scope: Scope
-	continue_label: Label
 	start_label: Label
 	exit_label: Label
 
@@ -899,10 +898,9 @@ Node LoopNode {
 		add(body)
 	}
 
-	init(context: Context, position: Position, continue_label: Label, start_label: Label, exit_label: Label) {
+	init(context: Context, position: Position, start_label: Label, exit_label: Label) {
 		this.context = context
 		this.start = position
-		this.continue_label = continue_label
 		this.start_label = start_label
 		this.exit_label = exit_label
 		this.instance = NODE_LOOP
@@ -921,7 +919,7 @@ Node LoopNode {
 	}
 
 	override copy() {
-		=> LoopNode(context, start, continue_label, start_label, exit_label)
+		=> LoopNode(context, start, start_label, exit_label)
 	}
 
 	override string() {

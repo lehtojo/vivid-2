@@ -13,7 +13,7 @@
 				"${workspaceFolder}/entries/vivid.v",
 				"${workspaceFolder}/libv/",
 				"${workspaceFolder}/libv/linux_x64/io.v",
-				"-d",
+				"-a",
 				"-f",
 				"-o",
 				"v"
@@ -37,7 +37,6 @@
 				"${workspaceFolder}/libv/",
 				"${workspaceFolder}/libv/linux_x64/io.v",
 				"-a",
-				"-d",
 				"-f",
 				"-o",
 				"v"

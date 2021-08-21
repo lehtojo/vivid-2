@@ -4,29 +4,51 @@ namespace loops
 build_command(unit: Unit, node: CommandNode) {
 	if node.container == none abort('Loop command was not inside a loop')
 
-	# TODO: Support conditions
-	#if node.condition != none arithmetic.build_condition(unit, node.condition)
-
-	unit.add(MergeScopeInstruction(unit, node.container.scope))
-
-	label = none as Label
+	scope = node.container.scope
 
 	if node.instruction == Keywords.STOP {
+		# TODO: Support conditions
+		#if node.condition != none arithmetic.build_condition(unit, node.condition)
+
+		unit.add(MergeScopeInstruction(unit, scope))
 		label = node.container.exit_label
+
+		# TODO: Support conditions
+		#if node.condition != none => JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
+
+		=> JumpInstruction(unit, label).add()
 	}
 	else node.instruction == Keywords.CONTINUE {
-		label = node.container.continue_label
+		statement = node.container
+		start = statement.start_label
+
+		if statement.is_forever_loop {
+			unit.add(MergeScopeInstruction(unit, scope))
+			=> JumpInstruction(unit, start).add()
+		}
+
+		# Build the nodes around the actual condition by disabling the condition temporarily
+		instance = statement.condition.instance
+		statement.condition.instance = NODE_DISABLED
+
+		# Initialization of the condition might happen multiple times, therefore inner labels can duplicate
+		inlines.localize_labels(unit.function, statement.initialization.next)
+
+		builders.build(unit, statement.initialization.next)
+
+		statement.condition.instance = instance
+
+		# Prepare for starting the loop again potentially
+		unit.add(MergeScopeInstruction(unit, scope))
+
+		# Build the actual condition
+		exit = statement.exit_label
+		build_end_condition(unit, statement.condition, start, exit)
+
+		=> Result()
 	}
-	else {
-		abort('Unknown loop command')
-	}
 
-	if label == none abort('Missing command node label')
-
-	# TODO: Support conditions
-	#if node.condition != none => JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
-
-	=> JumpInstruction(unit, label).add()
+	abort('Unknown loop command')
 }
 
 # Summary: Builds the body of the specified loop without any of the steps
@@ -77,7 +99,7 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction, active
 	instance = statement.condition.instance
 	statement.condition.instance = NODE_DISABLED
 
-	# Initialization of the condition happens twice, therefore inner labels can duplicate
+	# Initialization of the condition might happen multiple times, therefore inner labels can duplicate
 	inlines.localize_labels(unit.function, statement.initialization.next)
 
 	builders.build(unit, statement.initialization.next)
@@ -108,7 +130,6 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 
 	# Register the start and exit label to the loop for control keywords
 	statement.start_label = unit.get_next_label()
-	statement.continue_label = statement.start_label
 	statement.exit_label = unit.get_next_label()
 
 	# Append the start label
@@ -153,14 +174,6 @@ build(unit: Unit, statement: LoopNode) {
 	contexts.add(statement.body.context)
 	Scope.load_constants(unit, statement, contexts)
 
-	# Try to find a loop control node which targets the current loop
-	# If even one is found, this loop needs a continue label
-	if statement.body.find(i -> i.instance == NODE_COMMAND and i.(CommandNode).instruction == Keywords.CONTINUE and i.(CommandNode).container == statement) != none {
-		# Append a label which can be used by the continue-commands
-		statement.continue_label = unit.get_next_label()
-		unit.add(LabelInstruction(unit, statement.continue_label))
-	}
-
 	# Build the nodes around the actual condition by disabling the condition temporarily
 	instance = statement.condition.instance
 	statement.condition.instance = NODE_DISABLED
@@ -185,10 +198,17 @@ build(unit: Unit, statement: LoopNode) {
 
 # Summary: Builds the the specified condition which should be placed at the end of a loop
 build_end_condition(unit: Unit, condition: Node, success: Label) {
-	failure = unit.get_next_label()
+	=> build_end_condition(unit, condition, success, none as Label)
+}
 
-	instructions = conditionals.build_condition(unit, condition, success, failure)
-	instructions.add(LabelInstruction(unit, failure))
+# Summary: Builds the the specified condition which should be placed at the end of a loop
+build_end_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
+	exit = unit.get_next_label()
+
+	instructions = conditionals.build_condition(unit, condition, success, exit)
+	instructions.add(LabelInstruction(unit, exit))
+
+	if failure != none instructions.add(JumpInstruction(unit, failure))
 
 	conditionals.build_condition_instructions(unit, instructions, unit.scope.actives)
 }
