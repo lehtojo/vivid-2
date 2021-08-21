@@ -527,6 +527,15 @@ whens_expressions(optimization: large) {
 	log = execute('whens')
 }
 
+conversions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'conversions.v'))
+	files.add_range(get_standard_library_utility())
+	compile('conversions', files, optimization, false)
+
+	log = execute('conversions')
+}
+
 init() {
 	println('Whens')
 	whens_expressions(0)
@@ -538,8 +547,6 @@ init() {
 	bitwise(0)
 	println('Conditionally changing constant')
 	conditionally_changing_constant(0)
-	#println('Conversions')
-	#conversions(0)
 	println('Conditionals')
 	conditionals_statements(0)
 	println('Constant permanence')
@@ -582,6 +589,8 @@ init() {
 	extensions(0)
 	println('Virtuals')
 	virtuals(0)
+	println('Conversions')
+	conversions(0)
 	println('Expression variables')
 	expression_variables(0)
 	println('Iteration')

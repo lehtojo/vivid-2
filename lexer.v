@@ -231,7 +231,7 @@ namespace Operators {
 		ASSIGN_MODULUS = AssignmentOperator(String('%='), MODULUS, 1)
 		ASSIGN_BITWISE_AND = AssignmentOperator(String('&='), BITWISE_AND, 1)
 		ASSIGN_BITWISE_XOR = AssignmentOperator(String('\xA4='), BITWISE_XOR, 1)
-		ASSIGN_BITWISE_OR = AssignmentOperator(String('|='), ASSIGN_BITWISE_OR, 1)
+		ASSIGN_BITWISE_OR = AssignmentOperator(String('|='), BITWISE_OR, 1)
 		EXCLAMATION = IndependentOperator(String('!'))
 		COMMA = IndependentOperator(String(','))
 		DOT = IndependentOperator(String('.'))

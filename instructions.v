@@ -1738,6 +1738,11 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	override on_build() {
+		# Assign the result after this instruction, if the destination is a memory address
+		if assigns and first.is_memory_address {
+			unit.add(MoveInstruction(unit, first, result), true)
+		}
+
 		if settings.is_x64 => on_build_x64()
 	}
 }

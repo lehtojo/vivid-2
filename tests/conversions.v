@@ -274,14 +274,14 @@ init() {
 	are_equal(104.0, result.e)
 
 	baz = create_baz()
-	are_equal(baz, casts_5(baz))
-	are_equal(baz + 11, casts_6(baz))
+	are_equal(baz as link, casts_5(baz) as link)
+	are_equal(baz as Bar as link, casts_6(baz) as link)
 
 	baz.e = -3.0
-	are_not_equal(baz + 11, automatic_cast_1(baz))
+	are_not_equal(baz as Bar as link, automatic_cast_1(baz) as link)
 
 	baz.e = 2.5
-	are_equal(baz + 11, automatic_cast_1(baz))
+	are_equal(baz as Bar as link, automatic_cast_1(baz) as link)
 
 	baz.a = 10
 	baz.b = 1000
@@ -294,11 +294,11 @@ init() {
 	are_equal(505.0, automatic_cast_2(baz))
 
 	(baz as link<decimal>)[0] = 3.14159
-	are_equal((bytes as link<tiny>)[0], automatic_conversion_1(baz))
-	are_equal((bytes as link<small>)[0], automatic_conversion_2(baz))
-	are_equal((bytes as link<normal>)[0], automatic_conversion_3(baz))
-	are_equal((bytes as link<large>)[0], automatic_conversion_4(baz))
-	are_equal(3, automatic_conversion_5(baz))
+	are_equal((baz as link<tiny>)[0], automatic_conversion_1(baz as link<tiny>))
+	are_equal((baz as link<small>)[0], automatic_conversion_2(baz as link<small>))
+	are_equal((baz as link<normal>)[0], automatic_conversion_3(baz as link<normal>))
+	are_equal((baz as link<large>)[0], automatic_conversion_4(baz as link<large>))
+	are_equal(3, automatic_conversion_5(baz as link<decimal>))
 
 	are_equal(0, automatic_conversion_1(none as link))
 	are_equal(0, automatic_conversion_2(none as link))
@@ -307,7 +307,7 @@ init() {
 	are_equal(0, automatic_conversion_5(none as link))
 
 	b = B()
-	b.a = 66
+	b.x = 66
 	b.y = 33
 	b.z = 99.99
 
