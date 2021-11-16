@@ -1936,7 +1936,7 @@ Type UnresolvedType {
 		this.is_resolved = false
 	}
 
-	resolve(context: Context) {
+	virtual resolve(context: Context) {
 		environment = context
 
 		loop component in components {
