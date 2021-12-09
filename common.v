@@ -655,7 +655,7 @@ get_bits(value: large, is_decimal: bool) {
 # Summary: Returns whether the specified integer fulfills the following equation:
 # x = 2^y where y is an integer constant
 is_power_of_two(value: large) {
-	=> (value & [value - 1]) == 0
+	=> (value & (value - 1)) == 0
 }
 
 integer_log2(value: large) {

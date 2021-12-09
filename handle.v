@@ -652,7 +652,7 @@ Handle ExpressionHandle {
 	}
 
 	validate() {
-		if (multiplicand.is_standard_register or multiplicand.is_constant) and (addition == none or [addition.is_standard_register or addition.is_constant]) and multiplier > 0 return
+		if (multiplicand.is_standard_register or multiplicand.is_constant) and (addition == none or (addition.is_standard_register or addition.is_constant)) and multiplier > 0 return
 		abort('Invalid expression handle')
 	}
 

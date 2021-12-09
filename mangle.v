@@ -233,12 +233,12 @@ Mangle {
 
 	add(types: List<Type>) {
 		loop type in types {
-			add(type, [not type.is_primitive] as large, true)
+			add(type, (not type.is_primitive) as large, true)
 		}
 	}
 
 	add(type: Type) {
-		add(type, [not type.is_primitive] as large, true)
+		add(type, (not type.is_primitive) as large, true)
 	}
 
 	clone() {

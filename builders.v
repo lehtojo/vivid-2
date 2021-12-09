@@ -53,7 +53,7 @@ compute_reciprocal(divider: large) {
 
 		if r >= divider {
 			a = x
-			result = result | (1 <| [63 - i])
+			result = result | (1 <| (63 - i))
 		}
 
 		a *= 2

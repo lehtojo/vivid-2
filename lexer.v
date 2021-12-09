@@ -877,7 +877,7 @@ has_flag(flags: large, flag: large) {
 # Summary: Removes the exponent or the number type from the specified string
 private get_number_part(text: String) {
 	i = 0
-	loop (i < text.length and [is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR], i++) {}
+	loop (i < text.length and (is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR), i++) {}
 	=> text.slice(0, i)
 }
 

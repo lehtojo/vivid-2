@@ -1724,7 +1724,7 @@ get_bytes<T>(value: T) {
 	loop (i = 0, i < sizeof(T), i++) {
 		slide = i * 8
 		mask = 255 <| slide
-		bytes.add([value & mask] |> slide)
+		bytes.add((value & mask) |> slide)
 	}
 
 	=> bytes
@@ -2031,7 +2031,7 @@ assemble(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_OBJECTS)) as Optional<List<String>> has objects) => Status('Missing object files')
 
 	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
-	output_name = String(bundle.get_object(String(BUNDLE_OUTPUT_NAME), 'v'))
+	output_name = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String('v') as link) as String
 
 	assemblies = assemble(parse.context, files.to_list(), output_type)
 

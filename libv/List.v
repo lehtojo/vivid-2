@@ -41,7 +41,7 @@ List<T> {
 	# Summary: Creates an empty list
 	init() {
 		elements = allocate(sizeof(T))
-		elements[0] = 0 as T
+		elements[0] = 0
 
 		capacity = 1
 		position = 0
@@ -76,7 +76,7 @@ List<T> {
 		# Ensure there is enough space left
 		if capacity - position < count {
 			# Double the size needed for the result in order to prepare for more elements in the future
-			grow([capacity + count] * 2)
+			grow((capacity + count) * 2)
 		}
 
 		# Copy the new elements to the memory after the already existing elements
@@ -109,7 +109,7 @@ List<T> {
 		# Ensure there is enough space left
 		if capacity - position < count {
 			# Double the size needed for the result in order to prepare for more elements in the future
-			grow([capacity + count] * 2)
+			grow((capacity + count) * 2)
 		}
 
 		# Determine the address where the new elements should be inserted

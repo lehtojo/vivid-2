@@ -576,7 +576,7 @@ find_bool_values(root: Node) {
 	result = List<Node>()
 
 	loop candidate in candidates {
-		node = candidate.find_parent(i -> [not i.match(NODE_INLINE | NODE_PARENTHESIS)])
+		node = candidate.find_parent(i -> (not i.match(NODE_INLINE | NODE_PARENTHESIS)))
 
 		# Skip the current candidate, if it represents a statement condition
 		if common.is_statement(node) or node.match(NODE_NORMAL) or common.is_condition(candidate) continue
@@ -687,7 +687,7 @@ try_rewrite_as_assignment_operator(edit: Node) {
 # Summary: Ensures all edits under the specified node are assignments
 # Example: a += 1 => a = a + 1
 rewrite_edits_as_assignments(root: Node) {
-	edits = root.find_all(i -> i.match(NODE_INCREMENT | NODE_DECREMENT) or [i.instance == NODE_OPERATOR and i.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT])
+	edits = root.find_all(i -> i.match(NODE_INCREMENT | NODE_DECREMENT) or (i.instance == NODE_OPERATOR and i.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT))
 
 	loop edit in edits {
 		replacement = try_rewrite_as_assignment_operator(edit)

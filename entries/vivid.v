@@ -58,7 +58,7 @@ init() {
 	if result.problematic complain(result)
 
 	end = time()
-	print(to_string([end - start] / 10000.0))
+	print(to_string((end - start) / 10000.0))
 	println(' ms')
 	=> 0
 }
