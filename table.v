@@ -52,10 +52,10 @@ TableItem TableReferenceTableItem {
 }
 
 LabelOffset {
-	from: Label
-	to: Label
+	from: TableLabel
+	to: TableLabel
 
-	init(from: Label, to: Label) {
+	init(from: TableLabel, to: TableLabel) {
 		this.from = from
 		this.to = to
 	}
@@ -98,10 +98,20 @@ TableItem TableLabelTableItem {
 	}
 }
 
+TABLE_MARKER_NONE = 0
+TABLE_MARKER_TEXTUAL_ASSEMBLY = 1
+TABLE_MARKER_DATA_ENCODER = 2
+
 Table {
 	name: String
 	label: Label
-	is_built: bool = false
+
+	# Summary:
+	# This is used to determine whether the table has been processed.
+	# Bool is not enough, because there can be multiple runs and we do not want to reset all the tables before each run.
+	marker: large = 0
+
+
 	is_section: bool = false
 	items: List<TableItem> = List<TableItem>()
 	subtables: large = 0

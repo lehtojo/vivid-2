@@ -144,7 +144,7 @@ get_memory_address_count(assembly: String) {
 		if end == -1 continue
 
 		# Evaluation instructions do not access memory, they evaluate the 'memory address'
-		if line.index_of(instructions.x64.EVALUATE) != -1 continue
+		if line.index_of(platform.x64.EVALUATE) != -1 continue
 
 		count++
 	}
@@ -308,15 +308,15 @@ special_multiplications(optimization: large) {
 	assembly = load_assembly_output('special_multiplications')
 
 	if settings.is_x64 {
-		are_equal(1, count_of(assembly, instructions.x64.SIGNED_MULTIPLY, none as link))
-		are_equal(1, count_of(assembly, instructions.x64.SHIFT_LEFT, none as link))
-		are_equal(1, count_of(assembly, instructions.x64.EVALUATE, none as link))
-		are_equal(1, count_of(assembly, instructions.x64.SHIFT_RIGHT, none as link))
+		are_equal(1, count_of(assembly, platform.x64.SIGNED_MULTIPLY, none as link))
+		are_equal(1, count_of(assembly, platform.x64.SHIFT_LEFT, none as link))
+		are_equal(1, count_of(assembly, platform.x64.EVALUATE, none as link))
+		are_equal(1, count_of(assembly, platform.x64.SHIFT_RIGHT, none as link))
 	}
 	else {
-		are_equal(1, count_of(assembly, instructions.arm64.SHIFT_LEFT, '#1'))
-		are_equal(2, count_of(assembly, instructions.shared.ADD, 'lsl #'))
-		are_equal(1, count_of(assembly, instructions.arm64.SHIFT_RIGHT, '#2'))
+		are_equal(1, count_of(assembly, platform.arm64.SHIFT_LEFT, '#1'))
+		are_equal(2, count_of(assembly, platform.shared.ADD, 'lsl #'))
+		are_equal(1, count_of(assembly, platform.arm64.SHIFT_RIGHT, '#2'))
 	}
 }
 

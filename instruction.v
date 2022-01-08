@@ -40,6 +40,11 @@ INSTRUCTION_SET_VARIABLE = 39
 INSTRUCTION_SINGLE_PARAMATER = 40
 INSTRUCTION_SUBTRACT = 41
 INSTRUCTION_SINGLE_PARAMETER = 42
+INSTRUCTION_DEBUG_START = 43
+INSTRUCTION_DEBUG_FRAME_OFFSET = 44
+INSTRUCTION_DEBUG_END = 45
+INSTRUCTION_ALLOCATE_REGISTER = 46
+INSTRUCTION_CREATE_PACK = 47
 
 FLAG_NONE = 0
 FLAG_DESTINATION = 1025 # WRITES | 1
@@ -109,11 +114,6 @@ InstructionParameter {
 		=> types & mask
 	}
 
-	set_precise(precise) {
-		if value == none return
-		value.is_precise = precise
-	}
-
 	is_valid() {
 		if not has_flag(types, result.value.type) => false
 
@@ -157,9 +157,13 @@ Instruction {
 
 	# Controls whether the unit is allowed to load operands into registers while respecting the constraints
 	is_usage_analyzed: bool = true
+	# Tells whether this instruction is built
+	is_built: bool = false
 	# Tells whether the instruction is abstract. Abstract instructions will not translate into real assembly instructions
 	is_abstract: bool = false
-	
+	# Tells whether the instruction is built manually using textual assembly. This helps the assembler by telling it to use the assembly code parser.
+	is_manual: bool = false
+
 	destination() {
 		loop parameter in parameters {
 			if parameter.is_destination => parameter
@@ -179,6 +183,7 @@ Instruction {
 	init(unit: Unit, type: large) {
 		this.unit = unit
 		this.type = type
+		this.operation = String.empty
 		this.result = Result()
 		this.dependencies = List<Result>()
 		this.dependencies.add(result)
@@ -293,12 +298,12 @@ Instruction {
 
 			# If the value will be used later in the future and the register situation is good, the value can be moved to a register
 			if has_flag(options, HANDLE_REGISTER) {
-				if is_usage_analyzed and not parameter.result.is_deactivating() and unit.get_next_register_without_releasing() != none {
+				if is_usage_analyzed and not parameter.is_destination and not parameter.result.is_deactivating() and unit.get_next_register_without_releasing() != none {
 					=> memory.move_to_register(unit, parameter.result, parameter.size, false, directives)
 				}
 			}
 			else has_flag(options, HANDLE_MEDIA_REGISTER) {
-				if is_usage_analyzed and not parameter.result.is_deactivating() and unit.get_next_media_register_without_releasing() != none {
+				if is_usage_analyzed and not parameter.is_destination and not parameter.result.is_deactivating() and unit.get_next_media_register_without_releasing() != none {
 					=> memory.move_to_register(unit, parameter.result, parameter.size, true, directives)
 				}
 			}
@@ -326,6 +331,7 @@ Instruction {
 	# Summary: Builds the given operation without any processing
 	build(operation: String) {
 		this.operation = operation
+		this.is_manual = true
 	}
 
 	build(operation: link, size: large) {
@@ -438,18 +444,13 @@ Instruction {
 		builder = StringBuilder()
 		builder.append(operation.text)
 
-		# Each parameter must be configured to display their sizes
-		loop parameter in parameters {
-			parameter.set_precise(true)
-		}
-
 		added = false
 
 		loop parameter in parameters {
 			if parameter.is_hidden continue
 			
 			value = parameter.value.string()
-			if value.length == 0 abort('Instruction parameter could not be converted into text')
+			if value.length == 0 abort('Instruction parameter could not be converted into assembly')
 			
 			builder.append(' ')
 			builder.append(value)

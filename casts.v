@@ -27,7 +27,7 @@ build(unit: Unit, node: CastNode, mode: large) {
 	from = node.first.get_type()
 	to = node.get_type()
 
-	result = references.get(unit, node.first, mode)
+	result = references.get(unit, node.first, mode) as Result
 
 	# Number casts:
 	if from.is_number and to.is_number {

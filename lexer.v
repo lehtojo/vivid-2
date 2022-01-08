@@ -40,6 +40,8 @@ MODIFIER_PRIMITIVE = 4096
 MODIFIER_NUMBER = 8192
 MODIFIER_FUNCTION_TYPE = 16384
 MODIFIER_ARRAY_TYPE = 32768
+MODIFIER_PLAIN = 65536
+MODIFIER_PACK = 196608 # 131072 | MODIFIER_PLAIN
 
 MODIFIER_DEFAULT = 1 # MODIFIER_PUBLIC
 
@@ -80,8 +82,9 @@ TEXT_TYPE_OPERATOR = 3
 TEXT_TYPE_COMMENT = 4
 TEXT_TYPE_STRING = 5
 TEXT_TYPE_CHARACTER = 6
-TEXT_TYPE_END = 7
-TEXT_TYPE_UNSPECIFIED = 8
+TEXT_TYPE_HEXADECIMAL = 7
+TEXT_TYPE_END = 8
+TEXT_TYPE_UNSPECIFIED = 9
 
 POSITIVE_INFINITY_CONSTANT = 'POSITIVE_INFINITY'
 NEGATIVE_INFINITY_CONSTANT = 'NEGATIVE_INFINITY'
@@ -182,8 +185,8 @@ namespace Operators {
 	# NOTE: The user should not be able to use this operator since it is meant for internal usage
 	readonly ATOMIC_EXCHANGE_ADD: ClassicOperator
 
-	private all: Map<String, Operator>
-	private assignment_operators: Map<String, AssignmentOperator>
+	public all: Map<String, Operator>
+	public assignment_operators: Map<String, AssignmentOperator>
 	
 	public operator_overloads: Map<Operator, String>
 
@@ -361,6 +364,8 @@ namespace Keywords {
 	readonly NOT: Keyword
 	readonly OUTLINE: Keyword
 	readonly OVERRIDE: Keyword
+	readonly PACK: Keyword
+	readonly PLAIN: Keyword
 	readonly PRIVATE: Keyword
 	readonly PROTECTED: Keyword
 	readonly PUBLIC: Keyword
@@ -397,6 +402,8 @@ namespace Keywords {
 		NAMESPACE = ModifierKeyword(String('namespace'), MODIFIER_CONSTANT)
 		NOT = Keyword(String('not'), KEYWORD_TYPE_NORMAL)
 		OUTLINE = ModifierKeyword(String('outline'), MODIFIER_OUTLINE)
+		PACK = ModifierKeyword(String('pack'), MODIFIER_PACK)
+		PLAIN = ModifierKeyword(String('plain'), MODIFIER_PLAIN)
 		OVERRIDE = Keyword(String('override'), KEYWORD_TYPE_NORMAL)
 		PRIVATE = ModifierKeyword(String('private'), MODIFIER_PRIVATE)
 		PROTECTED = ModifierKeyword(String('protected'), MODIFIER_PROTECTED)
@@ -428,6 +435,7 @@ namespace Keywords {
 		add(NOT)
 		add(OUTLINE)
 		add(OVERRIDE)
+		add(PACK)
 		add(PRIVATE)
 		add(PROTECTED)
 		add(PUBLIC)
@@ -458,6 +466,14 @@ Position {
 
 	friendly_line => line + 1
 	friendly_character => character + 1
+
+	init(file: SourceFile, line: normal, character: normal) {
+		this.file = file
+		this.line = line
+		this.character = character
+		this.local = 0
+		this.absolute = 0
+	}
 
 	init(line: normal, character: normal, local: normal, absolute: normal) {
 		this.line = line
@@ -1017,6 +1033,11 @@ mixes(a: char, b: char) {
 	=> true
 }
 
+# Summary: Returns whether the characters represent a start of a hexadecimal number
+is_start_of_hexadecimal(current: char, next: char) {
+	=> current == `0` and next == `x`
+}
+
 # Summary: Returns whether the character is a text
 is_text(i: char) {
 	=> (i >= `a` and i <= `z`) or (i >= `A` and i <= `Z`) or (i == `_`)
@@ -1043,29 +1064,36 @@ is_character_value(i: char) {
 }
 
 # Summary: Returns the type of the specified character
-get_text_type(i: char) {
-	if is_text(i) => TEXT_TYPE_TEXT
-	if is_digit(i) => TEXT_TYPE_NUMBER
-	if is_parenthesis(i) => TEXT_TYPE_PARENTHESIS
-	if is_operator(i) => TEXT_TYPE_OPERATOR
-	if is_comment(i) => TEXT_TYPE_COMMENT
-	if is_string(i) => TEXT_TYPE_STRING
-	if is_character_value(i) => TEXT_TYPE_CHARACTER
-	if i == LINE_ENDING => TEXT_TYPE_END
+get_text_type(current: char, next: char) {
+	if is_text(current) => TEXT_TYPE_TEXT
+	if is_start_of_hexadecimal(current, next) => TEXT_TYPE_HEXADECIMAL
+	if is_digit(current) => TEXT_TYPE_NUMBER
+	if is_parenthesis(current) => TEXT_TYPE_PARENTHESIS
+	if is_operator(current) => TEXT_TYPE_OPERATOR
+	if is_comment(current) => TEXT_TYPE_COMMENT
+	if is_string(current) => TEXT_TYPE_STRING
+	if is_character_value(current) => TEXT_TYPE_CHARACTER
+	if current == LINE_ENDING => TEXT_TYPE_END
 	=> TEXT_TYPE_UNSPECIFIED
 }
 
 # Summary: Returns whether the character is part of the progressing token
-is_part_of(previous: large, current: large, previous_character: char, current_character: char, next_character: char) {
-	if not mixes(previous_character, current_character) => false
-	if current == previous or previous == TEXT_TYPE_UNSPECIFIED => true
+is_part_of(previous_type: large, current_type: large, previous: char, current: char, next: char) {
+	if not mixes(previous, current) => false
 
-	if previous == TEXT_TYPE_TEXT => current == TEXT_TYPE_NUMBER
-	if previous == TEXT_TYPE_NUMBER => (current_character == DECIMAL_SEPARATOR and is_digit(next_character)) or
-		current_character == EXPONENT_SEPARATOR or
-		current_character == SIGNED_TYPE_SEPARATOR or
-		current_character == UNSIGNED_TYPE_SEPARATOR or
-		(previous_character == EXPONENT_SEPARATOR and (current_character == `+` or current_character == `-`))
+	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED => true
+
+	if previous_type == TEXT_TYPE_TEXT => current_type == TEXT_TYPE_NUMBER
+
+	if previous_type == TEXT_TYPE_HEXADECIMAL => current_type == TEXT_TYPE_NUMBER or
+		(previous == `0` and current == `x`) or
+		(current >= `a` and current <= `f`) or (current >= `A` and current <= `F`)
+
+	if previous_type == TEXT_TYPE_NUMBER => (current == DECIMAL_SEPARATOR and is_digit(next)) or
+		current == EXPONENT_SEPARATOR or
+		current == SIGNED_TYPE_SEPARATOR or
+		current == UNSIGNED_TYPE_SEPARATOR or
+		(previous == EXPONENT_SEPARATOR and (current == `+` or current == `-`))
 	
 	=> false
 }
@@ -1093,6 +1121,9 @@ skip_parenthesis(text: String, start: Position) {
 		i = text[position.local]
 
 		if i == LINE_ENDING position.next_line()
+		else i == COMMENT {
+			position = skip_comment(text, position)
+		}
 		else i == STRING {
 			position = skip_string(text, position)
 		}
@@ -1256,15 +1287,19 @@ get_next_token(text: String, start: Position) {
 	# Verify there is text to iterate
 	if position.local == text.length => Ok<TextArea, String>(none as TextArea)
 
-	type = get_text_type(text[position.local])
+	current = text[position.local]
+	next = 0 as char
+	if position.local + 1 < text.length { next = text[position.local + 1] }
+
+	type = get_text_type(current, next)
 	area = TextArea(position.clone(), type)
 
-	if area.type == TEXT_TYPE_COMMENT {
+	if type == TEXT_TYPE_COMMENT {
 		area.end = skip_comment(text, area.start)
 		area.text = text.slice(area.start.local, area.end.local)
 		=> Ok<TextArea, String>(area)
 	}
-	else area.type == TEXT_TYPE_PARENTHESIS {
+	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
 		if end as link == none => Error<TextArea, String>(String('Can not find the closing parenthesis'))
 
@@ -1272,12 +1307,12 @@ get_next_token(text: String, start: Position) {
 		area.text = text.slice(area.start.local, area.end.local)
 		=> Ok<TextArea, String>(area)
 	}
-	else area.type == TEXT_TYPE_END {
+	else type == TEXT_TYPE_END {
 		area.end = position.clone().next_line()
 		area.text = String('\n')
 		=> Ok<TextArea, String>(area)
 	}
-	else area.type == TEXT_TYPE_STRING {
+	else type == TEXT_TYPE_STRING {
 		end = skip_string(text, area.start)
 		if end as link == none {
 			=> Error<TextArea, String>(String('Can not find the end of the string'))
@@ -1287,7 +1322,7 @@ get_next_token(text: String, start: Position) {
 		area.text = text.slice(area.start.local, area.end.local)
 		=> Ok<TextArea, String>(area)
 	}
-	else area.type == TEXT_TYPE_CHARACTER {
+	else type == TEXT_TYPE_CHARACTER {
 		area.end = skip_character_value(text, area.start)
 
 		result = get_character_value(text.slice(area.start.local, area.end.local), area.start)
@@ -1304,27 +1339,16 @@ get_next_token(text: String, start: Position) {
 
 	# Possible types are now: TEXT, NUMBER, OPERATOR
 	loop (position.local < text.length) {
-		current_character = text[position.local]
+		previous = current
+		current = next
 
-		# There cannot be number and content tokens side by side
-		if is_parenthesis(current_character) {
-			if area.type == TEXT_TYPE_NUMBER => Error<TextArea, String>(String('Missing operator between number and parenthesis'))
-			stop
-		}
+		if position.local + 1 < text.length { next = text[position.local + 1] }
+		else { next = 0 as char }
 
-		type = get_text_type(current_character)
+		# Determine what text type the current character represents
+		type = get_text_type(current, next)
 
-		previous_character = 0 as char
-		next_character = 0 as char
-
-		if position.local > 0 {
-			previous_character = text[position.local - 1]
-		}
-		if position.local + 1 < text.length {
-			next_character = text[position.local + 1]
-		}
-
-		if not is_part_of(area.type, type, previous_character, current_character, next_character) stop
+		if not is_part_of(area.type, type, previous, current, next) stop
 
 		position.next_character()
 	}
@@ -1339,6 +1363,13 @@ parse_text_token(text: String) {
 	if Operators.exists(text) => OperatorToken(text)
 	if Keywords.exists(text) => KeywordToken(text)
 	=> IdentifierToken(text)
+}
+
+# Summary: Parses the specified hexadecimal text to an integer
+parse_hexadecimal(area: TextArea) {
+	# Extract the integer value from the hexadecimal by skipping the 0x prefix
+	if hexadecimal_to_integer(area.text.slice(2)) has value => Ok<large, String>(value)
+	=> Error<large, String>(String('Can not understand the hexadecimal ') + area.text)
 }
 
 # Summary: Parses a token from a text area
@@ -1367,6 +1398,12 @@ parse_token(area: TextArea) {
 	if area.type == TEXT_TYPE_TEXT { token = parse_text_token(area.text) }
 	else area.type == TEXT_TYPE_END { token = Token(TOKEN_TYPE_END) }
 	else area.type == TEXT_TYPE_STRING { token = StringToken(area.text) }
+	else area.type == TEXT_TYPE_HEXADECIMAL {
+		result = parse_hexadecimal(area)
+		if not (result has value) => Error<Token, String>(result.(Error<large, String>).get_error())
+
+		token = NumberToken(value, SYSTEM_FORMAT, area.start, area.end)
+	}
 	
 	if token != none => Ok<Token, String>(token)
 	=> Error<Token, String>(String('Unknown token ') + area.text)
@@ -1485,9 +1522,9 @@ register_file(tokens: List<Token>, file: SourceFile) {
 
 # Summary: Creates tokens from file contents
 tokenize(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<Array<SourceFile>> has files) => Status('Nothing to tokenize')
+	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Nothing to tokenize')
 	
-	loop (i = 0, i < files.count, i++) {
+	loop (i = 0, i < files.size, i++) {
 		file = files[i]
 
 		result = get_tokens(file.content, true)

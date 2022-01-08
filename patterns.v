@@ -842,7 +842,13 @@ Pattern ImportPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if tokens[IMPORT].(KeywordToken).keyword != Keywords.IMPORT => false
+		# Ensure the first token contains the import modifier
+		# NOTE: Multiple modifiers are packed into a single token
+		modifier_keyword = tokens[IMPORT].(KeywordToken)
+		if modifier_keyword.keyword.type != KEYWORD_TYPE_MODIFIER => false
+
+		modifiers = modifier_keyword.keyword.(ModifierKeyword).modifier
+		if not has_flag(modifiers, MODIFIER_IMPORTED) => false
 
 		next = state.peek()
 		
@@ -896,37 +902,71 @@ Pattern ImportPattern {
 			# Ensure the return type was read successfully
 			if return_type == none {
 				state.error = Status(descriptor.position, 'Can not resolve the return type')
-				=> false
+				=> none as Node
 			}
 		}
 
-		function = Function(environment, MODIFIER_DEFAULT | MODIFIER_IMPORTED, descriptor.name, descriptor.position, none as Position)
+		modifiers = combine_modifiers(MODIFIER_DEFAULT, tokens[0].(KeywordToken).keyword.(ModifierKeyword).modifier)
+		function = none as Function
+
+		# If the function is a constructor or a destructor, handle it differently
+		if descriptor.name == Keywords.INIT.identifier {
+			function = Constructor(environment, modifiers, descriptor.position, none as Position, false)
+
+			if not environment.is_type {
+				state.error = Status(descriptor.position, 'Constructor can only be imported inside a type')
+				=> none as Node
+			}
+		}
+		else descriptor.name == Keywords.DEINIT.identifier {
+			function = Destructor(environment, modifiers, descriptor.position, none as Position, false)
+
+			if not environment.is_type {
+				state.error = Status(descriptor.position, 'Destructor can only be imported inside a type')
+				=> none as Node
+			}
+		}
+		else {
+			function = Function(environment, modifiers, descriptor.name, descriptor.position, none as Position)
+		}
+
 		function.language = language
 
 		result = descriptor.get_parameters(function)
 		
 		if not (result has parameters) {
 			state.error = Status(descriptor.position, result.value as String)
-			=> false
+			=> none as Node
 		}
 
 		function.parameters = parameters
 
 		implementation = FunctionImplementation(function, return_type, environment)
+		implementation.is_imported = true
 		
 		# Try to set the parsed parameters
 		status = implementation.set_parameters(parameters)
 
 		if status.problematic {
 			state.error = status
-			=> false
+			=> none as Node
 		}
 		
 		function.implementations.add(implementation)
 		implementation.implement(function.blueprint)
 
-		environment.declare(function)
-		=> true
+		# Declare the function in the environment
+		if descriptor.name == Keywords.INIT.identifier {
+			environment.(Type).add_constructor(function as Constructor)
+		}
+		else descriptor.name == Keywords.DEINIT.identifier {
+			environment.(Type).add_destructor(function as Destructor)
+		}
+		else {
+			environment.declare(function)
+		}
+
+		=> FunctionDefinitionNode(function, descriptor.position)
 	}
 
 	# Summary: Imports the namespace contained in the specified tokens
@@ -935,16 +975,16 @@ Pattern ImportPattern {
 		
 		if imported_namespace == none {
 			state.error = Status('Can not resolve the import')
-			=> false
+			=> none as Node
 		}
 
 		environment.imports.add(imported_namespace)
+		=> none as Node
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
-		if is_function_import(tokens) import_function(environment, state, tokens)
-		else { import_namespace(environment, state, tokens) }
-		=> none as Node
+		if is_function_import(tokens) => import_function(environment, state, tokens)
+		=> import_namespace(environment, state, tokens)
 	}
 }
 
@@ -1492,11 +1532,13 @@ Pattern TemplateFunctionPattern {
 
 		template_function = TemplateFunction(context, MODIFIER_DEFAULT, name.value, template_parameters, parenthesis.tokens, start, end)
 
-		# Initialize the template function by parsing its parameters
-		if not template_function.initialize() {
-			state.error = Status(parenthesis.position, 'Can not understand the parameters')
+		# Determine the parameters of the template function
+		if not (descriptor.clone().(FunctionToken).get_parameters(template_function) has parameters) {
+			state.error = Status(start, 'Can not determine the parameters of the template function')
 			=> none as Node
 		}
+
+		template_function.parameters.add_range(parameters)
 
 		if blueprint == none {
 			# Take the heavy arrow token into the blueprint as well
@@ -1517,14 +1559,6 @@ Pattern TemplateFunctionPattern {
 		# Save the created blueprint
 		template_function.blueprint.add(descriptor)
 		template_function.blueprint.add(blueprint)
-
-		# Determine the parameters of the template function
-		if not (descriptor.clone().(FunctionToken).get_parameters(template_function) has parameters) {
-			state.error = Status(start, 'Can not determine the parameters of the template function')
-			=> none as Node
-		}
-
-		template_function.parameters.add_range(parameters)
 
 		context.declare(template_function)
 
@@ -1864,9 +1898,10 @@ Pattern SpecificModificationPattern {
 
 Pattern TypeInspectionPattern {
 	constant SIZE_INSPECTION_IDENTIFIER = 'sizeof'
+	constant CAPACITY_INSPECTION_IDENTIFIER = 'capacityof'
 	constant NAME_INSPECTION_IDENTIFIER = 'nameof'
 
-	# Pattern: sizeof($type)/nameof($type)
+	# Pattern: sizeof($type)/capacityof($type)/nameof($type)
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
 		priority = 18
@@ -1874,7 +1909,7 @@ Pattern TypeInspectionPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		descriptor = tokens[0] as FunctionToken
-		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) => false
+		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == CAPACITY_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) => false
 
 		# Create a temporary state which in order to check whether the parameters contains a type
 		state = ParserState()
@@ -1897,6 +1932,10 @@ Pattern TypeInspectionPattern {
 		if descriptor.name == NAME_INSPECTION_IDENTIFIER {
 			if type.is_resolved => StringNode(type.string(), position)
 			=> InspectionNode(INSPECTION_TYPE_NAME, TypeNode(type), position)
+		}
+
+		if descriptor.name == CAPACITY_INSPECTION_IDENTIFIER {
+			=> InspectionNode(INSPECTION_TYPE_CAPACITY, TypeNode(type), position)
 		}
 
 		=> InspectionNode(INSPECTION_TYPE_SIZE, TypeNode(type), position)
@@ -2124,6 +2163,7 @@ Pattern LambdaPattern {
 		# Create a function token manually since it contains some useful helper functions
 		header = FunctionToken(IdentifierToken(name), get_parameter_tokens(tokens))
 		function = Lambda(environment, MODIFIER_DEFAULT, name, blueprint, start, end)
+		environment.declare(function)
 
 		# Parse the lambda parameters
 		result = header.get_parameters(function)
@@ -2394,8 +2434,6 @@ Pattern WhenPattern {
 		inspected_value = parser.parse(environment, all[VALUE])
 		inspected_value_variable = environment.declare_hidden(inspected_value.try_get_type())
 		
-		load = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(inspected_value_variable, position), inspected_value)
-
 		tokens = all[BODY].(ParenthesisToken).tokens
 		parser.create_function_tokens(tokens)
 
@@ -2510,9 +2548,102 @@ Pattern WhenPattern {
 			}
 		}
 
-		container = InlineNode(position)
-		container.add(load)
-		container.add(WhenNode(VariableNode(inspected_value_variable, position), sections, position))
-		=> container
+		=> WhenNode(inspected_value, VariableNode(inspected_value_variable, position), sections, position)
+	}
+}
+
+Pattern ListConstructionPattern {
+	private constant LIST = 0
+
+	# Pattern: [ $element-1, $element-2, ... ]
+	init(){
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 2
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		=> tokens[LIST].match(`[`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		elements = parser.parse(context, tokens[LIST])
+		position = tokens[LIST].position
+
+		=> ListConstructionNode(elements, position)
+	}
+}
+
+Pattern PackConstructionPattern {
+	constant PARENTHESIS = 1
+
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		# Ensure the keyword is 'pack'
+		if not tokens[0].match(Keywords.PACK) => false
+
+		if not tokens[PARENTHESIS].match(`{`) => false
+
+		# The pack must have members
+		if tokens[PARENTHESIS].(ParenthesisToken).tokens.size == 0 => false
+
+		# Now, we must ensure this really is a pack construction.
+		# The tokens must be in the form of: { $member-1 : $value-1, $member-2 : $value-2, ... }
+		sections = tokens[PARENTHESIS].(ParenthesisToken).get_sections()
+
+		loop section in sections {
+			# Remove all line endings from the section
+			section = section.filter(i -> i.type != TOKEN_TYPE_END)
+
+			# Empty sections do not matter, they can be ignored
+			if section.size == 0 continue
+
+			# Verify the section begins with a member name, a colon and some token.
+			if section.size < 3 => false
+
+			# The first token must be an identifier.
+			if section[0].type != TOKEN_TYPE_IDENTIFIER => false
+
+			# The second token must be a colon.
+			if not section[1].match(Operators.COLON) => false
+		}
+
+		=> true
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		# We know that this is a pack construction.
+		# The tokens must be in the form of: { $member-1 : $value-1, $member-2 : $value-2, ... }
+		sections = tokens[PARENTHESIS].(ParenthesisToken).get_sections()
+
+		members = List<String>()
+		arguments = List<Node>()
+
+		# Parse all the member values
+		loop section in sections {
+			# Remove all line endings from the section
+			section = section.filter(i -> i.type != TOKEN_TYPE_END)
+
+			# Empty sections do not matter, they can be ignored
+			if section.size == 0 continue
+
+			member = section[0].(IdentifierToken).value
+			value = parser.parse(context, section.slice(2), parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY).first
+
+			# Ensure the member has a value
+			if value == none {
+				state.error = Status(section[0].position, 'Missing value for member')
+				=> none as Node
+			}
+
+			members.add(member)
+			arguments.add(value)
+		}
+
+		=> PackConstructionNode(members, arguments, tokens[0].position)
 	}
 }

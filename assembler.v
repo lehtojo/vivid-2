@@ -12,7 +12,144 @@ constant REGISTER_BASE_POINTER = 512
 constant REGISTER_ZERO = 1024
 constant REGISTER_RETURN_ADDRESS = 2048
 
+AssemblyBuilder {
+	instructions: Map<SourceFile, List<Instruction>> = Map<SourceFile, List<Instruction>>()
+	constants: Map<SourceFile, List<ConstantDataSectionHandle>> = Map<SourceFile, List<ConstantDataSectionHandle>>()
+	modules: Map<SourceFile, List<DataEncoderModule>> = Map<SourceFile, List<DataEncoderModule>>()
+	exports: Set<String> = Set<String>()
+	text: StringBuilder
+
+	init() {
+		if settings.is_assembly_output_enabled { text = StringBuilder() }
+	}
+
+	init(text: String) {
+		if settings.is_assembly_output_enabled { this.text = StringBuilder(text) }
+	}
+
+	add(file: SourceFile, instructions: List<Instruction>) {
+		if this.instructions.contains_key(file) {
+			this.instructions[file].add_range(instructions)
+			return
+		}
+
+		this.instructions[file] = instructions
+	}
+
+	add(file: SourceFile, instruction: Instruction) {
+		if instructions.contains_key(file) {
+			instructions[file].add(instruction)
+			return
+		}
+
+		instructions[file] = [ instruction ]
+	}
+
+	add(file: SourceFile, constants: List<ConstantDataSectionHandle>) {
+		if this.constants.contains_key(file) {
+			this.constants[file].add_range(constants)
+			return
+		}
+
+		this.constants[file] = constants
+	}
+
+	add(file: SourceFile, modules: List<DataEncoderModule>) {
+		if this.modules.contains_key(file) {
+			this.modules[file].add_range(modules)
+			return
+		}
+
+		this.modules[file] = modules
+	}
+
+	add(builder: AssemblyBuilder) {
+		loop iterator in builder.instructions { add(iterator.key, iterator.value) }
+		loop iterator in builder.constants { add(iterator.key, iterator.value) }
+		loop iterator in builder.modules { add(iterator.key, iterator.value) }
+		loop exported_symbol in builder.exports { export_symbol(exported_symbol) }
+
+		if builder.text != none write(builder.text.string())
+	}
+
+	get_data_section(file: SourceFile, section: String) {
+		if section.length > 0 and section[0] != `.` { section = String(`.`) + section }
+
+		file_modules = none as List<DataEncoderModule>
+
+		if modules.contains_key(file) {
+			file_modules = modules[file]
+
+			loop module in file_modules {
+				if module.name == section => module
+			}
+		}
+		else {
+			file_modules = List<DataEncoderModule>()
+			modules[file] = file_modules
+		}
+		
+		module = DataEncoderModule()
+		module.name = section
+		file_modules.add(module)
+		=> module
+	}
+
+	export_symbols(symbols: Array<String>) {
+		loop symbol in symbols {
+			export_symbol(symbol)
+		}
+	}
+
+	export_symbols(symbols: List<String>) {
+		loop symbol in symbols {
+			export_symbol(symbol)
+		}
+	}
+
+	export_symbol(symbol: String) {
+		exports.add(symbol)
+	}
+
+	write(text: String) {
+		if this.text == none return
+		this.text.append(text)
+	}
+
+	write(text: link) {
+		if this.text == none return
+		this.text.append(text)
+	}
+
+	write(character: char) {
+		if this.text == none return
+		this.text.append(character)
+	}
+
+	write_line(text: String) {
+		if this.text == none return
+		this.text.append_line(text)
+	}
+
+	write_line(text: link) {
+		if this.text == none return
+		this.text.append_line(text)
+	}
+
+	write_line(character: char) {
+		if this.text == none return
+		this.text.append_line(character)
+	}
+
+	string() {
+		if this.text == none => String('')
+		=> this.text.string()
+	}
+}
+
 Register {
+	identifier: byte = 0
+	name: byte = 0
 	partitions: Array<String>
 	value: Result
 	flags: large
@@ -27,7 +164,9 @@ Register {
 		=> SYSTEM_FORMAT
 	}
 
-	init(partitions: String, flags: large) {
+	init(identifier: byte, partitions: String, flags: large) {
+		this.identifier = identifier
+		this.name = identifier & 7 # Take the first 3 bits
 		this.partitions = partitions.split(` `)
 		this.flags = flags
 	}
@@ -70,6 +209,10 @@ Register {
 
 	reset() {
 		value = none
+	}
+
+	string() {
+		=> partitions[0]
 	}
 }
 
@@ -519,6 +662,16 @@ Scope {
 
 	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
 	receive_parameter(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, parameter: Variable) {
+		if parameter.type.is_pack {
+			representives = common.get_pack_representives(parameter)
+
+			loop representive in representives {
+				receive_parameter(standard_parameter_registers, decimal_parameter_registers, representive)
+			}
+
+			return
+		}
+
 		register = none as Register
 
 		if parameter.type.format == FORMAT_DECIMAL {
@@ -733,6 +886,29 @@ Unit {
 		non_reserved_registers.add_range(non_volatile_registers)
 	}
 
+	init() {
+		this.function = none
+		this.self = none
+		this.builder = StringBuilder()
+
+		if settings.is_x64 { load_architecture_x64() }
+		else { load_architecture_arm64() }
+
+		loop register in registers { if not register.is_media_register and not register.is_reserved { standard_registers.add(register) } }
+		loop register in registers { if register.is_media_register and not register.is_reserved { media_registers.add(register) } }
+
+		loop register in registers { if register.is_volatile and not register.is_reserved { volatile_registers.add(register) } }
+		loop register in volatile_registers { if not register.is_media_register { volatile_standard_registers.add(register) } }
+		loop register in volatile_registers { if register.is_media_register { volatile_media_registers.add(register) } }
+
+		loop register in registers { if not register.is_volatile and not register.is_reserved { non_volatile_registers.add(register) } }
+		loop register in non_volatile_registers { if not register.is_media_register { non_volatile_standard_registers.add(register) } }
+		loop register in non_volatile_registers { if register.is_media_register { non_volatile_media_registers.add(register) } }
+
+		non_reserved_registers.add_range(volatile_registers)
+		non_reserved_registers.add_range(non_volatile_registers)
+	}
+
 	load_architecture_x64() {
 		volatility_flag = REGISTER_VOLATILE
 		if settings.is_target_windows { volatility_flag = REGISTER_NONE }
@@ -740,40 +916,40 @@ Unit {
 		base_pointer_flags = REGISTER_NONE
 		if settings.is_debugging_enabled { base_pointer_flags = REGISTER_RESERVED | REGISTER_STACK_POINTER }
 
-		registers.add(Register(String('rax eax ax al'), REGISTER_VOLATILE | REGISTER_RETURN | REGISTER_NUMERATOR))
-		registers.add(Register(String('rbx ebx bx bl'), REGISTER_NONE))
-		registers.add(Register(String('rcx ecx cx cl'), REGISTER_VOLATILE | REGISTER_SHIFT))
-		registers.add(Register(String('rdx edx dx dl'), REGISTER_VOLATILE | REGISTER_REMAINDER))
-		registers.add(Register(String('rsi esi si sil'), volatility_flag))
-		registers.add(Register(String('rdi edi di dil'), volatility_flag))
-		registers.add(Register(String('rbp ebp bp bpl'), base_pointer_flags))
-		registers.add(Register(String('rsp esp sp spl'), REGISTER_RESERVED | REGISTER_STACK_POINTER))
+		registers.add(Register(platform.x64.RAX, String('rax eax ax al'), REGISTER_VOLATILE | REGISTER_RETURN | REGISTER_NUMERATOR))
+		registers.add(Register(platform.x64.RBX, String('rbx ebx bx bl'), REGISTER_NONE))
+		registers.add(Register(platform.x64.RCX, String('rcx ecx cx cl'), REGISTER_VOLATILE | REGISTER_SHIFT))
+		registers.add(Register(platform.x64.RDX, String('rdx edx dx dl'), REGISTER_VOLATILE | REGISTER_REMAINDER))
+		registers.add(Register(platform.x64.RSI, String('rsi esi si sil'), volatility_flag))
+		registers.add(Register(platform.x64.RDI, String('rdi edi di dil'), volatility_flag))
+		registers.add(Register(platform.x64.RBP, String('rbp ebp bp bpl'), base_pointer_flags))
+		registers.add(Register(platform.x64.RSP, String('rsp esp sp spl'), REGISTER_RESERVED | REGISTER_STACK_POINTER))
 
-		registers.add(Register(String('ymm0 xmm0 xmm0 xmm0 xmm0'), REGISTER_MEDIA | REGISTER_VOLATILE | REGISTER_DECIMAL_RETURN))
-		registers.add(Register(String('ymm1 xmm1 xmm1 xmm1 xmm1'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm2 xmm2 xmm2 xmm2 xmm2'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm3 xmm3 xmm3 xmm3 xmm3'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm4 xmm4 xmm4 xmm4 xmm4'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm5 xmm5 xmm5 xmm5 xmm5'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm6 xmm6 xmm6 xmm6 xmm6'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm7 xmm7 xmm7 xmm7 xmm7'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm8 xmm8 xmm8 xmm8 xmm8'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm9 xmm9 xmm9 xmm9 xmm9'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm10 xmm10 xmm10 xmm10 xmm10'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm11 xmm11 xmm11 xmm11 xmm11'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm12 xmm12 xmm12 xmm12 xmm12'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm13 xmm13 xmm13 xmm13 xmm13'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm14 xmm14 xmm14 xmm14 xmm14'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(String('ymm15 xmm15 xmm15 xmm15 xmm15'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM0, String('ymm0 xmm0 xmm0 xmm0 xmm0'), REGISTER_MEDIA | REGISTER_VOLATILE | REGISTER_DECIMAL_RETURN))
+		registers.add(Register(platform.x64.YMM1, String('ymm1 xmm1 xmm1 xmm1 xmm1'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM2, String('ymm2 xmm2 xmm2 xmm2 xmm2'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM3, String('ymm3 xmm3 xmm3 xmm3 xmm3'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM4, String('ymm4 xmm4 xmm4 xmm4 xmm4'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM5, String('ymm5 xmm5 xmm5 xmm5 xmm5'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM6, String('ymm6 xmm6 xmm6 xmm6 xmm6'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM7, String('ymm7 xmm7 xmm7 xmm7 xmm7'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM8, String('ymm8 xmm8 xmm8 xmm8 xmm8'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM9, String('ymm9 xmm9 xmm9 xmm9 xmm9'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM10, String('ymm10 xmm10 xmm10 xmm10 xmm10'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM11, String('ymm11 xmm11 xmm11 xmm11 xmm11'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM12, String('ymm12 xmm12 xmm12 xmm12 xmm12'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM13, String('ymm13 xmm13 xmm13 xmm13 xmm13'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM14, String('ymm14 xmm14 xmm14 xmm14 xmm14'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM15, String('ymm15 xmm15 xmm15 xmm15 xmm15'), REGISTER_MEDIA | REGISTER_VOLATILE))
 
-		registers.add(Register(String('r8 r8d r8w r8b'), REGISTER_VOLATILE))
-		registers.add(Register(String('r9 r9d r9w r9b'), REGISTER_VOLATILE))
-		registers.add(Register(String('r10 r10d r10w r10b'), REGISTER_VOLATILE))
-		registers.add(Register(String('r11 r11d r11w r11b'), REGISTER_VOLATILE))
-		registers.add(Register(String('r12 r12d r12w r12b'), REGISTER_NONE))
-		registers.add(Register(String('r13 r13d r13w r13b'), REGISTER_NONE))
-		registers.add(Register(String('r14 r14d r14w r14b'), REGISTER_NONE))
-		registers.add(Register(String('r15 r15d r15w r15b'), REGISTER_NONE))
+		registers.add(Register(platform.x64.R8, String('r8 r8d r8w r8b'), REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R9, String('r9 r9d r9w r9b'), REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R10, String('r10 r10d r10w r10b'), REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R11, String('r11 r11d r11w r11b'), REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R12, String('r12 r12d r12w r12b'), REGISTER_NONE))
+		registers.add(Register(platform.x64.R13, String('r13 r13d r13w r13b'), REGISTER_NONE))
+		registers.add(Register(platform.x64.R14, String('r14 r14d r14w r14b'), REGISTER_NONE))
+		registers.add(Register(platform.x64.R15, String('r15 r15d r15w r15b'), REGISTER_NONE))
 	}
 
 	load_architecture_arm64() {
@@ -1068,6 +1244,44 @@ Unit {
 
 namespace assembler
 
+ParameterAligner {
+	standard_registers: large
+	decimal_registers: large
+	position: large = 0
+
+	init(position: large) {
+		this.standard_registers = calls.get_standard_parameter_register_count()
+		this.decimal_registers = calls.get_decimal_parameter_register_count()
+		this.position = position
+	}
+
+	# Summary: Consumes the specified type while taking into account if it is a pack
+	align(parameter: Variable) {
+		type = parameter.type
+
+		if type.is_pack {
+			representives = common.get_pack_representives(parameter)
+			loop representive in representives { align(representive) }
+			return
+		}
+
+		# First, try to consume a register for the parameter
+		if (type.format == FORMAT_DECIMAL and decimal_registers-- > 0) or (type.format != FORMAT_DECIMAL and standard_registers-- > 0) {
+			# On Windows even though the first parameters are passed in registers, they still need have their own stack alignment (shadow space)
+			if not settings.is_target_windows return
+		}
+
+		# Normal parameters consume one stack unit
+		parameter.alignment = position
+		position += SYSTEM_BYTES
+	}
+
+	# Summary: Aligns the specified parameters
+	align(parameters: List<Variable>) {
+		loop parameter in parameters { align(parameter) }
+	}
+}
+
 # Summary: Goes through the specified instructions and returns all non-volatile registers
 get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 	registers = List<Register>()
@@ -1156,59 +1370,28 @@ get_all_constant_data_section_handles(handles: List<Handle>) {
 }
 
 align_function(function: FunctionImplementation) {
-	if not settings.is_target_windows {
-		standard_register_count = calls.get_standard_parameter_register_count()
-		media_register_count = calls.get_decimal_parameter_register_count()
+	parameters = List<Variable>(function.parameters)
 
-		if standard_register_count == 0 abort('There were no standard registers reserved for parameter passage')
+	# Align the self pointer as well, if it exists
+	self_pointer_key = String(SELF_POINTER_IDENTIFIER)
 
-		# The self pointer uses one standard register
-		if function.variables.contains_key(String(SELF_POINTER_IDENTIFIER)) or function.variables.contains_key(String(LAMBDA_SELF_POINTER_IDENTIFIER)) {
-			standard_register_count--
-		}
-
-		position = 0
-		if settings.is_x64 { position = SYSTEM_BYTES }
-
-		loop parameter in function.parameters {
-			if not parameter.is_parameter continue
-
-			type = parameter.type
-			if (type.format == FORMAT_DECIMAL and media_register_count-- > 0) or (type.format != FORMAT_DECIMAL and standard_register_count-- > 0) continue
-
-			parameter.alignment = position
-			parameter.is_aligned = true
-			position += SYSTEM_BYTES
-		}
+	if function.variables.contains_key(self_pointer_key) {
+		parameters.insert(0, function.variables[self_pointer_key])
 	}
 	else {
-		position = SYSTEM_BYTES
-		if function.metadata.is_member and not function.metadata.is_static { position += SYSTEM_BYTES }
-	
-		self = none as Variable
+		self_pointer_key = String(LAMBDA_SELF_POINTER_IDENTIFIER)
 
-		# Align the this pointer if it exists
-		if function.variables.contains_key(String(SELF_POINTER_IDENTIFIER)) {
-			self = function.variables[String(SELF_POINTER_IDENTIFIER)]
-			self.alignment = position
-			self.is_aligned = true
-			position += SYSTEM_BYTES
-		}
-		else function.variables.contains_key(String(LAMBDA_SELF_POINTER_IDENTIFIER)) {
-			self = function.variables[String(LAMBDA_SELF_POINTER_IDENTIFIER)]
-			self.alignment = position - SYSTEM_BYTES
-			position += SYSTEM_BYTES
-		}
-
-		# Align the other parameters
-		loop parameter in function.parameters {
-			if not parameter.is_parameter continue
-
-			parameter.alignment = position
-			parameter.is_aligned = true
-			position += SYSTEM_BYTES
+		if function.variables.contains_key(self_pointer_key) {
+			parameters.insert(0, function.variables[self_pointer_key])
 		}
 	}
+
+	# Return address is passed before the first parameter on x64
+	initial_position = 0
+	if settings.is_x64 { initial_position = SYSTEM_BYTES }
+
+	parameter_aligner = ParameterAligner(initial_position)
+	parameter_aligner.align(parameters)
 }
 
 align(context: Context) {
@@ -1235,7 +1418,7 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 	loop variable in local_variables {
 		if variable.is_aligned continue
 
-		position -= variable.type.reference_size
+		position -= variable.type.allocation_size
 		variable.alignment = position
 	}
 
@@ -1315,17 +1498,18 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 	}
 }
 
-get_text_section(implementation: FunctionImplementation, constant_section: List<ConstantDataSectionHandle>) {
-	builder = StringBuilder()
+get_text_section(implementation: FunctionImplementation) {
+	builder = AssemblyBuilder()
 
 	fullname = implementation.get_fullname()
 
 	analysis.load_variable_usages(implementation)
 
 	# Ensure this function is visible to other units
-	builder.append(EXPORT_DIRECTIVE)
-	builder.append(` `)
-	builder.append_line(fullname)
+	builder.write(EXPORT_DIRECTIVE)
+	builder.write(` `)
+	builder.write_line(fullname)
+	builder.export_symbol(fullname)
 
 	unit = Unit(implementation)
 	unit.mode = UNIT_MODE_ADD
@@ -1334,10 +1518,11 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 
 	# Add virtual function header, if the implementation overrides a virtual function
 	if implementation.virtual_function != none {
-		builder.append(EXPORT_DIRECTIVE)
-		builder.append(` `)
-		builder.append(fullname)
-		builder.append_line(Mangle.VIRTUAL_FUNCTION_POSTFIX)
+		builder.write(EXPORT_DIRECTIVE)
+		builder.write(` `)
+		builder.write(fullname)
+		builder.write_line(Mangle.VIRTUAL_FUNCTION_POSTFIX)
+		builder.export_symbol(fullname + Mangle.VIRTUAL_FUNCTION_POSTFIX)
 		add_virtual_function_header(unit, implementation, fullname)
 	}
 
@@ -1348,12 +1533,22 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	unit.add(InitializeInstruction(unit))
 
 	# Parameters are active from the start of the function, so they must be required now otherwise they would become active at their first usage
-	parameters = unit.function.parameters
+	parameters = List<Variable>(unit.function.parameters)
 
 	if (unit.function.metadata.is_member and not unit.function.is_static) or implementation.is_lambda_implementation {
 		self = unit.self
 		if self == none abort('Missing self pointer in a member function')
 		parameters.add(self)
+	}
+
+	# Include pack representives as well
+	parameter_count = parameters.size
+
+	loop (i = 0, i < parameter_count, i++) {
+		parameter = parameters[i]
+		if not parameter.type.is_pack continue
+
+		parameters.add_range(common.get_pack_representives(parameter))
 	}
 
 	unit.add(RequireVariablesInstruction(unit, parameters))
@@ -1412,7 +1607,7 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 
 	loop local_variable in local_variables {
 		if local_variable.is_aligned continue
-		required_local_memory += local_variable.type.reference_size
+		required_local_memory += local_variable.type.allocation_size
 	}
 
 	loop temporary_handle in temporary_handles { required_local_memory += temporary_handle.size }
@@ -1468,29 +1663,41 @@ get_text_section(implementation: FunctionImplementation, constant_section: List<
 	# Allocate all constant data section handles
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
 
-	loop instruction in instructions {
-		instruction.finish()
+	file = unit.function.metadata.start.file
+
+	if settings.is_assembly_output_enabled {
+		loop instruction in instructions {
+			instruction.finish()
+		}
+
+		builder.write(unit.string())
+
+		# Add a directive, which tells the assembler to finish debugging information regarding the current function
+		if settings.is_debugging_enabled builder.write_line(String(`.`) + AssemblyParser.DEBUG_END_DIRECTIVE)
 	}
 
-	builder.append(unit.string())
-	builder.append(`\n`)
+	builder.add(file, instructions)
 
-	# Export all constant data section handles
-	constant_section.add_range(constant_data_section_handles)
+	# Add a directive, which tells the assembler to finish debugging information regarding the current function
+	builder.add(file, Instruction(unit, INSTRUCTION_DEBUG_END))
 
-	=> builder.string()
+	# Export the generated constants as well
+	builder.add(file, constant_data_section_handles.distinct())
+
+	=> builder
 }
 
-constant EXPORT_DIRECTIVE = '.global'
+constant EXPORT_DIRECTIVE = '.export'
 constant BYTE_ALIGNMENT_DIRECTIVE = '.balign'
 constant POWER_OF_TWO_ALIGNMENT_DIRECTIVE = '.align'
-constant STRING_ALLOCATION_DIRECTIVE = '.ascii'
+constant CHARACTERS_ALLOCATION_DIRECTIVE = '.characters'
 constant BYTE_ZERO_ALLOCATOR = '.zero'
-constant SECTION_RELATIVE_DIRECTIVE = '.secrel'
+constant SECTION_RELATIVE_DIRECTIVE = '.section_relative'
 constant SECTION_DIRECTIVE = '.section'
 constant TEXT_SECTION_DIRECTIVE = '.section .text'
 constant DATA_SECTION_DIRECTIVE = '.section .data'
-constant SYNTAX_REQUIREMENT_DIRECTIVE = '.intel_syntax noprefix'
+constant TEXT_SECTION_IDENTIFIER = 'text'
+constant DATA_SECTION_IDENTIFIER = 'data'
 
 constant X64_ASSEMBLER = 'x64-as'
 constant ARM64_ASSEMBLER = 'arm64-as'
@@ -1498,9 +1705,14 @@ constant ARM64_ASSEMBLER = 'arm64-as'
 constant X64_LINKER = 'x64-ld'
 constant ARM64_LINKER = 'arm64-ld'
 
+get_default_entry_point() {
+	if settings.is_target_windows => String('main')
+	=> String('_start')
+}
+
 add_linux_x64_header(entry_function_call: String) {
 	builder = StringBuilder()
-	builder.append_line('.global _start')
+	builder.append_line('.export _start')
 	builder.append_line('_start:')
 	builder.append_line(entry_function_call)
 	builder.append_line('mov rdi, rax')
@@ -1512,7 +1724,7 @@ add_linux_x64_header(entry_function_call: String) {
 
 add_windows_x64_header(entry_function_call: String) {
 	builder = StringBuilder()
-	builder.append_line('.global main')
+	builder.append_line('.export main')
 	builder.append_line('main:')
 	builder.append_line(entry_function_call)
 	builder.append(`\n`)
@@ -1521,7 +1733,7 @@ add_windows_x64_header(entry_function_call: String) {
 
 add_linux_arm64_header(entry_function_call: String) {
 	builder = StringBuilder()
-	builder.append_line('.global _start')
+	builder.append_line('.export _start')
 	builder.append_line('_start:')
 	builder.append_line(entry_function_call)
 	builder.append_line('mov x8, #93')
@@ -1532,7 +1744,7 @@ add_linux_arm64_header(entry_function_call: String) {
 
 add_windows_arm64_header(entry_function_call: String) {
 	builder = StringBuilder()
-	builder.append_line('.global main')
+	builder.append_line('.export main')
 	builder.append_line('main:')
 	builder.append_line(entry_function_call)
 	builder.append(`\n`)
@@ -1587,33 +1799,62 @@ get_static_variables(type: Type) {
 	=> builder.string()
 }
 
+# Summary:
+# Allocates the specified static variable using assembly directives
+allocate_static_variable(variable: Variable) {
+	builder = StringBuilder()
+
+	name = variable.get_static_name()
+	size = variable.type.allocation_size
+
+	builder.append(EXPORT_DIRECTIVE)
+	builder.append(` `)
+	builder.append_line(name)
+
+	if not settings.is_x64 {
+		builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+		builder.append_line(' 3')
+	}
+
+	builder.append(name)
+	builder.append_line(`:`)
+	builder.append(BYTE_ZERO_ALLOCATOR)
+	builder.append(` `)
+	builder.append_line(size)
+
+	=> builder.string()
+}
+
+# Summary: Allocates the specified table label using assembly directives
 add_table_label(label: TableLabel) {
 	if label.declare => label.name + `:`
 	if label.is_section_relative => String(SECTION_RELATIVE_DIRECTIVE) + to_string(label.size * 8) + ` ` + label.name
 	=> String(to_data_section_allocator(label.size)) + ` ` + label.name
 }
 
-add_table(builder: StringBuilder, table: Table) {
-	if table.is_built return
-	table.is_built = true
+# Summary: Allocates the specified table using assembly directives
+add_table(builder: AssemblyBuilder, table: Table, marker: large) {
+	if (table.marker & marker) != 0 return
+	table.marker |= marker
 
 	if table.is_section {
-		builder.append(SECTION_DIRECTIVE)
-		builder.append(` `)
-		builder.append_line(table.name)
+		builder.write(SECTION_DIRECTIVE)
+		builder.write(` `)
+		builder.write_line(table.name)
 	}
 	else {
-		builder.append_line(String(EXPORT_DIRECTIVE) + ` ` + table.name)
+		builder.write_line(String(EXPORT_DIRECTIVE) + ` ` + table.name)
 
 		if not settings.is_x64 {
-			builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-			builder.append_line(' 3')
+			builder.write(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+			builder.write_line(' 3')
 		}
 
-		builder.append(table.name)
-		builder.append(':\n')
+		builder.write(table.name)
+		builder.write(':\n')
 	}
 
+	# Take care of the table items
 	subtables = List<Table>()
 
 	loop item in table.items {
@@ -1627,18 +1868,17 @@ add_table(builder: StringBuilder, table: Table) {
 			else => abort('Invalid table item') as String
 		}
 
-		builder.append_line(result)
+		builder.write_line(result)
 
 		if item.type == TABLE_ITEM_TABLE_REFERENCE {
-			subtable = item.(TableReferenceTableItem).value
-			if not subtable.is_built subtables.add(subtable)
+			subtables.add(item.(TableReferenceTableItem).value)
 		}
 	}
 
-	builder.append('\n\n')
+	builder.write('\n\n')
 	
 	# Build the subtables
-	loop subtable in subtables { add_table(builder, subtable) }
+	loop subtable in subtables { add_table(builder, subtable, marker) }
 }
 
 # Summary: Returns a list of directives, which allocate the specified string
@@ -1655,7 +1895,7 @@ allocate_string(text: String) {
 		position += buffer.length
 
 		if buffer.length > 0 {
-			builder.append(STRING_ALLOCATION_DIRECTIVE)
+			builder.append(CHARACTERS_ALLOCATION_DIRECTIVE)
 			builder.append(' \"')
 			builder.append(buffer)
 			builder.append_line(`\"`)
@@ -1716,6 +1956,48 @@ allocate_string(text: String) {
 	=> builder.string()
 }
 
+# Summary: Allocates the specified constants using the specified data section builder
+allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<ConstantDataSectionHandle>) {
+	module = builder.get_data_section(file, String(DATA_SECTION_IDENTIFIER))
+	temporary: large[1]
+
+	loop item in items {
+		# Align the position and declare the constant
+		name = item.identifier
+
+		if settings.is_assembly_output_enabled {
+			builder.write_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 3')
+			builder.write_line(name + `:`)
+		}
+
+		data_encoder.align(module, 16)
+		module.create_local_symbol(name, module.position)
+
+		data = none as link
+		size = 0
+
+		if item.value_type == CONSTANT_TYPE_BYTES {
+			bytes = item.(ByteArrayDataSectionHandle).value
+			data = bytes.data
+			size = bytes.count
+		}
+		else item.value_type == CONSTANT_TYPE_INTEGER or item.value_type == CONSTANT_TYPE_DECIMAL {
+			temporary[0] = item.(NumberDataSectionHandle).value
+			data = temporary as link
+			size = sizeof(large)
+		}
+		else {
+			abort('Unsupported constant data')
+		}
+
+		module.write(data, size)
+
+		loop (i = 0, i < size, i++) {
+			builder.write_line(String(BYTE_ALLOCATOR) + ` ` + to_string(data[i]))
+		}
+	}
+}
+
 # Summary: Returns the bytes which represent the specified value
 get_bytes<T>(value: T) {
 	bytes = List<byte>()
@@ -1766,22 +2048,35 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 
 # Summary: Constructs file specific data sections based on the specified context
 get_data_sections(context: Context) {
-	sections = Map<SourceFile, StringBuilder>()
+	sections = Map<SourceFile, AssemblyBuilder>()
 	
 	all_types = common.get_all_types(context)
 	loop (i = all_types.size - 1, i >= 0, i--) { if all_types[i].position as link == none all_types.remove_at(i) }
 	types = group_by<Type, SourceFile>(all_types, (i: Type) -> i.position.file)
 
+	data_section_identifier = String(SECTION_DIRECTIVE) + ` ` + DATA_SECTION_IDENTIFIER + `\n`
+
 	# Add static variables
 	loop iterator in types {
-		builder = StringBuilder()
+		builder = AssemblyBuilder(data_section_identifier)
+		file = iterator.key
 
 		loop type in iterator.value {
-			builder.append_line(get_static_variables(type))
-			builder.append('\n\n')
+			# Skip imported types, because they are already exported
+			if type.is_imported continue
+
+			loop iterator in type.variables {
+				variable = iterator.value
+				if not variable.is_static continue
+
+				builder.write_line(allocate_static_variable(variable))
+				data_encoder.add_static_variable(builder.get_data_section(file, String(DATA_SECTION_IDENTIFIER)), variable)
+			}
+
+			builder.write('\n\n')
 		}
 
-		sections.add(iterator.key, builder)
+		sections.add(file, builder)
 	}
 
 	# Add runtime type information
@@ -1790,10 +2085,12 @@ get_data_sections(context: Context) {
 
 		loop type in iterator.value {
 			# 1. Skip if the runtime configuration has not been created
-			# 2. Imported types are already exported
+			# 2. Skip imported types, because they are already exported
 			# 3. The template type must be a variant
-			if type.configuration == none or type.is_imported or (type.is_template_type and not type.is_template_type_variant) continue
-			add_table(builder, type.configuration.entry)
+			# 4. Unnamed packs are not processed
+			if type.configuration == none or type.is_imported or (type.is_template_type and not type.is_template_type_variant) or type.is_unnamed_pack continue
+			add_table(builder, type.configuration.entry, TABLE_MARKER_TEXTUAL_ASSEMBLY)
+			data_encoder.add_table(builder, builder.get_data_section(iterator.key, String(DATA_SECTION_IDENTIFIER)), type.configuration.entry, TABLE_MARKER_DATA_ENCODER)
 		}
 	}
 
@@ -1810,26 +2107,25 @@ get_data_sections(context: Context) {
 			nodes.add_range(implementation.node.find_all(NODE_STRING) as List<StringNode>)
 		}
 
-		builder = none as StringBuilder
+		builder = none as AssemblyBuilder
 
 		if sections.contains_key(iterator.key) { builder = sections[iterator.key] }
-		else { builder = StringBuilder() }
+		else { builder = AssemblyBuilder(data_section_identifier) }
 
 		loop node in nodes {
 			if node.identifier as link == none continue
 
-			if settings.is_x64 {
-				builder.append(BYTE_ALIGNMENT_DIRECTIVE)
-				builder.append_line(' 16')
-			}
-			else {
-				builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-				builder.append_line(' 3')
-			}
+			builder.write(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
+			builder.write_line(' 3')
+			builder.write(node.identifier)
+			builder.write(':\n')
+			builder.write_line(allocate_string(node.text))
 
-			builder.append(node.identifier)
-			builder.append(':\n')
-			builder.append_line(allocate_string(node.text))
+			module = builder.get_data_section(iterator.key, String(DATA_SECTION_IDENTIFIER))
+			data_encoder.align(module, 16)
+
+			module.create_local_symbol(node.identifier, module.position)
+			module.string(node.text)
 		}
 
 		sections[iterator.key] = builder
@@ -1838,29 +2134,42 @@ get_data_sections(context: Context) {
 	=> sections
 }
 
-get_text_sections(context: Context, constant_sections: Map<SourceFile, List<ConstantDataSectionHandle>>) {
-	sections = Map<SourceFile, String>()
+get_text_sections(context: Context) {
+	sections = Map<SourceFile, AssemblyBuilder>()
 
-	all = common.get_all_function_implementations(context)
+	all = common.get_all_function_implementations(context, false)
 
+	# Remove all functions, which do not have start position
 	loop (i = all.size - 1, i >= 0, i--) {
-		implementation = all[i]
-		if implementation.metadata.is_imported or implementation.metadata.start as link == none all.remove_at(i)
+		if all[i].metadata.start as link == none all.remove_at(i)
 	}
 
 	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
 
 	loop iterator in implementations {
-		constant_section = List<ConstantDataSectionHandle>()
-		builder = StringBuilder()
+		builder = AssemblyBuilder()
+		file = iterator.key
 
-		loop implementation in iterator.value {
-			builder.append(get_text_section(implementation, constant_section))
-			builder.append('\n\n')
+		# Add the debug label, which indicates the start of debuggable code
+		if settings.is_debugging_enabled {
+			label = String('debug_file_') + to_string(file.index) + '_start'
+			builder.write_line(label + `:`)
+			builder.add(file, LabelInstruction(none as Unit, Label(label)))
 		}
 
-		sections.add(iterator.key, builder.string())
-		constant_sections.add(iterator.key, constant_section)
+		loop implementation in iterator.value {
+			builder.add(get_text_section(implementation))
+			builder.write('\n\n')
+		}
+
+		# Add the debug label, which indicates the end of debuggable code
+		if settings.is_debugging_enabled {
+			label = String('debug_file_') + to_string(file.index) + '_end'
+			builder.write_line(label + `:`)
+			builder.add(file, LabelInstruction(none as Unit, Label(label)))
+		}
+
+		sections.add(file, builder)
 	}
 
 	=> sections
@@ -1894,10 +2203,8 @@ beautify(text: String) {
 
 # Summary: Creates an assembler header for the specified file from the specified context. Depending on the situation, the header might be empty or it might have a entry function call and other directives.
 create_header(context: Context, file: SourceFile) {
-	header = StringBuilder()
-	header.append_line(TEXT_SECTION_DIRECTIVE)
-
-	if settings.is_x64 header.append_line(SYNTAX_REQUIREMENT_DIRECTIVE)
+	builder = AssemblyBuilder()
+	builder.write_line(TEXT_SECTION_DIRECTIVE)
 
 	selector = context.get_function(String('init'))
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
@@ -1912,18 +2219,28 @@ create_header(context: Context, file: SourceFile) {
 	if settings.initialization_function != none { implementation = settings.initialization_function }
 
 	# Add the entry function call only into the file, which contains the actual entry function
-	if implementation.metadata.start.file != file => header.string()
+	if implementation.metadata.start.file != file => builder
+
+	header = none as String
 
 	if settings.is_x64 {
-		if settings.is_target_windows { header.append(add_windows_x64_header(String(instructions.x64.JUMP) + ` ` + implementation.get_fullname())) }
-		else { header.append(add_linux_x64_header(String(instructions.x64.CALL) + ` ` + implementation.get_fullname())) }
+		if settings.is_target_windows { header = add_windows_x64_header(String(platform.x64.JUMP) + ` ` + implementation.get_fullname()) }
+		else { header = add_linux_x64_header(String(platform.x64.CALL) + ` ` + implementation.get_fullname()) }
 	}
 	else {
-		if settings.is_target_windows { header.append(add_windows_arm64_header(String(instructions.arm64.JUMP_LABEL) + ` ` + implementation.get_fullname())) }
-		else { header.append(add_linux_arm64_header(String(instructions.arm64.CALL) + ` ` + implementation.get_fullname())) }
+		if settings.is_target_windows { header = add_windows_arm64_header(String(platform.arm64.JUMP_LABEL) + ` ` + implementation.get_fullname()) }
+		else { header = add_linux_arm64_header(String(platform.arm64.CALL) + ` ` + implementation.get_fullname()) }
 	}
 
-	=> header.string()
+	builder.write_line(header)
+
+	parser = AssemblyParser()
+	parser.parse(file, header)
+
+	builder.add(file, parser.instructions)
+	builder.export_symbols(parser.exports.to_list())
+
+	=> builder
 }
 
 run(executable: link, arguments: List<String>) {
@@ -1933,132 +2250,124 @@ run(executable: link, arguments: List<String>) {
 	=> Status()
 }
 
-assemble(context: Context, files: List<SourceFile>, output_type: large) {
+assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
 	align(context)
 
-	constant_sections = Map<SourceFile, List<ConstantDataSectionHandle>>()
-	text_sections = get_text_sections(context, constant_sections)
+	Keywords.all.clear() # Remove all keywords for parsing assembly
+
+	text_sections = get_text_sections(context)
 	data_sections = get_data_sections(context)
 
 	assemblies = Map<SourceFile, String>()
+	exports = Map<SourceFile, List<String>>()
+	object_files = Map<SourceFile, BinaryObjectFile>()
 
 	loop file in files {
-		header = create_header(context, file)
+		builder = create_header(context, file)
 
-		text_section = String.empty
-		if text_sections.contains_key(file) { text_section = text_sections[file] }
+		if text_sections.contains_key(file) {
+			builder.add(text_sections[file])
+			builder.write('\n\n')
+		}
 
-		data_section = String.empty
-		if data_sections.contains_key(file) {  data_section = String(DATA_SECTION_DIRECTIVE) + `\n` + data_sections[file].string() }
+		if data_sections.contains_key(file) {
+			data_section_builder = data_sections[file]
 
-		constant_section = String.empty
-		if constant_sections.contains_key(file) { constant_section = get_constant_section(constant_sections[file]) }
+			if builder.constants.contains_key(file) allocate_constants(data_section_builder, file, builder.constants[file])
 
-		result = header + '\n\n' + text_section + '\n\n' + data_section + '\n\n' + constant_section
-		assemblies.add(file, beautify(result))
+			builder.add(data_section_builder)
+			builder.write('\n\n')
+		}
+
+		# Register the exported symbols of the current file
+		exports[file] = builder.exports.to_list()
+
+		if settings.is_assembly_output_enabled {
+			assemblies[file] = beautify(builder.string())
+		}
+
+		# Load all the section modules
+		modules = none as List<DataEncoderModule>
+
+		if builder.modules.contains_key(file) {
+			modules = builder.modules[file]
+		}
+		else {
+			modules = List<DataEncoderModule>()
+		}
+
+		encoder_debug_file = none as String
+		if settings.is_debugging_enabled { encoder_debug_file = file.fullname }
+
+		encoder_output = instruction_encoder.encode(builder.instructions.try_get(file).value_or(List<Instruction>()), encoder_debug_file)
+
+		sections = List<BinarySection>()
+		sections.add(encoder_output.section) # Add the text section
+		sections.add_range(modules.map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
+
+		if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
+		if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames
+
+		object_file = none as BinaryObjectFile
+
+		if settings.is_target_windows {
+			object_file = pe_format.create_object_file(file.fullname, sections, builder.exports)
+		}
+		else {
+			# TODO: Import linux support
+		}
+
+		object_files.add(file, object_file)
+	}
+
+	if output_type == BINARY_TYPE_STATIC_LIBRARY {
+		# TODO: Import static library support
+	}
+
+	# Determine the output file extension
+	extension = none as link
+
+	if settings.is_target_windows {
+		if output_type == BINARY_TYPE_EXECUTABLE { extension = '.exe' }
+		else { extension = '.dll' }
+	}
+	else {
+		if output_type == BINARY_TYPE_EXECUTABLE { extension = '' }
+		else { extension = '.so' }
+	}
+
+	output_filename = output_name + extension
+
+	if settings.is_target_windows {
+		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)
+		io.write_file(output_filename, binary)
+	}
+	else {
+		# TODO: Import linux support
 	}
 
 	=> assemblies
 }
 
-# Summary: Compiles the specified input file and exports the result with the specified output filename
-compile_assembly(bundle: Bundle, input_file: String, output_file: String) {
-	keep_assembly = bundle.get_bool(String(BUNDLE_ASSEMBLY), false)
-	arguments = List<String>()
-
-	# Add output file, input file and enable debug information using the arguments
-	arguments.add(String('-o'))
-	arguments.add(output_file)
-	arguments.add(input_file)
-	arguments.add(String('--gdwarf2'))
-
-	# Now determine the assembler to use
-	assembler = ARM64_ASSEMBLER
-	if settings.is_x64 { assembler = X64_ASSEMBLER }
-
-	status = run(assembler, arguments)
-
-	# Delete the assembly file if it was not requested to keep it
-	# TODO: Enable
-	# if not keep_assembly io.delete(input_file)
-
-	=> status
-}
-
-# Summary: Links the specified input file with necessary system files and produces an executable with the specified output filename
-link_object_files(bundle: Bundle, input_files: List<String>, output_file: String, output_type: large) {
-	arguments = List<String>()
-
-	# Determine the standard library object file to use
-	standard_library = 'libv.o'
-	if settings.is_target_windows { standard_library = 'libv.obj' }
-
-	if output_type != BINARY_TYPE_EXECUTABLE {
-		extension = '.so'
-		if settings.is_target_windows { extension = '.dll' }
-
-		arguments.add(String('--shared'))
-		arguments.add(String('-o'))
-		arguments.add(output_file + extension)
-	}
-	else {
-		if settings.is_target_windows { output_file = output_file + '.exe' }
-		arguments.add(String('-o'))
-		arguments.add(output_file)
-	}
-
-	# If the target is Windows, we need to add some default system libraries
-	if settings.is_target_windows {
-		arguments.add(String('-lkernel32'))
-		arguments.add(String('-luser32'))
-		arguments.add(String('-L C:/Windows/System32'))
-		arguments.add(String('-e main'))
-	}
-
-	arguments.add(String(standard_library))
-	arguments.add_range(input_files)
-
-	# Determine the linker to use
-	linker = ARM64_LINKER
-	if settings.is_x64 { linker = X64_LINKER }
-
-	=> run(linker, arguments)
-}
-
 assemble(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to assemble')
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<Array<SourceFile>> has files) => Status('Missing files')
+	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Missing files')
 	if not (bundle.get_object(String(BUNDLE_OBJECTS)) as Optional<List<String>> has objects) => Status('Missing object files')
+	if not (bundle.get_object(String(BUNDLE_LIBRARIES)) as Optional<List<String>> has imports) => Status('Missing imported libraries')
 
-	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
 	output_name = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String('v') as link) as String
+	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
 
-	assemblies = assemble(parse.context, files.to_list(), output_type)
+	assemblies = assemble(parse.context, files, imports, output_name, output_type)
 
-	# Output the assemblies into their own files
-	loop iterator in assemblies {
-		assembly_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + '.asm'
-		io.write_file(assembly_file, iterator.value)
+	if settings.is_assembly_output_enabled {
+		loop file in files {
+			assembly = assemblies[file]
+			assembly_filename = output_name + `.` + file.filename_without_extension() + '.asm'
+
+			io.write_file(assembly_filename, assembly)
+		}
 	}
 
-	# Determine the object file extension based on the current platform
-	object_file_extension = '.o'
-	if settings.is_target_windows { object_file_extension = '.obj' }
-
-	object_files = List<String>(objects)
-
-	loop iterator in assemblies {
-		assembly_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + '.asm'
-		object_file = String('./') + output_name + `.` + iterator.key.filename_without_extension() + object_file_extension
-		object_files.add(object_file)
-
-		# Compile the assembly file into an object file
-		status = compile_assembly(bundle, assembly_file, object_file)
-
-		# If the compilation failed, we need to abort
-		if status.problematic => status
-	}
-
-	# Finally, we need to link all the object files into a single executable
-	=> link_object_files(bundle, object_files, output_name, output_type)
+	=> Status()
 }

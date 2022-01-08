@@ -128,6 +128,49 @@ namespace primitives {
 		=> number
 	}
 
+	# Summary:
+	# Creates a primitive number which matches the specified settings
+	create_number(bits: large, signed: bool, is_decimal: bool) {
+		number = none as Number
+
+		if is_decimal {
+			number = Number(FORMAT_DECIMAL, 64, String(DECIMAL))
+		}
+		else signed {
+			number = when(bits) {
+				8 => Number(FORMAT_INT8, 8, String(TINY)),
+				16 => Number(FORMAT_INT16, 16, String(SMALL)),
+				32 => Number(FORMAT_INT32, 32, String(NORMAL)),
+				64 => Number(FORMAT_INT64, 64, String(LARGE)),
+				else => Number(FORMAT_INT64, 64, String(LARGE))
+			}
+		}
+		else {
+			number = when(bits) {
+				8 => Number(FORMAT_UINT8, 8, String(U8)),
+				16 => Number(FORMAT_UINT16, 16, String(U16)),
+				32 => Number(FORMAT_UINT32, 32, String(U32)),
+				64 => Number(FORMAT_UINT64, 64, String(U64)),
+				else => Number(FORMAT_UINT64, 64, String(U64))
+			}
+		}
+
+		number.identifier = String(when(number.name) {
+			DECIMAL => DECIMAL_IDENTIFIER,
+			LARGE => LARGE_IDENTIFIER,
+			NORMAL => NORMAL_IDENTIFIER,
+			SMALL => SMALL_IDENTIFIER,
+			TINY => TINY_IDENTIFIER,
+			U64 => U64_IDENTIFIER,
+			U32 => U32_IDENTIFIER,
+			U16 => U16_IDENTIFIER,
+			U8 => U8_IDENTIFIER,
+			else => number.name.text
+		})
+
+		=> number
+	}
+
 	create_unit() {
 		=> Type(String(UNIT), MODIFIER_PRIMITIVE)
 	}
@@ -147,24 +190,38 @@ namespace primitives {
 	}
 
 	inject(context: Context) {
+		signed_integer_8 = create_number(TINY, FORMAT_INT8)
+		signed_integer_16 = create_number(SMALL, FORMAT_INT16)
+		signed_integer_32 = create_number(NORMAL, FORMAT_INT32)
+		signed_integer_64 = create_number(LARGE, FORMAT_INT64)
+
+		unsigned_integer_8 = create_number(U8, FORMAT_UINT8)
+		unsigned_integer_16 = create_number(U16, FORMAT_UINT16)
+		unsigned_integer_32 = create_number(U32, FORMAT_UINT32)
+		unsigned_integer_64 = create_number(U64, FORMAT_UINT64)
+
 		context.declare(create_unit())
 		context.declare(create_bool())
 		context.declare(Link())
-		context.declare(create_number(CHAR, FORMAT_INT8))
-		context.declare(create_number(TINY, FORMAT_INT8))
-		context.declare(create_number(SMALL, FORMAT_INT16))
-		context.declare(create_number(NORMAL, FORMAT_INT32))
-		context.declare(create_number(LARGE, FORMAT_INT64))
-		context.declare(create_number(I8, FORMAT_INT8))
-		context.declare(create_number(I16, FORMAT_INT16))
-		context.declare(create_number(I32, FORMAT_INT32))
-		context.declare(create_number(I64, FORMAT_INT64))
-		context.declare(create_number(U8, FORMAT_UINT8))
-		context.declare(create_number(U16, FORMAT_UINT16))
-		context.declare(create_number(U32, FORMAT_UINT32))
-		context.declare(create_number(U64, FORMAT_UINT64))
+
+		context.declare(signed_integer_8)
+		context.declare(signed_integer_16)
+		context.declare(signed_integer_32)
+		context.declare(signed_integer_64)
+		context.declare_type_alias(String(I8), signed_integer_8)
+		context.declare_type_alias(String(I16), signed_integer_16)
+		context.declare_type_alias(String(I32), signed_integer_32)
+		context.declare_type_alias(String(I64), signed_integer_64)
+
+		context.declare(unsigned_integer_8)
+		context.declare(unsigned_integer_16)
+		context.declare(unsigned_integer_32)
+		context.declare(unsigned_integer_64)
+		context.declare_type_alias(String(CHAR), signed_integer_8)
+		context.declare_type_alias(String(BYTE), signed_integer_16)
+
 		context.declare(create_number(DECIMAL, FORMAT_DECIMAL))
-		context.declare(create_number(BYTE, FORMAT_UINT8))
+
 		context.declare(Link.get_variant(create_number(U8, FORMAT_UINT8), String(L8)))
 		context.declare(Link.get_variant(create_number(U16, FORMAT_UINT16), String(L16)))
 		context.declare(Link.get_variant(create_number(U32, FORMAT_UINT32), String(L32)))

@@ -188,11 +188,23 @@ Context {
 		=> variable
 	}
 
-	# Summary: Declares a hidden variable with the specified type and category
+	# Summary: Declares a hidden variable with the specified type
 	declare_hidden(type: Type, category: large) {
 		variable = Variable(this, type, category, identity + '.' + to_string(indexer.hidden), MODIFIER_DEFAULT)
 		declare(variable)
 		=> variable
+	}
+
+	# Summary: Declares an unnamed pack type
+	declare_unnamed_pack(position: Position) {
+		=> Type(this, identity + '.' + to_string(indexer.hidden), MODIFIER_PACK, position)
+	}
+
+	# Summary: Declares an already existing type with different name
+	declare_type_alias(alias: String, type: Type) {
+		if is_local_type_declared(alias) => false
+		types.add(alias, type)
+		=> true
 	}
 
 	# Summary: Tries to find the first parent context which is a type
@@ -472,6 +484,10 @@ Context {
 		if parent != none parent.subcontexts.remove(this)
 		parent = none
 	}
+
+	virtual string() {
+		=> String.empty
+	}
 }
 
 Function Constructor {
@@ -604,9 +620,11 @@ Context Type {
 
 	is_primitive => has_flag(modifiers, MODIFIER_PRIMITIVE)
 	is_imported => has_flag(modifiers, MODIFIER_IMPORTED)
+	is_exported => has_flag(modifiers, MODIFIER_EXPORTED)
 	is_user_defined => not is_primitive and destructors.overloads.size > 0
 
 	is_unresolved => not is_resolved
+	is_inlining => has_flag(modifiers, MODIFIER_INLINE)
 	is_static => has_flag(modifiers, MODIFIER_STATIC)
 	
 	is_generic_type => not has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
@@ -614,17 +632,37 @@ Context Type {
 	is_function_type => has_flag(modifiers, MODIFIER_FUNCTION_TYPE)
 	is_array_type => has_flag(modifiers, MODIFIER_ARRAY_TYPE)
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
+	is_pack => has_flag(modifiers, MODIFIER_PACK)
+	is_unnamed_pack => is_pack and name.index_of(`.`) != -1
 	is_template_type_variant => name.index_of(`<`) != -1
 
 	reference_size: large = SYSTEM_BYTES
+	allocation_size => get_allocation_size()
+
+	virtual get_allocation_size() {
+		if is_pack {
+			result = 0
+
+			loop iterator in variables {
+				member = iterator.value
+				if member.is_static or member.is_constant continue
+
+				result += member.type.allocation_size
+			}
+
+			=> result
+		}
+
+		=> reference_size
+	}
 
 	# Summary: Returns how many bytes this type contains
 	content_size() {
 		bytes = 0
 
 		loop variable in variables {
-			if variable.value.is_static continue
-			bytes += variable.value.type.reference_size
+			if variable.value.is_static or variable.value.is_constant continue
+			bytes += variable.value.type.allocation_size
 		}
 
 		loop supertype in supertypes { bytes += supertype.content_size }
@@ -935,10 +973,45 @@ Context Type {
 	}
 
 	virtual match(other: Type) {
+		if is_pack {
+			# The other type should also be a pack
+			if not other.is_pack => false
+
+			# Verify the members are compatible with each other
+			expected_member_types = List<Type>()
+			actual_member_types = List<Type>()
+
+			loop iterator in variables {
+				expected_member_types.add(iterator.value.type)
+			}
+			loop iterator in other.variables {
+				actual_member_types.add(iterator.value.type)
+			}
+
+			=> common.compatible(expected_member_types, actual_member_types)
+		}
+
 		=> this.name == other.name and this.identity == other.identity
 	}
 
-	virtual string() {
+	override string() {
+		# Handle unnamed packs seperately
+		if is_unnamed_pack {
+			# Pattern: { $member-1: $type-1, $member-2: $type-2, ... }
+			member_sections = List<String>(variables.size, false)
+
+			loop iterator in variables {
+				member = iterator.value
+				member_section = member.name + ': '
+
+				# Add the type of the member
+				if member.type != none { member_section = member_section + member.type.string() }
+				else { member_section = member_section + '?' }
+			}
+
+			=> String('{ ') + String.join(String(', '), member_sections) + ' }'
+		}
+
 		names = List<String>()
 		loop iterator in get_parent_types() { names.add(iterator.name) }
 		names.add(name)
@@ -977,9 +1050,6 @@ Variable {
 
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
-
-	# TODO: Inline support
-	is_inlined => false
 
 	init(parent: Context, type: Type, category: normal, name: String, modifiers: normal) {
 		this.name = name
@@ -1037,6 +1107,26 @@ Variable {
 		}
 
 		=> -1
+	}
+
+	# Summary: Returns whether this variable is inlined
+	is_inlined() {
+		if has_flag(modifiers, MODIFIER_OUTLINE) or type == none => false
+		if has_flag(modifiers, MODIFIER_INLINE) => true
+
+		# Inlining types should always be inlined
+		=> type.is_inlining
+	}
+
+	string() {
+		start: String = String.empty
+		if parent != none and parent.is_type { start = parent.string() + '.' }
+
+		end: String = name + ': '
+		if type == none or type.is_unresolved { end = end + '?' }
+		else { end = end + type.string() }
+
+		=> start + end
 	}
 }
 
@@ -1187,6 +1277,7 @@ Context Function {
 	is_exported => has_flag(modifiers, MODIFIER_EXPORTED)
 	is_outlined => has_flag(modifiers, MODIFIER_OUTLINE)
 	is_template_function => has_flag(modifiers, MODIFIER_TEMPLATE_FUNCTION)
+	is_template_function_variant => has_flag(modifiers, MODIFIER_TEMPLATE_FUNCTION_VARIANT)
 
 	init(parent: Context, modifiers: normal, name: String, blueprint: List<Token>, start: Position, end: Position) {
 		Context.init(parent, FUNCTION_CONTEXT)
@@ -1326,8 +1417,6 @@ Context Function {
 			if matches => implementation
 		}
 
-		if is_imported => none as FunctionImplementation
-
 		=> implement(implementation_types)
 	}
 
@@ -1444,7 +1533,7 @@ Type TemplateType {
 		# Register the new variant
 		variant = result.(TypeDefinitionNode).type
 		variant.identifier = name
-		variant.modifiers = modifiers
+		variant.modifiers = modifiers & (!MODIFIER_IMPORTED) # Remove the imported modifier, because new variants are not imported
 		variant.template_arguments = arguments
 
 		variants.add(identifier, TemplateTypeVariant(variant, arguments))
@@ -1477,23 +1566,6 @@ Function TemplateFunction {
 
 		this.template_parameters = template_parameters
 		this.header = FunctionToken(IdentifierToken(name), ParenthesisToken(parameter_tokens))
-	}
-
-	init(context: Context, modifiers: large, name: String, parameters: large, arguments: large) {
-		Function.init(context, modifiers | MODIFIER_TEMPLATE_FUNCTION, name, none as Position, none as Position)
-
-		# Generate parameter names based on the specified parameter count
-		parameter_tokens = List<Token>(parameters, false)
-
-		loop (i = 0, i < parameters, i++) {
-			parameter_tokens.add(IdentifierToken(String('P') + to_string(i)))
-			parameter_tokens.add(OperatorToken(Operators.COMMA))
-		}
-
-		# Remove the unncecessary comma from the end
-		if parameters > 0 parameters.remove_at(parameters.size - 1)
-
-		header = FunctionToken(IdentifierToken(name), ParenthesisToken(parameter_tokens))
 	}
 
 	# Summary: Creates the parameters of this function in a way that they do not have types
@@ -1626,7 +1698,6 @@ Function Lambda {
 
 		# Lambdas usually capture variables from the parent context
 		connect(context)
-		context.declare(this)
 	}
 
 	# Summary: Implements the lambda using the specified parameter types
@@ -1662,7 +1733,11 @@ Context FunctionImplementation {
 	template_arguments: List<Type>
 	return_type: Type
 
+	size_of_locals: large = 0
+	size_of_local_memory: large = 0
+
 	virtual_function: VirtualFunction = none
+	is_imported: bool = false
 
 	is_constructor => metadata.is_constructor
 	is_destructor => metadata.is_destructor
@@ -1674,7 +1749,7 @@ Context FunctionImplementation {
 
 		loop iterator in variables {
 			variable = iterator.value
-			if not variable.is_parameter or variable.is_self_pointer continue
+			if not variable.is_parameter or variable.is_self_pointer or variable.is_hidden continue
 			result.add(variable)
 		}
 
@@ -1765,6 +1840,28 @@ Context FunctionImplementation {
 			mangle.add(return_type)
 		}
 	}
+
+	virtual get_header() {
+		start: String = String.empty
+		if parent != none and parent.is_type { start = parent.string() + `.` }
+
+		middle: String = metadata.name + `(` + String.join(String(', '), parameters().map<String>((i: Variable) -> i.string())) + '): '
+
+		result = start + middle
+
+		if return_type == none {
+			result = result + `?`
+		}
+		else {
+			result = result + return_type.string()
+		}
+
+		=> result
+	}
+
+	override string() {
+		=> get_header()
+	}
 }
 
 Variable CapturedVariable {
@@ -1808,7 +1905,7 @@ FunctionImplementation LambdaImplementation {
 		loop capture in captures { internal_type.(Context).declare(capture) }
 
 		# Add the self pointer to all of the usages of the captured variables
-		usages = node.find_all(i -> i.instance == NODE_VARIABLE and captures.contains(i.(VariableNode).variable))
+		usages: List<Node> = node.find_all(i -> i.instance == NODE_VARIABLE and captures.contains(i.(VariableNode).variable))
 
 		loop usage in usages { usage.replace(LinkNode(VariableNode(self), usage.clone())) }
 
@@ -1861,7 +1958,8 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override on_mangle(mangle: Mangle) {
-		parent.on_mangle(mangle)
+		function_parent = parent.find_implementation_parent()
+		function_parent.on_mangle(mangle)
 
 		mangle.add(`_`)
 		mangle.add(name)
@@ -1876,6 +1974,10 @@ FunctionImplementation LambdaImplementation {
 		mangle.add(Mangle.PARAMETERS_END)
 		mangle.add(Mangle.START_RETURN_TYPE_COMMAND)
 		mangle.add(return_type)
+	}
+
+	override get_header() {
+		=> parent.string() + ' Lambda #' + name
 	}
 }
 
@@ -1974,6 +2076,10 @@ Type UnresolvedType {
 
 		if count != none abort('Array types are not supported')
 		=> TypeNode(context as Type)
+	}
+
+	override match(other: Type) {
+		=> false
 	}
 
 	try_resolve_type(context: Context) {

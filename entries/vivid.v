@@ -1,25 +1,25 @@
-import time(): large
+none = 0
 
 abort(message: String) {
 	print('Internal error: ')
 	println(message)
-	exit(1)
+	application.exit(1)
 }
 
 abort(message: link) {
 	print('Internal error: ')
 	println(message)
-	exit(1)
+	application.exit(1)
 }
 
 complain(status: Status) {
 	print('Compilation terminated: ')
 	println(status.message)
-	exit(1)
+	application.exit(1)
 }
 
 init() {
-	start = time()
+	start = time.now()
 
 	String.empty = String('')
 	settings.initialize()
@@ -38,6 +38,9 @@ init() {
 	Keywords.initialize()
 	Operators.initialize()
 
+	result = textual_assembler.assemble(bundle)
+	if result.problematic complain(result)
+
 	result = tokenize(bundle)
 	if result.problematic complain(result)
 
@@ -53,11 +56,11 @@ init() {
 	analysis.analyze(bundle)
 	if result.problematic complain(result)
 
-	JumpInstruction.initialize()
+	platform.x64.initialize()
 	assembler.assemble(bundle)
 	if result.problematic complain(result)
 
-	end = time()
+	end = time.now()
 	print(to_string((end - start) / 10000.0))
 	println(' ms')
 	=> 0

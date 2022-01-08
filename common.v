@@ -1,3 +1,21 @@
+TINY_MIN = -128
+TINY_MAX = 127
+SMALL_MIN = -32768
+SMALL_MAX = 32767
+NORMAL_MIN = -2147483648
+NORMAL_MAX = 2147483647
+LARGE_MIN = 0x8000000000000000
+LARGE_MAX = 9223372036854775807
+
+U8_MIN = 0
+U8_MAX = 255
+U16_MIN = 0
+U16_MAX = 65535
+U32_MIN = 0
+U32_MAX = 4294967295
+U64_MIN = 0
+U64_MAX = 0xFFFFFFFFFFFFFFFF
+
 namespace common
 
 get_self_pointer(context: Context, position: Position) {
@@ -78,13 +96,39 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 	=> FunctionType(parameter_types, return_type, position)
 }
 
+# Summary:
+# Creates an unnamed pack type from the specified tokens.
+# Pattern: { $member-1: $type-1, $member-2: $type-2, ... }
+read_pack_type(context: Context, tokens: List<Token>, position: Position) {
+	pack_type = context.declare_unnamed_pack(position)
+	sections = tokens.take_first().(ParenthesisToken).get_sections()
+
+	# We are not going to feed the sections straight to the parser while using the pack type as context, because it would allow defining whole member functions
+	loop section in sections {
+		# Determine the member name and its type
+		member = section[0].(IdentifierToken).value
+
+		type = read_type(context, section.slice(2))
+		if type == none => none as Type
+
+		# Create the member using the determined properties
+		pack_type.(Context).declare(type, VARIABLE_CATEGORY_MEMBER, member)
+	}
+
+	=> pack_type
+}
+
 # Summary: Reads a type from the next tokens inside the specified tokens
 # Pattern: $name [<$1, $2, ... $n>]
 read_type(context: Context, tokens: List<Token>) {
 	if tokens.size == 0 => none as Type
 
 	next = tokens[0]
-	if next.match(TOKEN_TYPE_PARENTHESIS) => read_function_type(context, tokens, next.position)
+	if next.match(TOKEN_TYPE_PARENTHESIS) {
+		if next.match(`(`) => read_function_type(context, tokens, next.position)
+		if next.match(`{`) => read_pack_type(context, tokens, next.position)
+		=> none as Type
+	}
 
 	if not next.match(TOKEN_TYPE_IDENTIFIER) => none as Type
 
@@ -177,8 +221,40 @@ consume_function_type(state: ParserState) {
 	=> consume_type(state)
 }
 
+# Summary:
+# Consumes a pack type.
+# Pattern: { $member-1: $type, $member-2: $type, ... }
+# </summary>
+consume_pack_type(state: ParserState) {
+	# Consume curly brackets
+	brackets = state.peek()
+	if brackets == none or not brackets.match(`{`) => false
+
+	# Verify the curly brackets contain pack members using sections
+	# Pattern: { $member-1: $type, $member-2: $type, ... }
+	sections = brackets.(ParenthesisToken).get_sections()
+	if sections.size == 0 => false
+
+	loop section in sections {
+		if section.size < 3 => false
+
+		# Verify the first token is a member name
+		if section[0].type != TOKEN_TYPE_IDENTIFIER => false
+
+		# Verify the second token is a colon
+		if not section[1].match(Operators.COLON) => false
+	}
+
+	=> true
+}
+
 consume_type(state: ParserState) {
-	if not state.consume(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_PARENTHESIS) => false
+	is_normal_type = state.consume(TOKEN_TYPE_IDENTIFIER)
+
+	if not is_normal_type {
+		next = state.peek()
+		if next == none or not next.match(`{`) => false
+	}
 
 	loop {
 		next = state.peek()
@@ -191,12 +267,18 @@ consume_type(state: ParserState) {
 		else next.match(Operators.LESS_THAN) {
 			if not consume_template_arguments(state) => false
 		}
-		else next.match(`(`) {
-			if not consume_function_type(state) => false
-		}
 		else next.match(`[`) {
 			state.consume()
 			=> true
+		}
+		else is_normal_type {
+			=> true
+		}
+		else next.match(`(`) {
+			if not consume_function_type(state) => false
+		}
+		else next.match(`{`) {
+			if not consume_pack_type(state) => false
 		}
 		else => true
 	}
@@ -496,11 +578,16 @@ try_get_lambda_call(environment: Context, descriptor: FunctionToken) {
 
 # Summary: Collects all types and subtypes from the specified context
 get_all_types(context: Context) {
+	=> get_all_types(context, true)
+}
+
+# Summary: Collects all types and subtypes from the specified context
+get_all_types(context: Context, include_imported: bool) {
 	result = List<Type>()
 
 	loop iterator in context.types {
 		type = iterator.value
-		result.add(type)
+		if include_imported or not type.is_imported result.add(type)
 		result.add_range(get_all_types(type))
 	}
 
@@ -532,6 +619,11 @@ get_all_visible_functions(context: Context) {
 
 # Summary: Collects all function implementations from the specified context
 get_all_function_implementations(context: Context) {
+	=> get_all_function_implementations(context, true)
+}
+
+# Summary: Collects all function implementations from the specified context
+get_all_function_implementations(context: Context, include_imported: bool) {
 	# Collect all functions, constructors, destructors and virtual functions
 	functions = List<Function>()
 
@@ -554,7 +646,7 @@ get_all_function_implementations(context: Context) {
 	loop function in functions {
 		loop implementation in function.implementations {
 			implementations.add_range(get_all_function_implementations(implementation))
-			implementations.add(implementation)
+			if include_imported or not implementation.is_imported implementations.add(implementation)
 		}
 	}
 
@@ -608,6 +700,34 @@ get_source(node: Node) {
 	}
 
 	=> node
+}
+
+# Summary:
+# Tries to return the node which edits the specified node.
+# Returns null if the specified node is not edited.
+try_get_editor(node: Node) {
+	editor = none as Node
+
+	loop (iterator = node.parent, iterator != none, iterator = iterator.parent) {
+		if iterator.instance == NODE_CAST continue
+		editor = iterator
+		stop
+	}
+
+	if editor == none => none as Node
+
+	if editor.instance == NODE_OPERATOR and editor.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT => editor
+	if editor.instance == NODE_INCREMENT or editor.instance == NODE_DECREMENT => editor
+
+	=> none as Node
+}
+
+# Summary: Returns the node which edits the specified node
+get_editor(edited: Node) {
+	editor = try_get_editor(edited)
+	if editor != none => editor
+
+	abort('Could not find the editor node')
 }
 
 # Summary: Returns whether the specified node represents a statement
@@ -685,13 +805,39 @@ join(separator: Token, elements: List<List<Token>>) {
 get_tokens(type: Type, position: Position) {
 	result = List<Token>()
 
-	###
-	TODO: Function types
+	if type.is_unnamed_pack {
+		# Construct the following pattern from the members of the pack: [ $member-1: $type-1 ], [ $member-2: $type-2 ], ...
+		members = List<List<Token>>()
+
+		loop iterator in type.variables {
+			member = iterator.value
+
+			member_tokens = List<Token>()
+			member_tokens.add(IdentifierToken(member.name, position))
+			member_tokens.add(OperatorToken(Operators.COLON, position))
+			member_tokens.add_range(get_tokens(member.type, position))
+
+			members.add(member_tokens)
+		}
+
+		# Now, join the token arrays with commas and put them inside curly brackets: { $member-1: $type-1, $member-2: $type-2, ... }
+		result.add(ParenthesisToken(`{`, position, position, join(OperatorToken(Operators.COMMA, position), members)))
+
+		=> result
+	}
 
 	if type.is_function_type {
-		# ...
+		function = type as FunctionType
+		parameters = function.parameters.map<List<Token>>((i: Type) -> get_tokens(i, position))
+		separator = OperatorToken(Operators.COMMA, position)
+		separator.position = position
+
+		result.add(ParenthesisToken(`(`, position, position, join(separator, parameters)))
+		result.add(OperatorToken(Operators.ARROW, position))
+		result.add_range(get_tokens(function.return_type, position))
+
+		=> result
 	}
-	###
 
 	if type.parent != none and type.parent.is_type {
 		result.add_range(get_tokens(type.parent, position))
@@ -777,6 +923,40 @@ align_members(type: Type) {
 		if variable.is_static continue
 		variable.alignment = position
 		variable.is_aligned = true
-		position += variable.type.reference_size
+		position += variable.type.allocation_size
 	}
+}
+
+# Summary:
+# Returns all local variables, which represent the specified pack variable
+get_pack_representives(context: Context, prefix: String, type: Type, category: large) {
+	representives = List<Variable>()
+
+	loop iterator in type.variables {
+		member = iterator.value
+		name = prefix + '.' + member.name
+
+		if member.type.is_pack {
+			representives.add_range(get_pack_representives(context, name, member.type, category))
+		}
+		else {
+			representive = context.get_variable(name)
+			if representive == none { representive = context.declare(member.type, category, name) }
+			representives.add(representive)
+		}
+	}
+
+	=> representives
+}
+
+# Summary:
+# Returns all local variables, which represent the specified pack variable
+get_pack_representives(variable: Variable) {
+	=> get_pack_representives(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
+}
+
+# Summary:
+# Returns true if the specified node represents integer zero
+is_zero(node: Node) {
+	=> node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
 }

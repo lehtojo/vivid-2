@@ -43,7 +43,11 @@ NODE_IS = 2199023255552
 NODE_LAMBDA = 4398046511104
 NODE_HAS = 8796093022208
 NODE_EXTENSION_FUNCTION = 17592186044416
-NODE_WHEN = 35184372088832 # 1 <| 44
+NODE_WHEN = 35184372088832
+NODE_LIST_CONSTRUCTION = 70368744177664
+NODE_PACK_CONSTRUCTION = 140737488355328
+NODE_PACK = 281474976710656
+NODE_UNDEFINED = 562949953421312 # 1 <| 49
 
 Node NumberNode {
 	value: large
@@ -52,6 +56,7 @@ Node NumberNode {
 
 	init(format: large, value: large, start: Position) {
 		this.instance = NODE_NUMBER
+		this.start = start
 		this.format = format
 		this.value = value
 	}
@@ -265,7 +270,7 @@ OperatorNode LinkNode {
 	private init(position: Position) {
 		OperatorNode.init(Operators.DOT)
 		this.instance = NODE_LINK
-		this.start = start
+		this.start = position
 		this.is_resolvable = true
 	}
 
@@ -282,7 +287,7 @@ OperatorNode LinkNode {
 		add(left)
 		add(right)
 		this.instance = NODE_LINK
-		this.start = start
+		this.start = position
 		this.is_resolvable = true
 	}
 
@@ -1211,6 +1216,10 @@ Node AccessorNode {
 		this.is_resolvable = true
 	}
 
+	get_stride() {
+		=> get_type().allocation_size
+	}
+
 	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
 		=> LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
 	}
@@ -1507,6 +1516,7 @@ Node SectionNode {
 Node NamespaceNode {
 	name: List<Token>
 	blueprint: List<Token>
+	is_parsed: bool = false
 
 	init(name: List<Token>, blueprint: List<Token>) {
 		this.name = name
@@ -1534,6 +1544,9 @@ Node NamespaceNode {
 	}
 
 	parse(context: Context) {
+		if is_parsed return
+		is_parsed = true
+
 		# Define the actual namespace
 		result = create_namespace(context)
 
@@ -1587,6 +1600,7 @@ Node CallNode {
 
 INSPECTION_TYPE_NAME = 0
 INSPECTION_TYPE_SIZE = 1
+INSPECTION_TYPE_CAPACITY = 2
 
 Node InspectionNode {
 	type: large
@@ -1595,6 +1609,7 @@ Node InspectionNode {
 		this.type = type
 		this.instance = NODE_INSPECTION
 		this.is_resolvable = true
+		this.start = position
 		add(node)
 	}
 
@@ -1906,20 +1921,40 @@ Node ExtensionFunctionNode {
 }
 
 Node WhenNode {
-	inspected => first as VariableNode
+	value => first
+	inspected => value.next as VariableNode
 	sections => last
 
-	init(value: VariableNode, sections: List<Node>, position: Position) {
+	init(value: Node, inspected: VariableNode, sections: List<Node>, position: Position) {
 		this.start = position
 		this.instance = NODE_WHEN
 		this.is_resolvable = true
 
 		add(value)
+		add(inspected)
 		add(Node())
 
 		loop section in sections {
 			this.sections.add(section)
 		}
+	}
+
+	override try_get_type() {
+		types = List<Type>()
+
+		loop section in sections {
+			body = get_section_body(section)
+			value = body.last
+
+			if value == none => none as Type
+
+			type = value.try_get_type()
+			if type == none => none as Type
+
+			types.add(type)
+		}
+
+		=> resolver.get_shared_type(types)
 	}
 
 	get_section_body(section: Node) {
@@ -1932,42 +1967,17 @@ Node WhenNode {
 	}
 
 	override resolve(environment: Context) {
+		resolver.resolve(environment, value)
 		resolver.resolve(environment, inspected)
 		resolver.resolve(environment, sections)
-
-		if get_status().problematic => none as Node
-
-		container = InlineNode(start)
-
-		section_types = List<Type>()
-		loop section in sections { section_types.add(get_section_body(section).last.get_type()) }
-
-		return_type = resolver.get_shared_type(section_types)
-		if return_type == none => none as Node
-
-		# The return value of the when-statement must be loaded into a separate variable
-		return_value_variable = environment.declare_hidden(return_type)
-		container.add(DeclareNode(return_value_variable, start))
-
-		loop section in sections {
-			body = get_section_body(section)
-
-			# Load the return value of the section to the return value variable
-			value = body.last
-			destination = Node()
-			value.replace(destination)
-
-			destination.replace(OperatorNode(Operators.ASSIGN, value.start).set_operands(VariableNode(return_value_variable, value.start), value))
-			container.add(section)
-		}
-
-		# When-statements are added inside inline nodes
-		parent.add(VariableNode(return_value_variable, start))
-		=> container
+		=> none as Node
 	}
 
 	override get_status() {
-		if inspected.try_get_type() == none => Status(inspected.start, 'Can not resolve the type of the inspected value')
+		inspected_type = value.try_get_type()
+		inspected.variable.type = inspected_type
+
+		if inspected_type == none => Status(inspected.start, 'Can not resolve the type of the inspected value')
 
 		types = List<Type>()
 
@@ -1989,5 +1999,164 @@ Node WhenNode {
 
 	override string() {
 		=> String('When')
+	}
+}
+
+Node ListConstructionNode {
+	type: Type = none
+
+	init(elements: Node, position: Position) {
+		this.instance = NODE_LIST_CONSTRUCTION
+		this.start = position
+
+		loop element in elements {
+			add(element)
+		}
+	}
+
+	override try_get_type() {
+		# If the type is already set, return it
+		if type != none => type
+
+		# Resolve the type of a single element
+		element_types = resolver.get_types(this)
+		if element_types == none => none as Type
+		element_type = resolver.get_shared_type(element_types)
+		if element_type == none => none as Type
+
+		# Try to find the environment context
+		environment = get_parent_context()
+		if environment == none => none as Type
+
+		list_type = environment.get_type(String(parser.STANDARD_LIST_TYPE))
+		if list_type == none or not list_type.is_template_type => none as Type
+
+		# Get a list type with the resolved element type
+		type = list_type.(TemplateType).get_variant([ element_type ])
+		type.constructors.get_implementation(List<Type>())
+		type.get_function(String(parser.STANDARD_LIST_ADDER)).get_implementation(element_type)
+		=> type
+	}
+
+	override resolve(context: Context) {
+		loop element in this {
+			resolver.resolve(context, element)
+		}
+
+		=> none as Node
+	}
+
+	override get_status() {
+		if type == none => Status(Position, 'Can not resolve the shared type between the elements')
+
+		=> Status()
+	}
+
+	override string() {
+		elements: List<String> = List<String>()
+		loop element in this { elements.add(element.string()) }
+
+		=> String('[ ') + String.join(String(', '), elements) + ' ]'
+	}
+}
+
+Node PackConstructionNode {
+	type: Type = none
+	members: List<String>
+
+	init(members: List<String>, arguments: List<Node>, position: Position) {
+		this.instance = NODE_PACK_CONSTRUCTION
+		this.start = position
+		this.members = members
+
+		# Add the arguments as children
+		loop argument in arguments {
+			add(argument)
+		}
+	}
+
+	override try_get_type() {
+		=> type
+	}
+
+	validate_member_names() {
+		# Ensure that all member names are unique
+		loop (i = 0, i < members.size, i++) {
+			member = members[i]
+
+			loop (j = i + 1, j < members.size, j++) {
+				if members[j] == member => false
+			}
+		}
+
+		=> true
+	}
+
+	resolve(context: Context) {
+		# Resolve the arguments
+		loop argument in this {
+			resolver.resolve(context, argument)
+		}
+
+		# Skip the process below, if it has been executed already
+		if type != none => none as Node
+
+		# Try to resolve the type of the arguments, these types are the types of the members
+		types = resolver.get_types(this)
+		if types == none => none as Node
+
+		# Ensure that all member names are unique
+		if not validate_member_names() => none as Node
+
+		# Create a new pack type in order to construct the pack later
+		type = context.declare_unnamed_pack(position)
+
+		# Declare the pack members
+		loop (i = 0, i < members.size, i++) {
+			type.declare(types[i], VARIABLE_CATEGORY_MEMBER, members[i])
+		}
+
+		=> none as Type
+	}
+
+	override get_status() {
+		# Ensure that all member names are unique
+		if not validate_member_names() => Status(start, 'All pack members must be named differently')
+
+		if type == none => Status(start, 'Can not resolve the types of the pack members')
+
+		=> Status()
+	}
+
+	override string() {
+		=> String('Pack { ') + String.join(String(', '), members) + ' }'
+	}
+}
+
+Node PackNode {
+	type: Type
+
+	init(type: Type) {
+		this.type = type
+		this.instance = NODE_PACK
+	}
+
+	override try_get_type() {
+		=> type
+	}
+}
+
+Node UndefinedNode {
+	type: Type
+	format: large
+
+	init(type: Type, format: large) {
+		this.type = type
+		this.format = format
+		this.instance = NODE_UNDEFINED
+	}
+
+	override try_get_type() {
+		=> type
 	}
 }

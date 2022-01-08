@@ -19,8 +19,12 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 		abort('Can not access member variables here')
 	}
 	else category == VARIABLE_CATEGORY_GLOBAL {
+		if variable.type.is_pack {
+			abort('Global packs are not supported yet')
+		}
+
 		handle = DataSectionHandle(variable.get_static_name(), false)
-		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
 		=> handle
 	}
 

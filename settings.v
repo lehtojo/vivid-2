@@ -15,7 +15,9 @@ is_garbage_collector_enabled: bool
 is_debugging_enabled: bool
 is_verbose_output_enabled: bool
 is_target_windows: bool
-is_position_independent: bool
+use_indirect_access_tables: bool
+is_assembly_output_enabled: bool
+
 allocation_function: FunctionImplementation
 deallocation_function: FunctionImplementation
 inheritance_function: FunctionImplementation
@@ -35,6 +37,8 @@ initialize() {
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
 	is_verbose_output_enabled = false
-	is_target_windows = false
+	is_target_windows = true
+	use_indirect_access_tables = false
+	is_assembly_output_enabled = false
 	included_folders = List<String>()
 }

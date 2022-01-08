@@ -126,8 +126,8 @@ build_negate(unit: Unit, node: NegateNode) {
 	if settings.is_x64 and is_decimal {
 		# Define a constant which negates decimal values
 		bytes = Array<byte>(16)
-		bytes[7] = 128
-		bytes[15] = 128
+		bytes[7] = 0x80
+		bytes[15] = 0x80
 
 		negator = Result(ByteArrayDataSectionHandle(bytes), FORMAT_INT128)
 		=> BitwiseInstruction.create_xor(unit, references.get(unit, node.first, ACCESS_READ), negator, FORMAT_DECIMAL, false).add()
@@ -181,6 +181,35 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 	abort('Missing operator node implementation')
 }
 
+build_pack(unit: Unit, node: PackNode) {
+	values = List<Result>()
+
+	loop value in node {
+		values.add(references.get(unit, value, ACCESS_READ) as Result)
+	}
+
+	=> CreatePackInstruction(unit, node.get_type(), values).add()
+}
+
+# Summary:
+# Returns the specified pack by using the registers used when passing packs in parameters
+return_pack(unit: Unit, value: Result) {
+	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+
+	destinations = List<Handle>()
+	sources = List<Result>()
+
+	# Pass the first value using the stack just above the return address
+	offset = 0
+	if settings.is_x64 { offset = SYSTEM_BYTES }
+
+	position = StackMemoryHandle(unit, offset, true)
+	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, SYSTEM_FORMAT)
+
+	unit.add(ReorderInstruction(unit, destinations, sources))
+}
+
 build_return(unit: Unit, node: ReturnNode) {
 	if node.value != none {
 		value = references.get(unit, node.value, ACCESS_READ)
@@ -189,6 +218,7 @@ build_return(unit: Unit, node: ReturnNode) {
 		to = unit.function.return_type
 		value = casts.cast(unit, value, from, to)
 
+		if to.is_pack return_pack(unit, value)
 		=> ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
 
@@ -219,8 +249,11 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 		if member.is_global => references.get_variable(unit, member, mode)
 
 		left = references.get(unit, node.first, ACCESS_READ) as Result
-		alignment = member.get_alignment(type)
 
+		# Packs:
+		if left.value.instance == INSTANCE_DISPOSABLE_PACK => left.value.(DisposablePackHandle).members[member]
+
+		alignment = member.get_alignment(type)
 		=> GetObjectPointerInstruction(unit, member, left, alignment, mode).add()
 	}
 
@@ -232,8 +265,19 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	start = references.get(unit, node.first, ACCESS_READ) as Result
 	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
+	stride = node.get_stride()
 
-	=> GetMemoryAddressInstruction(unit, node.format, start, offset, node.stride, mode).add()
+	# The memory address of the accessor must be created is multiple steps, if the stride is too large and it can not be combined with the offset
+	if stride >= platform.x64.EVALUATE_MAX_MULTIPLIER and offset.value.type != HANDLE_CONSTANT {
+		# Pattern:
+		# index = offset * stride
+		# => [start + index]
+		index = MultiplicationInstruction(unit, offset, Result(ConstantHandle(stride), SYSTEM_FORMAT), SYSTEM_FORMAT, false).add()
+
+		=> GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, index, 1, mode).add()
+	}
+
+	=> GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
 }
 
 build_declaration(unit: Unit, node: DeclareNode) {
@@ -245,10 +289,10 @@ build_declaration(unit: Unit, node: DeclareNode) {
 }
 
 build_call(unit: Unit, node: CallNode) {
-	self = references.get(unit, node.self, ACCESS_READ)
+	self = references.get(unit, node.self, ACCESS_READ) as Result
 	if node.descriptor.self != none { self = casts.cast(unit, self, node.self.get_type(), node.descriptor.self) }
 
-	function_pointer = references.get(unit, node.pointer, ACCESS_READ)
+	function_pointer = references.get(unit, node.pointer, ACCESS_READ) as Result
 
 	self_type = node.descriptor.self
 	if self_type == none { self_type = node.self.get_type() }
@@ -261,23 +305,27 @@ build_string(unit: Unit, node: StringNode) {
 	if node.identifier as link == none { node.identifier = unit.get_next_string() }
 
 	handle = DataSectionHandle(node.identifier, true)
-	if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+	if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
 
 	=> Result(handle, SYSTEM_FORMAT)
+}
+
+build_undefined(unit: Unit, node: UndefinedNode) {
+	=> AllocateRegisterInstruction(unit, node.format).add()
 }
 
 build_data_pointer(node: DataPointerNode) {
 	if node.type == FUNCTION_DATA_POINTER {
 		handle = DataSectionHandle(node.(FunctionDataPointerNode).function.get_fullname(), node.offset, true, DATA_SECTION_MODIFIER_NONE)
 		
-		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
 		=> Result(handle, SYSTEM_FORMAT)
 	}
 
 	if node.type == TABLE_DATA_POINTER {
 		handle = DataSectionHandle(node.(TableDataPointerNode).table.name, node.offset, true, DATA_SECTION_MODIFIER_NONE)
 
-		if settings.is_position_independent { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
 		=> Result(handle, SYSTEM_FORMAT)
 	}
 
@@ -313,9 +361,11 @@ build(unit: Unit, node: Node) {
 		NODE_NOT => build_not(unit, node as NotNode)
 		NODE_NEGATE => build_negate(unit, node as NegateNode)
 		NODE_OPERATOR => build_arithmetic(unit, node as OperatorNode)
+		NODE_PACK => build_pack(unit, node as PackNode)
 		NODE_RETURN => build_return(unit, node as ReturnNode)
 		NODE_STACK_ADDRESS => AllocateStackInstruction(unit, node as StackAddressNode).add()
 		NODE_STRING => build_string(unit, node as StringNode)
+		NODE_UNDEFINED => build_undefined(unit, node as UndefinedNode)
 		else => build_childs(unit, node)
 	}
 }

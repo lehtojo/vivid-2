@@ -13,6 +13,7 @@ BUNDLE_REBUILD = 'rebuild'
 BUNDLE_SERVICE = 'service'
 BUNDLE_FILENAMES = 'filenames'
 BUNDLE_OBJECTS = 'objects'
+BUNDLE_IMPORTED_OBJECTS = 'imported-objects'
 BUNDLE_LIBRARIES = 'libraries'
 
 # All possible output binary types
@@ -30,9 +31,13 @@ ARCHITECTURE_ARM64 = 1
 COMPILER_VERSION = '1.0'
 
 # The primary file extension of this language
+ASSEMBLY_EXTENSION = '.asm'
 LANGUAGE_FILE_EXTENSION = '.v'
 WINDOWS_OBJECT_FILE_EXTENSION = '.obj'
 LINUX_OBJECT_FILE_EXTENSION = '.o'
+
+ASSEMBLER_FLAG = 'assembler'
+LINK_FLAG = 'link'
 
 DEFAULT_OUTPUT_NAME = 'v'
 
@@ -109,6 +114,9 @@ initialize() {
 
 		settings.included_folders[i] = folder + '/'
 	}
+
+	keywords.initialize()
+	operators.initialize()
 }
 
 # Summary: Tries to find the specified library using the include folders
@@ -143,10 +151,11 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		println('Usage: v [options] <folders / files>')
 		println('Options:')
 		println('-help')
-		println('-r <folder>')
+		println('-r <folder> / -recursive <folder>')
 		println('-d / -debug')
 		println('-o <filename> / -output <filename>')
 		println('-l <library> / -library <library>')
+		println('-link')
 		println('-a / -assembly')
 		println('-shared / -dynamic / -dll')
 		println('-static')
@@ -160,9 +169,9 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		println('-arm64')
 		println('-version')
 		println('-s')
-		exit(1)
+		application.exit(1)
 	}
-	else value == '-r' {
+	else value == '-r' or value == '-recursive' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
 		
 		folder = parameters.take_first()
@@ -199,8 +208,12 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 
 		libraries.add(filename)
 	}
+	else value == '-link' {
+		bundle.put(String(LINK_FLAG), true)
+	}
 	else value == '-a' or value == '-assembly' {
 		bundle.put(String(BUNDLE_ASSEMBLY), true)
+		settings.is_assembly_output_enabled = true
 	}
 	else value == '-dynamic' or value == '-shared' or value == '-dll' {
 		bundle.put(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_SHARED_LIBRARY)
@@ -251,7 +264,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	else value == '-version' {
 		print('Vivid version ')
 		println(COMPILER_VERSION)
-		exit(0)
+		application.exit(0)
 	}
 	else value == '-s' {
 		bundle.put(String(BUNDLE_SERVICE), true)
@@ -287,6 +300,10 @@ configure(bundle: Bundle, arguments: List<String>) {
 			if element.ends_with(LANGUAGE_FILE_EXTENSION) {
 				files.add(element)
 			}
+			else element.ends_with(ASSEMBLY_EXTENSION) {
+				files.add(element)
+				bundle.put(String(ASSEMBLER_FLAG), true)
+			}
 			else element.ends_with(LINUX_OBJECT_FILE_EXTENSION) or element.ends_with(WINDOWS_OBJECT_FILE_EXTENSION) {
 				objects.add(element)
 			}
@@ -307,6 +324,7 @@ configure(bundle: Bundle, arguments: List<String>) {
 
 	bundle.put(String(BUNDLE_FILENAMES), files as link)
 	bundle.put(String(BUNDLE_OBJECTS), objects as link)
+	bundle.put(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link)
 	bundle.put(String(BUNDLE_LIBRARIES), libraries as link)
 
 	=> Status()

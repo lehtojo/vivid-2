@@ -35,9 +35,9 @@ load(bundle: Bundle) {
 	if object.empty => Status('Please enter input files')
 	
 	filenames = object.value as List<String>
-	files = Array<SourceFile>(filenames.size)
+	files = List<SourceFile>(filenames.size, true)
 
-	loop (i = 0, i < files.count, i++) {
+	loop (i = 0, i < files.size, i++) {
 		filename = filenames[i]
 
 		bytes = io.read_file(filename)

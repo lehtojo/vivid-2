@@ -11,14 +11,15 @@
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/vivid.v",
-				"${workspaceFolder}/libv/",
-				"${workspaceFolder}/libv/windows_x64/io.v",
 				"-a",
 				"-f",
 				"-o",
-				"v",
+				"vc",
 				"-l",
-				"kernel32"
+				"kernel32",
+				"-l",
+				"v",
+				"-d"
 			],
 			"group": {
 				"kind": "build",

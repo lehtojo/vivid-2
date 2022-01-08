@@ -5,9 +5,9 @@
 			"type": "by-gdb",
 			"request": "launch",
 			"name": "Vivid Debug",
-			"program": "${workspaceRoot}/build/v",
+			"program": "${workspaceRoot}/build/vc.exe",
 			"cwd": "${workspaceRoot}",
-			"programArgs": "${workspaceRoot}/tests/arithmetic.v ${workspaceRoot}/libv/ ${workspaceRoot}/tests/assert.v -o v"
+			"programArgs": "C:/Users/joona/vivid-2/box/main.v -o foo"
 		},
 	]
 }

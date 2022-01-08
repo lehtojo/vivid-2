@@ -96,8 +96,30 @@ get_expression_extract_position(expression: Node) {
 	=> position
 }
 
+# Summary: Returns the root of the expression which contains the specified node
+get_expression_root(node: Node) {
+	iterator = node
+
+	loop {
+		next = iterator.parent
+		if next == none stop
+
+		if next.instance == NODE_OPERATOR and next.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT {
+			iterator = next
+		}
+		else next.match(NODE_PARENTHESIS | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_OFFSET | NODE_PACK) {
+			iterator = next
+		}
+		else {
+			stop
+		}
+	}
+
+	=> iterator
+}
+
 extract_calls(root: Node) {
-	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION)
+	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
 	nodes.add_range(find_bool_values(root))
 
 	loop (i = 0, i < nodes.size, i++) {
@@ -322,11 +344,13 @@ InlineContainer {
 
 # Summary: Determines the variable which will store the result and the node that should contain the inlined content
 create_inline_container(type: Type, node: Node) {
-	if node.parent != none and node.parent.match(Operators.ASSIGN) {
-		edited = common.get_edited(node.parent)
+	editor = common.try_get_editor(node)
+
+	if editor != none and editor.match(Operators.ASSIGN) {
+		edited = common.get_edited(editor)
 
 		if edited.match(NODE_VARIABLE) and edited.(VariableNode).variable.is_predictable {
-			=> InlineContainer(node.parent, InlineNode(node.start), edited.(VariableNode).variable)
+			=> InlineContainer(editor, InlineNode(node.start), edited.(VariableNode).variable)
 		}
 	}
 
@@ -567,12 +591,90 @@ rewrite_constructions(root: Node) {
 	}
 }
 
+# Summary:
+# Rewrites all list constructions under the specified node tree.
+# Pattern:
+# list = [ $value-1, $value-2, ... ]
+# =>
+# { list = List<$shared-type>(), list.add($value-1), list.add($value-2), ... }
+rewrite_list_constructions(root: Node) {
+	constructions = root.find_all(NODE_LIST_CONSTRUCTION) as List<ListConstructionNode>
+
+	loop construction in constructions {
+		list_type = construction.get_type()
+		list_constructor = list_type.constructors.get_implementation(List<Type>())
+		container = create_inline_container(list_type, construction)
+
+		# Create a new list and assign it to the result variable
+		container.node.add(OperatorNode(Operators.ASSIGN, construction.start).set_operands(
+			VariableNode(container.result),
+			ConstructionNode(FunctionNode(list_constructor, construction.start), construction.start)
+		))
+
+		# Add all the elements to the list
+		loop element in construction {
+			adder = list_type.get_function(String(parser.STANDARD_LIST_ADDER)).get_implementation(element.get_type())
+
+			arguments = Node()
+			arguments.add(element)
+
+			container.node.add(LinkNode(
+				VariableNode(container.result),
+				FunctionNode(adder, construction.start).set_arguments(arguments),
+				construction.start
+			))
+		}
+
+		container.destination.replace(container.node)
+	}
+}
+
+# <summary>
+# Rewrites all unnamed pack constructions under the specified node tree.
+# Pattern:
+# result = { $member-1: $value-1, $member-2: $value-2, ... }
+# =>
+# { result = $unnamed-pack(), result.$member-1 = $value-1, result.$member-2 = $value-2, ... }
+rewrite_pack_constructions(root: Node) {
+	constructions = root.find_all(NODE_PACK_CONSTRUCTION) as List<PackConstructionNode>
+
+	loop construction in constructions {
+		type = construction.get_type()
+		members = construction.members
+		container = create_inline_container(type, construction)
+
+		# Initialize the pack result variable
+		container.node.add(VariableNode(container.result))
+
+		# Assign the pack member values
+		i = 0
+
+		loop value in construction {
+			member = type.get_variable(members[i])
+			if member == none abort('Missing pack member variable')
+
+			container.node.add(OperatorNode(Operators.ASSIGN, construction.start).set_operands(
+				LinkNode(
+					VariableNode(container.result),
+					VariableNode(member),
+					construction.start
+				),
+				value
+			))
+
+			i++ # Switch to the next member
+		}
+
+		container.destination.replace(container.node)
+	}
+}
+
 # Summary: Finds expressions which do not represent statement conditions and can be evaluated to bool values
 # Example: element.is_visible = element.color.alpha > 0
 find_bool_values(root: Node) {
 	# NOTE: Find all bool operators, including nested ones, because sometimes even bool operators have nested bool operators, which must be extracted
 	# Example: a = i > 0 and f(i < 10) # Here both the right assignment operand and the expression 'i < 10' must be extracted
-	candidates = root.find_all(i -> i.match(NODE_OPERATOR) and [i.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON or i.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL])
+	candidates = root.find_all(i -> i.match(NODE_OPERATOR) and (i.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON or i.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL))
 	result = List<Node>()
 
 	loop candidate in candidates {
@@ -756,6 +858,33 @@ construct_assignment_operators(root: Node) {
 }
 
 # Summary:
+# Returns whether the cast converts a pack to another pack and whether it needs to be processed later
+is_required_pack_cast(from: Type, to: Type) {
+	=> from != to and from.is_pack and to.is_pack
+}
+
+# Summary:
+# Finds casts which have no effect and removes them
+# Example: x = 0 as large
+remove_redundant_casts(root: Node) {
+	casts = root.find_all(NODE_CAST) as List<CastNode>
+
+	loop cast in casts {
+		from = cast.first.get_type()
+		to = cast.get_type()
+
+		# Do not remove the cast if it changes the type
+		if to != from and not to.match(from) continue
+
+		# Leave pack casts for later
+		if is_required_pack_cast(from, to) continue
+
+		# Remove the cast since it does nothing
+		cast.replace(cast.first)
+	}
+}
+
+# Summary:
 # Finds assignments which have implicit casts and adds them
 add_assignment_casts(root: Node) {
 	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
@@ -765,13 +894,16 @@ add_assignment_casts(root: Node) {
 		from = assignment.last.get_type()
 
 		# Skip assignments which do not cast the value
-		if to == from continue
+		if to == from or to.match(from) continue
 
 		# If the right operand is a number and it is converted into different kind of number, it can be done without a cast node
 		if assignment.last.instance == NODE_NUMBER and from.is_number and to.is_number {
 			assignment.last.(NumberNode).convert(to.format)
 			continue
 		}
+
+		# If the left operand represents a pack and the right operand is zero, we should not do anything, since this is a special case
+		if to.is_pack and common.is_zero(assignment.last) continue
 
 		# Remove the right operand from the assignment
 		value = assignment.last
@@ -902,8 +1034,11 @@ rewrite_inspections(root: Node) {
 		if inspection.instance == INSPECTION_TYPE_NAME {
 			inspection.replace(StringNode(type.string(), inspection.start))
 		}
-		else {
-			inspection.replace(NumberNode(SYSTEM_FORMAT, type.reference_size, inspection.start))
+		else inspection.instance == INSPECTION_TYPE_CAPACITY {
+			inspection.replace(NumberNode(SYSTEM_FORMAT, type.content_size, inspection.start))
+		}
+		else inspection.instance == INSPECTION_TYPE_SIZE {
+			inspection.replace(NumberNode(SYSTEM_FORMAT, type.allocation_size, inspection.start))
 		}
 	}
 }
@@ -983,7 +1118,10 @@ rewrite_is_expressions(root: Node) {
 			object_variable = expression_context.declare_hidden(object_type)
 
 			# Object variable should be declared
-			initialization = DeclareNode(object_variable, position)
+			initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+				VariableNode(object_variable),
+				UndefinedNode(object_variable.type, object_variable.type.get_register_format())
+			)
 
 			get_insert_position(expression).insert(initialization)
 
@@ -1027,6 +1165,51 @@ rewrite_is_expressions(root: Node) {
 	}
 }
 
+# Summary:
+# Rewrites when-expressions so that they use nodes which can be compiled
+rewrite_when_expressions(root: Node) {
+	expressions = root.find_all(NODE_WHEN) as List<WhenNode>
+
+	loop expression in expressions {
+		position = expression.start
+
+		return_type = expression.try_get_type()
+		if return_type == none abort('Could not resolve the return type of a when expression')
+
+		container = create_inline_container(return_type, expression)
+
+		# The load must be executed before the actual when-statement
+		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			expression.inspected.clone(),
+			expression.value
+		))
+
+		# Define the result variable
+		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(container.result),
+			UndefinedNode(return_type, return_type.get_register_format())
+		))
+
+		loop section in expression.sections {
+			body = expression.get_section_body(section)
+
+			# Load the return value of the section to the return value variable
+			value = body.last
+			destination = Node()
+			value.replace(destination)
+
+			destination.replace(OperatorNode(Operators.ASSIGN, value.start).set_operands(
+				VariableNode(container.result, value.start),
+				value
+			))
+
+			container.node.add(section)
+		}
+
+		container.destination.replace(container.node)
+	}
+}
+
 # Summary: Rewrites lambda nodes using simpler nodes
 rewrite_lambda_constructions(root: Node) {
 	constructions = root.find_all(NODE_LAMBDA) as List<LambdaNode>
@@ -1059,7 +1242,7 @@ rewrite_lambda_constructions(root: Node) {
 		container.node.add(allocation)
 
 		function_pointer_assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
-			LinkNode(VariableNode(container.result), VariableNode(implementation.function), position),
+			LinkNode(CastNode(VariableNode(container.result), TypeNode(type), position), VariableNode(implementation.function), position),
 			FunctionDataPointerNode(implementation, 0, position)
 		)
 
@@ -1067,7 +1250,7 @@ rewrite_lambda_constructions(root: Node) {
 
 		loop capture in implementation.captures {
 			assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
-				LinkNode(VariableNode(container.result), VariableNode(capture), position),
+				LinkNode(CastNode(VariableNode(container.result), TypeNode(type), position), VariableNode(capture), position),
 				VariableNode(capture.captured)
 			)
 
@@ -1075,7 +1258,255 @@ rewrite_lambda_constructions(root: Node) {
 		}
 
 		container.node.add(VariableNode(container.result))
-		construction.replace(container.node)
+		container.destination.replace(container.node)
+	}
+}
+
+# Summary:
+# Creates all member accessors that represent all non-pack members
+# Example (root = object.pack, type = { a: large, other: { b: large, c: large } })
+# => { object.pack.a, object.pack.other.b, object.pack.other.c }
+create_pack_member_accessors(root: Node, type: Type, position: Position) {
+	result = List<Node>()
+	is_none = common.is_zero(root)
+
+	loop iterator in type.variables {
+		member = iterator.value
+		accessor = none as Node
+
+		if is_none { accessor = root.clone() }
+		else { accessor = LinkNode(root.clone(), VariableNode(member), position) }
+
+		if member.type.is_pack {
+			result.add_range(create_pack_member_accessors(accessor, member.type, position))
+			continue
+		}
+
+		result.add(accessor)
+	}
+
+	=> result
+}
+
+# <summary>
+# Finds all usages of packs and rewrites them to be more suitable for compilation
+# Example (Here $-prefixes indicate generated hidden variables):
+# a = b
+# c = f()
+# g(c)
+# Direct assignments are expanded:
+# a.x = b.x
+# a.y = b.y
+# c = f() <- The original assignment is not removed, because it is needed by the placeholders
+# c.x = [Placeholder 1] -> c.x
+# c.y = [Placeholder 2] -> c.y
+# g(c)
+# Pack values are replaced with pack nodes:
+# a.x = b.x
+# a.y = b.y
+# c = f() <- The original assignment is not removed, because it is needed by the placeholders
+# c.x = [Placeholder 1] -> c.x
+# c.y = [Placeholder 2] -> c.y
+# g({ $c.x, $c.y }) <- Here a pack node is created, which creates a pack handle in the back end from the child values
+# Member accessors are replaced with local variables:
+# $a.x = $b.x
+# $a.y = $b.y
+# c = f() <- The original assignment is not removed, because it is needed by the placeholders
+# c.x = [Placeholder 1] -> c.x
+# c.y = [Placeholder 2] -> c.y
+# g({ $c.x, $c.y })
+# Finally, the placeholders are replaced with the actual nodes:
+# $a.x = $b.x
+# $a.y = $b.y
+# c = f() <- The original assignment is not removed, because it is needed by the placeholders
+# $c.x = c.x
+# $c.y = c.y
+# g({ $c.x, $c.y })
+rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
+	placeholders = List<KeyValuePair<Node, Node>>()
+
+	# Direct assignments are expanded:
+	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
+
+	loop (i = assignments.size - 1, i >= 0, i--) {
+		assignment = assignments[i]
+
+		destination = assignment.first
+		source = assignment.last
+
+		type = destination.get_type()
+
+		# Skip assignments, whose destination is not a pack
+		if not type.is_pack {
+			assignments.remove_at(i)
+			continue
+		}
+
+		container = assignment.parent
+		position = assignment.start
+
+		destinations = create_pack_member_accessors(destination, type, position)
+		sources = none as List<Node>
+
+		is_function_assignment = assignment.last.match(NODE_CALL | NODE_FUNCTION) or (assignment.last.instance == NODE_LINK and assignment.last.last.match(NODE_CALL | NODE_FUNCTION))
+
+		# The sources of function assignments must be replaced with placeholders, so that they do not get overriden by the local representives of the members
+		if is_function_assignment {
+			loads = create_pack_member_accessors(destination, type, position)
+			sources = List<Node>()
+			
+			loop (j = 0, j < loads.size, j++) {
+				placeholder = Node()
+				sources.add(placeholder)
+
+				placeholders.add(KeyValuePair<Node, Node>(placeholder, loads[j]))
+			}
+		}
+		else {
+			sources = create_pack_member_accessors(source, type, position)
+		}
+
+		loop (j = destinations.size - 1, j >= 0, j--) {
+			container.insert(assignment.next, OperatorNode(Operators.ASSIGN, position).set_operands(destinations[j], sources[j]))
+		}
+
+		# The assigment must be removed, if its source is not a function call
+		# NOTE: The function call assignment must be left intact, because it must assign the disposable pack handle, whose usage is demonstrated above
+		if not is_function_assignment { assignment.remove() }
+
+		assignments.remove_at(i)
+	}
+
+	# Pack values are replaced with pack nodes:
+	# Find all local variables, which are packs
+	local_packs = List<Variable>()
+
+	loop local in implementation.locals {
+		if local.type.is_pack { local_packs.add(local) }
+	}
+
+	loop parameter in implementation.parameters {
+		if parameter.type.is_pack { local_packs.add(parameter) }
+	}
+
+	# TODO: Is this necessary? Does not the locals and parameters cover all cases?
+	loop iterator in implementation.variables {
+		variable = iterator.value
+		if variable.type.is_pack { local_packs.add(variable) }
+	}
+
+	# Create the pack representives for all the collected local packs
+	loop local_pack in local_packs { common.get_pack_representives(local_pack) }
+
+	# Find all the usages of the collected local packs
+	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> local_packs.contains(i.(VariableNode).variable))
+
+	loop (i = local_pack_usages.size - 1, i >= 0, i--) {
+		usage = local_pack_usages[i]
+		type = usage.get_type()
+
+		# Leave function assignments intact
+		# NOTE: If the usage is edited, it must be part of a function assignment, because all the other pack assignments were reduced to member assignments above
+		if common.is_edited(usage) continue
+
+		# Consider the following situation:
+		# Variable a is a local pack variable and identifiers b and c are nested packs of variable a.
+		# We start moving from the brackets, because variable a is a local pack usage.
+		# [a].b.c
+		# We must move all the way to nested pack c, because only the members of c are expanded.
+		# a.b.[c] => Packer { a.b.c.x, a.b.c.y }
+		# The next loop will transform the packer elements:
+		# a.b.[c] => Packer { a.b.c.x, a.b.c.y } => Packer { $local-1, $local-2 }
+		loop {
+			# The parent node must be a link, since a member access is expected
+			parent = usage.parent
+			if parent == none or parent.instance != NODE_LINK stop
+
+			# Ensure the current iterator is used for member access
+			next = usage.next
+			if next.instance != NODE_VARIABLE stop
+
+			# Continue if a nested pack is accessed
+			member = next.(VariableNode).variable
+			if not member.type.is_pack stop
+
+			type = member.type
+			usage = parent
+		}
+
+		# Remove the usage from the list, because it will be replaced with a pack node
+		local_pack_usages.remove_at(i)
+		
+		packer = PackNode(type)
+
+		loop accessor in create_pack_member_accessors(usage, type, usage.start) {
+			packer.add(accessor)
+		}
+
+		usage.replace(packer)
+	}
+
+	# Member accessors are replaced with local variables:
+	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> local_packs.contains(i.(VariableNode).variable))
+
+	# NOTE: All usages are used to access a member here
+	loop usage in local_pack_usages {
+		# Leave the function assignments intact
+		if common.is_edited(usage) continue
+
+		# NOTE: Add a prefix, because name could conflict with hidden variables
+		name = String(`.`) + usage.(VariableNode).variable.name
+		iterator = usage
+		type = none as Type
+
+		loop (iterator != none) {
+			# The parent node must be a link, since a member access is expected
+			parent = iterator.parent
+			if parent == none or parent.instance != NODE_LINK stop
+
+			# Ensure the current iterator is used for member access
+			next = iterator.next
+			if next.instance != NODE_VARIABLE stop
+
+			# Append the member to the name
+			member = next.(VariableNode).variable
+			name += String(`.`) + member.name
+
+			iterator = parent
+			type = member.type
+
+			if not type.is_pack stop
+		}
+
+		if type == none abort('Pack member did not have a type')
+
+		# Find or create the representive for the member access
+		context = usage.(VariableNode).variable.context
+		representive = context.get_variable(name)
+		if representive == none abort('Missing pack member')
+
+		iterator.replace(VariableNode(representive, usage.start))
+	}
+
+	# Returned packs from function calls are handled last:
+	loop placeholder in placeholders {
+		placeholder.key.replace(placeholder.value)
+	}
+
+	# Find all pack casts and apply them
+	casts = root.find_all(NODE_CAST).filter(i -> i.get_type().is_pack) as List<CastNode>
+
+	loop cast in casts {
+		from = cast.first.get_type()
+		to = cast.get_type()
+
+		# Verify the casted value is a packer and that the value type and target type are compatible
+		if cast.first.instance != NODE_PACK or (to != from and not to.match(from)) abort('Can not cast the value to a pack')
+
+		value = cast.first as PackNode
+
+		# Replace the internal type of the packer with the target type
+		value.type = to
 	}
 }
 
@@ -1084,12 +1515,16 @@ start(implementation: FunctionImplementation, root: Node) {
 	rewrite_inspections(root)
 	strip_links(root)
 	remove_redundant_parentheses(root)
+	remove_redundant_casts(root)
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
 	add_assignment_casts(root)
 	rewrite_super_accessors(root)
+	rewrite_when_expressions(root)
 	rewrite_is_expressions(root)
 	rewrite_lambda_constructions(root)
+	rewrite_list_constructions(root)
+	rewrite_pack_constructions(root)
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
@@ -1099,4 +1534,7 @@ start(implementation: FunctionImplementation, root: Node) {
 end(root: Node) {
 	construct_assignment_operators(root)
 	remove_redundant_inline_nodes(root)
+
+	# NOTE: Inline nodes can be directly under logical operators now, so extract bool values again
+	extract_bool_values(root)
 }

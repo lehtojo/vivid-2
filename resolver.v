@@ -5,12 +5,10 @@ get_shared_type(expected: Type, actual: Type) {
 	if expected == none or actual == none => none as Type
 
 	if expected.is_number and actual.is_number {
-		if expected.format == FORMAT_DECIMAL => expected
-		if actual.format == FORMAT_DECIMAL => actual
-
-		# Return the larger number type
-		if expected.(Number).bits > actual.(Number).bits => expected
-		=> actual
+		bits = max(expected.reference_size * 8, actual.reference_size * 8)
+		signed = not expected.(Number).unsigned or not actual.(Number).unsigned
+		is_decimal = expected.format == FORMAT_DECIMAL or actual.format == FORMAT_DECIMAL
+		=> primitives.create_number(bits, signed, is_decimal)
 	}
 
 	expected_all_types = expected.get_all_supertypes()

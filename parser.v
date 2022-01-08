@@ -83,6 +83,10 @@ constant MAX_FUNCTION_BODY_PRIORITY = 19
 constant MAX_PRIORITY = 23
 constant PRIORITY_ALL = -1
 
+constant STANDARD_RANGE_TYPE = 'Range'
+constant STANDARD_LIST_TYPE = 'List'
+constant STANDARD_LIST_ADDER = 'add'
+
 Pattern {
 	path: List<small> = List<small>()
 	priority: tiny
@@ -145,6 +149,7 @@ initialize() {
 	add_pattern(IfPattern())
 	add_pattern(InheritancePattern())
 	add_pattern(LinkPattern())
+	add_pattern(ListConstructionPattern())
 	add_pattern(ListPattern())
 	add_pattern(SingletonPattern())
 	add_pattern(LoopPattern())
@@ -173,6 +178,7 @@ initialize() {
 	add_pattern(CompilesPattern())
 	add_pattern(IsPattern())
 	add_pattern(OverrideFunctionPattern())
+	add_pattern(PackConstructionPattern())
 	add_pattern(LambdaPattern())
 	add_pattern(RangePattern())
 	add_pattern(HasPattern())
@@ -322,15 +328,22 @@ create_root_context(index: large) {
 	=> context
 }
 
+# Summary: Creates the root context, which might contain some default types
+create_root_context(identity: String) {
+	context = Context(identity, NORMAL_CONTEXT)
+	primitives.inject(context)
+	=> context
+}
+
 # Summary: Creates the root node, which might contain some default initializations
 create_root_node(context: Context) {
 	root = ScopeNode(context, none as Position, none as Position)
 
-	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
-	negative_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(NEGATIVE_INFINITY_CONSTANT), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
+	negative_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(NEGATIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 
-	true_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('true'), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
-	false_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('false'), MODIFIER_DEFAULT | MODIFIER_CONSTANT)
+	true_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('true'), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
+	false_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('false'), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 
 	context.declare(positive_infinity)
 	context.declare(negative_infinity)
@@ -373,6 +386,8 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 	loop function in common.get_all_visible_functions(context) {
 		# If the file filter is specified, skip all functions which are not defined inside that file
 		if file != none and function.start != none and function.start.file != file continue
+
+		is_function_imported = function.is_exported or (function.parent != none and function.parent.is_type and function.parent.(Type).is_exported)
 
 		# Skip all functions which are not exported
 		if not all and not function.is_exported continue
@@ -447,9 +462,9 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 }
 
 parse(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<Array<SourceFile>> has files) => Status('Nothing to parse')
+	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Nothing to parse')
 
-	loop (i = 0, i < files.count, i++) {
+	loop (i = 0, i < files.size, i++) {
 		file = files[i]
 
 		context = create_root_context(i + 1)
@@ -466,7 +481,7 @@ parse(bundle: Bundle) {
 	}
 
 	# Parse all type definitions
-	loop (i = 0, i < files.count, i++) {
+	loop (i = 0, i < files.size, i++) {
 		file = files[i]
 		types = file.root.find_all(NODE_TYPE_DEFINITION)
 		loop type in types { type.(TypeDefinitionNode).parse() }
@@ -474,6 +489,18 @@ parse(bundle: Bundle) {
 
 	context = create_root_context(0)
 	root = create_root_node(context)
+
+	libraries = bundle.get_object(String(BUNDLE_LIBRARIES), List<String>() as link) as List<String>
+	object_files = bundle.get_object(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link) as Map<SourceFile, BinaryObjectFile>
+
+	loop library in libraries {
+		if library.ends_with('.lib') or library.ends_with('.a') {
+			importer.import_static_library(context, library, files, object_files)
+		}
+		else {
+			println('Warning: Shared libraries are not supported yet')
+		}
+	}
 
 	loop file in files {
 		context.merge(file.context)

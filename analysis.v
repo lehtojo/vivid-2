@@ -42,26 +42,26 @@ apply_constants(context: Context) {
 
 		if variable.writes.size == 0 {
 			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is never assigned'))
-			exit(1)
+			application.exit(1)
 		}
 
 		if variable.writes.size > 1 {
 			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is assigned more than once'))
-			exit(1)
+			application.exit(1)
 		}
 
 		write = variable.writes[0].parent
 
 		if write == none or not write.match(Operators.ASSIGN) {
 			resolver.output(Status(variable.position, String('Invalid assignment for constant ') + variable.name))
-			exit(1)
+			application.exit(1)
 		}
 
 		value = common.get_source(write.last)
 
 		if not value.match(NODE_NUMBER) and not value.match(NODE_STRING) {
 			resolver.output(Status(variable.position, String('Value assigned to constant ') + variable.name + ' is not a constant'))
-			exit(1)
+			application.exit(1)
 		}
 
 		loop usage in variable.reads {

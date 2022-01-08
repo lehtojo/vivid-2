@@ -21,6 +21,8 @@ INSTANCE_STACK_ALLOCATION = 1024
 INSTANCE_REGISTER = 2048
 INSTANCE_MODIFIER = 4096
 INSTANCE_LOWER_12_BITS = 8192
+INSTANCE_INLINE = 16384
+INSTANCE_DISPOSABLE_PACK = 32768
 
 # Summary: Converts the specified size to corresponding size modifier
 to_size_modifier(bytes: large) {
@@ -64,7 +66,6 @@ to_data_section_allocator(bytes: large) {
 Handle {
 	type: large
 	instance: large
-	is_precise: bool = false
 	format: large = SYSTEM_FORMAT
 	size => to_bytes(format)
 	unsigned => is_unsigned(format)
@@ -77,12 +78,6 @@ Handle {
 	init(type: large, instance: large) {
 		this.type = type
 		this.instance = instance
-	}
-
-	init(is_precise: bool, format: large, size: large) {
-		this.is_precise = is_precise
-		this.format = format
-		this.size = size
 	}
 
 	# Summary: Returns all results which the handle requires to be in registers
@@ -216,33 +211,43 @@ Handle MemoryHandle {
 		start.use(instruction)
 	}
 
-	default_string() {
-		start: Handle = this.start.value
-		offset: large = get_absolute_offset()
-
-		if start.instance == INSTANCE_STACK_ALLOCATION {
-			start = RegisterHandle(unit.get_stack_pointer())
-			offset += start.(StackAllocationHandle).absolute_offset
+	get_start() {
+		=> when(start.value.instance) {
+			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
+			INSTANCE_INLINE => unit.get_stack_pointer(),
+			else => none as Register
 		}
+	}
 
-		postfix = String('')
+	get_offset() {
+		=> when(start.value.instance) {
+			INSTANCE_CONSTANT => start.value.(ConstantHandle).value + get_absolute_offset(),
+			INSTANCE_INLINE => start.value.(InlineHandle).get_absolute_offset() + get_absolute_offset(),
+			else => get_absolute_offset()
+		}
+	}
 
-		if settings.is_x64 {
-			if offset > 0 { postfix = String('+') + to_string(offset) }
-			else offset < 0 { postfix = to_string(offset) }
+	default_string() {
+		start: Register = get_start()
+		offset: large = get_offset()
+
+		if start == none {
+			if settings.is_x64 => String(to_size_modifier(size)) + ' [' + to_string(offset) + `]`
+			else => String('[xzr, #') + to_string(offset) + `]`
 		}
 		else {
-			if offset != 0 { postfix = String(', #') + to_string(offset) }
+			if settings.is_x64 {
+				offset_text = String.empty
+
+				if offset > 0 { offset_text = String(`+`) + to_string(offset) }
+				else offset < 0 { offset_text = to_string(offset) }
+
+				=> String(to_size_modifier(size)) + ' [' + start.string() + offset_text + `]`
+			}
+			else {
+				=> String('[') + start.string() + String(', #') + to_string(offset) + `]`
+			}
 		}
-
-		if start.type == HANDLE_REGISTER or start.type == HANDLE_CONSTANT {
-			address = String('[') + start.string() + postfix + ']'
-
-			if is_precise and settings.is_x64 => String(to_size_modifier(size)) + ' ptr ' + address
-			=> address
-		}
-
-		=> String.empty
 	}
 
 	override string() {
@@ -321,6 +326,13 @@ StackMemoryHandle StackVariableHandle {
 		if not variable.is_predictable abort('Creating stack variable handles of unpredictable variables is not allowed')
 	}
 
+	override get_absolute_offset() {
+		offset = variable.alignment
+
+		if is_absolute => unit.stack_offset + offset
+		=> offset
+	}
+
 	override string() {
 		offset = variable.alignment
 		=> default_string()
@@ -365,7 +377,7 @@ StackMemoryHandle TemporaryMemoryHandle {
 
 DATA_SECTION_MODIFIER_NONE = 0
 DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE = 1
-DATA_SECTION_PROCEDURE_LINKAGE_TABLE = 2
+DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE = 2
 
 Handle DataSectionHandle {
 	constant X64_GLOBAL_OFFSET_TABLE = '@GOTPCREL'
@@ -399,7 +411,7 @@ Handle DataSectionHandle {
 		if address {
 			if settings.is_x64 {
 				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String.empty
-				if modifier == DATA_SECTION_PROCEDURE_LINKAGE_TABLE => identifier + X64_PROCEDURE_LINKAGE_TABLE
+				if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE => identifier + X64_PROCEDURE_LINKAGE_TABLE
 			}
 			else {
 				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String(ARM64_GLOBAL_OFFSET_TABLE_PREFIX) + identifier
@@ -414,13 +426,11 @@ Handle DataSectionHandle {
 		# If a modifier is attached, the offset is taken into account elsewhere
 		if modifier != DATA_SECTION_MODIFIER_NONE {
 			if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE {
-				if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
-				=> String('[rip+') + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+				=> String(to_size_modifier(size)) + ' [rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
 			}
 
-			if modifier == DATA_SECTION_PROCEDURE_LINKAGE_TABLE {
-				if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
-				=> String('[rip+') + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+			if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE {
+				=> String(to_size_modifier(size)) + ' [rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
 			}
 
 			=> String.empty
@@ -429,15 +439,12 @@ Handle DataSectionHandle {
 		# Apply the offset if it is not zero
 		if offset != 0 {
 			postfix = to_string(offset)
-
 			if offset > 0 { postfix = String('+') + postfix }
 
-			if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + postfix + ']'
-			=> String('[rip+') + identifier + postfix + ']'
+			=> String(to_size_modifier(size)) + ' [rip+' + identifier + postfix + ']'
 		}
 
-		if is_precise => String(to_size_modifier(size)) + ' ptr [rip+' + identifier + ']'
-		=> String('[rip+') + identifier + ']'
+		=> String(to_size_modifier(size)) + ' [rip+' + identifier + ']'
 	}
 
 	override finalize() {
@@ -541,44 +548,65 @@ Handle ComplexMemoryHandle {
 		index.use(instruction)
 	}
 
-	override string() {
-		postfix = String.empty
-
-		if index.is_standard_register or index.is_modifier {
-			if settings.is_x64 {
-				postfix = String('+') + index.value.string()
-				if stride != 1 { postfix = postfix + '*' + to_string(stride) }
-			}
+	get_start() {
+		=> when(start.value.instance) {
+			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
+			else => none as Register
 		}
-		else index.value.instance == INSTANCE_CONSTANT {
-			value = index.value.(ConstantHandle).value * stride
+	}
 
-			if settings.is_x64 {
-				if value > 0 { postfix = String('+') + to_string(value) }
-				else value < 0 { postfix = to_string(value) }
-			}
+	get_index() {
+		=> when(index.value.instance) {
+			INSTANCE_REGISTER => index.value.(RegisterHandle).register,
+			else => none as Register
+		}
+	}
+
+	get_offset() {
+		offset: large = offset
+
+		offset += when(start.value.instance) {
+			INSTANCE_CONSTANT => start.value.(ConstantHandle).value,
+			else => 0
+		}
+
+		offset += when(index.value.instance) {
+			INSTANCE_CONSTANT => index.value.(ConstantHandle).value * stride,
+			else => 0
+		}
+
+		=> offset
+	}
+
+	override string() {
+		# Examples: [1], [rax], [rax-1], [rax+rbx], [rax+rbx+1], [rax+rbx*2], [rax+rbx*2-1]
+		start: Register = get_start()
+		index: Register = get_index()
+		offset: large = get_offset()
+
+		result = String(' [')
+
+		if start != none { result = result + start.string() }
+
+		if index != none {
+			# Add a plus-operator to separate the base from the index if needed
+			if result.length > 2 { result = result + String(`+`) }
+			result = result + index.string()
+
+			# Multiply the index register, if the stride is not one
+			if stride != 1 { result = result + String(`*`) + to_string(stride) }
+		}
+
+		# Finally, add the offset. Add the sign always, if something has been added to the result.
+		if result.length > 2 {
+			if offset > 0 { result = result + String(`+`) + to_string(offset) }
+			else offset < 0 { result = result + to_string(offset) }
 		}
 		else {
-			=> postfix
+			result = result + to_string(offset)
 		}
 
-		if offset != 0 {
-			if settings.is_x64 {
-				postfix = postfix + '+' + to_string(offset)
-			}
-			else {
-				=> String.empty
-			}
-		}
-
-		if start.is_standard_register or start.is_constant {
-			address = String('[') + start.value.string() + postfix + ']'
-
-			if is_precise and settings.is_x64 => String(to_size_modifier(size)) + ' ptr ' + address 
-			=> address
-		}
-
-		=> String.empty
+		=> String(to_size_modifier(size)) + result + ']'
 	}
 
 	override get_register_dependent_results() {
@@ -654,6 +682,40 @@ Handle ExpressionHandle {
 	validate() {
 		if (multiplicand.is_standard_register or multiplicand.is_constant) and (addition == none or (addition.is_standard_register or addition.is_constant)) and multiplier > 0 return
 		abort('Invalid expression handle')
+	}
+
+	get_start() {
+		if addition == none => none as Register
+
+		=> when(addition.value.instance) {
+			INSTANCE_REGISTER => addition.value.(RegisterHandle).register,
+			else => none as Register
+		}
+	}
+
+	get_index() {
+		=> when(multiplicand.value.instance) {
+			INSTANCE_REGISTER => multiplicand.value.(RegisterHandle).register,
+			else => none as Register
+		}
+	}
+
+	get_offset() {
+		offset = number
+
+		if addition != none {
+			offset += when(addition.value.instance) {
+				INSTANCE_CONSTANT => addition.value.(ConstantHandle).value,
+				else => 0
+			}
+		}
+
+		offset += when(multiplicand.value.instance) {
+			INSTANCE_CONSTANT => multiplicand.value.(ConstantHandle).value * multiplier,
+			else => 0
+		}
+
+		=> offset
 	}
 
 	string_x64() {
@@ -788,5 +850,101 @@ Handle StackAllocationHandle {
 	override equals(other: Handle) {
 		if this.instance != other.instance => false
 		=> this.format == other.format and this.offset == other.(StackAllocationHandle).offset and this.bytes == other.(StackAllocationHandle).bytes and this.identity == other.(StackAllocationHandle).identity
+	}
+}
+
+Handle InlineHandle {
+	identity: String
+
+	unit: Unit
+
+	offset: large
+	bytes: large
+
+	get_absolute_offset() {
+		=> unit.stack_offset + offset
+	}
+
+	init(unit: Unit, bytes: large, identity: String) {
+		this.unit = unit
+		this.identity = identity
+		this.bytes = bytes
+		this.type = HANDLE_EXPRESSION
+		this.instance = INSTANCE_INLINE
+	}
+
+	init(unit: Unit, offset: large, bytes: large, identity: String) {
+		this.unit = unit
+		this.identity = identity
+		this.offset = offset
+		this.bytes = bytes
+		this.type = HANDLE_EXPRESSION
+		this.instance = INSTANCE_INLINE
+	}
+
+	override finalize() {
+		=> InlineHandle(unit, offset, bytes, identity)
+	}
+
+	override string() {
+		stack_pointer = unit.get_stack_pointer()
+		offset = get_absolute_offset()
+
+		if not settings.is_x64 {
+			=> stack_pointer.string() + ', #' + to_string(offset)
+		}
+
+		if offset > 0 => String(`[`) + stack_pointer.string() + `+` + to_string(offset) + `]`
+		else offset < 0 => String(`[`) + stack_pointer.string() + to_string(offset) + `]`
+
+		return String(`[`) + stack_pointer.string() + ']'
+	}
+
+	override equals(other: Handle) {
+		=> other.instance == INSTANCE_INLINE and
+			format == other.(InlineHandle).format and
+			offset == other.(InlineHandle).offset and
+			bytes == other.(InlineHandle).bytes and
+			identity == other.(InlineHandle).identity
+	}
+}
+
+Handle DisposablePackHandle {
+	members: Map<Variable, Result> = Map<Variable, Result>()
+
+	init(unit: Unit, type: Type) {
+		this.type = HANDLE_EXPRESSION
+		this.instance = INSTANCE_DISPOSABLE_PACK
+
+		# Initialize the members
+		loop iterator in type.variables {
+			member = iterator.value
+
+			value = Result()
+
+			if member.type.is_pack {
+				value.value = DisposablePackHandle(unit, member.type)
+			}
+
+			members[member] = value
+		}
+	}
+
+	override use(instruction: Instruction) {
+		loop iterator in members {
+			member = iterator.value
+			member.use(instruction)
+		}
+	}
+
+	override get_inner_results() {
+		all = List<Result>()
+
+		loop iterator in members {
+			member = iterator.value
+			all.add(member)
+		}
+
+		=> all
 	}
 }
