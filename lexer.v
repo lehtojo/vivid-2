@@ -1006,7 +1006,7 @@ get_closing(opening: char) {
 
 # Returns whether the specified character is an operator
 is_operator(i: char) {
-	=> i >= 33 and i <= 47 and i != COMMENT and i != STRING or i >= 58 and i <= 63 or i == 94 or i == 124 or i == 126 or i == 164
+	=> i >= 33 and i <= 47 and i != COMMENT and i != STRING or i >= 58 and i <= 63 or i == 94 or i == 124 or i == 126 or i == -92 # 0xA4 = 164 => -92 as char
 }
 
 # Summary:

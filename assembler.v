@@ -1273,6 +1273,7 @@ ParameterAligner {
 
 		# Normal parameters consume one stack unit
 		parameter.alignment = position
+		parameter.is_aligned = true
 		position += SYSTEM_BYTES
 	}
 
