@@ -186,7 +186,7 @@ DataEncoderModule {
 	# Summary:
 	# Writes the specified into: String this module
 	string(text: String, terminate: bool) {
-		position = 0
+		position: large = 0
 
 		loop (position < text.length) {
 			# Collect characters as long as a string command is not encountered

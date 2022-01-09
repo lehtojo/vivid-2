@@ -347,6 +347,18 @@ read<T>(container: link, offset: large) {
 }
 
 # Summary:
+# Reads the specified type from the specified bytes to the specified offset
+read_object<T>(container: Array<byte>, offset: large) {
+	=> (container.data + offset) as T
+}
+
+# Summary:
+# Reads the specified type from the specified bytes to the specified offset
+read_object<T>(container: link, offset: large) {
+	=> (container + offset) as T
+}
+
+# Summary:
 # Writes the specified value to the specified offset
 write(container: Array<byte>, offset: large, value: large) {
 	container.data[offset] = value

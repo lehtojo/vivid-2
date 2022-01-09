@@ -2250,7 +2250,7 @@ run(executable: link, arguments: List<String>) {
 	=> Status()
 }
 
-assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
+assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
 	align(context)
 
 	Keywords.all.clear() # Remove all keywords for parsing assembly
@@ -2261,6 +2261,21 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	assemblies = Map<SourceFile, String>()
 	exports = Map<SourceFile, List<String>>()
 	object_files = Map<SourceFile, BinaryObjectFile>()
+
+	# Import user defined object files
+	user_imported_object_files = bundle.get_object(String(BUNDLE_OBJECTS), List<String>() as link) as List<String>
+
+	loop object_filename in user_imported_object_files {
+		file = SourceFile(object_filename, String.empty, -1)
+
+		if settings.is_target_windows {
+			if not (pe_format.import_object_file(object_filename) has object_file) abort(String('Could not import object file ') + object_filename)
+			object_files.add(file, object_file)
+		}
+		else {
+			# TODO: Import linux support
+		}
+	}
 
 	loop file in files {
 		builder = create_header(context, file)
@@ -2358,7 +2373,7 @@ assemble(bundle: Bundle) {
 	output_name = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String('v') as link) as String
 	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
 
-	assemblies = assemble(parse.context, files, imports, output_name, output_type)
+	assemblies = assemble(bundle, parse.context, files, imports, output_name, output_type)
 
 	if settings.is_assembly_output_enabled {
 		loop file in files {

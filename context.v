@@ -1988,6 +1988,14 @@ Label {
 		this.name = name
 	}
 
+	equals(other: Label) {
+		=> name == other.name
+	}
+
+	hash() {
+		=> name.hash()
+	}
+
 	string() {
 		=> name
 	}

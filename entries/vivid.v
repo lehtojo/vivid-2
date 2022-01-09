@@ -23,6 +23,7 @@ init() {
 
 	String.empty = String('')
 	settings.initialize()
+	initialize_configuration()
 	
 	bundle = Bundle()
 

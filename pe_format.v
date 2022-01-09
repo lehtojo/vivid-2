@@ -39,7 +39,7 @@ namespace pe_format {
 		zero(name as link, 9)
 		binary_utility.write_int64(name as link, 0, encoded)
 
-		=> String(name)
+		=> String(name as link)
 	}
 	
 	# Summary:
@@ -81,7 +81,7 @@ namespace pe_format {
 				stop
 			}
 
-			directories.add(binary_utility.read<PeDataDirectory>(bytes, start))
+			directories.add(binary_utility.read_object<PeDataDirectory>(bytes, start))
 			start += length
 		}
 
@@ -104,7 +104,7 @@ namespace pe_format {
 				stop
 			}
 
-			directories.add(binary_utility.read<PeSectionTable>(bytes, start))
+			directories.add(binary_utility.read_object<PeSectionTable>(bytes, start))
 			start += length
 		}
 
@@ -122,7 +122,7 @@ namespace pe_format {
 		if header_offset < 0 or header_offset + PeHeader.Size > bytes.count => none as PeMetadata
 
 		# Read the PE-header
-		header = binary_utility.read<PeHeader>(bytes, header_offset)
+		header = binary_utility.read_object<PeHeader>(bytes, header_offset)
 
 		# Load the data directories, which come after the header
 		data_directories_offset = header_offset + PeHeader.Size
@@ -195,7 +195,7 @@ namespace pe_format {
 		export_data_directory_file_offset = relative_virtual_address_to_file_offset(module, export_data_directory.relative_virtual_address)
 		if export_data_directory_file_offset < 0 => none as List<String>
 
-		export_directory_table = binary_utility.read<PeExportDirectoryTable>(module.bytes, export_data_directory_file_offset)
+		export_directory_table = binary_utility.read_object<PeExportDirectoryTable>(module.bytes, export_data_directory_file_offset)
 
 		# Skip the export directory table, the export address table, the name pointer table and the ordinal table
 		export_directory_table_size = PeExportDirectoryTable.Size
@@ -551,7 +551,7 @@ namespace pe_format {
 
 			# Now, decide the file position and virtual address loop the fragments
 			loop fragment in fragments {
-				if fragment.name != section.name continue
+				if not (fragment.name == section.name) continue
 
 				# Align the file position with the fragment alignment
 				file_position = (file_position + fragment.alignment - 1) & !(fragment.alignment - 1)
@@ -696,19 +696,19 @@ namespace pe_format {
 	# Import address table: 0x00000000
 	#
 	# <import-lookup-table-1>:
-	# 0x00000000 <.string.<function-1|>
-	# 0x00000000 <.string.<function-2|>
+	# 0x00000000 <.string.<function-1>>
+	# 0x00000000 <.string.<function-2>>
 	# 0x0000000000000000
 	# <import-lookup-table-2>:
-	# 0x00000000 <.string.<function-3|>
-	# 0x00000000 <.string.<function-4|>
+	# 0x00000000 <.string.<function-3>>
+	# 0x00000000 <.string.<function-4>>
 	# 0x0000000000000000
 	#
 	# ...
 	#
 	# <import-lookup-table-n>:
-	# 0x00000000 <.string.<function-(n-1)|>
-	# 0x00000000 <.string.<function-n|>
+	# 0x00000000 <.string.<function-(n-1)>>
+	# 0x00000000 <.string.<function-n>>
 	# 0x0000000000000000
 	#
 	# <library-name-1>: ... 0
@@ -718,12 +718,12 @@ namespace pe_format {
 	#
 	# <library-name-n>: ... 0
 	#
-	# <.string.<function-1|>: ... 0
-	# <.string.<function-2|>: ... 0
+	# <.string.<function-1>>: ... 0
+	# <.string.<function-2>>: ... 0
 	#
 	# ...
 	#
-	# <.string.<function-n|>: ... 0
+	# <.string.<function-n>>: ... 0
 	#
 	# .section .text
 	# <imports-1>:
@@ -740,10 +740,10 @@ namespace pe_format {
 	# 
 	# .section .data
 	# <import-address-table-1>:
-	# <.import.<function-1|>: .qword 0
-	# <.import.<function-2|>: .qword 0
+	# <.import.<function-1>>: .qword 0
+	# <.import.<function-2>>: .qword 0
 	# ...
-	# <.import.<function-n|>: .qword 0
+	# <.import.<function-n>>: .qword 0
 	#
 	# <import-address-table-2>:
 	# ...
@@ -795,11 +795,11 @@ namespace pe_format {
 			}
 
 			# Ensure the library was found
-			if library == none abort(String('Symbol ') + relocation.symbol.name + ' is not defined locally or externally')
+			if library as link == none abort(String('Symbol ') + relocation.symbol.name + ' is not defined locally or externally')
 
 			# Add the symbol to the import list linked to the library
 			if import_lists.contains_key(library) { import_lists[library].add(relocation.symbol.name) }
-			else { import_lists[library] = List<String>() { relocation.symbol.name } }
+			else { import_lists[library] = [ relocation.symbol.name ] }
 
 			# Make the symbol local, since it will be defined below as an indirect jump to the actual implementation
 			relocation.symbol.external = false
@@ -808,12 +808,12 @@ namespace pe_format {
 			importer_section.symbols.add(relocation.symbol.name, relocation.symbol)
 		}
 
-		# Compute where the string table starts. This is also the amount of bytes needed loop the other importer data.
+		# Compute where the string table starts. This is also the amount of bytes needed for the other importer data.
 		string_table_start = (import_lists.size + 1) * PeImportDirectoryTable.Size
 
 		loop iterator in import_lists {
 			symbols = iterator.value
-			string_table_start += symbols.size * sizeof(large) + 1
+			string_table_start += (symbols.size + 1) * sizeof(large)
 		}
 
 		importer_section.data = Array<byte>(string_table_start)
@@ -827,7 +827,7 @@ namespace pe_format {
 			import_library = imports[i]
 			import_list = import_lists[import_library]
 
-			# Create symbols loop the import lookup table, library name and import address table that describe their virtual addresses
+			# Create symbols for the import lookup table, library name and import address table that describe their virtual addresses
 			import_lookup_table_start = BinarySymbol(String('.lookup.') + to_string(i), 0, false, importer_section)
 			import_library_name_start = BinarySymbol(String('.library.') + to_string(i), 0, false, importer_section)
 			import_address_table_start = BinarySymbol(String('.imports.') + to_string(i), 0, false)
@@ -867,9 +867,9 @@ namespace pe_format {
 			import_lookup_table_starts[i].offset = position
 
 			loop import_symbol_name in import_list {
-				# Create a symbol loop the import so that a relocation can be made
+				# Create a symbol for the import so that a relocation can be made
 				import_symbol_offset = string_table_start + string_table.position
-				string_table.write_int16(0) # This 16-bit index is used loop quick lookup of the symbol in the imported library, do not care about it loop now
+				string_table.write_int16(0) # This 16-bit index is used for quick lookup of the symbol in the imported library, do not care about it for now
 				string_table.string(import_symbol_name)
 
 				# Align the next entry on an even boundary
@@ -881,7 +881,7 @@ namespace pe_format {
 				relocations.add(BinaryRelocation(import_symbol, position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32, importer_section))
 				position += sizeof(large)
 
-				# Reserve space loop the address of the imported function when it is loaded, also create a symbol which represents the location of the address
+				# Reserve space for the address of the imported function when it is loaded, also create a symbol which represents the location of the address
 				import_address_symbol = import_address_section_builder.create_local_symbol(String('.import.') + import_symbol_name, import_address_section_builder.position, false)
 				import_address_section_builder.relocations.add(BinaryRelocation(import_symbol, import_address_section_builder.position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32))
 				import_address_section_builder.write_int64(0)
@@ -1266,7 +1266,7 @@ namespace pe_format {
 
 		loop (i = 0, i < header.number_of_symbols, i++) {
 			# Load the next symbol entry
-			symbol_entry = binary_utility.read<PeSymbolEntry>(file_position, 0)
+			symbol_entry = binary_utility.read_object<PeSymbolEntry>(file_position, 0)
 			symbol_name = none as String
 			
 			# If the section number is a positive integer, the symbol is defined locally inside some section
@@ -1310,7 +1310,7 @@ namespace pe_format {
 
 			loop (j = 0, j < section_table.number_of_relocations, j++) {
 				# Load the relocation entry from raw bytes
-				relocation_entry = binary_utility.read<PeRelocationEntry>(file_position, 0)
+				relocation_entry = binary_utility.read_object<PeRelocationEntry>(file_position, 0)
 
 				symbol = symbols[relocation_entry.symbol_table_index]
 				relocation_type = get_shared_relocation_type(relocation_entry.type)
@@ -1343,7 +1343,7 @@ namespace pe_format {
 	# Load the specified object file and constructs a object structure that represents it
 	import_object_file(name: String, bytes: Array<byte>) {
 		# Load the file header
-		header = binary_utility.read<PeObjectFileHeader>(bytes, 0)
+		header = binary_utility.read_object<PeObjectFileHeader>(bytes, 0)
 
 		# Load all the section tables
 		file_position = bytes.data + PeObjectFileHeader.Size
@@ -1361,7 +1361,7 @@ namespace pe_format {
 
 		loop (i = 0, i < header.number_of_sections, i++) {
 			# Load the section table in order to load the actual section
-			section_table = binary_utility.read<PeSectionTable>(file_position, 0)
+			section_table = binary_utility.read_object<PeSectionTable>(file_position, 0)
 
 			# Create a pointer, which points to the start of the section data in the file
 			section_data_start = bytes.data + section_table.pointer_to_raw_data
@@ -1415,7 +1415,7 @@ namespace pe_format {
 	# Load the specified object file and constructs a object structure that represents it
 	import_object_file(path: String) {
 		if not (io.read_file(path) has bytes) => Optional<BinaryObjectFile>()
-		=> Optional<BinaryObjectFile>(import_object_file(bytes))
+		=> Optional<BinaryObjectFile>(import_object_file(path, bytes))
 	}
 }
 

@@ -1080,7 +1080,7 @@ namespace instruction_encoder {
 
 			if end != 0 {
 				label = Label(instructions[end - 1].parameters[0].value.(DataSectionHandle).identifier)
-				is_conditional_jump = instructions[end - 1].operation != platform.x64.JUMP
+				is_conditional_jump = not (instructions[end - 1].operation == platform.x64.JUMP)
 
 				module = EncoderModule(label, is_conditional_jump)
 				module.instructions.add_range(instructions.slice(start, end))
@@ -1189,7 +1189,7 @@ namespace instruction_encoder {
 	# If the specified module does not have a jump, this function returns zero.
 	# If the specified module jumps to an external label, this function returns int.MaxValue.
 	private get_module_jump_distance(module: EncoderModule, labels: Map<Label, LabelDescriptor>) {
-		if module.jump == none => 0
+		if module.jump as link == none => 0
 		if not labels.contains_key(module.jump) => NORMAL_MAX
 		label = labels[module.jump]
 
@@ -1205,7 +1205,7 @@ namespace instruction_encoder {
 		sort<EncoderModule>(sorted_modules, (a: EncoderModule, b: EncoderModule) -> instruction_encoder.get_module_jump_distance(a, labels) - instruction_encoder.get_module_jump_distance(b, labels))
 
 		loop module in sorted_modules {
-			if module.jump == none continue
+			if module.jump as link == none continue
 
 			# Express the current position as if the module jump was an 8-bit jump
 			position = module.position - (JUMP_OFFSET32_SIZE - JUMP_OFFSET8_SIZE)
@@ -1247,7 +1247,7 @@ namespace instruction_encoder {
 	write_offsets(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>) {
 		# Jumps:
 		loop module in modules {
-			if module.jump == none or not labels.contains_key(module.jump) continue
+			if module.jump as link == none or not labels.contains_key(module.jump) continue
 			descriptor = labels[module.jump]
 
 			from = module.start + module.position
@@ -1312,7 +1312,7 @@ namespace instruction_encoder {
 
 		# Generate relocations for jumps, which use external symbols
 		loop module in modules {
-			if module.jump == none continue
+			if module.jump as link == none continue
 
 			# Load the name of destination label
 			name = module.jump.name

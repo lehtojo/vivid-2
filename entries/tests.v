@@ -25,6 +25,7 @@ project_file(folder: link, name: link) {
 compile(output: link, source_files: List<String>, optimization: large, prebuilt: bool) {
 	String.empty = String('')
 	settings.initialize()
+	initialize_configuration()
 	
 	bundle = Bundle()
 

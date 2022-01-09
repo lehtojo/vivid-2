@@ -77,7 +77,7 @@ collect(files: List<String>, folder: String, recursive: bool) {
 }
 
 # Summary: Initializes the configuration by registering the folders which can be searched through
-initialize() {
+initialize_configuration() {
 	settings.included_folders = List<String>()
 	settings.included_folders.add(io.get_process_folder())
 
@@ -85,9 +85,9 @@ initialize() {
 
 	if OS == OPERATING_SYSTEM_WINDOWS {
 		path = io.get_environment_variable('PATH')
-		if path == none { path = String('') }
+		if path as link == none { path = String('') }
 
-		folders = path.split(':').to_list()
+		folders = path.split(`;`).to_list()
 
 		# Ensure all the separators are the same
 		loop (i = 0, i < folders.size, i++) {
@@ -96,16 +96,18 @@ initialize() {
 	}
 	else {
 		path = io.get_environment_variable('Path')
-		if path == none { path = String('') }
+		if path as link == none { path = String('') }
 
-		folders = path.split(';').to_list()
+		folders = path.split(`:`).to_list()
 	}
 
 	# Look for empty folder strings and remove them
 	loop (i = folders.size - 1, i >= 0, i--) {
-		if not folders[i].empty continue
+		if folders[i].length > 0 continue
 		folders.remove_at(i)
 	}
+
+	settings.included_folders.add_range(folders)
 
 	# Ensure all the included folders ends with a separator
 	loop (i = 0, i < settings.included_folders.size, i++) {
@@ -115,8 +117,8 @@ initialize() {
 		settings.included_folders[i] = folder + '/'
 	}
 
-	keywords.initialize()
-	operators.initialize()
+	Keywords.initialize()
+	Operators.initialize()
 }
 
 # Summary: Tries to find the specified library using the include folders
@@ -204,7 +206,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 
 		filename = find_library(library)
 
-		if filename == none => Status('Can not find the specified library')
+		if filename as link == none => Status('Can not find the specified library')
 
 		libraries.add(filename)
 	}
