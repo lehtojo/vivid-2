@@ -563,7 +563,7 @@ Handle ComplexMemoryHandle {
 	}
 
 	get_offset() {
-		offset: large = offset
+		offset: large = this.offset
 
 		offset += when(start.value.instance) {
 			INSTANCE_CONSTANT => start.value.(ConstantHandle).value,
