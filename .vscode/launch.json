@@ -7,7 +7,7 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/build/vc.exe",
 			"cwd": "${workspaceRoot}",
-			"programArgs": "C:/Users/joona/vivid-2/tests/templates.v C:/Users/joona/vivid-2/prebuilt/prebuilt.v C:/Users/joona/vivid-2/prebuilt/prebuilt.obj C:/Users/joona/vivid-2/prebuilt/tests.obj -l kernel32 -o unit -a"
+			//"programArgs": "C:/Users/joona/vivid-2/tests/templates.v C:/Users/joona/vivid-2/tests/assert.v C:/Users/joona/vivid-2/prebuilt/tests.obj -l kernel32 -l v -o unit -a"
 		},
 	]
 }

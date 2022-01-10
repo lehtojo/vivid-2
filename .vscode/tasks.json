@@ -37,12 +37,15 @@
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/tests.v",
 				"${workspaceFolder}/tests/assert.v",
-				"${workspaceFolder}/libv/",
-				"${workspaceFolder}/libv/linux_x64/io.v",
 				"-a",
 				"-f",
 				"-o",
-				"v"
+				"vc",
+				"-l",
+				"kernel32",
+				"-l",
+				"v",
+				"-d"
 			],
 			"group": {
 				"kind": "build",

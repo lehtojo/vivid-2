@@ -52,7 +52,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 
 		# Produce tokens from the template code
 		if not (get_tokens(text, true) has tokens) => false
-		file.tokens.add_range(tokens)
+		file.tokens = tokens
 
 		# Register the file to the produced tokens
 		register_file(file.tokens, file)
@@ -227,7 +227,7 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, headers: List<StaticLibraryFormatFileHeader>) {
 	loop header in headers {
 		# Look for files which have names such as: /10
-		if not header.filename.starts_with(`/`) continue
+		if not header.filename.starts_with(`/`) or header.filename.length <= 1 continue
 
 		# Ensure the filename is a extended filename, meaning the actual filename is loaded from a string table at the offset given by the extended filename
 		digits = header.filename.slice(1)

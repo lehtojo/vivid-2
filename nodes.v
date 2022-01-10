@@ -176,7 +176,7 @@ Node OperatorNode {
 		right_type = last.try_get_type()
 
 		# Return the left type only if it represents a link, which is modified with an integer type
-		if primitives.is_primitive(left_type, primitives.LINK) and right_type.is_number and right_type.format != FORMAT_DECIMAL and (operator == Operators.ADD or operator == Operators.SUBTRACT or operator == Operators.MULTIPLY) => left_type
+		if primitives.is_primitive(left_type, primitives.LINK) and right_type != none and right_type.is_number and right_type.format != FORMAT_DECIMAL and (operator == Operators.ADD or operator == Operators.SUBTRACT or operator == Operators.MULTIPLY) => left_type
 
 		=> resolver.get_shared_type(left_type, right_type)
 	}
@@ -1536,8 +1536,13 @@ Node NamespaceNode {
 			name: String = this.name[i].(IdentifierToken).value
 			type = context.get_type(name)
 
-			if type == none { context = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position) }
-			else { context = type }
+			if type == none {
+				type = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position)
+				context = type
+			}
+			else {
+				context = type
+			}
 		}
 
 		=> context as Type

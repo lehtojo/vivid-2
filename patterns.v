@@ -1009,6 +1009,7 @@ Pattern ConstructorPattern {
 
 		# Try to consume curly brackets or a heavy arrow operator
 		next = state.peek()
+		if next == none => false
 		
 		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
 			state.consume()

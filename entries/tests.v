@@ -3,19 +3,19 @@ constant UNIT_TEST_PREFIX = 'unit_'
 abort(message: String) {
 	print('Internal error: ')
 	println(message)
-	exit(1)
+	application.exit(1)
 }
 
 abort(message: link) {
 	print('Internal error: ')
 	println(message)
-	exit(1)
+	application.exit(1)
 }
 
 complain(status: Status) {
 	print('Compilation terminated: ')
 	println(status.message)
-	exit(1)
+	application.exit(1)
 }
 
 project_file(folder: link, name: link) {
@@ -32,11 +32,12 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	arguments = List<String>()
 	arguments.add_range(source_files)
 	arguments.add(String('-a'))
+	arguments.add(String('-l'))
+	arguments.add(String('kernel32'))
 	arguments.add(String('-o'))
 	arguments.add(String(UNIT_TEST_PREFIX) + output)
 
 	if prebuilt {
-		arguments.add(project_file('libv', 'Core.v'))
 		objects = io.get_folder_files(io.get_process_working_folder() + '/prebuilt/', false)
 		loop object in objects { arguments.add(object.fullname) }
 	}
@@ -53,6 +54,9 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	Keywords.initialize()
 	Operators.initialize()
 
+	result = textual_assembler.assemble(bundle)
+	if result.problematic complain(result)
+
 	result = tokenize(bundle)
 	if result.problematic complain(result)
 
@@ -68,8 +72,8 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	analysis.analyze(bundle)
 	if result.problematic complain(result)
 
-	JumpInstruction.initialize()
-	result = assembler.assemble(bundle)
+	platform.x64.initialize()
+	assembler.assemble(bundle)
 	if result.problematic complain(result)
 }
 
