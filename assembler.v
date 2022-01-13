@@ -2159,6 +2159,7 @@ get_text_sections(context: Context) {
 		}
 
 		loop implementation in iterator.value {
+			if implementation.is_imported continue
 			builder.add(get_text_section(implementation))
 			builder.write('\n\n')
 		}
@@ -2261,7 +2262,7 @@ assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: Lis
 
 	assemblies = Map<SourceFile, String>()
 	exports = Map<SourceFile, List<String>>()
-	object_files = Map<SourceFile, BinaryObjectFile>()
+	object_files = bundle.get_object(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link) as Map<SourceFile, BinaryObjectFile>
 
 	# Import user defined object files
 	user_imported_object_files = bundle.get_object(String(BUNDLE_OBJECTS), List<String>() as link) as List<String>

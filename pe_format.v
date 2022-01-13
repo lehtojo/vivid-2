@@ -1040,7 +1040,6 @@ namespace pe_format {
 
 		# Ensure sections are ordered so that sections of same type are next to each other
 		fragment_sections = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections)
-		unused = 0
 		fragments = fragment_sections.filter((i: BinarySection) -> i.type != BINARY_SECTION_TYPE_NONE and linker.is_loadable_section(i))
 
 		# Load all the relocations from all the sections

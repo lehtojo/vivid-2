@@ -436,6 +436,7 @@ namespace Keywords {
 		add(OUTLINE)
 		add(OVERRIDE)
 		add(PACK)
+		add(PLAIN)
 		add(PRIVATE)
 		add(PROTECTED)
 		add(PUBLIC)

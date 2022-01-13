@@ -1370,8 +1370,8 @@ Context Function {
 	}
 
 	# Summary: Returns whether the specified parameter types can be used to implement this function
-	passes(types: List<Type>, template_arguments: Array<Type>) {
-		if template_arguments.count > 0 => is_template_function and this.(TemplateFunction).passes(types, template_arguments)
+	passes(types: List<Type>, template_arguments: List<Type>) {
+		if template_arguments.size > 0 => is_template_function and this.(TemplateFunction).passes(types, template_arguments)
 		=> not is_template_function and passes(types)
 	}
 

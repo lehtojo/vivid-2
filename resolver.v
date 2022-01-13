@@ -243,7 +243,7 @@ resolve_context(context: Context) {
 
 	# Resolve all implementation variables and node trees
 	loop implementation in implementations {
-		if implementation.node == none or implementation.metadata.is_imported continue
+		if implementation.node == none continue
 		resolve_return_type(implementation)
 		resolve_variables(implementation)
 		resolve_tree(implementation, implementation.node)

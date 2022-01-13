@@ -387,6 +387,11 @@ Node UnresolvedIdentifier {
 	}
 }
 
+pack CallArgument {
+	type: Type
+	value: Node
+}
+
 Node UnresolvedFunction {
 	name: String
 	arguments: List<Type>
@@ -412,8 +417,101 @@ Node UnresolvedFunction {
 		=> this
 	}
 
-	private try_resolve_lambda_parameters(primary: Context, argument_types: List<Type>) {
-		# TODO: Automatic lambda parameter types
+	private try_resolve_lambda_parameters(primary: Context, call_arguments: List<CallArgument>) {
+		# Collect all the parameters which are unresolved
+		unresolved = call_arguments.filter(i -> i.type == none or i.type.is_unresolved)
+
+		# Ensure all the unresolved parameter types represent lambda types
+		if not unresolved.all(i -> i.value.instance == NODE_LAMBDA) or not primary.is_function_declared(name) return
+
+		# Collect all parameter types leaving all lambda types as nulls
+		actual_types = call_arguments.map<Type>((i: CallArgument) -> i.type)
+
+		# Find all the functions overloads with the name of this unresolved function
+		functions = primary.get_function(name)
+
+		# Find all the function overloads that could accept the currently resolved parameter types
+		candidates = functions.overloads.filter(overload -> {
+			# Ensure the number of parameters is the same before continuing
+			if actual_types.size != overload.parameters.size => false
+
+			# Collect the expected parameter types
+			expected_types = overload.parameters.map<Type>((j: Parameter) -> j.type)
+
+			# Determine the final parameter types as follows:
+			# - Prefer the actual parameter types over the expected parameter types
+			# - If the actual parameter type is not defined, use the expected parameter type
+			types = List<Type>(expected_types.size, false)
+
+			loop (i = 0, i < types.size, i++) {
+				actual_type = actual_types[i]
+				if actual_type != none { types.add(actual_type) }
+				else { types.add(expected_types[i]) }
+			}
+
+			# Check if the final parameter types pass
+			=> types.all(i -> i != none and i.is_resolved) and overload.passes(types, arguments)
+		})
+
+		# Collect all parameter types but this time filling the unresolved lambda types with incomplete call descriptor types
+		loop (i = 0, i < actual_types.size, i++) {
+			actual_type = actual_types[i]
+			if actual_type != none continue
+
+			actual_types[i] = call_arguments[i].value.(LambdaNode).get_incomplete_type()
+		}
+
+		expected_types = none as List<Type>
+
+		# Filter out all candidates where the type of the parameter matching the unresolved lambda type is not a lambda type
+		loop (i = candidates.size - 1, i >= 0, i--) {
+			expected_types = candidates[i].parameters.map<Type>((i: Parameter) -> i.type)
+
+			loop (j = 0, j < expected_types.size, j++) {
+				expected = expected_types[j]
+				actual = actual_types[j]
+
+				# Skip all parameter types which do not represent lambda types
+				if expected == none or not actual.is_function_type continue
+
+				if expected.is_function_type {
+					# Since the actual parameter type is lambda type and the expected is not, the current candidate can be removed
+					candidates.remove_at(i)
+					stop
+				}
+			}
+		}
+
+		# Resolve the lambda type only if there is only one option left since the analysis would go too complex
+		if candidates.size != 1 return
+
+		match = candidates[0]
+		expected_types = match.parameters.map<Type>((i: Parameter) -> i.type)
+
+		loop (i = 0, i < expected_types.size, i++) {
+			# Skip all parameter types which do not represent lambda types
+			# NOTE: It is ensured that when the expected type is a call descriptor the actual type is as well
+			if not expected_types[i].is_function_type continue
+			expected = expected_types[i] as FunctionType
+
+			actual = actual_types[i] as FunctionType
+
+			# Ensure the parameter types do not conflict
+			if expected.parameters.size != actual.parameters.size return
+
+			loop (j = 0, j < expected.parameters.size, j++) {
+				expected_parameter = expected.parameters[j]
+				actual_parameter = actual.parameters[j]
+
+				# Ensure the parameter types do not conflict
+				if actual_parameter as link != none and not (expected_parameter.type == actual_parameter.type) return
+			}
+
+			# Since none of the parameters conflicted with the expected parameters types, the expected parameter types can be transferred
+			loop (j = 0, j < expected.parameters.size, j++) {
+				call_arguments[i].value.(LambdaNode).function.parameters[j].type = expected.parameters[j]
+			}
+		}
 	}
 
 	resolve(environment: Context, primary: Context) {
@@ -430,17 +528,19 @@ Node UnresolvedFunction {
 		}
 
 		# Try to collect all argument types and record whether any of them is unresolved
+		call_arguments = List<CallArgument>()
 		argument_types = List<Type>()
 		unresolved = false
 
-		loop argument in this { 
+		loop argument in this {
 			argument_type = argument.try_get_type()
+			call_arguments.add(pack { type: argument_type, value: argument })
 			argument_types.add(argument_type)
 			if argument_type == none or argument_type.is_unresolved { unresolved = true }
 		}
 
 		if unresolved {
-			try_resolve_lambda_parameters(primary, argument_types)
+			try_resolve_lambda_parameters(primary, call_arguments)
 			=> none as Node
 		}
 
