@@ -228,6 +228,14 @@ Instruction {
 				if source != none abort('Instruction had multiple sources')
 				source = parameter.value.finalize()
 			}
+
+			is_relocated = has_flag(parameter.flags, FLAG_RELOCATE_TO_DESTINATION) or has_flag(parameter.flags, FLAG_RELOCATE_TO_SOURCE)
+			is_register = parameter.result.is_any_register
+
+			if is_relocated and is_register {
+				# Since the parameter is relocated, its current register can be reset
+				parameter.result.value.(RegisterHandle).register.reset()
+			}
 		}
 
 		if destination != none {

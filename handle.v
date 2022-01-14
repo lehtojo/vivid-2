@@ -183,7 +183,7 @@ Handle RegisterHandle {
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.format == other.format and this.register == other.(RegisterHandle).register
+		=> this.instance == other.instance and this.register == other.(RegisterHandle).register
 	}
 
 	override finalize() {

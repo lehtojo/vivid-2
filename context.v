@@ -242,7 +242,7 @@ Context {
 
 		loop (iterator != none) {
 			if iterator.is_type result.add(iterator as Type)
-			iterator = iterator.parent 
+			iterator = iterator.parent
 		}
 
 		=> result
@@ -1014,6 +1014,7 @@ Context Type {
 
 		names = List<String>()
 		loop iterator in get_parent_types() { names.add(iterator.name) }
+		names.reverse()
 		names.add(name)
 		=> String.join(`.`, names)
 	}

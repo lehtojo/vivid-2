@@ -647,6 +647,7 @@ namespace instruction_encoder {
 			INSTANCE_DATA_SECTION => MemoryAddressDescriptor(handle.(DataSectionHandle).identifier, handle.(DataSectionHandle).modifier, handle.(DataSectionHandle).offset),
 			INSTANCE_CONSTANT_DATA_SECTION => MemoryAddressDescriptor(handle.(ConstantDataSectionHandle).identifier, handle.(DataSectionHandle).modifier, handle.(DataSectionHandle).offset),
 			INSTANCE_STACK_VARIABLE => MemoryAddressDescriptor(handle.(StackVariableHandle).get_start(), none as Register, 1, handle.(StackVariableHandle).get_offset()),
+			INSTANCE_TEMPORARY_MEMORY => MemoryAddressDescriptor(handle.(StackMemoryHandle).get_start(), none as Register, 1, handle.(StackMemoryHandle).get_offset()),
 			else => abort('Unsupported handle') as MemoryAddressDescriptor
 		}
 	}

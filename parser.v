@@ -498,7 +498,7 @@ parse(bundle: Bundle) {
 			importer.import_static_library(context, library, files, object_files)
 		}
 		else {
-			println('Warning: Shared libraries are not supported yet')
+			# println('Warning: Shared libraries are not supported yet')
 		}
 	}
 

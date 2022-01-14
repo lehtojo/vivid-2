@@ -469,7 +469,8 @@ try_get_virtual_function_call(self: Node, self_type: Type, name: String, argumen
 
 	# Cast the self pointer, if neccessary
 	if self_type != required_self_type {
-		self = CastNode(self, TypeNode(required_self_type), self.start)
+		casted = CastNode(self, TypeNode(required_self_type), self.start)
+		self = casted
 	}
 
 	# Determine the parameter types

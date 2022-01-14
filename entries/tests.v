@@ -41,6 +41,11 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 		objects = io.get_folder_files(io.get_process_working_folder() + '/prebuilt/', false)
 		loop object in objects { arguments.add(object.fullname) }
 	}
+	else {
+		# Add the built standard library
+		arguments.add(String('-l'))
+		arguments.add(String('v'))
+	}
 
 	# Add optimization level
 	if optimization != 0 arguments.add(String('-O') + to_string(optimization))
@@ -92,12 +97,12 @@ execute(name: link) {
 		pid = io.shell(String('./') + executable_name + ' > ' + executable_name + '.out')
 	}
 
-	#exit_code = io.wait_for_exit(pid)
-	#if exit_code != 1 abort('Executed process exited with an error code')
+	exit_code = io.wait_for_exit(pid)
+	if exit_code != 1 abort('Executed process exited with an error code')
 
 	if not [io.read_file(executable_name + '.out') has log] => String.empty
 
-	=> String(log.data)
+	=> String(log.data, log.count)
 }
 
 # Summary: Loads the specified assembly output file and returns the section which represents the specified function
@@ -383,7 +388,7 @@ templates(optimization: large) {
 fibonacci(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'fibonacci.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('fibonacci', files, optimization, false)
 
 	log = execute('fibonacci')
@@ -396,7 +401,7 @@ fibonacci(optimization: large) {
 pi(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'pi.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('pi', files, optimization, false)
 
 	log = execute('pi')
@@ -415,7 +420,7 @@ pi(optimization: large) {
 inheritance(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'inheritance.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('inheritance', files, optimization, false)
 
 	log = execute('inheritance')
@@ -424,7 +429,7 @@ inheritance(optimization: large) {
 namespaces(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'namespaces.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('namespaces', files, optimization, false)
 
 	log = execute('namespaces')
@@ -437,7 +442,7 @@ namespaces(optimization: large) {
 extensions(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'extensions.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('extensions', files, optimization, false)
 
 	log = execute('extensions')
@@ -450,7 +455,7 @@ extensions(optimization: large) {
 virtuals(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'virtuals.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('virtuals', files, optimization, false)
 
 	log = execute('virtuals')
@@ -469,7 +474,7 @@ virtuals(optimization: large) {
 expression_variables(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'expression_variables.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('expression_variables', files, optimization, false)
 
 	log = execute('expression_variables')
@@ -488,7 +493,7 @@ expression_variables(optimization: large) {
 iteration(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'iteration.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('iteration', files, optimization, false)
 
 	log = execute('iteration')
@@ -497,7 +502,7 @@ iteration(optimization: large) {
 lambdas(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'lambdas.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('lambdas', files, optimization, false)
 
 	log = execute('lambdas')
@@ -516,8 +521,8 @@ lambdas(optimization: large) {
 is_expressions(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'is.v'))
+	files.add(project_file('tests', 'assert.v'))
 	files.add(project_file('libv', 'Math.v'))
-	files.add_range(get_standard_library_utility())
 	compile('is', files, optimization, false)
 
 	log = execute('is')
@@ -526,7 +531,7 @@ is_expressions(optimization: large) {
 whens_expressions(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'whens.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('whens', files, optimization, false)
 
 	log = execute('whens')
@@ -535,7 +540,7 @@ whens_expressions(optimization: large) {
 conversions(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'conversions.v'))
-	files.add_range(get_standard_library_utility())
+	files.add(project_file('tests', 'assert.v'))
 	compile('conversions', files, optimization, false)
 
 	log = execute('conversions')

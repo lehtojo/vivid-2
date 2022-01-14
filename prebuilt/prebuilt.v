@@ -7,3 +7,4 @@ import are_not_equal(a: large, b: large)
 import allocate(bytes: large): link
 import deallocate(memory: link)
 import internal_is(a: link, b: link): bool
+import copy(source: link, amount: large, destination: link)

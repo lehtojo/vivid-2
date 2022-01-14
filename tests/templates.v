@@ -27,7 +27,7 @@ Bundle<A, B> {
 			=> third
 		}
 		else {
-			=> none as Pair<A, B>
+			=> 0 as Pair<A, B>
 		}
 	}
 
@@ -42,10 +42,6 @@ Bundle<A, B> {
 			third = value
 		}
 	}
-}
-
-length_of(name: link) {
-
 }
 
 Product {
@@ -63,7 +59,7 @@ Product {
 		buffer[0] = `i`
 		buffer[length + 1] = 0
 
-		offset_copy(name, length, buffer, 1)
+		copy(name, length, buffer + 1)
 
 		name = buffer
 	}

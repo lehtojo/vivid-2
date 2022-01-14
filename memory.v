@@ -124,7 +124,9 @@ load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool) {
 
 # Summary: Moves the value inside the given register to other register or releases it memory
 clear_register(unit: Unit, target: Register) {
-	if target.is_available() return
+	# 1. If the register is already available, no need to clear it
+	# 2. If the value inside the register does not own the register, no need to clear it
+	if target.is_available() or target.is_value_copy() return
 
 	register = none as Register
 

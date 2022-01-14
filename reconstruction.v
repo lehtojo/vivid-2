@@ -1031,13 +1031,13 @@ rewrite_inspections(root: Node) {
 	loop inspection in inspections {
 		type = inspection.first.get_type()
 
-		if inspection.instance == INSPECTION_TYPE_NAME {
+		if inspection.type == INSPECTION_TYPE_NAME {
 			inspection.replace(StringNode(type.string(), inspection.start))
 		}
-		else inspection.instance == INSPECTION_TYPE_CAPACITY {
+		else inspection.type == INSPECTION_TYPE_CAPACITY {
 			inspection.replace(NumberNode(SYSTEM_FORMAT, type.content_size, inspection.start))
 		}
-		else inspection.instance == INSPECTION_TYPE_SIZE {
+		else inspection.type == INSPECTION_TYPE_SIZE {
 			inspection.replace(NumberNode(SYSTEM_FORMAT, type.allocation_size, inspection.start))
 		}
 	}
