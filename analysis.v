@@ -96,7 +96,6 @@ analyze(bundle: Bundle) {
 
 	loop (i = 0, i < implementations.size, i++) {
 		implementation = implementations[i]
-		if implementation.metadata.is_imported continue
 
 		reconstruction.start(implementation, implementation.node)
 		reconstruction.end(implementation.node)

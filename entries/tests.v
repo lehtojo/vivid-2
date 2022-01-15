@@ -522,7 +522,6 @@ is_expressions(optimization: large) {
 	files = List<String>()
 	files.add(project_file('tests', 'is.v'))
 	files.add(project_file('tests', 'assert.v'))
-	files.add(project_file('libv', 'Math.v'))
 	compile('is', files, optimization, false)
 
 	log = execute('is')

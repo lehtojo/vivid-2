@@ -253,7 +253,7 @@ consume_type(state: ParserState) {
 
 	if not is_normal_type {
 		next = state.peek()
-		if next == none or not next.match(`{`) => false
+		if next == none or not (next.match(`{`) or next.match(`(`)) => false
 	}
 
 	loop {

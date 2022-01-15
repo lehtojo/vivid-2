@@ -1,4 +1,4 @@
-ArrayIterator<T> {
+CustomArrayIterator<T> {
 	elements: link<T>
 	position: normal
 	count: normal
@@ -20,7 +20,7 @@ ArrayIterator<T> {
 	}
 }
 
-Array<T> {
+CustomArray<T> {
 	data: link<T>
 	count: large
 	
@@ -42,7 +42,7 @@ Array<T> {
 		=> data[i]
 	}
 
-	iterator() => ArrayIterator<T>(data, count)
+	iterator() => CustomArrayIterator<T>(data, count)
 	
 	deinit() {
 		deallocate(data, count)
@@ -60,7 +60,7 @@ Object {
 	}
 }
 
-export iteration_1(array: Array<large>, destination: link<large>) {
+export iteration_1(array: CustomArray<large>, destination: link<large>) {
 	loop i in array {
 		destination[0] = i
 		destination += sizeof(large)
@@ -81,7 +81,7 @@ export iteration_3(range: Range, destination: link<large>) {
 	}
 }
 
-export iteration_4(objects: Array<Object>) {
+export iteration_4(objects: CustomArray<Object>) {
 	loop i in objects {
 		if i.value() > -10.0 and i.value() < 10.0 {
 			stop
@@ -89,7 +89,7 @@ export iteration_4(objects: Array<Object>) {
 	}
 }
 
-export iteration_5(objects: Array<Object>) {
+export iteration_5(objects: CustomArray<Object>) {
 	loop i in objects {
 		if i.value() < -12.34 or i.value() > 12.34 {
 			continue
@@ -125,7 +125,7 @@ init() {
 
 	destination = allocate<large>(5)
 
-	number_array = Array<large>(numbers, 5)
+	number_array = CustomArray<large>(numbers, 5)
 	iteration_1(number_array, destination)
 
 	loop (i = 0, i < 5, i++) {
@@ -172,7 +172,7 @@ init() {
 	objects[1] = second
 	objects[2] = third
 
-	object_array = Array<Object>(objects, 3)
+	object_array = CustomArray<Object>(objects, 3)
 
 	iteration_4(object_array)
 
