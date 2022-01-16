@@ -207,7 +207,7 @@ return_pack(unit: Unit, value: Result) {
 	position = StackMemoryHandle(unit, offset, true)
 	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, SYSTEM_FORMAT)
 
-	unit.add(ReorderInstruction(unit, destinations, sources))
+	unit.add(ReorderInstruction(unit, destinations, sources, unit.function.return_type))
 }
 
 build_return(unit: Unit, node: ReturnNode) {

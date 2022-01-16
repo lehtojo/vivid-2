@@ -699,7 +699,7 @@ print(node: Node, identation: large, total: large) {
 	padding[padding.count - 1] = 0
 	fill(padding.data, padding.count, ` `)
 
-	internal_print(padding.data, length_of(padding.data))
+	internal.console.write(padding.data, length_of(padding.data))
 	println(node.string())
 
 	total++

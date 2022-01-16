@@ -56,6 +56,7 @@ Mangle {
 	constant START_FUNCTION_POINTER_COMMAND = `F`
 	constant START_MEMBER_VARIABLE_COMMAND = `V`
 	constant START_MEMBER_VIRTUAL_FUNCTION_COMMAND = `F`
+	constant START_PACK_TYPE_COMMAND = `U`
 	constant VIRTUAL_FUNCTION_POSTFIX = '_v'
 
 	definitions: List<MangleDefinition> = List<MangleDefinition>()
@@ -115,6 +116,18 @@ Mangle {
 			# Add the default definition, without any pointers, if the type is not a primitive
 			if not type.is_primitive or type.name == primitives.LINK or type.is_array_type {
 				definitions.add(MangleDefinition(type, definitions.size, 0))
+			}
+
+			if type.is_unnamed_pack {
+				# Pattern: U $type-1 $type-2 ... E
+				value = value + START_PACK_TYPE_COMMAND
+
+				loop iterator in type.variables {
+					add(iterator.value.type)
+				}
+
+				value = value + END_COMMAND
+				return
 			}
 
 			# Support functions types

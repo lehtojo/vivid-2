@@ -136,7 +136,13 @@ resolve(function: Function) {
 
 # Summary: Tries to resolve all the locals in the specified context
 resolve_variables(context: Context) {
-	loop local in context.locals { resolve(local) }
+	loop iterator in context.variables {
+		resolve(iterator.value)
+	}
+
+	loop subcontext in context.subcontexts {
+		resolve_variables(subcontext)
+	}
 }
 
 # Summary: Tries to resolve the return type of the specified implementation based on its return statements

@@ -71,8 +71,17 @@ Context {
 
 	locals() {
 		result = List<Variable>()
-		loop variable in variables { result.add(variable.value) }
-		loop subcontext in subcontexts { result.add_range(subcontext.locals) }
+
+		loop iterator in variables {
+			variable = iterator.value
+			if variable.category != VARIABLE_CATEGORY_LOCAL continue
+			result.add(variable)
+		}
+
+		loop subcontext in subcontexts {
+			result.add_range(subcontext.locals)
+		}
+
 		=> result
 	}
 
@@ -626,6 +635,7 @@ Context Type {
 	is_unresolved => not is_resolved
 	is_inlining => has_flag(modifiers, MODIFIER_INLINE)
 	is_static => has_flag(modifiers, MODIFIER_STATIC)
+	is_plain => has_flag(modifiers, MODIFIER_PLAIN)
 	
 	is_generic_type => not has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)
 	is_template_type => has_flag(modifiers, MODIFIER_TEMPLATE_TYPE)

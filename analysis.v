@@ -102,6 +102,14 @@ analyze(bundle: Bundle) {
 	}
 
 	#resolver.debug_print(context)
+
+	loop (i = 0, i < implementations.size, i++) {
+		implementation = implementations[i]
+
+		reconstruction.rewrite_pack_usages(implementation, implementation.node)
+	}
+
+	#resolver.debug_print(context)
 }
 
 # Summary: Finds the branch which contains the specified node

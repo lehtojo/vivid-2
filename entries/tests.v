@@ -545,6 +545,45 @@ conversions(optimization: large) {
 	log = execute('conversions')
 }
 
+lists(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'lists.v'))
+	compile('lists', files, optimization, false)
+
+	log = execute('lists')
+	expected = '1, 2, 3, 5, 7, 11, 13, \n42, 69, \nFoo, Bar, Baz, Qux, Xyzzy, \nFoo, Bar, Baz x 3, Qux, Xyzzy x 7, \n'
+
+	if not (log == expected) {
+		println('Lists unit test did not produce the correct output')
+	}
+}
+
+packs(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'packs.v'))
+	compile('packs', files, optimization, false)
+
+	log = execute('packs')
+	expected = '170\n2143\n20716\n3050\n4058\n3502\n354256\n'
+
+	if not (log == expected) {
+		println('Packs unit test did not produce the correct output')
+	}
+}
+
+unnamed_packs(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'unnamed_packs.v'))
+	compile('unnamed_packs', files, optimization, false)
+
+	log = execute('unnamed_packs')
+	expected = '420\n420\n2310\n'
+
+	if not (log == expected) {
+		println('Unnamed packs unit test did not produce the correct output')
+	}
+}
+
 init() {
 	println('Arithmetic')
 	arithmetic(0)
@@ -608,5 +647,11 @@ init() {
 	is_expressions(0)
 	println('Whens')
 	whens_expressions(0)
+	println('Lists')
+	lists(0)
+	println('Packs')
+	packs(0)
+	println('Unnamed packs')
+	unnamed_packs(0)
 	=> 0
 }

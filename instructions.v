@@ -997,10 +997,10 @@ Instruction CallInstruction {
 
 		if return_type != none {
 			this.result.format = return_type.get_register_format()
-			return
 		}
-
-		this.result.format = SYSTEM_FORMAT
+		else {
+			this.result.format = SYSTEM_FORMAT
+		}
 
 		# Initialize the return pack, if the return type is a pack
 		if return_type != none and return_type.is_pack {
@@ -1020,10 +1020,10 @@ Instruction CallInstruction {
 
 		if return_type != none {
 			this.result.format = return_type.get_register_format()
-			return
 		}
-
-		this.result.format = SYSTEM_FORMAT
+		else {
+			this.result.format = SYSTEM_FORMAT
+		}
 
 		# Initialize the return pack, if the return type is a pack
 		if return_type != none and return_type.is_pack {
@@ -1164,10 +1164,7 @@ Instruction CallInstruction {
 			decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 			standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 
-			offset = 0
-			if settings.is_x64 { offset = SYSTEM_BYTES }
-
-			position = StackMemoryHandle(unit, offset, true)
+			position = StackMemoryHandle(unit, 0, false)
 			output_pack(standard_parameter_registers, decimal_parameter_registers, position, return_pack)
 			return
 		}
@@ -1187,19 +1184,102 @@ Instruction ReorderInstruction {
 	destinations: List<Handle>
 	formats: List<large>
 	sources: List<Result>
+	return_type: Type
 	extracted: bool = false
 
-	init(unit: Unit, destinations: List<Handle>, sources: List<Result>) {
+	init(unit: Unit, destinations: List<Handle>, sources: List<Result>, return_type: Type) {
 		Instruction.init(unit, INSTRUCTION_REORDER)
 		this.dependencies = none
 		this.destinations = destinations
 		this.formats = List<large>(destinations.size, false)
+		this.return_type = return_type
 		this.sources = sources
 
 		loop iterator in destinations { formats.add(iterator.format) }
 	}
 
+	# Summary: Returns how many bytes of the specified type are returned using the stack
+	compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>) {
+		loop iterator in type.variables {
+			member = iterator.value
+
+			if member.type.is_pack {
+				overflow = compute_return_overflow(member.type, overflow, standard_parameter_registers, decimal_parameter_registers)
+				continue
+			}
+
+			# First, drain out the registers
+			register = none as Register
+
+			if member.type.format == FORMAT_DECIMAL {
+				register = decimal_parameter_registers.take_first()
+			}
+			else {
+				register = standard_parameter_registers.take_first()
+			}
+
+			if register != none continue
+			overflow += SYSTEM_BYTES
+		}
+
+		=> overflow
+	}
+
+	# Summary: Returns how many bytes of the specified type are returned using the stack
+	compute_return_overflow(type: Type) {
+		decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+		standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+
+		=> compute_return_overflow(type, 0, decimal_parameter_registers, standard_parameter_registers)
+	}
+
+	# Summary: Evacuates variables that are located at the overflow zone of the stack
+	evacuate_overflow_zone(type: Type) {
+		shadow_space_size = 0
+		if settings.is_target_windows { shadow_space_size = calls.SHADOW_SPACE_SIZE }
+		overflow = max(compute_return_overflow(type), shadow_space_size)
+
+		loop iterator in unit.scope.variables {
+			# Find all memory handles
+			value = iterator.value
+			instance: large = value.value.instance
+			if instance != INSTANCE_STACK_VARIABLE and instance != INSTANCE_STACK_MEMORY and instance != INSTANCE_TEMPORARY_MEMORY and instance != INSTANCE_MEMORY continue
+
+			memory_handle = value.value as MemoryHandle
+
+			# Ensure the memory address represents a stack address
+			start = memory_handle.get_start()
+			if start == none or start != unit.get_stack_pointer() continue
+
+			# Ensure the memort address overlaps with the overflow
+			offset = memory_handle.get_absolute_offset()
+			if offset < 0 or offset >= overflow continue
+
+			variable = iterator.key
+
+			# Try to get an available non-volatile register
+			destination = none as Handle
+			register = memory.get_next_register_without_releasing(unit, variable.type.format == FORMAT_DECIMAL, trace.for(unit, value), false)
+
+			# Use the non-volatile register, if one was found
+			if register != none {
+				destination = RegisterHandle(register)
+			}
+			else {
+				# Since there are no non-volatile registers available, the value must be relocated to safe stack location
+				destination = references.create_variable_handle(unit, variable, ACCESS_WRITE)
+			}
+
+			instruction = MoveInstruction(unit, Result(destination, variable.type.get_register_format()), value)
+			instruction.description = String('Evacuate overflow')
+			instruction.type = MOVE_RELOCATE
+			unit.add(instruction)
+		}
+	}
+
 	override on_build() {
+		if return_type != none evacuate_overflow_zone(return_type)
+
 		instructions = List<MoveInstruction>()
 
 		loop (i = 0, i < destinations.size, i++) {

@@ -548,7 +548,7 @@ AssemblyParser {
 			=> number
 		}
 
-		abort('Can not understand')
+		abort(String('Can not understand: ') + to_string(all))
 	}
 
 	# Summary:

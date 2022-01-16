@@ -659,7 +659,7 @@ Node TypeDefinitionNode {
 
 	parse() {
 		# Static types can not be constructed
-		if not type.is_static type.add_runtime_configuration()
+		if not type.is_static and not type.is_plain type.add_runtime_configuration()
 
 		# Create the body of the type
 		parser.parse(this, type, List<Token>(blueprint))
@@ -883,7 +883,28 @@ Node IfNode {
 		this.is_resolvable = true
 	}
 
-	init() { this.instance = NODE_IF }
+	init() {
+		this.instance = NODE_IF
+		this.is_resolvable = true
+	}
+
+	get_successors() {
+		successors = List<Node>()
+		iterator = successor
+
+		loop (iterator != none) {
+			if iterator.instance == NODE_ELSE_IF {
+				successors.add(iterator)
+				iterator = iterator.(ElseIfNode).successor
+			}
+			else {
+				successors.add(iterator)
+				stop
+			}
+		}
+
+		=> successors
+	}
 
 	get_branches() {
 		branches = List<Node>(1, false)
@@ -1608,6 +1629,10 @@ Node SectionNode {
 		this.instance = NODE_SECTION
 	}
 
+	override copy() {
+		=> SectionNode(modifiers, start)
+	}
+
 	override equals(other: Node) {
 		=> modifiers == other.(SectionNode).modifiers
 	}
@@ -1622,6 +1647,13 @@ Node NamespaceNode {
 		this.name = name
 		this.blueprint = blueprint
 		this.instance = NODE_NAMESPACE
+	}
+
+	init(name: List<Token>, blueprint: List<Token>, is_parsed: bool) {
+		this.name = name
+		this.blueprint = blueprint
+		this.instance = NODE_NAMESPACE
+		this.is_parsed = is_parsed
 	}
 
 	# Summary:
@@ -1677,6 +1709,10 @@ Node NamespaceNode {
 		subnamespaces = find_all(NODE_NAMESPACE)
 		loop subnamespace in subnamespaces { subnamespace.(NamespaceNode).parse(result) }
 	}
+
+	override copy() {
+		=> NamespaceNode(name, blueprint, is_parsed)
+	}
 }
 
 # Summary: Represents a manual call node which is used for lambda and virtual function calls
@@ -1698,8 +1734,22 @@ Node CallNode {
 		loop parameter in parameters { last.add(parameter) }
 	}
 
+	init(descriptor: FunctionType, position: Position) {
+		this.descriptor = descriptor
+		this.start = position
+		this.instance = NODE_CALL
+	}
+
 	override try_get_type() {
 		=> descriptor.return_type
+	}
+
+	override copy() {
+		=> CallNode(descriptor, start)
+	}
+
+	override string() {
+		=> String('Call')
 	}
 }
 
@@ -1718,6 +1768,13 @@ Node InspectionNode {
 		add(node)
 	}
 
+	init(type: large, position: Position) {
+		this.type = type
+		this.instance = NODE_INSPECTION
+		this.is_resolvable = true
+		this.start = position
+	}
+
 	override resolve(context: Context) {
 		resolver.resolve(context, first)
 		=> none as Node
@@ -1734,6 +1791,10 @@ Node InspectionNode {
 		=> primitives.create_number(primitives.LARGE, FORMAT_INT64)
 	}
 
+	override copy() {
+		=> InspectionNode(type, start)
+	}
+
 	override string() {
 		if type == INSPECTION_TYPE_NAME => String('Name of')
 		=> String('Size of')
@@ -1745,6 +1806,10 @@ Node CompilesNode {
 	init(position: Position) {
 		this.start = position
 		this.instance = NODE_COMPILES
+	}
+
+	override copy() {
+		=> CompilesNode(start)
 	}
 
 	override try_get_type() {
@@ -1768,6 +1833,13 @@ Node IsNode {
 		if variable != none add(VariableNode(variable, position))
 	}
 
+	init(type: Type, position: Position) {
+		this.type = type
+		this.start = position
+		this.instance = NODE_IS
+		this.is_resolvable = true
+	}
+
 	override try_get_type() {
 		=> primitives.create_bool()
 	}
@@ -1786,6 +1858,10 @@ Node IsNode {
 	override get_status() {
 		if type.is_unresolved => Status(start, 'Can not resolve the condition type')
 		=> first.get_status()
+	}
+
+	override copy() {
+		=> IsNode(type, start)
 	}
 
 	override string() {
@@ -1811,6 +1887,15 @@ Node LambdaNode {
 		this.function = implementation.metadata
 		this.start = position
 		this.status = Status()
+		this.instance = NODE_LAMBDA
+		this.is_resolvable = true
+	}
+
+	init(status: Status, function: Function, implementation: FunctionImplementation, position: Position) {
+		this.implementation = implementation
+		this.function = function
+		this.start = position
+		this.status = status
 		this.instance = NODE_LAMBDA
 		this.is_resolvable = true
 	}
@@ -1859,6 +1944,10 @@ Node LambdaNode {
 		=> none as Type
 	}
 
+	override copy() {
+		=> LambdaNode(status, function, implementation, start)
+	}
+
 	override get_status() {
 		=> status
 	}
@@ -1881,6 +1970,12 @@ Node HasNode {
 
 		add(source)
 		add(result)
+	}
+
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_HAS
+		this.is_resolvable = true
 	}
 
 	override resolve(environment: Context) {
@@ -1954,6 +2049,14 @@ Node HasNode {
 		message = String('Ensure the inspected object has the following functions ') + RUNTIME_HAS_VALUE_FUNCTION_HEADER + ' and ' + RUNTIME_GET_VALUE_FUNCTION_HEADER
 		=> Status(start, message)
 	}
+
+	override copy() {
+		=> HasNode(start)
+	}
+
+	override string() {
+		=> String('Has')
+	}
 }
 
 Node ExtensionFunctionNode {
@@ -2023,6 +2126,14 @@ Node ExtensionFunctionNode {
 		message = String('Can not resolve the destination ') + destination.string() + ' of the extension function'
 		=> Status(start, message)
 	}
+
+	override copy() {
+		=> ExtensionFunctionNode(destination, descriptor, template_parameters, body, start, end)
+	}
+
+	override string() {
+		=> String('Extension function')
+	}
 }
 
 Node WhenNode {
@@ -2042,6 +2153,12 @@ Node WhenNode {
 		loop section in sections {
 			this.sections.add(section)
 		}
+	}
+
+	init(position: Position) {
+		this.start = position
+		this.instance = NODE_WHEN
+		this.is_resolvable = true
 	}
 
 	override try_get_type() {
@@ -2102,6 +2219,10 @@ Node WhenNode {
 		=> Status()
 	}
 
+	override copy() {
+		=> WhenNode(start)
+	}
+
 	override string() {
 		=> String('When')
 	}
@@ -2113,10 +2234,18 @@ Node ListConstructionNode {
 	init(elements: Node, position: Position) {
 		this.instance = NODE_LIST_CONSTRUCTION
 		this.start = position
+		this.is_resolvable = true
 
 		loop element in elements {
 			add(element)
 		}
+	}
+
+	init(type: Type, position: Position) {
+		this.instance = NODE_LIST_CONSTRUCTION
+		this.type = type
+		this.start = position
+		this.is_resolvable = true
 	}
 
 	override try_get_type() {
@@ -2157,6 +2286,10 @@ Node ListConstructionNode {
 		=> Status()
 	}
 
+	override copy() {
+		=> ListConstructionNode(type, start)
+	}
+
 	override string() {
 		elements: List<String> = List<String>()
 		loop element in this { elements.add(element.string()) }
@@ -2173,11 +2306,20 @@ Node PackConstructionNode {
 		this.instance = NODE_PACK_CONSTRUCTION
 		this.start = position
 		this.members = members
+		this.is_resolvable = true
 
 		# Add the arguments as children
 		loop argument in arguments {
 			add(argument)
 		}
+	}
+
+	init(type: Type, members: List<String>, position: Position) {
+		this.instance = NODE_PACK_CONSTRUCTION
+		this.start = position
+		this.type = type
+		this.members = members
+		this.is_resolvable = true
 	}
 
 	override try_get_type() {
@@ -2197,7 +2339,7 @@ Node PackConstructionNode {
 		=> true
 	}
 
-	resolve(context: Context) {
+	override resolve(context: Context) {
 		# Resolve the arguments
 		loop argument in this {
 			resolver.resolve(context, argument)
@@ -2214,14 +2356,14 @@ Node PackConstructionNode {
 		if not validate_member_names() => none as Node
 
 		# Create a new pack type in order to construct the pack later
-		type = context.declare_unnamed_pack(position)
+		type = context.declare_unnamed_pack(start)
 
 		# Declare the pack members
 		loop (i = 0, i < members.size, i++) {
-			type.declare(types[i], VARIABLE_CATEGORY_MEMBER, members[i])
+			type.(Context).declare(types[i], VARIABLE_CATEGORY_MEMBER, members[i])
 		}
 
-		=> none as Type
+		=> none as Node
 	}
 
 	override get_status() {
@@ -2231,6 +2373,10 @@ Node PackConstructionNode {
 		if type == none => Status(start, 'Can not resolve the types of the pack members')
 
 		=> Status()
+	}
+
+	override copy() {
+		=> PackConstructionNode(type, members, start)
 	}
 
 	override string() {
@@ -2249,6 +2395,14 @@ Node PackNode {
 	override try_get_type() {
 		=> type
 	}
+
+	override copy() {
+		=> PackNode(type)
+	}
+
+	override string() {
+		=> String('Pack')
+	}
 }
 
 Node UndefinedNode {
@@ -2263,5 +2417,13 @@ Node UndefinedNode {
 
 	override try_get_type() {
 		=> type
+	}
+
+	override copy() {
+		=> UndefinedNode(type, format)
+	}
+
+	override string() {
+		=> String('Undefined')
 	}
 }

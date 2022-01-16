@@ -782,7 +782,13 @@ Scope {
 		if not variable.is_predictable => none as Result
 
 		# First check if the variable handle list already exists
-		if variables.contains_key(variable) => variables[variable]
+		if variables.contains_key(variable) {
+			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
+			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to invidual local variables
+			value = variables[variable]
+			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK => none as Result
+			=> value
+		}
 
 		if recursive and outer != none {
 			value = outer.get_variable_value(variable, recursive) as Result

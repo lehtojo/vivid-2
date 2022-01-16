@@ -1389,11 +1389,13 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		if parameter.type.is_pack { local_packs.add(parameter) }
 	}
 
-	# TODO: Is this necessary? Does not the locals and parameters cover all cases?
+	###
+	NOTE: Locals and parameters should cover all
 	loop iterator in implementation.variables {
 		variable = iterator.value
 		if variable.type.is_pack { local_packs.add(variable) }
 	}
+	###
 
 	# Create the pack representives for all the collected local packs
 	loop local_pack in local_packs { common.get_pack_representives(local_pack) }
@@ -1470,7 +1472,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 
 			# Append the member to the name
 			member = next.(VariableNode).variable
-			name += String(`.`) + member.name
+			name = name + String(`.`) + member.name
 
 			iterator = parent
 			type = member.type
@@ -1481,7 +1483,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		if type == none abort('Pack member did not have a type')
 
 		# Find or create the representive for the member access
-		context = usage.(VariableNode).variable.context
+		context = usage.(VariableNode).variable.parent
 		representive = context.get_variable(name)
 		if representive == none abort('Missing pack member')
 

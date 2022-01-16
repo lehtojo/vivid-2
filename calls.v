@@ -175,7 +175,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 	}
 
 	call.destinations.add_range(destinations)
-	unit.add(ReorderInstruction(unit, destinations, sources))
+	unit.add(ReorderInstruction(unit, destinations, sources, call.return_type))
 }
 
 # Summary: Collects all parameters from the specified node tree into an array
