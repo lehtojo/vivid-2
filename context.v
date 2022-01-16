@@ -1288,7 +1288,7 @@ Context Function {
 	is_exported => has_flag(modifiers, MODIFIER_EXPORTED)
 	is_outlined => has_flag(modifiers, MODIFIER_OUTLINE)
 	is_template_function => has_flag(modifiers, MODIFIER_TEMPLATE_FUNCTION)
-	is_template_function_variant => has_flag(modifiers, MODIFIER_TEMPLATE_FUNCTION_VARIANT)
+	is_template_function_variant => name.index_of(`<`) != -1
 
 	init(parent: Context, modifiers: normal, name: String, blueprint: List<Token>, start: Position, end: Position) {
 		Context.init(parent, FUNCTION_CONTEXT)

@@ -2210,9 +2210,12 @@ beautify(text: String) {
 }
 
 # Summary: Creates an assembler header for the specified file from the specified context. Depending on the situation, the header might be empty or it might have a entry function call and other directives.
-create_header(context: Context, file: SourceFile) {
+create_header(context: Context, file: SourceFile, output_type: large) {
 	builder = AssemblyBuilder()
 	builder.write_line(TEXT_SECTION_DIRECTIVE)
+
+	# Do not add the entry function call, if the we are outputting a static library
+	if output_type == BINARY_TYPE_STATIC_LIBRARY => builder
 
 	selector = context.get_function(String('init'))
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
@@ -2286,7 +2289,7 @@ assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: Lis
 	}
 
 	loop file in files {
-		builder = create_header(context, file)
+		builder = create_header(context, file, output_type)
 
 		if text_sections.contains_key(file) {
 			builder.add(text_sections[file])
@@ -2344,7 +2347,8 @@ assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: Lis
 	}
 
 	if output_type == BINARY_TYPE_STATIC_LIBRARY {
-		# TODO: Import static library support
+		if static_library_format.build(context, object_files, output_name) => assemblies
+		abort('Failed to create the static library')
 	}
 
 	# Determine the output file extension
