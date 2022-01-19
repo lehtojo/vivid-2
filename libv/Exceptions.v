@@ -1,4 +1,4 @@
-Outcome<T, E> {
+export Outcome<T, E> {
 	value: u64
 	is_error: bool
 
@@ -13,14 +13,14 @@ Outcome<T, E> {
 	}
 }
 
-Outcome<T, E> Ok<T, E> {
+export Outcome<T, E> Ok<T, E> {
 	init(value: T) {
 		this.value = value as u64
 		this.is_error = false
 	}
 }
 
-Outcome<T, E> Error<T, E> {
+export Outcome<T, E> Error<T, E> {
 	init(value: E) {
 		this.value = value as u64
 		this.is_error = true
@@ -29,7 +29,7 @@ Outcome<T, E> Error<T, E> {
 	get_error() => value as E
 }
 
-Optional<T> {
+export Optional<T> {
 	value: T
 	empty: bool
 
@@ -44,4 +44,15 @@ Optional<T> {
 
 	has_value() => !empty
 	get_value() => value
+
+	value_or(fallback: T) {
+		result = value
+		if empty { result = fallback }
+		=> result
+	}
+}
+
+export panic(message: link) {
+	internal.console.write(message, length_of(message))
+	application.exit(1)
 }

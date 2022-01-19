@@ -1,4 +1,4 @@
-StringBuilder {
+export StringBuilder {
 	private capacity: large
 	private position: large
 
@@ -8,6 +8,12 @@ StringBuilder {
 	init() {
 		capacity = 1
 		buffer = allocate(1)
+	}
+
+	init(value: String) {
+		capacity = value.length
+		buffer = allocate(value.length)
+		append(value)
 	}
 
 	private grow(requirement: large) {

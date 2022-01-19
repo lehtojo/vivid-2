@@ -218,7 +218,7 @@ namespace primitives {
 		context.declare(unsigned_integer_32)
 		context.declare(unsigned_integer_64)
 		context.declare_type_alias(String(CHAR), signed_integer_8)
-		context.declare_type_alias(String(BYTE), signed_integer_16)
+		context.declare_type_alias(String(BYTE), unsigned_integer_8)
 
 		context.declare(create_number(DECIMAL, FORMAT_DECIMAL))
 

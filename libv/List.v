@@ -1,4 +1,4 @@
-List<T> {
+export List<T> {
 	private:
 	capacity: large
 	position: large
@@ -48,7 +48,7 @@ List<T> {
 	}
 
 	# Summary: Grows the list to the specified size
-	private grow(to: large) {
+	grow(to: large) {
 		if to == 0 { to = 1 }
 		memory = allocate(to * sizeof(T))
 		zero(memory + position * sizeof(T), (to - position) * sizeof(T))
@@ -204,6 +204,11 @@ List<T> {
 		=> List<T>(elements + start * sizeof(T), end - start)
 	}
 
+	# Summary: Returns all the elements starting from the specified index
+	slice(start: large) {
+		=> List<T>(elements + start * sizeof(T), position - start)
+	}
+
 	# Summary: Reverses the order of the elements
 	reverse() {
 		position: large = this.position
@@ -217,7 +222,7 @@ List<T> {
 		=> this
 	}
 
-	# Summary: Returns duplicated elements from this list
+	# Summary: Removes duplicated elements from this list
 	distinct() {
 		loop (i = 0, i < position, i++) {
 			current = elements[i]
@@ -262,6 +267,135 @@ List<T> {
 	# Summary: Removes all the elements from this list
 	clear() {
 		position = 0
+	}
+
+	# Summary: Returns a list of all elements which pass the specified filter
+	filter(filter: (T) -> bool) {
+		result = List<T>()
+
+		loop (i = 0, i < position, i++) {
+			if filter(elements[i]) result.add(elements[i])
+		}
+
+		=> result
+	}
+
+	# Summary: Returns the first element, which passes the specified filter, otherwise the function panics
+	find(filter: (T) -> bool) {
+		loop (i = 0, i < position, i++) {
+			element = elements[i]
+			if filter(element) => element
+		}
+
+		panic('No element passed the filter')
+	}
+
+	# Summary: Return the first element, which passes the specified filter, or the default value if no element passes the filter
+	find_or(filter: (T) -> bool, default: T) {
+		loop (i = 0, i < position, i++) {
+			element = elements[i]
+			if filter(element) => element
+		}
+
+		=> default
+	}
+
+	# Summary: Returns the first element to produce the maximum value using the specified mapper
+	find_max(mapper: (T) -> large) {
+		if position == 0 panic('Can not find the maximum value of an empty list')
+
+		max = elements[0]
+		max_value = mapper(max)
+
+		loop (i = 1, i < position, i++) {
+			element = elements[i]
+			value = mapper(element)
+
+			if value > max_value {
+				max = element
+				max_value = value
+			}
+		}
+
+		=> max
+	}
+
+	# Summary: Returns the first element to produce the maximum value using the specified mapper
+	find_max_or(mapper: (T) -> large, default: T) {
+		if position == 0 => default
+
+		max = elements[0]
+		max_value = mapper(max)
+
+		loop (i = 1, i < position, i++) {
+			element = elements[i]
+			value = mapper(element)
+
+			if value > max_value {
+				max = element
+				max_value = value
+			}
+		}
+
+		=> max
+	}
+
+	# Summary: Converts the elements of this list into another types of elements
+	map<U>(mapper: (T) -> U) {
+		result = List<U>(position, true)
+
+		loop (i = 0, i < position, i++) {
+			result[i] = mapper(elements[i])
+		}
+
+		=> result
+	}
+
+	# Summary: Creates a new list of all the element collections returned by the mapper by adding them sequentially
+	flatten<U>(mapper: (T) -> List<U>) {
+		result = List<U>(position, false)
+
+		loop (i = 0, i < position, i++) {
+			collection = mapper(elements[i])
+			result.add_range(collection)
+		}
+
+		=> result
+	}
+
+	# Summary: Sorts the elements in this list using the specified comparator
+	order(comparator: (T, T) -> large) {
+		sort<T>(elements, position, comparator)
+		=> this
+	}
+
+	# Summary: Returns the number of elements which pass the specified filter
+	count(filter: (T) -> bool) {
+		count = 0
+
+		loop (i = 0, i < position, i++) {
+			if filter(elements[i]) count++
+		}
+
+		=> count
+	}
+	
+	# Summary: Returns whether all the elements pass the specified filter
+	all(filter: (T) -> bool) {
+		loop (i = 0, i < position, i++) {
+			if not filter(elements[i]) => false
+		}
+
+		=> true
+	}
+
+	# Summary: Returns true if any of the elements pass the specified filter
+	any(filter: (T) -> bool) {
+		loop (i = 0, i < position, i++) {
+			if filter(elements[i]) => true
+		}
+
+		=> false
 	}
 
 	# TODO: Decrement operator overload for taking out elements

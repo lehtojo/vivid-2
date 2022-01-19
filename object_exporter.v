@@ -336,7 +336,7 @@ export_template_function_variants(context: Context) {
 		path = template_variant.parent.string()
 		builder.append(path)
 
-		if path.length == 0 builder.append('.')
+		if path.length > 0 builder.append('.')
 
 		builder.append(template_variant.name)
 		builder.append(`(`)

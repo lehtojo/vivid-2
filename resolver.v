@@ -50,9 +50,20 @@ get_types(node: Node) {
 	=> result
 }
 
+# Summary: Tries to resolve the specified array type
+resolve_array_type(environment: Context, type: ArrayType) {
+	type.resolve(environment)
+	if type.is_resolved => type
+	=> none as Type
+}
+
 # Summary: Tries to resolve the specified type if it is unresolved
 resolve(context: Context, type: Type) {
 	if type.is_resolved => none as Type
+
+	# Resolve array types, because their sizes need to be determined at compile time and they can be dependent on expressions
+	if type.is_array_type => resolve_array_type(type.parent, type as ArrayType)
+
 	=> type.(UnresolvedType).try_resolve_type(context)
 }
 
@@ -241,6 +252,9 @@ resolve_context(context: Context) {
 		loop initialization in type.initialization {
 			resolve(type, initialization)
 		}
+
+		# Resolve array types, because their sizes need to be determined at compile time and they can be dependent on expressions
+		if type.is_array_type resolve_array_type(type.parent, type as ArrayType)
 
 		resolve_virtual_functions(type)
 	}

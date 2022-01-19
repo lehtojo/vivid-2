@@ -179,7 +179,7 @@ export is_alphabet(value: char) {
 	=> (value >= `a` and value <= `z`) or (value >= `A` and value <= `Z`)
 }
 
-String {
+export String {
 	static empty: String
 
 	# Summary: Combines all the specified strings while separating them the specified separator
@@ -259,14 +259,18 @@ String {
 	###
 	combine(other: String) {
 		a = length
-		b = other.length + 1
+		b = other.length
+		c = a + b
 
-		memory = allocate(a + b)
+		memory = allocate(c + 1) # Include the zero byte
 
 		copy(text, a, memory)
-		offset_copy(other.text, b, memory, a)
+		copy(other.text, b + 1, memory + a) # Include the zero byte
 
-		=> String(memory)
+		result = String()
+		result.text = memory
+		result.length = c
+		=> result
 	}
 
 	###
@@ -285,7 +289,10 @@ String {
 		memory[a] = character
 		memory[a + 1] = 0
 
-		=> String(memory)
+		result = String()
+		result.text = memory
+		result.length = a + 1
+		=> result
 	}
 
 	insert(index: large, character: u8) {
@@ -304,7 +311,10 @@ String {
 		memory[a + 1] = 0
 
 		# Create a new string from the buffer
-		=> String(memory)
+		result = String()
+		result.text = memory
+		result.length = a + 1
+		=> result
 	}
 
 	# Summary: Returns whether the first characters match the specified string
@@ -354,6 +364,11 @@ String {
 		require(start >= 0 and start <= a and end >= start and end <= a)
 
 		=> String(text + start, end - start)
+	}
+
+	# Summary: Returns all the characters after the specified index as a string
+	slice(start: large) {
+		=> slice(start, length)
 	}
 
 	# Summary: Replaces all the occurances of the specified character with the specified replacement
@@ -537,11 +552,11 @@ String {
 	}
 
 	hash() {
-		hash = 1
+		hash = 5381
 		a = length
 
 		loop (i = 0, i < a, i++) {
-			hash *= text[i] as large
+			hash = ((hash <| 5) + hash) + text[i] # hash = hash * 33 + text[i]
 		}
 
 		=> hash

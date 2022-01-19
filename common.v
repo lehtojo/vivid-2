@@ -790,11 +790,12 @@ integer_log2(value: large) {
 }
 
 # Summary: Joins the specified token lists with the specified separator
-join(separator: Token, elements: List<List<Token>>) {
+join(separator: Token, parts: List<List<Token>>) {
 	result = List<Token>()
+	if parts.size == 0 => result
 
-	loop element in elements {
-		result.add_range(result)
+	loop tokens in parts {
+		result.add_range(tokens)
 		result.add(separator)
 	}
 
@@ -851,7 +852,7 @@ get_tokens(type: Type, position: Position) {
 	if type.template_arguments.size > 0 {
 		result.add(OperatorToken(Operators.LESS_THAN, position))
 
-		arguments = List<List<Token>>(type.template_arguments.size, false)
+		arguments = List<List<Token>>(type.template_arguments.size, true)
 
 		loop (i = 0, i < arguments.size, i++) {
 			arguments[i] = get_tokens(type.template_arguments[i], position)

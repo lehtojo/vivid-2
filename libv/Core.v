@@ -1,10 +1,5 @@
-import exit(code: large)
-
 import decimal_to_bits(value: decimal): large
 import bits_to_decimal(value: large): decimal
-
-import internal_allocate(bytes: large): link
-import deallocate(address: link, bytes: large)
 
 import allocate_stack(count: large): link
 import deallocate_stack(count: large)
@@ -19,16 +14,19 @@ none = 0
 
 PAGE_SIZE = 10000000
 
-Page {
+export Page {
 	address: link
 	position: large
 }
 
-Allocation {
+export Allocation {
 	static current: Page
 }
 
 outline allocate(bytes: large) {
+	# Allocate the memory directly if it is large enough
+	if bytes >= 100000 => internal.allocate(bytes)
+
 	if Allocation.current != none and Allocation.current.position + bytes <= PAGE_SIZE {
 		position = Allocation.current.position
 		Allocation.current.position += bytes
@@ -36,9 +34,9 @@ outline allocate(bytes: large) {
 		=> (Allocation.current.address + position) as link
 	}
 
-	address = internal_allocate(PAGE_SIZE)
+	address = internal.allocate(PAGE_SIZE)
 
-	page = internal_allocate(32) as Page
+	page = internal.allocate(32) as Page
 	page.address = address
 	page.position = bytes
 
@@ -107,40 +105,7 @@ outline internal_is(inspected: link, inheritant: link) {
 	=> false
 }
 
-move(source: link, offset: large, destination: link, bytes: large) {
-	# Copy the area to be moved to a temporary buffer, since moving can override the bytes to be moved
-	buffer = allocate(bytes)
-	source += offset
-	copy(source, bytes, buffer)
-	
-	# Copy the contents of the temporary buffer to the destination
-	copy(buffer, bytes, destination)
-
-	# Delete the temporary buffer
-	deallocate(buffer)
-}
-
-move(source: link, destination: link, bytes: large) {
-	# Copy the area to be moved to a temporary buffer, since moving can override the bytes to be moved
-	buffer = allocate(bytes)
-	copy(source, bytes, buffer)
-
-	# Copy the contents of the temporary buffer to the destination
-	copy(buffer, bytes, destination)
-
-	# Delete the temporary buffer
-	deallocate(buffer)
-}
-
-# Summary: Allocates a new buffer, with the size of 'to' bytes, and copies the contents of the source buffer to the new buffer. Also deallocates the source buffer.
-resize(source: link, from: large, to: large) {
-	resized = allocate(to)
-	copy(source, min(from, to), resized)
-	deallocate(source)
-	=> resized
-}
-
-RangeIterator {
+export RangeIterator {
 	start: large
 	end: large
 	position: large
@@ -162,7 +127,7 @@ RangeIterator {
 	}
 }
 
-Range {
+export Range {
 	start: large
 	end: large
 

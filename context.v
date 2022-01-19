@@ -2093,7 +2093,8 @@ Type UnresolvedType {
 			}
 		}
 
-		if count != none abort('Array types are not supported')
+		if count != none => TypeNode(ArrayType(environment, context as Type, count, position))
+
 		=> TypeNode(context as Type)
 	}
 
@@ -2201,5 +2202,78 @@ Function VirtualFunction {
 	init(type: Type, name: String, return_type: Type, start: Position, end: Position) {
 		Function.init(type, MODIFIER_DEFAULT, name, List<Token>(), start, end)
 		this.return_type = return_type
+	}
+}
+
+Number ArrayType {
+	element: Type
+	tokens: List<Token>
+	expression: Node
+
+	init(context: Context, element: Type, count: ParenthesisToken, position: Position) {
+		Number.init(SYSTEM_FORMAT, 64, element.string() + '[]')
+		this.modifiers = MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_INLINE | MODIFIER_ARRAY_TYPE
+		this.element = element
+		this.tokens = count.tokens
+		this.position = position
+		this.template_arguments = [ element ]
+
+		try_parse(context)
+
+		is_resolved = expression != none and expression.instance == NODE_NUMBER
+	}
+
+	override get_allocation_size() {
+		if is_unresolved abort('Array size was not resolved')
+
+		count: large = expression.(NumberNode).value
+		=> element.reference_size * count
+	}
+
+	# Summary: Try to parse the expression using the internal tokens
+	try_parse(context: Context) {
+		expression = parser.parse(context, tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
+	}
+	
+	override get_accessor_type() {
+		=> element
+	}
+
+	resolve(context: Context) {
+		# Ensure the expression is created
+		if expression == none {
+			try_parse(context)
+			if expression == none return
+		}
+
+		if expression.first == none return
+
+		# Insert values of constants manually
+		analysis.apply_constants(expression)
+
+		# Try to convert the expression into a constant number
+		# TODO: if not (evaluator.try_get_value(expression.first) has value) => none as Node
+		if expression.first.instance != NODE_NUMBER return
+
+		expression = NumberNode(SYSTEM_FORMAT, expression.first.(NumberNode).value, position)
+		is_resolved = true
+	}
+
+	get_status() {
+		if is_resolved => Status()
+		=> Status(start, 'Can not convert the size of the array to a constant number')
+	}
+
+	override string() {
+		size: String = none as String
+
+		if expression == none or expression.instance != NODE_NUMBER {
+			size = String('?')
+		}
+		else {
+			size = expression.string()
+		}
+
+		=> element.string() + size
 	}
 }

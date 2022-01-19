@@ -1,4 +1,4 @@
-KeyValuePair<K, V> {
+export KeyValuePair<K, V> {
 	key: K
 	value: V
 
@@ -8,10 +8,10 @@ KeyValuePair<K, V> {
 	}
 }
 
-MAX_SLOT_OFFSET = 10
+MAX_SLOT_OFFSET = 20
 MAX_LEVEL_SIZE = 20
 
-Map<K, V> {
+export Map<K, V> {
 	private:
 	values: link<V>
 	keys: link<K>
@@ -114,7 +114,7 @@ Map<K, V> {
 			if location < 0 { location += size }
 
 			start = position + location
-			n = min(MAX_SLOT_OFFSET, position + size - location)
+			n = min(MAX_SLOT_OFFSET, position + size - start)
 
 			loop (j = 0, j < n, j++) {
 				offset = start + j
@@ -158,6 +158,14 @@ Map<K, V> {
 		if location >= 0 {
 			keys[location] = key
 			values[location] = value
+
+			loop item in items {
+				if item.key == key {
+					item.key = key
+					item.value = value
+					return
+				}
+			}
 			return
 		}
 
@@ -228,5 +236,53 @@ Map<K, V> {
 
 	iterator() {
 		=> items.iterator()
+	}
+
+	clear() {
+		# Compute the maximum number of items allocated
+		count = 0
+
+		loop (i = ground, i < ground + levels, i++) {
+			count += get_level_size(i)
+		}
+
+		items.clear() # Clear the items
+
+		zero(keys, count * sizeof(K))
+		zero(values, count * sizeof(V))
+		zero(states, count)
+	}
+
+	# Summary: Converts the key-value pairs of this map into a list
+	map<U>(mapper: (KeyValuePair<K, V>) -> U) {
+		result = List<U>(items.size, false)
+
+		loop item in items {
+			result.add(mapper(item))
+		}
+
+		=> result
+	}
+
+	# Summary: Returns the keys associated with the values in this map
+	get_keys() {
+		result = List<K>(items.size, false)
+
+		loop item in items {
+			result.add(item.key)
+		}
+
+		=> result
+	}
+
+	# Summary: Returns the values associated with the keys in this map as a list
+	get_values() {
+		result = List<V>(items.size, false)
+
+		loop item in items {
+			result.add(item.value)
+		}
+
+		=> result
 	}
 }

@@ -85,6 +85,36 @@ apply_constants(context: Context) {
 	}
 }
 
+# Summary: Finds all the constant usages in the specified node tree and inserts the values of the constants into their usages
+apply_constants(root: Node) {
+	usages = root.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_constant)
+
+	loop usage in usages {
+		usage_variable = usage.(VariableNode).variable
+		analysis.classify_variable_usages(usage_variable)
+
+		if usage_variable.writes.size == 0 abort(String('Value for the constant ') + usage_variable.name + ' is never assigned')
+		if usage_variable.writes.size > 1 abort(String('Value for the constant ') + usage_variable.name + ' is assigned more than once')
+
+		write = usage_variable.writes[0].parent
+
+		if write == none or not write.match(Operators.ASSIGN) abort(String('Invalid assignment for ') + usage_variable.name)
+		
+		value = common.get_source(write.last)
+		if value.instance != NODE_NUMBER and value.instance != NODE_STRING abort(String('Value assigned to ') + usage_variable.name + ' is not a constant')
+
+		destination = usage
+
+		# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
+		# Example:
+		# namespace A { C = 0 }
+		# print(A.C) => print(0)
+		if usage.parent != none and usage.parent.instance == NODE_LINK { destination = usage.parent }
+
+		destination.replace(write.last.clone())
+	}
+}
+
 analyze(bundle: Bundle) {
 	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to analyze')
 
