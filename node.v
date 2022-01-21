@@ -159,6 +159,19 @@ Node {
 		=> iterator == node
 	}
 
+	try_get_parent_context() {
+		node = find_context()
+		if node == none => none as Context
+
+		=> when(node.instance) {
+			NODE_SCOPE => node.(ScopeNode).context
+			NODE_LOOP => node.(LoopNode).context
+			NODE_CONTEXT_INLINE => node.(ContextInlineNode).context
+			NODE_TYPE => node.(TypeNode).type
+			else => none as Context
+		}
+	}
+
 	get_parent_context() {
 		node = find_context()
 

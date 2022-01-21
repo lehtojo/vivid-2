@@ -2259,7 +2259,7 @@ Node ListConstructionNode {
 		if element_type == none => none as Type
 
 		# Try to find the environment context
-		environment = get_parent_context()
+		environment = try_get_parent_context()
 		if environment == none => none as Type
 
 		list_type = environment.get_type(String(parser.STANDARD_LIST_TYPE))

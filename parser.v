@@ -662,7 +662,7 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 # Summary: Builds the specified parenthesis into a node
 parse_parenthesis(context: Context, parenthesis: ParenthesisToken) {
 	node = ParenthesisNode(parenthesis.position)
-	loop section in parenthesis.get_sections() { parse(node, context, section) }
+	loop section in parenthesis.get_sections() { parse(node, context, section, MIN_PRIORITY, MAX_FUNCTION_BODY_PRIORITY) }
 	=> node
 }
 
