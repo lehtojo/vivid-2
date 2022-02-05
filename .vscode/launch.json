@@ -7,10 +7,13 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/build/vc.exe",
 			"cwd": "${workspaceRoot}",
-			//"programArgs": "C:/Users/joona/vivid-2/box/main.v -a -l kernel32 -o box -static"
+			//"programArgs": "${workspaceFolder}/box/main.v -a -l kernel32 -o box -static"
 
 			// Build the standard library (Windows)
-			"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 minimum.math.obj minimum.memory.obj minimum.tests.obj -static -o v"
+			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 minimum.math.obj minimum.memory.obj minimum.tests.obj -static -o v"
+
+			// Build the compiler itself
+			"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v -a -o vc -l kernel32 -l v"
 		},
 	]
 }

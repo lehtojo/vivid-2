@@ -11,7 +11,7 @@ remove_redundant_parentheses(root: Node) {
 		}
 
 		# Remove all parentheses, which block logical operators
-		if root.first != none and root.first.match(NODE_OPERATOR) and root.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL root.replace(root.first)
+		if root.first != none and root.first.match(NODE_OPERATOR) and root.first.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL root.replace(root.first)
 
 		# 1. Ensure the current parenthesis is the only child node of its parent
 		# 2. Ensure the current parenthesis has only one child node
@@ -1531,6 +1531,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
 	remove_redundant_inline_nodes(root)
+	# TODO: Implement pack comparisons
 }
 
 end(root: Node) {

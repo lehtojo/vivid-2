@@ -57,6 +57,7 @@ Mangle {
 	constant START_MEMBER_VARIABLE_COMMAND = `V`
 	constant START_MEMBER_VIRTUAL_FUNCTION_COMMAND = `F`
 	constant START_PACK_TYPE_COMMAND = `U`
+	constant START_ARRAY_LENGTH_COMMAND = '_x'
 	constant VIRTUAL_FUNCTION_POSTFIX = '_v'
 
 	definitions: List<MangleDefinition> = List<MangleDefinition>()
@@ -161,6 +162,12 @@ Mangle {
 				pointers = (not argument.is_primitive) as large
 				
 				add(argument, pointers, true)
+
+				# Add the array length
+				if type.is_array_type {
+					value = value + START_ARRAY_LENGTH_COMMAND + to_string(type.(ArrayType).size)
+				}
+
 				return
 			}
 

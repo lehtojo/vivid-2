@@ -112,7 +112,7 @@ CacheState {
 
 		# Try to get the next register
 		if registers.size > 0 {
-			register = registers.take_first()
+			register = registers.pop_or(none as Register)
 
 			# Clear the register safely, if it holds something
 			unit.release(register)

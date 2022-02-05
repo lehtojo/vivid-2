@@ -28,7 +28,7 @@ init() {
 	bundle = Bundle()
 
 	arguments = io.get_command_line_arguments()
-	arguments.take_first() # Remove the executable name
+	arguments.pop_or(none as String) # Remove the executable name
 
 	result = configure(bundle, arguments)
 	if result.problematic complain(result)

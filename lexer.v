@@ -771,12 +771,12 @@ Token FunctionToken {
 
 		loop (tokens.size > 0) {
 			# Ensure the name is valid
-			name = tokens.take_first()
+			name = tokens.pop_or(none as Token)
 			if name == none or not name.match(TOKEN_TYPE_IDENTIFIER) {
 				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
 			}
 			
-			next = tokens.take_first()
+			next = tokens.pop_or(none as Token)
 			
 			if next == none or next.match(Operators.COMMA) {
 				result.add(Parameter(name.(IdentifierToken).value, name.position, none as Type))
@@ -797,7 +797,7 @@ Token FunctionToken {
 			result.add(Parameter(name.(IdentifierToken).value, name.position, parameter_type))
 
 			# If there are tokens left, the next token must be a comma and it must be removed before starting over
-			if tokens.size > 0 and not tokens.take_first().match(Operators.COMMA) {
+			if tokens.size > 0 and not tokens.pop_or(none as Token).match(Operators.COMMA) {
 				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
 			}
 		}
@@ -1425,7 +1425,8 @@ join(tokens: List<Token>) {
 		if x.type != KEYWORD_TYPE_MODIFIER or y.type != KEYWORD_TYPE_MODIFIER continue
 
 		# Combine the two modifiers into one token, and remove the second token
-		x.(ModifierKeyword).modifier = x.(ModifierKeyword).modifier | y.(ModifierKeyword).modifier
+		modifiers = x.(ModifierKeyword).modifier | y.(ModifierKeyword).modifier
+		a.(KeywordToken).keyword = ModifierKeyword(String.empty, modifiers)
 		tokens.remove_at(i + 1)
 	}
 }

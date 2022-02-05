@@ -206,4 +206,5 @@ init() {
 	vehicle = choose_vehicle(steve, vehicles, 3000)
 
 	are_equal(true, is_pig(vehicle))
+	=> 0
 }

@@ -367,7 +367,7 @@ Node UnresolvedIdentifier {
 	}
 
 	override resolve(context: Context) {
-		linked = parent != none and parent.match(NODE_LINK)
+		linked = parent != none and parent.match(NODE_LINK) and previous != none
 		result = parser.parse_identifier(context, IdentifierToken(value, start), linked)
 
 		if result.match(NODE_UNRESOLVED_IDENTIFIER) => try_resolve_as_function_pointer(context)
@@ -621,12 +621,24 @@ Node TypeNode {
 	init(type: Type) {
 		this.instance = NODE_TYPE
 		this.type = type
+		this.is_resolvable = true
 	}
 
 	init(type: Type, position: Position) {
 		this.instance = NODE_TYPE
 		this.type = type
 		this.start = position
+		this.is_resolvable = true
+	}
+
+	override resolve(context: Context) {
+		if type.is_resolved => none as Node
+
+		replacement = resolver.resolve(context, type)
+		if replacement == none => none as Node
+
+		type = replacement
+		=> none as Node
 	}
 
 	override equals(other: Node) {

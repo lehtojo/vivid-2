@@ -232,7 +232,6 @@ get_object_filename(source: SourceFile, output_name: String) {
 }
 
 export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, output_name: String) {
-	template_export_files = object_exporter.get_template_export_files(context)
 	context_export_file = object_exporter.export_context(context)
 	template_type_variants_export_file = object_exporter.export_template_type_variants(context)
 	template_function_variants_export_file = object_exporter.export_template_function_variants(context)
@@ -256,12 +255,6 @@ export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, 
 		}
 
 		files.add(StaticLibraryFormatFile(object_file_name, object_file_symbols.to_list(), bytes))
-	}
-
-	loop iterator in template_export_files {
-		template_export_file = iterator.key
-		template_export_file_content = iterator.value.string()
-		files.add(StaticLibraryFormatFile(template_export_file.filename, List<String>(), template_export_file_content))
 	}
 
 	files.add(StaticLibraryFormatFile(output_name + importer.GENERAL_IMPORT_FILE_EXTENSION, List<String>(), context_export_file))

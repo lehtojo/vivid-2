@@ -910,7 +910,7 @@ Pattern ImportPattern {
 		function = none as Function
 
 		# If the function is a constructor or a destructor, handle it differently
-		if descriptor.name == Keywords.INIT.identifier {
+		if descriptor.name == Keywords.INIT.identifier and environment.is_type {
 			function = Constructor(environment, modifiers, descriptor.position, none as Position, false)
 
 			if not environment.is_type {
@@ -918,7 +918,7 @@ Pattern ImportPattern {
 				=> none as Node
 			}
 		}
-		else descriptor.name == Keywords.DEINIT.identifier {
+		else descriptor.name == Keywords.DEINIT.identifier and environment.is_type {
 			function = Destructor(environment, modifiers, descriptor.position, none as Position, false)
 
 			if not environment.is_type {
@@ -956,10 +956,10 @@ Pattern ImportPattern {
 		implementation.implement(function.blueprint)
 
 		# Declare the function in the environment
-		if descriptor.name == Keywords.INIT.identifier {
+		if descriptor.name == Keywords.INIT.identifier and environment.is_type {
 			environment.(Type).add_constructor(function as Constructor)
 		}
-		else descriptor.name == Keywords.DEINIT.identifier {
+		else descriptor.name == Keywords.DEINIT.identifier and environment.is_type {
 			environment.(Type).add_destructor(function as Destructor)
 		}
 		else {
@@ -2005,7 +2005,7 @@ Pattern IsPattern {
 
 		# If there is a token left in the queue, it must be the result variable name
 		if tokens.size > 0 {
-			name = tokens.take_first().(IdentifierToken).value
+			name = tokens.pop_or(none as Token).(IdentifierToken).value
 			variable = Variable(context, type, VARIABLE_CATEGORY_LOCAL, name, MODIFIER_DEFAULT)
 			context.declare(variable)
 
@@ -2505,7 +2505,7 @@ Pattern WhenPattern {
 			body = none as Node
 
 			if tokens[0].match(`{`) {
-				parenthesis = tokens.take_first() as ParenthesisToken
+				parenthesis = tokens.pop_or(none as Token) as ParenthesisToken
 				body = parser.parse(context, parenthesis.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 			}
 			else {

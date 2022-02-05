@@ -270,23 +270,44 @@ export_context(context: Context) {
 
 	loop iterator in context.functions {
 		loop function in iterator.value.overloads {
+			if is_template_function(function) {
+				if function.is_template_function {
+					export_template_function(builder, function as TemplateFunction)
+				}
+				else {
+					export_short_template_function(builder, function)
+				}
+
+				continue
+			}
+
+			if is_template_function_variant(function) continue
+			if function.name == 'init' and function.is_global continue
+
 			# Export the function as follows: $modifiers import $name($parameters): $return_type
 			loop implementation in function.implementations {
-				if is_template_function_variant(function) continue
 				export_function(builder, function, implementation)
 			}
 		}
 	}
 
 	loop type in context.types.get_values() {
-		if type.is_template_type or type.is_primitive continue
+		# 1. Do not export primitives, because they are created by the compiler
+		# 2. Template types are exported separately
+		if type.is_primitive or type.is_template_type_variant continue
+
+		# Handle template types separately
+		if type.is_template_type {
+			export_template_type(builder, type as TemplateType)
+			continue
+		}
 
 		if type.supertypes.size > 0 {
 			builder.append(String.join(String(', '), type.supertypes.map<String>((i: Type) -> i.string())))
 			builder.append(` `)
 		}
 
-		exported_variables = export_context(type)
+		exports = export_context(type)
 
 		builder.append(`\n`)
 
@@ -296,7 +317,7 @@ export_context(context: Context) {
 		builder.append(` `)
 		builder.append(type.name)
 		builder.append_line(' {')
-		builder.append(exported_variables)
+		builder.append(exports)
 		builder.append_line('}')
 		builder.append(`\n`)
 	}

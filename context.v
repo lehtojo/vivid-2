@@ -668,6 +668,8 @@ Context Type {
 
 	# Summary: Returns how many bytes this type contains
 	content_size() {
+		if is_array_type => get_allocation_size()
+
 		bytes = 0
 
 		loop variable in variables {
@@ -2209,6 +2211,7 @@ Number ArrayType {
 	element: Type
 	tokens: List<Token>
 	expression: Node
+	size => expression.(NumberNode).value
 
 	init(context: Context, element: Type, count: ParenthesisToken, position: Position) {
 		Number.init(SYSTEM_FORMAT, 64, element.string() + '[]')
@@ -2252,7 +2255,7 @@ Number ArrayType {
 		analysis.apply_constants(expression)
 
 		# Try to convert the expression into a constant number
-		# TODO: if not (evaluator.try_get_value(expression.first) has value) => none as Node
+		# TODO: Evaluate array size
 		if expression.first.instance != NODE_NUMBER return
 
 		expression = NumberNode(SYSTEM_FORMAT, expression.first.(NumberNode).value, position)

@@ -1087,10 +1087,10 @@ Instruction CallInstruction {
 			register = none as Register
 
 			if member.type.format == FORMAT_DECIMAL {
-				register = decimal_parameter_registers.take_first()
+				register = decimal_parameter_registers.pop_or(none as Register)
 			}
 			else {
-				register = standard_parameter_registers.take_first()
+				register = standard_parameter_registers.pop_or(none as Register)
 			}
 
 			if register != none {
@@ -1212,10 +1212,10 @@ Instruction ReorderInstruction {
 			register = none as Register
 
 			if member.type.format == FORMAT_DECIMAL {
-				register = decimal_parameter_registers.take_first()
+				register = decimal_parameter_registers.pop_or(none as Register)
 			}
 			else {
-				register = standard_parameter_registers.take_first()
+				register = standard_parameter_registers.pop_or(none as Register)
 			}
 
 			if register != none continue

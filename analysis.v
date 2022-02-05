@@ -21,15 +21,28 @@ load_variable_usages(implementation: FunctionImplementation) {
 	}
 }
 
-# Summary: Goes through the usages of the specified variable and classifies them as writes and reads
+# Summary:
+# Iterates through the usages of the specified variable and adds them to 'write' and 'read' lists accordingly.
+# Returns whether the usages were added or not. This function does not add the usages, if the access type of an usage can not be determined accurately.
 classify_variable_usages(variable: Variable) {
 	variable.writes.clear()
 	variable.reads.clear()
 
 	loop usage in variable.usages {
-		if common.is_edited(usage) { variable.writes.add(usage) }
+		access = common.try_get_access_type(usage)
+
+		# If the access type is unknown, accurate information about usages is not available, therefore we must abort
+		if access == ACCESS_TYPE_UNKNOWN {
+			variable.writes.clear()
+			variable.reads.clear()
+			=> false
+		}
+
+		if access == ACCESS_TYPE_WRITE { variable.writes.add(usage) }
 		else { variable.reads.add(usage) }
 	}
+
+	=> true
 }
 
 # Summary: Inserts the values of the constants in the specified into their usages
@@ -38,7 +51,9 @@ apply_constants(context: Context) {
 		variable = iterator.value
 		if not variable.is_constant continue
 
-		classify_variable_usages(variable)
+		# Try to categorize the usages of the constant
+		# If no accurate information is available, the value of the constant can not be inlined
+		if not classify_variable_usages(variable) continue
 
 		if variable.writes.size == 0 {
 			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is never assigned'))
@@ -72,7 +87,7 @@ apply_constants(context: Context) {
 			# namespace A { C = 0 }
 			# print(A.C) => print(0)
 			if usage.parent != none and usage.parent.match(NODE_LINK) { destination = usage.parent }
-			destination.replace(write.last.clone())
+			destination.replace(value.clone())
 		}
 	}
 

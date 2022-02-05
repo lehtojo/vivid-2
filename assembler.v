@@ -675,10 +675,10 @@ Scope {
 		register = none as Register
 
 		if parameter.type.format == FORMAT_DECIMAL {
-			if decimal_parameter_registers.size > 0 { register = decimal_parameter_registers.take_first() }
+			if decimal_parameter_registers.size > 0 { register = decimal_parameter_registers.pop_or(none as Register) }
 		}
 		else {
-			if standard_parameter_registers.size > 0 { register = standard_parameter_registers.take_first() }
+			if standard_parameter_registers.size > 0 { register = standard_parameter_registers.pop_or(none as Register) }
 		}
 
 		if register != none {

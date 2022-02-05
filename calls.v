@@ -114,10 +114,10 @@ pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, sta
 	register = none as Register
 
 	if is_decimal {
-		if decimal_parameter_registers.size > 0 { register = decimal_parameter_registers.take_first() }
+		if decimal_parameter_registers.size > 0 { register = decimal_parameter_registers.pop_or(none as Register) }
 	}
 	else {
-		if standard_parameter_registers.size > 0 { register = standard_parameter_registers.take_first() }
+		if standard_parameter_registers.size > 0 { register = standard_parameter_registers.pop_or(none as Register) }
 	}
 
 	if register != none {

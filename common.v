@@ -16,6 +16,10 @@ U32_MAX = 4294967295
 U64_MIN = 0
 U64_MAX = 0xFFFFFFFFFFFFFFFF
 
+ACCESS_TYPE_UNKNOWN = 0
+ACCESS_TYPE_READ = 1
+ACCESS_TYPE_WRITE = 2
+
 namespace common
 
 get_self_pointer(context: Context, position: Position) {
@@ -35,7 +39,7 @@ read_template_arguments(context: Context, tokens: List<Token>, offset: large) {
 # Summary: Reads template parameters from the next tokens inside the specified queue
 # Pattern: <$1, $2, ... $n>
 read_template_arguments(context: Context, tokens: List<Token>) {
-	opening = tokens.take_first() as OperatorToken
+	opening = tokens.pop_or(none as Token) as OperatorToken
 	if opening.operator != Operators.LESS_THAN abort('Can not understand the template arguments')
 
 	parameters = List<Type>()
@@ -47,10 +51,10 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 		parameters.add(parameter)
 
 		# Consume the next token, if it is a comma
-		if tokens[0].match(Operators.COMMA) tokens.take_first()
+		if tokens[0].match(Operators.COMMA) tokens.pop_or(none as Token)
 	}
 
-	next = tokens.take_first()
+	next = tokens.pop_or(none as Token)
 	if not next.match(Operators.GREATER_THAN) abort('Can not understand the template arguments')
 
 	=> parameters
@@ -58,7 +62,7 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 
 # Summary: Reads a type component from the tokens and returns it
 read_type_component(context: Context, tokens: List<Token>) {
-	name = tokens.take_first().(IdentifierToken).value
+	name = tokens.pop_or(none as Token).(IdentifierToken).value
 
 	if tokens.size > 0 and tokens[0].match(Operators.LESS_THAN) {
 		template_arguments = read_template_arguments(context, tokens)
@@ -71,10 +75,10 @@ read_type_component(context: Context, tokens: List<Token>) {
 # Summary: Reads a type which represents a function from the specified tokens
 read_function_type(context: Context, tokens: List<Token>, position: Position) {
 	# Dequeue the parameter types
-	parameters = tokens.take_first() as ParenthesisToken
+	parameters = tokens.pop_or(none as Token) as ParenthesisToken
 
 	# Dequeue the arrow operator
-	tokens.take_first()
+	tokens.pop_or(none as Token)
 
 	# Dequeues the return type
 	return_type = read_type(context, tokens) as Type
@@ -90,7 +94,7 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 		parameter_type = read_type(context, parameter_tokens) as Type
 		if parameter_type == none => none as FunctionType
 		parameter_types.add(parameter_type)
-		parameter_tokens.take_first() # Consume the comma, if there are tokens left
+		parameter_tokens.pop_or(none as Token) # Consume the comma, if there are tokens left
 	}
 
 	=> FunctionType(parameter_types, return_type, position)
@@ -101,7 +105,7 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 # Pattern: { $member-1: $type-1, $member-2: $type-2, ... }
 read_pack_type(context: Context, tokens: List<Token>, position: Position) {
 	pack_type = context.declare_unnamed_pack(position)
-	sections = tokens.take_first().(ParenthesisToken).get_sections()
+	sections = tokens.pop_or(none as Token).(ParenthesisToken).get_sections()
 
 	# We are not going to feed the sections straight to the parser while using the pack type as context, because it would allow defining whole member functions
 	loop section in sections {
@@ -140,7 +144,7 @@ read_type(context: Context, tokens: List<Token>) {
 		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
 		if tokens.size == 0 or not tokens[0].match(Operators.DOT) stop
 
-		tokens.take_first()
+		tokens.pop_or(none as Token)
 	}
 
 	type = UnresolvedType(components)
@@ -148,7 +152,10 @@ read_type(context: Context, tokens: List<Token>) {
 	if tokens.size > 0 {
 		next = tokens[0]
 
-		if next.match(`[`) { type.count = next as ParenthesisToken }
+		if next.match(`[`) {
+			type.count = next as ParenthesisToken
+			tokens.pop_or(none as Token)
+		}
 	}
 
 	resolved = type.try_resolve_type(context)
@@ -654,6 +661,25 @@ get_all_function_implementations(context: Context, include_imported: bool) {
 	=> implementations.distinct()
 }
 
+# Summary: Try to determine the type of access related to the specified node
+try_get_access_type(node: Node) {
+	parent = none as Node
+
+	loop (iterator = node.parent, iterator != none, iterator = iterator.parent) {
+		if iterator.instance == NODE_CAST continue
+		parent = iterator
+		stop
+	}
+
+	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT {
+		if parent.first == node or node.is_under(parent.first) => ACCESS_TYPE_WRITE
+		=> ACCESS_TYPE_READ
+	}
+
+	if parent.match(NODE_INCREMENT | NODE_DECREMENT) => ACCESS_TYPE_WRITE
+	=> ACCESS_TYPE_READ
+}
+
 # Summary: Returns whether the specified is edited
 is_edited(node: Node) {
 	parent = none as Node
@@ -838,6 +864,12 @@ get_tokens(type: Type, position: Position) {
 		result.add(OperatorToken(Operators.ARROW, position))
 		result.add_range(get_tokens(function.return_type, position))
 
+		=> result
+	}
+
+	if type.is_array_type {
+		result.add_range(get_tokens(type.(ArrayType).element, position))
+		result.add(ParenthesisToken(`[`, position, position, [ NumberToken(type.(ArrayType).size, SYSTEM_FORMAT, position, position) as Token ]))
 		=> result
 	}
 

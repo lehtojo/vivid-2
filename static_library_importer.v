@@ -154,7 +154,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 				# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
 				if tokens.size == 0 or not tokens[0].match(Operators.DOT) stop
 
-				tokens.take_first()
+				tokens.pop_or(none as Token)
 			}
 
 			if tokens.size != 1 abort('Missing template function variant parameter types')
@@ -170,7 +170,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 				parameter_types.add(parameter_type)
 
 				if parameter_tokens.size == 0 stop
-				if parameter_tokens.take_first().match(Operators.COMMA) continue
+				if parameter_tokens.pop_or(none as Token).match(Operators.COMMA) continue
 
 				abort(String('Could not import template function variant: ') + template_variant_text)
 			}

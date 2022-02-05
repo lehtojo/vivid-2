@@ -176,7 +176,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	else value == '-r' or value == '-recursive' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
 		
-		folder = parameters.take_first()
+		folder = parameters.pop_or(none as String)
 		if is_option(folder) => Status('Missing or invalid value for option')
 
 		# Ensure the specified folder exists
@@ -193,7 +193,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	else value == '-o' or value == '-output' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
 
-		name = parameters.take_first()
+		name = parameters.pop_or(none as String)
 		if is_option(name) => Status('Missing or invalid value for option')
 
 		bundle.put(String(BUNDLE_OUTPUT_NAME), name as link)
@@ -201,7 +201,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	else value == '-l' or value == '-library' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
 
-		library = parameters.take_first()
+		library = parameters.pop_or(none as String)
 		if is_option(library) => Status('Missing or invalid value for option')
 
 		filename = find_library(library)
@@ -284,7 +284,7 @@ configure(bundle: Bundle, arguments: List<String>) {
 	libraries = List<String>()
 
 	loop (arguments.size > 0) {
-		element = arguments.take_first()
+		element = arguments.pop_or(none as String)
 
 		if is_option(element) {
 			result = configure(bundle, arguments, files, libraries, element)

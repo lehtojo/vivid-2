@@ -8,17 +8,35 @@
 				"cwd": "${workspaceFolder}/build/"
 			},
 			"command": "Vivid",
+			// "args": [
+			// 	"${workspaceFolder}",
+			// 	"${workspaceFolder}/entries/vivid.v",
+			// 	"-a",
+			// 	"-f",
+			// 	"-o",
+			// 	"vc",
+			// 	"-l",
+			// 	"kernel32",
+			// 	"-l",
+			// 	"v",
+			// 	"-d"
+			// ],
 			"args": [
 				"${workspaceFolder}",
-				"${workspaceFolder}/entries/vivid.v",
+				"${workspaceFolder}/entries/tests.v",
+				"${workspaceFolder}/tests/assert.v",
+				"${workspaceFolder}/libv/",
+				"${workspaceFolder}/libv/windows-x64/",
+				"${workspaceFolder}/libv/allocator/Light.v",
+				"${workspaceFolder}/minimum.math.obj",
+				"${workspaceFolder}/minimum.memory.obj",
+				"${workspaceFolder}/minimum.tests.obj",
 				"-a",
 				"-f",
 				"-o",
 				"vc",
 				"-l",
 				"kernel32",
-				"-l",
-				"v",
 				"-d"
 			],
 			"group": {
