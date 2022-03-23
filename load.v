@@ -1,5 +1,3 @@
-BUNDLE_FILES = 'files'
-
 SourceFile {
 	fullname: String
 	content: String
@@ -29,12 +27,11 @@ SourceFile {
 	}
 }
 
-# Summary: Loads the files which are stored in the specified bundle
-load(bundle: Bundle) {
-	object = bundle.get_object(String(BUNDLE_FILENAMES))
-	if object.empty => Status('Please enter input files')
-	
-	filenames = object.value as List<String>
+# Summary: Loads the source files specified by the user
+load() {
+	filenames = settings.filenames
+	if filenames.size == 0 => Status('Please enter input files')
+
 	files = List<SourceFile>(filenames.size, true)
 
 	loop (i = 0, i < files.size, i++) {
@@ -47,6 +44,6 @@ load(bundle: Bundle) {
 		files[i] = SourceFile(filename, content, i)
 	}
 
-	bundle.put(String(BUNDLE_FILES), files as link)
+	settings.source_files = files
 	=> Status()
 }

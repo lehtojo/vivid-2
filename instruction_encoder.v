@@ -108,6 +108,10 @@ EncoderModule {
 
 		=> instruction_count * instruction_encoder.MAX_INSTRUCTION_SIZE
 	}
+
+	deinit() {
+		deallocate(output)
+	}
 }
 
 EncoderOutput {
@@ -338,6 +342,7 @@ namespace instruction_encoder {
 
 	constant MAX_INSTRUCTION_SIZE = 15
 
+	constant LOCK_PREFIX = 240 # 0xf0
 	constant OPERAND_SIZE_OVERRIDE = 102 # 0x66
 
 	constant REX_PREFIX = 64 # 01000000
@@ -642,7 +647,7 @@ namespace instruction_encoder {
 			INSTANCE_MEMORY => MemoryAddressDescriptor(handle.(MemoryHandle).get_start(), none as Register, 0, handle.(MemoryHandle).get_offset()),
 			INSTANCE_COMPLEX_MEMORY => MemoryAddressDescriptor(handle.(ComplexMemoryHandle).get_start(), handle.(ComplexMemoryHandle).get_index(), handle.(ComplexMemoryHandle).stride, handle.(ComplexMemoryHandle).get_offset()),
 			INSTANCE_EXPRESSION => MemoryAddressDescriptor(handle.(ExpressionHandle).get_start(), handle.(ExpressionHandle).get_index(), handle.(ExpressionHandle).multiplier, handle.(ExpressionHandle).get_offset()),
-			INSTANCE_INLINE => MemoryAddressDescriptor(handle.(InlineHandle).unit.get_stack_pointer(), none as Register, 1, handle.(InlineHandle).get_absolute_offset()),
+			INSTANCE_STACK_ALLOCATION => MemoryAddressDescriptor(handle.(StackAllocationHandle).unit.get_stack_pointer(), none as Register, 1, handle.(StackAllocationHandle).get_absolute_offset()),
 			INSTANCE_STACK_MEMORY => MemoryAddressDescriptor(handle.(StackMemoryHandle).get_start(), none as Register, 1, handle.(StackMemoryHandle).get_offset()),
 			INSTANCE_DATA_SECTION => MemoryAddressDescriptor(handle.(DataSectionHandle).identifier, handle.(DataSectionHandle).modifier, handle.(DataSectionHandle).offset),
 			INSTANCE_CONSTANT_DATA_SECTION => MemoryAddressDescriptor(handle.(ConstantDataSectionHandle).identifier, handle.(DataSectionHandle).modifier, handle.(DataSectionHandle).offset),
@@ -756,103 +761,105 @@ namespace instruction_encoder {
 	# Summary:
 	# Returns the unique operation index of the specified instruction.
 	# This function will be removed, because instruction will use operation indices instead of text identifiers in the future.
-	get_instruction_index(instruction: Instruction) {
+	get_instruction_index(instruction: Instruction, operation: String) {
+		#warning Optimize this function
 		if instruction.type == INSTRUCTION_LABEL => platform.x64._LABEL
 
 		# Parameterless instructions
-		if instruction.operation == platform.shared.RETURN => platform.x64._RET
-		if instruction.operation == platform.x64.EXTEND_QWORD => platform.x64._CQO
-		if instruction.operation == platform.x64.SYSTEM_CALL => platform.x64._SYSCALL
-		if instruction.operation == 'fld1' => platform.x64._FLD1
-		if instruction.operation == 'fyl2x' => platform.x64._FYL2x
-		if instruction.operation == 'f2xm1' => platform.x64._F2XM1
-		if instruction.operation == 'faddp' => platform.x64._FADDP
-		if instruction.operation == 'fcos' => platform.x64._FCOS
-		if instruction.operation == 'fsin' => platform.x64._FSIN
-		if instruction.operation == platform.shared.NOP => platform.x64._NOP
+		if operation == platform.shared.RETURN => platform.x64._RET
+		if operation == platform.x64.EXTEND_QWORD => platform.x64._CQO
+		if operation == platform.x64.SYSTEM_CALL => platform.x64._SYSCALL
+		if operation == 'fld1' => platform.x64._FLD1
+		if operation == 'fyl2x' => platform.x64._FYL2x
+		if operation == 'f2xm1' => platform.x64._F2XM1
+		if operation == 'faddp' => platform.x64._FADDP
+		if operation == 'fcos' => platform.x64._FCOS
+		if operation == 'fsin' => platform.x64._FSIN
+		if operation == platform.shared.NOP => platform.x64._NOP
 
 		# Single parameter instructions
-		if instruction.operation == platform.x64.PUSH => platform.x64._PUSH
-		if instruction.operation == platform.x64.POP => platform.x64._POP
-		if instruction.operation == platform.x64.JUMP_ABOVE => platform.x64._JA
-		if instruction.operation == platform.x64.JUMP_ABOVE_OR_EQUALS => platform.x64._JAE
-		if instruction.operation == platform.x64.JUMP_BELOW => platform.x64._JB
-		if instruction.operation == platform.x64.JUMP_BELOW_OR_EQUALS => platform.x64._JBE
-		if instruction.operation == platform.x64.JUMP_EQUALS => platform.x64._JE
-		if instruction.operation == platform.x64.JUMP_GREATER_THAN => platform.x64._JG
-		if instruction.operation == platform.x64.JUMP_GREATER_THAN_OR_EQUALS => platform.x64._JGE
-		if instruction.operation == platform.x64.JUMP_LESS_THAN => platform.x64._JL
-		if instruction.operation == platform.x64.JUMP_LESS_THAN_OR_EQUALS => platform.x64._JLE
-		if instruction.operation == platform.x64.JUMP => platform.x64._JMP
-		if instruction.operation == platform.x64.JUMP_NOT_EQUALS => platform.x64._JNE
-		if instruction.operation == platform.x64.JUMP_NOT_ZERO => platform.x64._JNZ
-		if instruction.operation == platform.x64.JUMP_ZERO => platform.x64._JZ
-		if instruction.operation == platform.x64.CALL => platform.x64._CALL
-		if instruction.operation == 'fild' => platform.x64._FILD
-		if instruction.operation == 'fld' => platform.x64._FLD
-		if instruction.operation == 'fistp' => platform.x64._FISTP
-		if instruction.operation == 'fstp' => platform.x64._FSTP
-		if instruction.operation == platform.shared.NEGATE => platform.x64._NEG
-		if instruction.operation == platform.x64.NOT => platform.x64._NOT
-		if instruction.operation == platform.x64.CONDITIONAL_SET_ABOVE => platform.x64._SETA
-		if instruction.operation == platform.x64.CONDITIONAL_SET_ABOVE_OR_EQUALS => platform.x64._SETAE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_BELOW => platform.x64._SETB
-		if instruction.operation == platform.x64.CONDITIONAL_SET_BELOW_OR_EQUALS => platform.x64._SETBE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_EQUALS => platform.x64._SETE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_GREATER_THAN => platform.x64._SETG
-		if instruction.operation == platform.x64.CONDITIONAL_SET_GREATER_THAN_OR_EQUALS => platform.x64._SETGE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_LESS_THAN => platform.x64._SETL
-		if instruction.operation == platform.x64.CONDITIONAL_SET_LESS_THAN_OR_EQUALS => platform.x64._SETLE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_NOT_EQUALS => platform.x64._SETNE
-		if instruction.operation == platform.x64.CONDITIONAL_SET_NOT_ZERO => platform.x64._SETNZ
-		if instruction.operation == platform.x64.CONDITIONAL_SET_ZERO => platform.x64._SETZ
+		if operation == platform.x64.PUSH => platform.x64._PUSH
+		if operation == platform.x64.POP => platform.x64._POP
+		if operation == platform.x64.JUMP_ABOVE => platform.x64._JA
+		if operation == platform.x64.JUMP_ABOVE_OR_EQUALS => platform.x64._JAE
+		if operation == platform.x64.JUMP_BELOW => platform.x64._JB
+		if operation == platform.x64.JUMP_BELOW_OR_EQUALS => platform.x64._JBE
+		if operation == platform.x64.JUMP_EQUALS => platform.x64._JE
+		if operation == platform.x64.JUMP_GREATER_THAN => platform.x64._JG
+		if operation == platform.x64.JUMP_GREATER_THAN_OR_EQUALS => platform.x64._JGE
+		if operation == platform.x64.JUMP_LESS_THAN => platform.x64._JL
+		if operation == platform.x64.JUMP_LESS_THAN_OR_EQUALS => platform.x64._JLE
+		if operation == platform.x64.JUMP => platform.x64._JMP
+		if operation == platform.x64.JUMP_NOT_EQUALS => platform.x64._JNE
+		if operation == platform.x64.JUMP_NOT_ZERO => platform.x64._JNZ
+		if operation == platform.x64.JUMP_ZERO => platform.x64._JZ
+		if operation == platform.x64.CALL => platform.x64._CALL
+		if operation == 'fild' => platform.x64._FILD
+		if operation == 'fld' => platform.x64._FLD
+		if operation == 'fistp' => platform.x64._FISTP
+		if operation == 'fstp' => platform.x64._FSTP
+		if operation == platform.shared.NEGATE => platform.x64._NEG
+		if operation == platform.x64.NOT => platform.x64._NOT
+		if operation == platform.x64.CONDITIONAL_SET_ABOVE => platform.x64._SETA
+		if operation == platform.x64.CONDITIONAL_SET_ABOVE_OR_EQUALS => platform.x64._SETAE
+		if operation == platform.x64.CONDITIONAL_SET_BELOW => platform.x64._SETB
+		if operation == platform.x64.CONDITIONAL_SET_BELOW_OR_EQUALS => platform.x64._SETBE
+		if operation == platform.x64.CONDITIONAL_SET_EQUALS => platform.x64._SETE
+		if operation == platform.x64.CONDITIONAL_SET_GREATER_THAN => platform.x64._SETG
+		if operation == platform.x64.CONDITIONAL_SET_GREATER_THAN_OR_EQUALS => platform.x64._SETGE
+		if operation == platform.x64.CONDITIONAL_SET_LESS_THAN => platform.x64._SETL
+		if operation == platform.x64.CONDITIONAL_SET_LESS_THAN_OR_EQUALS => platform.x64._SETLE
+		if operation == platform.x64.CONDITIONAL_SET_NOT_EQUALS => platform.x64._SETNE
+		if operation == platform.x64.CONDITIONAL_SET_NOT_ZERO => platform.x64._SETNZ
+		if operation == platform.x64.CONDITIONAL_SET_ZERO => platform.x64._SETZ
 
 		# Dual parameter instructions
-		if instruction.operation == platform.shared.MOVE => platform.x64._MOV
-		if instruction.operation == platform.shared.ADD => platform.x64._ADD
-		if instruction.operation == platform.shared.SUBTRACT => platform.x64._SUB
-		if instruction.operation == platform.x64.SIGNED_MULTIPLY => platform.x64._IMUL
-		if instruction.operation == platform.x64.UNSIGNED_MULTIPLY => platform.x64._MUL
-		if instruction.operation == platform.x64.SIGNED_DIVIDE => platform.x64._IDIV
-		if instruction.operation == platform.x64.UNSIGNED_DIVIDE => platform.x64._DIV
-		if instruction.operation == platform.x64.SHIFT_LEFT => platform.x64._SAL
-		if instruction.operation == platform.x64.SHIFT_RIGHT => platform.x64._SAR
-		if instruction.operation == platform.x64.UNSIGNED_CONVERSION_MOVE => platform.x64._MOVZX
-		if instruction.operation == platform.x64.SIGNED_CONVERSION_MOVE => platform.x64._MOVSX
-		if instruction.operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE => platform.x64._MOVSXD
-		if instruction.operation == platform.x64.EVALUATE => platform.x64._LEA
-		if instruction.operation == platform.shared.COMPARE => platform.x64._CMP
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_ADD => platform.x64._ADDSD
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_SUBTRACT => platform.x64._SUBSD
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_MULTIPLY => platform.x64._MULSD
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_DIVIDE => platform.x64._DIVSD
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_MOVE => platform.x64._MOVSD
-		if instruction.operation == platform.x64.RAW_MEDIA_REGISTER_MOVE => platform.x64._MOVQ
-		if instruction.operation == platform.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION => platform.x64._CVTSI2SD
-		if instruction.operation == platform.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER => platform.x64._CVTTSD2SI
-		if instruction.operation == platform.shared.AND => platform.x64._AND
-		if instruction.operation == platform.x64.XOR => platform.x64._XOR
-		if instruction.operation == platform.x64.OR => platform.x64._OR
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_COMPARE => platform.x64._COMISD
-		if instruction.operation == platform.x64.TEST => platform.x64._TEST
-		if instruction.operation == platform.x64.UNALIGNED_XMMWORD_MOVE => platform.x64._MOVUPS
-		if instruction.operation == 'sqrtsd' => platform.x64._SQRTSD
-		if instruction.operation == platform.x64.EXCHANGE => platform.x64._XCHG
-		if instruction.operation == platform.x64.MEDIA_REGISTER_BITWISE_XOR => platform.x64._PXOR
-		if instruction.operation == platform.x64.SHIFT_RIGHT_UNSIGNED => platform.x64._SHR
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_ABOVE => platform.x64._CMOVA
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_ABOVE_OR_EQUALS => platform.x64._CMOVAE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_BELOW => platform.x64._CMOVB
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_BELOW_OR_EQUALS => platform.x64._CMOVBE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_EQUALS => platform.x64._CMOVE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_GREATER_THAN => platform.x64._CMOVG
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_GREATER_THAN_OR_EQUALS => platform.x64._CMOVGE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_LESS_THAN => platform.x64._CMOVL
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_LESS_THAN_OR_EQUALS => platform.x64._CMOVLE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_NOT_EQUALS => platform.x64._CMOVNE
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_NOT_ZERO => platform.x64._CMOVNZ
-		if instruction.operation == platform.x64.CONDITIONAL_MOVE_ZERO => platform.x64._CMOVZ
-		if instruction.operation == platform.x64.DOUBLE_PRECISION_XOR => platform.x64._XORPD
+		if operation == platform.shared.MOVE => platform.x64._MOV
+		if operation == platform.shared.ADD => platform.x64._ADD
+		if operation == platform.shared.SUBTRACT => platform.x64._SUB
+		if operation == platform.x64.SIGNED_MULTIPLY => platform.x64._IMUL
+		if operation == platform.x64.UNSIGNED_MULTIPLY => platform.x64._MUL
+		if operation == platform.x64.SIGNED_DIVIDE => platform.x64._IDIV
+		if operation == platform.x64.UNSIGNED_DIVIDE => platform.x64._DIV
+		if operation == platform.x64.SHIFT_LEFT => platform.x64._SAL
+		if operation == platform.x64.SHIFT_RIGHT => platform.x64._SAR
+		if operation == platform.x64.UNSIGNED_CONVERSION_MOVE => platform.x64._MOVZX
+		if operation == platform.x64.SIGNED_CONVERSION_MOVE => platform.x64._MOVSX
+		if operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE => platform.x64._MOVSXD
+		if operation == platform.x64.EVALUATE => platform.x64._LEA
+		if operation == platform.shared.COMPARE => platform.x64._CMP
+		if operation == platform.x64.DOUBLE_PRECISION_ADD => platform.x64._ADDSD
+		if operation == platform.x64.DOUBLE_PRECISION_SUBTRACT => platform.x64._SUBSD
+		if operation == platform.x64.DOUBLE_PRECISION_MULTIPLY => platform.x64._MULSD
+		if operation == platform.x64.DOUBLE_PRECISION_DIVIDE => platform.x64._DIVSD
+		if operation == platform.x64.DOUBLE_PRECISION_MOVE => platform.x64._MOVSD
+		if operation == platform.x64.RAW_MEDIA_REGISTER_MOVE => platform.x64._MOVQ
+		if operation == platform.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION => platform.x64._CVTSI2SD
+		if operation == platform.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER => platform.x64._CVTTSD2SI
+		if operation == platform.shared.AND => platform.x64._AND
+		if operation == platform.x64.XOR => platform.x64._XOR
+		if operation == platform.x64.OR => platform.x64._OR
+		if operation == platform.x64.DOUBLE_PRECISION_COMPARE => platform.x64._COMISD
+		if operation == platform.x64.TEST => platform.x64._TEST
+		if operation == platform.x64.UNALIGNED_XMMWORD_MOVE => platform.x64._MOVUPS
+		if operation == 'sqrtsd' => platform.x64._SQRTSD
+		if operation == platform.x64.EXCHANGE => platform.x64._XCHG
+		if operation == platform.x64.MEDIA_REGISTER_BITWISE_XOR => platform.x64._PXOR
+		if operation == platform.x64.SHIFT_RIGHT_UNSIGNED => platform.x64._SHR
+		if operation == platform.x64.CONDITIONAL_MOVE_ABOVE => platform.x64._CMOVA
+		if operation == platform.x64.CONDITIONAL_MOVE_ABOVE_OR_EQUALS => platform.x64._CMOVAE
+		if operation == platform.x64.CONDITIONAL_MOVE_BELOW => platform.x64._CMOVB
+		if operation == platform.x64.CONDITIONAL_MOVE_BELOW_OR_EQUALS => platform.x64._CMOVBE
+		if operation == platform.x64.CONDITIONAL_MOVE_EQUALS => platform.x64._CMOVE
+		if operation == platform.x64.CONDITIONAL_MOVE_GREATER_THAN => platform.x64._CMOVG
+		if operation == platform.x64.CONDITIONAL_MOVE_GREATER_THAN_OR_EQUALS => platform.x64._CMOVGE
+		if operation == platform.x64.CONDITIONAL_MOVE_LESS_THAN => platform.x64._CMOVL
+		if operation == platform.x64.CONDITIONAL_MOVE_LESS_THAN_OR_EQUALS => platform.x64._CMOVLE
+		if operation == platform.x64.CONDITIONAL_MOVE_NOT_EQUALS => platform.x64._CMOVNE
+		if operation == platform.x64.CONDITIONAL_MOVE_NOT_ZERO => platform.x64._CMOVNZ
+		if operation == platform.x64.CONDITIONAL_MOVE_ZERO => platform.x64._CMOVZ
+		if operation == platform.x64.DOUBLE_PRECISION_XOR => platform.x64._XORPD
+		if operation == platform.x64.EXCHANGE_ADD => platform.x64._XADD
 
 		=> -1
 	}
@@ -885,6 +892,13 @@ namespace instruction_encoder {
 		}
 	}
 
+	# Summary: Returns the primary operation of the specified instruction by discarding any instruction prefixes
+	get_primary_operation(instruction: Instruction) {
+		i = instruction.operation.last_index_of(` `)
+		if i < 0 => instruction.operation
+		=> instruction.operation.slice(i + 1)
+	}
+
 	write_instruction(module: EncoderModule, instruction: Instruction) {
 		parameters = List<InstructionParameter>()
 
@@ -894,7 +908,9 @@ namespace instruction_encoder {
 		}
 
 		encoding = none as InstructionEncoding
-		identifier = get_instruction_index(instruction)
+		locked = instruction.operation.starts_with('lock ')
+		operation = get_primary_operation(instruction)
+		identifier = get_instruction_index(instruction, operation)
 
 		if identifier < 0 {
 			process_debug_instructions(module, instruction)
@@ -907,6 +923,9 @@ namespace instruction_encoder {
 		else parameters.size == 2 { encoding = find_encoding(identifier, parameters[0].value, parameters[1].value) }
 		else parameters.size == 3 { encoding = find_encoding(identifier, parameters[0].value, parameters[1].value, parameters[2].value) }
 		else { encoding = InstructionEncoding(0) }
+
+		# Write the lock prefix if necessary
+		if locked write(module, LOCK_PREFIX)
 
 		# Write the instruction prefix if needed
 		if encoding.prefix != 0 write(module, encoding.prefix)
@@ -1025,7 +1044,7 @@ namespace instruction_encoder {
 		else route == ENCODING_ROUTE_D {
 			write_operation(module, encoding.operation)
 
-			if instruction.operation == platform.x64.CALL {
+			if operation == platform.x64.CALL {
 				label = Label(instruction.parameters[0].value.(DataSectionHandle).identifier)
 				module.calls.add(LabelUsageItem(LABEL_USAGE_TYPE_CALL, module.position, label))
 			}

@@ -26,8 +26,6 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	String.empty = String('')
 	settings.initialize()
 	initialize_configuration()
-	
-	bundle = Bundle()
 
 	arguments = List<String>()
 	arguments.add_range(source_files)
@@ -50,35 +48,35 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	# Add optimization level
 	if optimization != 0 arguments.add(String('-O') + to_string(optimization))
 
-	result = configure(bundle, arguments)
+	result = configure(arguments)
 	if result.problematic complain(result)
 
-	result = load(bundle)
+	result = load()
 	if result.problematic complain(result)
 
 	Keywords.initialize()
 	Operators.initialize()
 
-	result = textual_assembler.assemble(bundle)
+	result = textual_assembler.assemble()
 	if result.problematic complain(result)
 
-	result = tokenize(bundle)
+	result = tokenize()
 	if result.problematic complain(result)
 
 	numbers.initialize()
 
 	parser.initialize()
-	result = parser.parse(bundle)
+	result = parser.parse()
 	if result.problematic complain(result)
 
-	result = resolver.resolve(bundle)
+	result = resolver.resolve()
 	if result.problematic complain(result)
 
-	analysis.analyze(bundle)
+	analysis.analyze()
 	if result.problematic complain(result)
 
 	platform.x64.initialize()
-	assembler.assemble(bundle)
+	assembler.assemble()
 	if result.problematic complain(result)
 }
 

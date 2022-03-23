@@ -159,11 +159,6 @@ Register {
 	is_reserved => has_flag(flags, REGISTER_RESERVED)
 	is_media_register => has_flag(flags, REGISTER_MEDIA)
 
-	format() => {
-		if is_media_register => FORMAT_DECIMAL
-		=> SYSTEM_FORMAT
-	}
-
 	init(identifier: byte, partitions: String, flags: large) {
 		this.identifier = identifier
 		this.name = identifier & 7 # Take the first 3 bits
@@ -715,12 +710,17 @@ Scope {
 			# Load all memory handles into registers which do not use the stack
 			loop load in loads {
 				result = load.value
-				if not result.is_memory_address continue
-
 				instance = result.value.instance
-				if instance == INSTANCE_STACK_MEMORY or instance == INSTANCE_STACK_VARIABLE or instance == INSTANCE_TEMPORARY_MEMORY continue
 
-				memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))
+				# 1. Load all memory handles into registers which do not use the stack
+				is_complex_memory_address = result.is_memory_address and instance != INSTANCE_STACK_MEMORY and instance != INSTANCE_STACK_VARIABLE and instance != INSTANCE_TEMPORARY_MEMORY
+
+				# 2. Load all expressions into registers
+				is_expression = instance == INSTANCE_EXPRESSION or instance == INSTANCE_STACK_ALLOCATION
+
+				if is_complex_memory_address or is_expression {
+					memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))
+				}
 			}
 		}
 
@@ -775,9 +775,6 @@ Scope {
 
 	# Summary: Returns the current handle of the specified variable, if one is present
 	get_variable_value(variable: Variable, recursive: bool) {
-		# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
-		if settings.is_debugging_enabled => none as Result
-
 		# Only predictable variables are allowed to be stored
 		if not variable.is_predictable => none as Result
 
@@ -1498,10 +1495,10 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 
 	if alignment != 0 {
 		self = references.get_variable(unit, unit.self, ACCESS_WRITE)
-		offset = GetConstantInstruction(unit, alignment, false).add()
+		offset = GetConstantInstruction(unit, alignment, false, false).add()
 
 		# Convert the self pointer to the type 'to' by offsetting it by the alignment
-		unit.add(SubtractionInstruction(unit, self, offset, SYSTEM_FORMAT, true))
+		unit.add(SubtractionInstruction(unit, self, offset, SYSTEM_SIGNED, true))
 	}
 }
 
@@ -1509,8 +1506,6 @@ get_text_section(implementation: FunctionImplementation) {
 	builder = AssemblyBuilder()
 
 	fullname = implementation.get_fullname()
-
-	analysis.load_variable_usages(implementation)
 
 	# Ensure this function is visible to other units
 	builder.write(EXPORT_DIRECTIVE)
@@ -1520,6 +1515,9 @@ get_text_section(implementation: FunctionImplementation) {
 
 	unit = Unit(implementation)
 	unit.mode = UNIT_MODE_ADD
+
+	# Update the variable usages before we start
+	analysis.load_variable_usages(implementation)
 
 	scope = Scope(unit, implementation.node)
 
@@ -2153,6 +2151,9 @@ get_text_sections(context: Context) {
 
 	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
 
+	# Store the number of assembled functions
+	assembled_functions = 0
+
 	loop iterator in implementations {
 		builder = AssemblyBuilder()
 		file = iterator.key
@@ -2166,8 +2167,21 @@ get_text_sections(context: Context) {
 
 		loop implementation in iterator.value {
 			if implementation.is_imported continue
+
+			if settings.is_verbose_output_enabled {
+				put(`[`)
+				print(assembled_functions + 1)
+				put(`/`)
+				print(all.size)
+				put(`]`)
+				print(' Assembling ')
+				println(implementation.string())
+			}
+
 			builder.add(get_text_section(implementation))
 			builder.write('\n\n')
+
+			assembled_functions++ # Increment the number of assembled functions
 		}
 
 		# Add the debug label, which indicates the end of debuggable code
@@ -2261,7 +2275,7 @@ run(executable: link, arguments: List<String>) {
 	=> Status()
 }
 
-assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
+assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
 	align(context)
 
 	Keywords.all.clear() # Remove all keywords for parsing assembly
@@ -2271,10 +2285,10 @@ assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: Lis
 
 	assemblies = Map<SourceFile, String>()
 	exports = Map<SourceFile, List<String>>()
-	object_files = bundle.get_object(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link) as Map<SourceFile, BinaryObjectFile>
+	object_files = settings.object_files
 
 	# Import user defined object files
-	user_imported_object_files = bundle.get_object(String(BUNDLE_OBJECTS), List<String>() as link) as List<String>
+	user_imported_object_files = settings.user_imported_object_files
 
 	loop object_filename in user_imported_object_files {
 		file = SourceFile(object_filename, String.empty, -1)
@@ -2376,16 +2390,14 @@ assemble(bundle: Bundle, context: Context, files: List<SourceFile>, imports: Lis
 	=> assemblies
 }
 
-assemble(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to assemble')
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Missing files')
-	if not (bundle.get_object(String(BUNDLE_OBJECTS)) as Optional<List<String>> has objects) => Status('Missing object files')
-	if not (bundle.get_object(String(BUNDLE_LIBRARIES)) as Optional<List<String>> has imports) => Status('Missing imported libraries')
+assemble() {
+	parse = settings.parse
+	files = settings.source_files
+	imports = settings.libraries
+	output_name = settings.output_name
+	output_type = settings.output_type
 
-	output_name = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String('v') as link) as String
-	output_type = bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE)
-
-	assemblies = assemble(bundle, parse.context, files, imports, output_name, output_type)
+	assemblies = assemble(parse.context, files, imports, output_name, output_type)
 
 	if settings.is_assembly_output_enabled {
 		loop file in files {
@@ -2395,6 +2407,9 @@ assemble(bundle: Bundle) {
 			io.write_file(assembly_filename, assembly)
 		}
 	}
+
+	# Clean up
+	parse.context.dispose()
 
 	=> Status()
 }

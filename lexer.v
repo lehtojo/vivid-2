@@ -1084,7 +1084,7 @@ is_part_of(previous_type: large, current_type: large, previous: char, current: c
 
 	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED => true
 
-	if previous_type == TEXT_TYPE_TEXT => current_type == TEXT_TYPE_NUMBER
+	if previous_type == TEXT_TYPE_TEXT => current_type == TEXT_TYPE_NUMBER or current_type == TEXT_TYPE_HEXADECIMAL
 
 	if previous_type == TEXT_TYPE_HEXADECIMAL => current_type == TEXT_TYPE_NUMBER or
 		(previous == `0` and current == `x`) or
@@ -1327,11 +1327,11 @@ get_next_token(text: String, start: Position) {
 		area.end = skip_character_value(text, area.start)
 
 		result = get_character_value(text.slice(area.start.local, area.end.local), area.start)
-		if not (result has value) => Error<TextArea, String>(result.value as String)
+		if not (result has value) => Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
 
-		area.text = to_string(result.value) + SIGNED_TYPE_SEPARATOR + to_string(bits)
+		area.text = to_string(result.get_value()) + SIGNED_TYPE_SEPARATOR + to_string(bits)
 		area.type = TEXT_TYPE_NUMBER
 		=> Ok<TextArea, String>(area)
 	}
@@ -1381,15 +1381,15 @@ parse_token(area: TextArea) {
 	}
 	else area.type == TEXT_TYPE_NUMBER {
 		result = try_create_number_token(area.text, area.start)
-		if not (result has number) => Error<Token, String>(result.value as String)
+		if not (result has number) => Error<Token, String>(result.get_error())
 		=> Ok<Token, String>(number)
 	}
 	else area.type == TEXT_TYPE_PARENTHESIS {
 		text = area.text
 		if text.length == 2 => Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
 
-		result = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
-		if not (result has tokens) => Error<Token, String>(result.value as String)
+		result: Outcome<List<Token>, String> = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
+		if not (result has tokens) => Error<Token, String>(result.get_error())
 
 		=> Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))
 	}
@@ -1401,7 +1401,7 @@ parse_token(area: TextArea) {
 	else area.type == TEXT_TYPE_STRING { token = StringToken(area.text) }
 	else area.type == TEXT_TYPE_HEXADECIMAL {
 		result = parse_hexadecimal(area)
-		if not (result has value) => Error<Token, String>(result.(Error<large, String>).get_error())
+		if not (result has value) => Error<Token, String>(result.get_error())
 
 		token = NumberToken(value, SYSTEM_FORMAT, area.start, area.end)
 	}
@@ -1484,12 +1484,12 @@ get_tokens(text: String, anchor: Position, join: bool) {
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())
-		if not (area_result has area) => Error<List<Token>, String>(area_result.value as String)
+		if not (area_result has area) => Error<List<Token>, String>(area_result.get_error())
 		if area == none stop
 
 		if area.type != TEXT_TYPE_COMMENT {
 			token_result = parse_token(area)
-			if not (token_result has token) => Error<List<Token>, String>(token_result.value as String)
+			if not (token_result has token) => Error<List<Token>, String>(token_result.get_error())
 
 			token.position = area.start
 			tokens.add(token)
@@ -1523,14 +1523,14 @@ register_file(tokens: List<Token>, file: SourceFile) {
 }
 
 # Summary: Creates tokens from file contents
-tokenize(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Nothing to tokenize')
-	
+tokenize() {
+	files = settings.source_files
+
 	loop (i = 0, i < files.size, i++) {
 		file = files[i]
 
 		result = get_tokens(file.content, true)
-		if not (result has tokens) => Status(result.value as String)
+		if not (result has tokens) => Status(result.get_error())
 
 		register_file(tokens, file)
 		file.tokens = tokens

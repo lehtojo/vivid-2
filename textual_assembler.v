@@ -1,15 +1,15 @@
 namespace textual_assembler
 
-assemble(bundle: Bundle) {
-	if not bundle.get_bool(String(ASSEMBLER_FLAG), false) => Status()
+assemble() {
+	if not settings.textual_assembly => Status()
 
-	files = bundle.get_object(String(BUNDLE_FILES), List<SourceFile>() as link) as List<SourceFile>
+	files = settings.source_files
 	if files.size == 0 => Status('Nothing to assemble')
 
-	link_object_files = bundle.get_bool(String(LINK_FLAG), false)
+	link_object_files = settings.link_objects
 
 	# Determine the output basename of the object files
-	output_basename = bundle.get_object(String(BUNDLE_OUTPUT_NAME), String(DEFAULT_OUTPUT_NAME) as link) as String
+	output_basename = settings.output_name
 
 	# Initialize the target architecture
 	platform.x64.initialize()

@@ -97,13 +97,13 @@ pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standar
 			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
 		}
 		else {
-			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, member.type.get_register_format())
+			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, member.type, member.type.get_register_format())
 		}
 	}
 }
 
 # Summary: Passes the specified argument using a register or the specified stack position depending on the situation
-pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, format: large) {
+pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large) {
 	if value.value.instance == INSTANCE_DISPOSABLE_PACK {
 		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
 		return
@@ -125,7 +125,7 @@ pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, sta
 		destination = RegisterHandle(register)
 		destination.format = FORMAT_DECIMAL
 
-		if not is_decimal { destination.format = to_format(SYSTEM_BYTES, is_unsigned(value.format)) }
+		if not is_decimal { destination.format = get_system_format(type.format) }
 
 		destinations.add(destination)
 	}
@@ -162,7 +162,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 
 	if self_pointer != none {
 		if self_type == none abort('Missing self pointer type')
-		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, self_pointer, SYSTEM_FORMAT)
+		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, self_pointer, self_type, SYSTEM_FORMAT)
 	}
 
 	loop (i = 0, i < parameters.size, i++) {
@@ -171,7 +171,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 		type = parameter_types[i]
 
 		value = casts.cast(unit, value, parameter.get_type(), type)
-		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type.get_register_format())
+		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, type.get_register_format())
 	}
 
 	call.destinations.add_range(destinations)

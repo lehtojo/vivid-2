@@ -21,8 +21,7 @@ INSTANCE_STACK_ALLOCATION = 1024
 INSTANCE_REGISTER = 2048
 INSTANCE_MODIFIER = 4096
 INSTANCE_LOWER_12_BITS = 8192
-INSTANCE_INLINE = 16384
-INSTANCE_DISPOSABLE_PACK = 32768
+INSTANCE_DISPOSABLE_PACK = 16384
 
 # Summary: Converts the specified size to corresponding size modifier
 to_size_modifier(bytes: large) {
@@ -214,7 +213,7 @@ Handle MemoryHandle {
 	get_start() {
 		=> when(start.value.instance) {
 			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
-			INSTANCE_INLINE => unit.get_stack_pointer(),
+			INSTANCE_STACK_ALLOCATION => unit.get_stack_pointer(),
 			else => none as Register
 		}
 	}
@@ -222,7 +221,7 @@ Handle MemoryHandle {
 	get_offset() {
 		=> when(start.value.instance) {
 			INSTANCE_CONSTANT => start.value.(ConstantHandle).value + get_absolute_offset(),
-			INSTANCE_INLINE => start.value.(InlineHandle).get_absolute_offset() + get_absolute_offset(),
+			INSTANCE_STACK_ALLOCATION => start.value.(StackAllocationHandle).get_absolute_offset() + get_absolute_offset(),
 			else => get_absolute_offset()
 		}
 	}
@@ -784,12 +783,12 @@ Handle ExpressionHandle {
 		validate()
 
 		if addition == none {
-			handle = ExpressionHandle(Result(multiplicand.value, SYSTEM_FORMAT), multiplier, none as Result, number)
+			handle = ExpressionHandle(Result(multiplicand.value, multiplicand.format), multiplier, none as Result, number)
 			handle.format = format
 			=> handle
 		}
 
-		handle = ExpressionHandle(Result(multiplicand.value, SYSTEM_FORMAT), multiplier, Result(addition.value, SYSTEM_FORMAT), number)
+		handle = ExpressionHandle(Result(multiplicand.value, multiplicand.format), multiplier, Result(addition.value, addition.format), number)
 		handle.format = format
 		=> handle
 	}
@@ -809,7 +808,9 @@ Handle StackAllocationHandle {
 	bytes: large
 	identity: String
 
-	absolute_offset => unit.stack_offset + offset
+	get_absolute_offset() {
+		=> unit.stack_offset + offset
+	}
 
 	init(unit: Unit, bytes: large, identity: String) {
 		this.unit = unit
@@ -837,7 +838,7 @@ Handle StackAllocationHandle {
 
 	override string() {
 		stack_pointer = unit.get_stack_pointer()
-		offset: large = absolute_offset
+		offset: large = get_absolute_offset()
 
 		if not settings.is_x64 => stack_pointer[SYSTEM_BYTES] + ', #' + to_string(offset)
 
@@ -850,62 +851,6 @@ Handle StackAllocationHandle {
 	override equals(other: Handle) {
 		if this.instance != other.instance => false
 		=> this.format == other.format and this.offset == other.(StackAllocationHandle).offset and this.bytes == other.(StackAllocationHandle).bytes and this.identity == other.(StackAllocationHandle).identity
-	}
-}
-
-Handle InlineHandle {
-	identity: String
-
-	unit: Unit
-
-	offset: large
-	bytes: large
-
-	get_absolute_offset() {
-		=> unit.stack_offset + offset
-	}
-
-	init(unit: Unit, bytes: large, identity: String) {
-		this.unit = unit
-		this.identity = identity
-		this.bytes = bytes
-		this.type = HANDLE_EXPRESSION
-		this.instance = INSTANCE_INLINE
-	}
-
-	init(unit: Unit, offset: large, bytes: large, identity: String) {
-		this.unit = unit
-		this.identity = identity
-		this.offset = offset
-		this.bytes = bytes
-		this.type = HANDLE_EXPRESSION
-		this.instance = INSTANCE_INLINE
-	}
-
-	override finalize() {
-		=> InlineHandle(unit, offset, bytes, identity)
-	}
-
-	override string() {
-		stack_pointer = unit.get_stack_pointer()
-		offset = get_absolute_offset()
-
-		if not settings.is_x64 {
-			=> stack_pointer.string() + ', #' + to_string(offset)
-		}
-
-		if offset > 0 => String(`[`) + stack_pointer.string() + `+` + to_string(offset) + `]`
-		else offset < 0 => String(`[`) + stack_pointer.string() + to_string(offset) + `]`
-
-		return String(`[`) + stack_pointer.string() + ']'
-	}
-
-	override equals(other: Handle) {
-		=> other.instance == INSTANCE_INLINE and
-			format == other.(InlineHandle).format and
-			offset == other.(InlineHandle).offset and
-			bytes == other.(InlineHandle).bytes and
-			identity == other.(InlineHandle).identity
 	}
 }
 

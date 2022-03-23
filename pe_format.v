@@ -836,7 +836,7 @@ namespace pe_format {
 			string_table.write_int16(0)
 			import_library_name_start.offset = string_table_start + string_table.position
 
-			library_filename = path.basename(import_library)
+			library_filename = io.path.basename(import_library)
 			string_table.string(library_filename)
 
 			# Align the next entry on an even boundary

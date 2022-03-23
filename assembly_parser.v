@@ -380,7 +380,7 @@ AssemblyParser {
 					=> start
 				}
 
-				=> MemoryHandle(unit, Result(start, SYSTEM_FORMAT), 0)
+				=> MemoryHandle(unit, Result(start, SYSTEM_SIGNED), 0)
 			}
 			else tokens.size == 2 {
 				# Patterns: - $number
@@ -398,7 +398,7 @@ AssemblyParser {
 					abort('Expected the first token to be a plus or minus operator')
 				}
 
-				=> MemoryHandle(unit, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
+				=> MemoryHandle(unit, Result(ConstantHandle(offset), SYSTEM_SIGNED), 0)
 			}
 			else tokens.size == 3 {
 				# Patterns: $register + $register / $register + $number / $symbol + $number
@@ -416,7 +416,7 @@ AssemblyParser {
 						=> start
 					}
 
-					=> ComplexMemoryHandle(Result(start, SYSTEM_FORMAT), Result(offset, SYSTEM_FORMAT), 1, 0)
+					=> ComplexMemoryHandle(Result(start, SYSTEM_SIGNED), Result(offset, SYSTEM_SIGNED), 1, 0)
 				}
 
 				# Patterns: $register - $number / $symbol - $number
@@ -437,15 +437,15 @@ AssemblyParser {
 
 				# Pattern: $register * $number
 				if tokens[1].match(Operators.MULTIPLY) and tokens[2].type == TOKEN_TYPE_NUMBER {
-					first = Result(ConstantHandle(0), SYSTEM_FORMAT)
-					second = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_FORMAT)
+					first = Result(ConstantHandle(0), SYSTEM_SIGNED)
+					second = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_SIGNED)
 					stride = tokens[2].(NumberToken).data
 
 					=> ComplexMemoryHandle(first, second, stride, 0)
 				}
 			}
 			else tokens.size == 5 {
-				first = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_FORMAT)
+				first = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_SIGNED)
 
 				# Patterns: $register + $register + $number / $register + $register - $number
 				if tokens[1].match(Operators.ADD) {
@@ -465,7 +465,7 @@ AssemblyParser {
 						offset = tokens[4].(NumberToken).data
 					}
 
-					second = Result(parse_instruction_parameter(tokens, 2) as Handle, SYSTEM_FORMAT)
+					second = Result(parse_instruction_parameter(tokens, 2) as Handle, SYSTEM_SIGNED)
 
 					=> ComplexMemoryHandle(first, second, 1, offset)
 				}
@@ -485,7 +485,7 @@ AssemblyParser {
 					}
 					else {
 						# Pattern: $register * $number + $register
-						offset = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_FORMAT)
+						offset = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_SIGNED)
 
 						# NOTE: This is redundant, but the external assembler encodes differently if this code is not present
 						if stride == 1 => ComplexMemoryHandle(first, offset, 1, 0)
@@ -515,9 +515,9 @@ AssemblyParser {
 				}
 
 				# Patterns: $register * $number + $register + $number
-				first = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_FORMAT)
+				first = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_SIGNED)
 				stride = tokens[2].(NumberToken).data
-				second = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_FORMAT)
+				second = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_SIGNED)
 
 				# NOTE: This is redundant, but the external assembler encodes differently if this code is not present
 				if stride == 1 => ComplexMemoryHandle(first, second, 1, offset)
@@ -602,6 +602,24 @@ AssemblyParser {
 		=> true
 	}
 
+	# Summary: Finds instruction prefixes and merges them into the instruction
+	join_instruction_prefixes(tokens: List<Token>) {
+		loop (i = tokens.size - 2, i >= 0, i--) {
+			# Find ajacent identifier tokens
+			current = tokens[i]
+			next = tokens[i + 1]
+			if current.type != TOKEN_TYPE_IDENTIFIER or next.type != TOKEN_TYPE_IDENTIFIER continue
+
+			# Ensure the current token is an instruction prefix
+			identifier = current.(IdentifierToken).value
+			if not (identifier == platform.x64.LOCK_PREFIX) continue
+
+			# Merge the prefix into the instruction
+			next.(IdentifierToken).value = identifier + ` ` + next.(IdentifierToken).value
+			tokens.remove_at(i)
+		}
+	}
+
 	parse(file: SourceFile, assembly: String) {
 		lines = assembly.split(`\n`)
 		position = Position(file, -1, 0) # Start from line -1, because the loop moves to the next line at the beginning
@@ -615,6 +633,9 @@ AssemblyParser {
 
 			# Skip empty lines
 			if tokens.size == 0 continue
+
+			# Preprocess
+			join_instruction_prefixes(tokens)
 
 			# Parse directives here, because all sections have some directives
 			if parse_directive(tokens) continue

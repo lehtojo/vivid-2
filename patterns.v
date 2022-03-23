@@ -30,6 +30,7 @@ Pattern AssignPattern {
 		path.add(TOKEN_TYPE_OPERATOR)
 
 		priority = 19
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -138,7 +139,7 @@ Pattern FunctionPattern {
 		
 		result = descriptor.get_parameters(function)
 		if not (result has parameters) {
-			state.error = Status(result.value as String)
+			state.error = Status(result.get_error())
 			=> none as Node
 		}
 
@@ -192,6 +193,7 @@ Pattern TypePattern {
 		path.add(TOKEN_TYPE_PARENTHESIS)
 
 		priority = 22
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -237,6 +239,7 @@ Pattern VariableDeclarationPattern {
 		path.add(TOKEN_TYPE_OPERATOR)
 
 		priority = 19
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -293,6 +296,7 @@ Pattern IfPattern {
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 
 		priority = 1
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -348,6 +352,7 @@ Pattern ElsePattern {
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 
 		priority = 1
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -536,6 +541,7 @@ Pattern ListPattern {
 
 		priority = 0
 		id = ID
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -592,6 +598,7 @@ Pattern LoopPattern {
 		path.add(TOKEN_TYPE_PARENTHESIS)
 
 		priority = 1
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -639,7 +646,7 @@ Pattern LoopPattern {
 		if steps == none => none as Node
 
 		body_token = tokens[BODY] as ParenthesisToken
-		body = ScopeNode(body_context, body_token.position, body_token.end)
+		body = ScopeNode(body_context, body_token.position, body_token.end, false)
 
 		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
@@ -658,6 +665,7 @@ Pattern ForeverLoopPattern {
 		path.add(TOKEN_TYPE_PARENTHESIS)
 
 		priority = 1
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -669,7 +677,7 @@ Pattern ForeverLoopPattern {
 		body_context = Context(steps_context, NORMAL_CONTEXT)
 
 		body_token = tokens[BODY] as ParenthesisToken
-		body = ScopeNode(body_context, body_token.position, body_token.end)
+		body = ScopeNode(body_context, body_token.position, body_token.end, false)
 
 		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
@@ -839,6 +847,7 @@ Pattern ImportPattern {
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		priority = 20
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -935,7 +944,7 @@ Pattern ImportPattern {
 		result = descriptor.get_parameters(function)
 		
 		if not (result has parameters) {
-			state.error = Status(descriptor.position, result.value as String)
+			state.error = Status(descriptor.position, result.get_error())
 			=> none as Node
 		}
 
@@ -1053,7 +1062,7 @@ Pattern ConstructorPattern {
 		result = descriptor.get_parameters(function)
 		
 		if not (result has parameters) {
-			state.error = Status(descriptor.position, result.value as String)
+			state.error = Status(descriptor.position, result.get_error())
 			=> none as Node
 		}
 
@@ -1061,7 +1070,7 @@ Pattern ConstructorPattern {
 		function.blueprint = blueprint
 
 		if is_constructor type.add_constructor(function as Constructor)
-		else type.add_destructor(function as Destructor)
+		else { type.add_destructor(function as Destructor) }
 
 		=> FunctionDefinitionNode(function, descriptor.position)
 	}
@@ -1075,6 +1084,7 @@ Pattern ExpressionVariablePattern {
 		path.add(TOKEN_TYPE_OPERATOR)
 
 		priority = 21
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1119,6 +1129,7 @@ Pattern InheritancePattern {
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 21
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1197,6 +1208,7 @@ Pattern ModifierSectionPattern {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_OPERATOR)
 		priority = 20
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1220,6 +1232,7 @@ Pattern SectionModificationPattern {
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_DYNAMIC)
 		priority = 0
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1282,6 +1295,7 @@ Pattern NamespacePattern {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 23
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1368,6 +1382,7 @@ Pattern IterationLoopPattern {
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_PARENTHESIS)
 		priority = 2
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1401,7 +1416,7 @@ Pattern IterationLoopPattern {
 		steps_context = Context(environment, NORMAL_CONTEXT)
 		body_context = Context(steps_context, NORMAL_CONTEXT)
 
-		value = get_iterator(steps_context, tokens)
+		value = get_iterator(body_context, tokens)
 
 		# Loads the new value into the value variable
 		load = OperatorNode(Operators.ASSIGN, position).set_operands(
@@ -1424,7 +1439,7 @@ Pattern IterationLoopPattern {
 
 		# Create the loop body
 		token = tokens[BODY] as ParenthesisToken
-		body = ScopeNode(body_context, token.position, token.end)
+		body = ScopeNode(body_context, token.position, token.end, false)
 		body.add(load)
 
 		result = parser.parse(body_context, token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
@@ -1445,6 +1460,7 @@ Pattern TemplateFunctionPattern {
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 23
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1599,6 +1615,7 @@ Pattern TemplateTypePattern {
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 22
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1664,6 +1681,7 @@ Pattern VirtualFunctionPattern {
 		path.add(TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_OPTIONAL)
 		priority = 22
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -2031,6 +2049,7 @@ Pattern OverrideFunctionPattern {
 		path.add(TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		priority = 22
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -2163,7 +2182,7 @@ Pattern LambdaPattern {
 
 		# Create a function token manually since it contains some useful helper functions
 		header = FunctionToken(IdentifierToken(name), get_parameter_tokens(tokens))
-		function = Lambda(environment, MODIFIER_DEFAULT, name, blueprint, start, end)
+		function = Lambda(context, MODIFIER_DEFAULT, name, blueprint, start, end)
 		environment.declare(function)
 
 		# Parse the lambda parameters
@@ -2276,6 +2295,7 @@ Pattern ExtensionFunctionPattern {
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 23
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -2418,6 +2438,7 @@ Pattern WhenPattern {
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_PARENTHESIS)
 		priority = 19
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {

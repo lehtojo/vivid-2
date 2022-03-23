@@ -12,7 +12,10 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 
 	if category == VARIABLE_CATEGORY_PARAMETER => StackVariableHandle(unit, variable)
 	else category == VARIABLE_CATEGORY_LOCAL {
-		# TODO: Support inline handles
+		if variable.is_inlined {
+			=> StackAllocationHandle(unit, variable.type.allocation_size, variable.parent.identity + `.` + variable.name)
+		}
+
 		=> StackVariableHandle(unit, variable)
 	}
 	else category == VARIABLE_CATEGORY_MEMBER {
@@ -49,7 +52,7 @@ get_variable(unit: Unit, node: VariableNode, mode: large) {
 }
 
 get_constant(unit: Unit, node: NumberNode) {
-	=> GetConstantInstruction(unit, node.value, node.format == FORMAT_DECIMAL).add()
+	=> GetConstantInstruction(unit, node.value, is_unsigned(node.format), node.format == FORMAT_DECIMAL).add()
 }
 
 get(unit: Unit, node: Node, mode: large) {

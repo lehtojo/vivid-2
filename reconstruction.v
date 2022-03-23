@@ -516,23 +516,18 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 
 	size = max(1, type.content_size)
 	arguments = Node()
-	arguments.add(NumberNode(SYSTEM_FORMAT, size, position))
+	arguments.add(NumberNode(SYSTEM_SIGNED, size, position))
 
-	if settings.is_garbage_collector_enabled {
-		# TODO: Support garbage collection
-	}
-	else {
-		# The following example creates an instance of a type called Object
-		# Example: instance = allocate(sizeof(Object)) as Object
-		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(container.result, position),
-			CastNode(
-				FunctionNode(settings.allocation_function, position).set_arguments(arguments),
-				TypeNode(type, position),
-				position
-			)
-		))
-	}
+	# The following example creates an instance of a type called Object
+	# Example: instance = allocate(sizeof(Object)) as Object
+	container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(container.result, position),
+		CastNode(
+			FunctionNode(settings.allocation_function, position).set_arguments(arguments),
+			TypeNode(type, position),
+			position
+		)
+	))
 
 	supertypes = type.get_all_supertypes()
 

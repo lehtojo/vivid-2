@@ -3,19 +3,6 @@ OPERATING_SYSTEM_LINUX = 1
 
 OS = 0
 
-BUNDLE_ARGUMENTS = 'arguments'
-BUNDLE_DEBUG = 'debug'
-BUNDLE_OUTPUT_NAME = 'output_name'
-BUNDLE_ASSEMBLY = 'assembly'
-BUNDLE_OUTPUT_TYPE = 'output_type'
-BUNDLE_TIME = 'time'
-BUNDLE_REBUILD = 'rebuild'
-BUNDLE_SERVICE = 'service'
-BUNDLE_FILENAMES = 'filenames'
-BUNDLE_OBJECTS = 'objects'
-BUNDLE_IMPORTED_OBJECTS = 'imported-objects'
-BUNDLE_LIBRARIES = 'libraries'
-
 # All possible output binary types
 BINARY_TYPE_SHARED_LIBRARY = 0
 BINARY_TYPE_STATIC_LIBRARY = 1
@@ -148,7 +135,7 @@ find_library(library: String) {
 	=> none as String
 }
 
-configure(bundle: Bundle, parameters: List<String>, files: List<String>, libraries: List<String>, value: String) {
+configure(parameters: List<String>, files: List<String>, libraries: List<String>, value: String) {
 	if value == '-help' {
 		println('Usage: v [options] <folders / files>')
 		println('Options:')
@@ -188,7 +175,6 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		if settings.is_optimization_enabled => Status('Optimization and debugging can not be enabled at the same time')
 
 		settings.is_debugging_enabled = true
-		bundle.put(String(BUNDLE_DEBUG), true)
 	}
 	else value == '-o' or value == '-output' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
@@ -196,7 +182,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		name = parameters.pop_or(none as String)
 		if is_option(name) => Status('Missing or invalid value for option')
 
-		bundle.put(String(BUNDLE_OUTPUT_NAME), name as link)
+		settings.output_name = name
 	}
 	else value == '-l' or value == '-library' {
 		if parameters.size == 0 => Status('Missing or invalid value for option')
@@ -211,20 +197,19 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		libraries.add(filename)
 	}
 	else value == '-link' {
-		bundle.put(String(LINK_FLAG), true)
+		settings.link_objects = true
 	}
 	else value == '-a' or value == '-assembly' {
-		bundle.put(String(BUNDLE_ASSEMBLY), true)
 		settings.is_assembly_output_enabled = true
 	}
 	else value == '-dynamic' or value == '-shared' or value == '-dll' {
-		bundle.put(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_SHARED_LIBRARY)
+		settings.output_type = BINARY_TYPE_SHARED_LIBRARY
 	}
 	else value == '-static' {
-		bundle.put(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_STATIC_LIBRARY)
+		settings.output_type = BINARY_TYPE_STATIC_LIBRARY
 	}
 	else value == '-t' or value == '-time' {
-		bundle.put(String(BUNDLE_TIME), true)
+		settings.time = true
 	}
 	else value == '-q' or value == '-quiet' {
 		settings.is_verbose_output_enabled = false
@@ -233,7 +218,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		settings.is_verbose_output_enabled = true
 	}
 	else value == '-r' or value == '-rebuild' or value == '-force' {
-		bundle.put(String(BUNDLE_REBUILD), true)
+		settings.rebuild = true
 	}
 	else value == '-O' or value == '-O1' {
 		if settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
@@ -269,7 +254,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 		application.exit(0)
 	}
 	else value == '-s' {
-		bundle.put(String(BUNDLE_SERVICE), true)
+		settings.service = true
 	}
 	else {
 		=> Status(String('Unknown option ') + value)
@@ -278,7 +263,7 @@ configure(bundle: Bundle, parameters: List<String>, files: List<String>, librari
 	=> Status()
 }
 
-configure(bundle: Bundle, arguments: List<String>) {
+configure(arguments: List<String>) {
 	files = List<String>()
 	objects = List<String>()
 	libraries = List<String>()
@@ -287,7 +272,7 @@ configure(bundle: Bundle, arguments: List<String>) {
 		element = arguments.pop_or(none as String)
 
 		if is_option(element) {
-			result = configure(bundle, arguments, files, libraries, element)
+			result = configure(arguments, files, libraries, element)
 			if result.problematic => result
 			continue
 		}
@@ -304,7 +289,7 @@ configure(bundle: Bundle, arguments: List<String>) {
 			}
 			else element.ends_with(ASSEMBLY_EXTENSION) {
 				files.add(element)
-				bundle.put(String(ASSEMBLER_FLAG), true)
+				settings.textual_assembly = true
 			}
 			else element.ends_with(LINUX_OBJECT_FILE_EXTENSION) or element.ends_with(WINDOWS_OBJECT_FILE_EXTENSION) {
 				objects.add(element)
@@ -319,15 +304,8 @@ configure(bundle: Bundle, arguments: List<String>) {
 		=> Status('Invalid source file or folder')
 	}
 
-	# Ensure the bundle contains an output name
-	if not bundle.contains_object(String(BUNDLE_OUTPUT_NAME)) {
-		bundle.put(String(BUNDLE_OUTPUT_NAME), DEFAULT_OUTPUT_NAME)
-	}
-
-	bundle.put(String(BUNDLE_FILENAMES), files as link)
-	bundle.put(String(BUNDLE_OBJECTS), objects as link)
-	bundle.put(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link)
-	bundle.put(String(BUNDLE_LIBRARIES), libraries as link)
-
+	settings.filenames = files
+	settings.user_imported_object_files = objects
+	settings.libraries = libraries
 	=> Status()
 }

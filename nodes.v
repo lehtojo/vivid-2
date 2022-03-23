@@ -209,13 +209,20 @@ Node OperatorNode {
 
 Node ScopeNode {
 	context: Context
+	is_value_returned: bool = false
 	end: Position
 
-	init(context: Context, start: Position, end: Position) {
+	init(context: Context, start: Position, end: Position, is_value_returned: bool) {
 		this.instance = NODE_SCOPE
 		this.context = context
+		this.is_value_returned = is_value_returned
 		this.start = start
 		this.end = end
+	}
+
+	override try_get_type() {
+		if last as link == none => none as Type
+		=> last.try_get_type()
 	}
 
 	override equals(other: Node) {
@@ -223,7 +230,7 @@ Node ScopeNode {
 	}
 
 	override copy() {
-		=> ScopeNode(context, start, end)
+		=> ScopeNode(context, start, end, is_value_returned)
 	}
 
 	override string() {
@@ -443,7 +450,7 @@ Node UnresolvedFunction {
 			# - If the actual parameter type is not defined, use the expected parameter type
 			types = List<Type>(expected_types.size, false)
 
-			loop (i = 0, i < types.size, i++) {
+			loop (i = 0, i < expected_types.size, i++) {
 				actual_type = actual_types[i]
 				if actual_type != none { types.add(actual_type) }
 				else { types.add(expected_types[i]) }
@@ -474,7 +481,7 @@ Node UnresolvedFunction {
 				# Skip all parameter types which do not represent lambda types
 				if expected == none or not actual.is_function_type continue
 
-				if expected.is_function_type {
+				if not expected.is_function_type {
 					# Since the actual parameter type is lambda type and the expected is not, the current candidate can be removed
 					candidates.remove_at(i)
 					stop
@@ -678,7 +685,7 @@ Node TypeDefinitionNode {
 		blueprint.clear()
 
 		# Add all member initializations
-		type.initialization.add_range(find_top(i -> i.match(Operators.ASSIGN)))
+		type.initialization = find_top(i -> i.match(Operators.ASSIGN))
 
 		# Add member initialization to the constructors that have been created before loading the member initializations
 		loop constructor in type.constructors.overloads {
@@ -878,13 +885,17 @@ Node IfNode {
 		this.instance = NODE_IF
 		this.is_resolvable = true
 
+		# Ensure we have access to the environment context
+		environment = context.parent
+		if environment == none abort('Missing environment context')
+
 		# Create the condition
-		node = Node()
+		node = ScopeNode(Context(environment, NORMAL_CONTEXT), start, end, true)
 		node.add(condition)
 		add(node)
 
 		# Create the body
-		node = ScopeNode(context, start, end)
+		node = ScopeNode(context, start, end, false)
 		loop iterator in body { node.add(iterator) }
 		add(node)
 	}
@@ -1194,7 +1205,7 @@ Node ElseNode {
 		this.instance = NODE_ELSE
 		this.is_resolvable = true
 
-		node = ScopeNode(context, start, end)
+		node = ScopeNode(context, start, end, false)
 		loop child in body { node.add(child) }
 		add(node)
 	}
@@ -1680,13 +1691,14 @@ Node NamespaceNode {
 			name: String = this.name[i].(IdentifierToken).value
 			type = context.get_type(name)
 
-			if type == none {
-				type = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position)
+			# Use the type if it was found and its parent is the current context
+			if type != none and (type.parent as link) == (context as link) {
 				context = type
+				continue
 			}
-			else {
-				context = type
-			}
+
+			type = Type(context, name, MODIFIER_DEFAULT | MODIFIER_STATIC, position)
+			context = type
 		}
 
 		=> context as Type
@@ -2227,7 +2239,9 @@ Node WhenNode {
 			types.add(type)
 		}
 
-		if resolver.get_shared_type(types) == none => Status(start, 'Sections do not have a shared return type')
+		section_return_type = resolver.get_shared_type(types)
+		if section_return_type == none => Status(start, 'Sections do not have a shared return type')
+
 		=> Status()
 	}
 
@@ -2293,7 +2307,9 @@ Node ListConstructionNode {
 	}
 
 	override get_status() {
-		if type == none => Status(Position, 'Can not resolve the shared type between the elements')
+		try_get_type()
+
+		if type == none => Status(start, 'Can not resolve the shared type between the elements')
 
 		=> Status()
 	}

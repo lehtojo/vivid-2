@@ -48,6 +48,10 @@ namespace x64 {
 
 	constant EVALUATE_MAX_MULTIPLIER = 8
 
+	constant LOCK_PREFIX = 'lock'
+	constant EXCHANGE_ADD = 'xadd'
+	constant ATOMIC_EXCHANGE_ADD = 'lock xadd'
+
 	constant DOUBLE_PRECISION_ADD = 'addsd'
 	constant DOUBLE_PRECISION_SUBTRACT = 'subsd'
 	constant DOUBLE_PRECISION_MULTIPLY = 'mulsd'
@@ -230,7 +234,8 @@ namespace x64 {
 	constant _CMOVNZ = 39
 	constant _CMOVZ = 40
 	constant _XORPD = 41
-	constant _MAX_DUAL_PARAMETER_INSTRUCTIONS = 42
+	constant _XADD = 42
+	constant _MAX_DUAL_PARAMETER_INSTRUCTIONS = 43
 
 	# Triple parameter instructions
 	# 3: imul
@@ -887,6 +892,12 @@ namespace x64 {
 
 		dual_parameter_encodings[_MOVUPS] = [
 			# movups x, m128
+			InstructionEncoding(0x100F, 0, ENCODING_ROUTE_RM, false, ENCODING_FILTER_TYPE_REGISTER, 0, 16, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 16),
+
+			# movups m128, x
+			InstructionEncoding(0x110F, 0, ENCODING_ROUTE_MR, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 16, ENCODING_FILTER_TYPE_REGISTER, 0, 16),
+
+			# movups x, m128
 			InstructionEncoding(0x100F, 0, ENCODING_ROUTE_RM, false, ENCODING_FILTER_TYPE_REGISTER, 0, 8, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 16),
 
 			# movups m128, x
@@ -1180,6 +1191,14 @@ namespace x64 {
 
 			# xorpd x, m128
 			InstructionEncoding(0x570F, 0, ENCODING_ROUTE_RM, false, ENCODING_FILTER_TYPE_MEDIA_REGISTER, 0, 8, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 16, 0x66),
+		]
+
+		dual_parameter_encodings[_XADD] = [
+			# xadd m64, r64 | xadd m32, r32 | xadd m16, r16 | xadd m8, r8
+			InstructionEncoding(0xC00F, 0, ENCODING_ROUTE_MR, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 1, ENCODING_FILTER_TYPE_REGISTER, 0, 1),
+			InstructionEncoding(0xC10F, 0, ENCODING_ROUTE_MR, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 2, ENCODING_FILTER_TYPE_REGISTER, 0, 2, instruction_encoder.OPERAND_SIZE_OVERRIDE),
+			InstructionEncoding(0xC10F, 0, ENCODING_ROUTE_MR, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 4, ENCODING_FILTER_TYPE_REGISTER, 0, 4),
+			InstructionEncoding(0xC10F, 0, ENCODING_ROUTE_MR, true, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 8, ENCODING_FILTER_TYPE_REGISTER, 0, 8),
 		]
 
 		triple_parameter_encodings[_IMUL] = [

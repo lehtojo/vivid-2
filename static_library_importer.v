@@ -58,7 +58,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		register_file(file.tokens, file)
 
 		# Parse all the tokens
-		root = ScopeNode(context, none as Position, none as Position)
+		root = ScopeNode(context, none as Position, none as Position, false)
 
 		parser.parse(root, context, file.tokens)
 		

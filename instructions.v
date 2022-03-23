@@ -138,7 +138,7 @@ DualParameterInstruction MultiplicationInstruction {
 
 		if multiplication != none and multiplication.multiplier > 0 {
 			if not assigns and common.is_power_of_two(multiplication.multiplier) and multiplication.multiplier <= platform.x64.EVALUATE_MAX_MULTIPLIER and not first.is_deactivating {
-				memory.get_result_register_for(unit, result, false)
+				memory.get_result_register_for(unit, result, unsigned, false)
 
 				operand = memory.load_operand(unit, multiplication.multiplicand, false, assigns)
 
@@ -149,7 +149,7 @@ DualParameterInstruction MultiplicationInstruction {
 				# lea rax, [rcx*4]
 
 				calculation = ExpressionHandle(operand, multiplication.multiplier, none as Result, 0)
-				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
+				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
 			}
 
 			if common.is_power_of_two(multiplication.multiplier) {
@@ -168,7 +168,7 @@ DualParameterInstruction MultiplicationInstruction {
 
 				if assigns { destination = operand }
 				else {
-					memory.get_result_register_for(unit, result, false)
+					memory.get_result_register_for(unit, result, unsigned, false)
 					destination = result
 				}
 
@@ -178,7 +178,7 @@ DualParameterInstruction MultiplicationInstruction {
 
 				if assigns { flags_first = flags_first | FLAG_NO_ATTACH }
 
-				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(destination, flags_first, HANDLE_REGISTER), InstructionParameter(Result(expression, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
+				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(destination, flags_first, HANDLE_REGISTER), InstructionParameter(Result(expression, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
 			}
 		}
 
@@ -353,7 +353,11 @@ MOVE_RELOCATE = 3 # Summary: The source value is loaded to the destination attac
 
 DualParameterInstruction MoveInstruction {
 	type: large
-	is_safe: bool = false
+
+	# Summary:
+	# Stores whether the destination operand is protected from modification.
+	# If set to true and the destination contains an active value, the destination will be cleared before modification.
+	is_destination_protected: bool = false
 
 	init(unit: Unit, first: Result, second: Result) {
 		DualParameterInstruction.init(unit, first, second, SYSTEM_FORMAT, INSTRUCTION_MOVE)
@@ -361,6 +365,9 @@ DualParameterInstruction MoveInstruction {
 		this.is_usage_analyzed = false
 	}
 
+	# Summary:
+	# Determines whether the move is considered to be redundant.
+	# If the destination and source operands are the same, the move is considered redundant.
 	is_redundant() {
 		if not first.value.equals(second.value) => false
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL => first.format == second.format
@@ -480,7 +487,7 @@ DualParameterInstruction MoveInstruction {
 				if is_source_constant {
 					# Convert the decimal value to integer format
 					second.value.(ConstantHandle).convert(first.format)
-					second.format = SYSTEM_FORMAT
+					second.format = SYSTEM_SIGNED
 
 					# Example: mov [...], c
 					=> build(platform.shared.MOVE, 0,
@@ -562,7 +569,7 @@ DualParameterInstruction MoveInstruction {
 				offset = first.value.(DataSectionHandle).offset
 
 				address = Result()
-				memory.get_register_for(unit, address, false)
+				memory.get_register_for(unit, address, true, false)
 
 				# Example:
 				# mov rax, [rip+x@GOTPCREL]
@@ -614,7 +621,7 @@ DualParameterInstruction MoveInstruction {
 		if is_redundant return
 
 		# Ensure the destination is available, if it is a register and the safe flag is enabled
-		if is_safe and first.is_any_register memory.clear_register(unit, first.register)
+		if is_destination_protected and first.is_any_register memory.clear_register(unit, first.register)
 
 		# If the source is empty, no actual instruction is needed, but relocating the source might be needed
 		if second.is_empty {
@@ -633,7 +640,7 @@ DualParameterInstruction MoveInstruction {
 		flags_first = FLAG_DESTINATION
 		flags_second = FLAG_NONE
 
-		if not is_safe { flags_first = flags_first | FLAG_WRITE_ACCESS }
+		if not is_destination_protected { flags_first = flags_first | FLAG_WRITE_ACCESS }
 
 		if type == MOVE_LOAD { flags_first = flags_first | FLAG_ATTACH_TO_DESTINATION }
 		else type == MOVE_RELOCATE { flags_second = flags_second | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
@@ -674,7 +681,7 @@ DualParameterInstruction MoveInstruction {
 		}
 
 		# NOTE: Now the size of source operand must be less than the size of destination operand
-		if source.value.unsigned {
+		if destination.value.unsigned {
 			if destination.value.size == 8 and source.value.size == 4 {
 				# Example: mov eax, ebx (64 <- 32)
 				# In 64-bit mode if you move data from 32-bit register to another 32-bit register it zeroes out the high half of the destination 64-bit register
@@ -720,11 +727,10 @@ Instruction GetConstantInstruction {
 	value: large
 	format: large
 
-	init(unit: Unit, value: large, is_decimal: bool) {
+	init(unit: Unit, value: large, is_unsigned: bool, is_decimal: bool) {
 		Instruction.init(unit, INSTRUCTION_GET_CONSTANT)
 		
 		this.value = value
-		this.format = SYSTEM_FORMAT
 		this.is_abstract = true
 
 		if is_decimal {
@@ -732,6 +738,7 @@ Instruction GetConstantInstruction {
 			this.description = String('Load constant ') + to_string(bits_to_decimal(value))
 		}
 		else {
+			this.format = get_system_format(is_unsigned)
 			this.description = String('Load constant ') + to_string(value)
 		}
 
@@ -996,7 +1003,7 @@ Instruction CallInstruction {
 		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
 
 		if return_type != none {
-			this.result.format = return_type.get_register_format()
+			this.result.format = return_type.format
 		}
 		else {
 			this.result.format = SYSTEM_FORMAT
@@ -1019,7 +1026,7 @@ Instruction CallInstruction {
 		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
 
 		if return_type != none {
-			this.result.format = return_type.get_register_format()
+			this.result.format = return_type.format
 		}
 		else {
 			this.result.format = SYSTEM_FORMAT
@@ -1128,7 +1135,7 @@ Instruction CallInstruction {
 			}
 
 			# Ensure the function handle is in the correct format
-			if function.format != SYSTEM_FORMAT {
+			if function.size != SYSTEM_BYTES {
 				loop register in locked { register.unlock() }
 
 				memory.move_to_register(unit, function, SYSTEM_BYTES, false, trace.for(unit, function))
@@ -1139,7 +1146,7 @@ Instruction CallInstruction {
 			unit.add(EvacuateInstruction(unit))
 
 			# If the format of the function handle changes, it means its format is registered incorrectly somewhere
-			if function.format != SYSTEM_FORMAT abort('Invalid function handle format')
+			if function.size != SYSTEM_BYTES abort('Invalid function handle format')
 
 			build(platform.x64.CALL, 0, InstructionParameter(function, FLAG_BIT_LIMIT_64 | FLAG_ALLOW_ADDRESS, HANDLE_REGISTER | HANDLE_MEMORY))
 		}
@@ -1278,7 +1285,7 @@ Instruction ReorderInstruction {
 	}
 
 	override on_build() {
-		if return_type != none evacuate_overflow_zone(return_type)
+		if return_type != none and return_type.is_pack evacuate_overflow_zone(return_type)
 
 		instructions = List<MoveInstruction>()
 
@@ -1287,7 +1294,7 @@ Instruction ReorderInstruction {
 			destination = Result(destinations[i], formats[i])
 
 			instruction = MoveInstruction(unit, destination, source)
-			instruction.is_safe = true
+			instruction.is_destination_protected = true
 			instructions.add(instruction)
 		}
 
@@ -1379,7 +1386,7 @@ Instruction EvacuateInstruction {
 				continue
 			}
 
-			instruction = MoveInstruction(unit, Result(destination, register.format), register.value)
+			instruction = MoveInstruction(unit, Result(destination, register.value.format), register.value)
 			instruction.description = String('Evacuates a value')
 			instruction.type = MOVE_RELOCATE
 
@@ -1437,6 +1444,43 @@ Instruction GetObjectPointerInstruction {
 		=> position
 	}
 
+	output_pack(disposable_pack: DisposablePackHandle, position: large) {
+		loop iterator in disposable_pack.members {
+			member = iterator.key
+			value = iterator.value
+
+			if member.type.is_pack {
+				# Output the members of the nested pack using this function recursively
+				position = output_pack(value.value as DisposablePackHandle, position)
+				continue
+			}
+
+			# Update the format of the pack member
+			value.format = member.type.format
+
+			if mode == ACCESS_WRITE {
+				# Since we are in write mode, we need to output a memory address for the pack member
+				value.value = MemoryHandle(unit, start, offset + position)
+			}
+			else {
+				# 1. Ensure we are in build mode, so we can use registers
+				# 2. Ensure the pack member is used, so we do not move it to a register unnecessarily
+				if unit.mode == UNIT_MODE_BUILD and not value.is_deactivating {
+					# Since we are in build mode and the member is required, we need to output a register value
+					value.value = MemoryHandle(unit, start, offset + position)
+					memory.move_to_register(unit, value, to_size(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+				}
+				else {
+					value.value = Handle()
+				}
+			}
+
+			position += member.type.allocation_size
+		}
+
+		=> position
+	}
+
 	validate_handle() {
 		# Ensure the start value is a constant or in a register
 		if not start.is_constant and not start.is_stack_allocation and not start.is_standard_register {
@@ -1460,7 +1504,7 @@ Instruction GetObjectPointerInstruction {
 			return
 		}
 
-		if not trace.is_loading_required(unit, result) {
+		if mode != ACCESS_READ and not trace.is_loading_required(unit, result) {
 			result.value = MemoryHandle(unit, start, offset)
 			result.format = variable.type.format
 			return
@@ -1521,12 +1565,31 @@ Instruction GetMemoryAddressInstruction {
 			value = iterator.value
 
 			if member.type.is_pack {
+				# Output the members of the nested pack using this function recursively
 				position = output_pack(value.value as DisposablePackHandle, position)
 				continue
 			}
 
-			value.value = ComplexMemoryHandle(start, offset, stride, position)
+			# Update the format of the pack member
 			value.format = member.type.format
+
+			if mode == ACCESS_WRITE {
+				# Since we are in write mode, we need to output a memory address for the pack member
+				value.value = ComplexMemoryHandle(start, offset, stride, position)
+			}
+			else {
+				# 1. Ensure we are in build mode, so we can use registers
+				# 2. Ensure the pack member is used, so we do not move it to a register unnecessarily
+				if unit.mode == UNIT_MODE_BUILD and not value.is_deactivating {
+					# Since we are in build mode and the member is required, we need to output a register value
+					value.value = ComplexMemoryHandle(start, offset, stride, position)
+					memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+				}
+				else {
+					value.value = Handle()
+				}
+			}
+
 			position += member.type.allocation_size
 		}
 
@@ -1549,7 +1612,8 @@ Instruction GetMemoryAddressInstruction {
 			return
 		}
 
-		if not trace.is_loading_required(unit, result) {
+		#warning Improve this
+		if mode != ACCESS_READ and not trace.is_loading_required(unit, result) {
 			result.value = ComplexMemoryHandle(start, offset, stride, 0)
 			result.format = format
 			return
@@ -1688,6 +1752,9 @@ Instruction MergeScopeInstruction {
 		moves = List<MoveInstruction>()
 
 		loop variable in container.actives {
+			# Packs variables are not merged, their members are instead
+			if variable.type.is_pack continue
+
 			source: Result = unit.get_variable_value(variable, true)
 			if source == none { source = get_variable_stack_handle(variable, ACCESS_READ) }
 
@@ -1702,7 +1769,7 @@ Instruction MergeScopeInstruction {
 			if destination.value.equals(source.value) and to_bytes(destination.format) <= to_bytes(source.format) { source = destination }
 
 			instruction = MoveInstruction(unit, destination, source)
-			instruction.is_safe = true
+			instruction.is_destination_protected = true
 			instruction.description = String('Relocates the source value to merge the current scope with the outer scope')
 			instruction.type = MOVE_RELOCATE
 
@@ -1828,19 +1895,19 @@ DualParameterInstruction DivisionInstruction {
 			remainder.unlock()
 
 			if assigns and not first.is_memory_address {
-				instruction = MoveInstruction(unit, Result(destination, SYSTEM_FORMAT), first)
+				instruction = MoveInstruction(unit, Result(destination, get_system_format(unsigned)), first)
 				instruction.type = MOVE_RELOCATE
 				unit.add(instruction)
 				=> first
 			}
 
-			instruction = MoveInstruction(unit, Result(destination, SYSTEM_FORMAT), first)
+			instruction = MoveInstruction(unit, Result(destination, get_system_format(unsigned)), first)
 			instruction.type = MOVE_COPY
 			=> instruction.add()
 		}
 		else not assigns {
 			if not first.is_deactivating memory.clear_register(unit, destination.register)
-			=> Result(destination, SYSTEM_FORMAT)
+			=> Result(destination, get_system_format(unsigned))
 		}
 
 		=> first
@@ -1879,7 +1946,7 @@ DualParameterInstruction DivisionInstruction {
 			platform.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
 			InstructionParameter(numerator, flags, HANDLE_REGISTER),
 			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
-			InstructionParameter(Result(remainder, SYSTEM_FORMAT), flags | FLAG_DESTINATION, HANDLE_REGISTER)
+			InstructionParameter(Result(remainder, get_system_format(unsigned)), flags | FLAG_DESTINATION, HANDLE_REGISTER)
 		)
 	}
 
@@ -1893,7 +1960,7 @@ DualParameterInstruction DivisionInstruction {
 		build(platform.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
 			InstructionParameter(numerator, flags, HANDLE_REGISTER),
 			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
-			InstructionParameter(Result(remainder, SYSTEM_FORMAT), FLAG_HIDDEN | FLAG_LOCKED | FLAG_WRITES, HANDLE_REGISTER)
+			InstructionParameter(Result(remainder, get_system_format(unsigned)), FLAG_HIDDEN | FLAG_LOCKED | FLAG_WRITES, HANDLE_REGISTER)
 		)
 	}
 
@@ -2169,22 +2236,22 @@ Instruction AddDebugPositionInstruction {
 # This instruction works on all architectures
 Instruction ConvertInstruction {
 	number: Result
-	integer: bool
+	format: large
 
-	init(unit: Unit, number: Result, integer: bool) {
+	init(unit: Unit, number: Result, format: large) {
 		Instruction.init(unit, INSTRUCTION_CONVERT)
 		this.number = number
-		this.integer = integer
+		this.format = format
 		this.dependencies.add(number)
 		this.is_abstract = true
 		this.description = String('Converts the specified number into the specified format')
 
-		if integer { this.result.format = SYSTEM_FORMAT }
-		else { this.result.format = FORMAT_DECIMAL }
+		if format == FORMAT_DECIMAL { this.result.format = FORMAT_DECIMAL }
+		else { this.result.format = get_system_format(format) }
 	}
 
 	override on_build() {
-		memory.get_register_for(unit, result, not integer)
+		memory.get_register_for(unit, result, is_unsigned(format), format == FORMAT_DECIMAL)
 
 		instruction = MoveInstruction(unit, result, number)
 		instruction.type = MOVE_LOAD

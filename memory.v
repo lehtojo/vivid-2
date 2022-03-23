@@ -148,7 +148,7 @@ clear_register(unit: Unit, target: Register) {
 
 	destination = RegisterHandle(register)
 
-	instruction = MoveInstruction(unit, Result(destination, register.format), target.value)
+	instruction = MoveInstruction(unit, Result(destination, target.value.format), target.value)
 	instruction.type = MOVE_RELOCATE
 	instruction.description = String('Relocates the source value so that the register is cleared for another purpose')
 
@@ -163,7 +163,7 @@ zero(unit: Unit, register: Register) {
 
 	handle = RegisterHandle(register)
 
-	instruction = BitwiseInstruction.create_xor(unit, Result(handle, register.format), Result(handle, register.format), register.format, false)
+	instruction = BitwiseInstruction.create_xor(unit, Result(handle, SYSTEM_FORMAT), Result(handle, SYSTEM_FORMAT), SYSTEM_FORMAT, false)
 	instruction.description = String('Sets the value of the destination to zero')
 
 	unit.add(instruction)
@@ -172,7 +172,7 @@ zero(unit: Unit, register: Register) {
 # Summary: Copies the specified result to a register
 copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
 	format = FORMAT_DECIMAL
-	if not media_register { format = to_format(size) }
+	if not media_register { format = to_format(size, is_unsigned(result.format)) }
 
 	if result.is_any_register {
 		source = result.register
@@ -203,7 +203,7 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 	}
 
 	format = FORMAT_DECIMAL
-	if not media_register { format = to_format(size) }
+	if not media_register { format = to_format(size, is_unsigned(result.format)) }
 
 	register = get_next_register(unit, media_register, directives, false)
 	destination = Result(RegisterHandle(register), format)
@@ -298,7 +298,7 @@ get_next_register_without_releasing(unit: Unit, media_register: bool, directives
 }
 
 # Summary: Moves the specified result to an available register
-get_register_for(unit: Unit, result: Result, media_register: bool) {
+get_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool) {
 	register = get_next_register(unit, media_register, trace.for(unit, result), false)
 
 	register.value = result
@@ -306,11 +306,11 @@ get_register_for(unit: Unit, result: Result, media_register: bool) {
 	result.value = RegisterHandle(register)
 	
 	if media_register { result.format = FORMAT_DECIMAL }
-	else { result.format = SYSTEM_FORMAT }
+	else { result.format = get_system_format(unsigned) }
 }
 
 # Summary: Moves the specified result to an available register
-get_result_register_for(unit: Unit, result: Result, media_register: bool) {
+get_result_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool) {
 	register = get_next_register(unit, media_register, trace.for(unit, result), true)
 
 	register.value = result
@@ -318,7 +318,7 @@ get_result_register_for(unit: Unit, result: Result, media_register: bool) {
 	result.value = RegisterHandle(register)
 	
 	if media_register { result.format = FORMAT_DECIMAL }
-	else { result.format = SYSTEM_FORMAT }
+	else { result.format = get_system_format(unsigned) }
 }
 
 try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool, directives: List<Directive>) {
@@ -327,7 +327,7 @@ try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool,
 
 		# If the result is empty, a new available register can be assigned to it
 		if result.is_empty {
-			get_register_for(unit, result, is_media_register)
+			get_register_for(unit, result, is_unsigned(result.format), is_media_register)
 			=> result
 		}
 
@@ -388,7 +388,7 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 	destination = none as Result
 	format = FORMAT_DECIMAL
 
-	if result.format != FORMAT_DECIMAL { format = to_format(size) }
+	if result.format != FORMAT_DECIMAL { format = to_format(size, is_unsigned(result.format)) }
 
 	if result.is_media_register => result
 	else result.is_constant {

@@ -159,12 +159,12 @@ DataEncoderModule DebugLineEncoderModule {
 		write(0) # DEBUG_LINE_OPERATION_SET_PROLOGUE_BEGIN
 		write(1) # DEBUG_LINE_OPERATION_SET_ISA
 
-		folder = path.folder(file)
+		folder = io.path.folder(file)
 		if folder != none add_folder(folder)
 
 		write(0) # Indicate that now begins the last (only the compilation folder is added) included folder
 
-		add_file(path.basename(file), 1)
+		add_file(io.path.basename(file), 1)
 
 		write(0) # End of included files
 

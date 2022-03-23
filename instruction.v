@@ -63,6 +63,18 @@ FLAG_READS = 2048
 FLAG_ALLOW_ADDRESS = 4096
 FLAG_LOCKED = 8192
 
+# Summary: Returns the largest format with the specified sign
+get_system_format(unsigned: bool) {
+	if unsigned => SYSTEM_FORMAT
+	=> SYSTEM_SIGNED
+}
+
+# Summary: Returns the largest format with the specified sign
+get_system_format(format: large) {
+	if (format & 1) != 0 => SYSTEM_FORMAT
+	=> SYSTEM_SIGNED
+}
+
 create_bit_limit_flag(bits) => FLAG_BIT_LIMIT | (bits <| 24)
 get_bit_limit_from_flags(bits) => bits |> 24
 
@@ -376,7 +388,7 @@ Instruction {
 			parameter.result = converted
 			parameter.value = converted.value.finalize()
 			
-			if format == FORMAT_DECIMAL { parameter.value.format = format }
+			if format == FORMAT_DECIMAL { parameter.value.format = FORMAT_DECIMAL }
 			else { parameter.value.format = to_format(parameter.size, is_unsigned(format)) }
 		}
 
@@ -498,12 +510,14 @@ Instruction {
 Instruction DualParameterInstruction {
 	first: Result
 	second: Result
+	unsigned: bool
 
 	init(unit: Unit, first: Result, second: Result, format: large, type: large) {
 		Instruction.init(unit, type)
 
 		this.first = first
 		this.second = second
+		this.unsigned = is_unsigned(format)
 		this.result.format = format
 
 		this.dependencies = List<Result>(3, false)

@@ -1,5 +1,3 @@
-BUNDLE_PARSE = 'parse'
-
 ParserState {
 	all: List<Token>
 	tokens: List<Token>
@@ -91,6 +89,7 @@ Pattern {
 	path: List<small> = List<small>()
 	priority: tiny
 	id: large
+	is_consumable: bool = true
 
 	virtual passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny): bool
 	virtual build(context: Context, state: ParserState, tokens: List<Token>): Node
@@ -241,14 +240,17 @@ next(context: Context, tokens: List<Token>, priority: normal, start: large, stat
 }
 
 # Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
-next(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState, disabled: large) {
+next_consumable(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState, disabled: large) {
 	all = patterns[priority]
 
 	loop (start < tokens.size, start++) {
 		# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
 		loop (i = 0, i < all.size, i++) {
 			pattern = all[i]
-			if (disabled & pattern.id) != 0 continue
+
+			# Ensure the pattern is consumable and is not disabled
+			if not pattern.is_consumable or (disabled & pattern.id) != 0 continue
+
 			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) => true
 		}
 	}
@@ -337,7 +339,7 @@ create_root_context(identity: String) {
 
 # Summary: Creates the root node, which might contain some default initializations
 create_root_node(context: Context) {
-	root = ScopeNode(context, none as Position, none as Position)
+	root = ScopeNode(context, none as Position, none as Position, false)
 
 	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 	negative_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(NEGATIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
@@ -416,8 +418,10 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 		function.get(types)
 	}
 
+	all_types = common.get_all_types(context)
+
 	# Implement all virtual function overloads
-	loop type in common.get_all_types(context) {
+	loop type in all_types {
 		# Find all virtual functions
 		virtual_functions = type.get_all_virtual_functions()
 
@@ -459,16 +463,45 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 			}
 		}
 	}
+
+	# Ensure all default constructors are implemented, because otherwise uncalled default constructors might be added after resolving and they might bypass reconstruction
+	loop type in all_types {
+		type.constructors.get_implementation(List<Type>())
+	}
 }
 
-parse(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_FILES)) as Optional<List<SourceFile>> has files) => Status('Nothing to parse')
+# Summary: Goes through all the specified types and ensures all their supertypes are resolved
+validate_supertypes(types: List<Type>) {
+	loop type in types {
+		resolver.resolve_supertypes(type.parent, type)
+		if type.supertypes.all(i -> i.is_resolved) continue
+
+		=> Status(String('Could not resolve supertypes for type ') + type.name)
+	}
+
+	=> Status()
+}
+
+# Summary:
+# Validates the shell of the context.
+# Shell means all the types, functions and variables, but not the code.
+validate_shell(context: Context) {
+	types = common.get_all_types(context)
+
+	result = validate_supertypes(types)
+	if result.problematic => result
+
+	=> Status()
+}
+
+parse() {
+	files = settings.source_files
 
 	loop (i = 0, i < files.size, i++) {
 		file = files[i]
 
 		context = create_root_context(i + 1)
-		root = ScopeNode(context, none as Position, none as Position)
+		root = ScopeNode(context, none as Position, none as Position, false)
 
 		result = parse(root, context, file.tokens)
 
@@ -490,8 +523,8 @@ parse(bundle: Bundle) {
 	context = create_root_context(0)
 	root = create_root_node(context)
 
-	libraries = bundle.get_object(String(BUNDLE_LIBRARIES), List<String>() as link) as List<String>
-	object_files = bundle.get_object(String(BUNDLE_IMPORTED_OBJECTS), Map<SourceFile, BinaryObjectFile>() as link) as Map<SourceFile, BinaryObjectFile>
+	libraries = settings.libraries
+	object_files = settings.object_files
 
 	loop library in libraries {
 		if library.ends_with('.lib') or library.ends_with('.a') {
@@ -513,17 +546,21 @@ parse(bundle: Bundle) {
 	# Applies all extension function
 	apply_extension_functions(context, root)
 
+	# Validate the shell before proceeding
+	result = validate_shell(context)
+	if result.problematic => result
+
 	# Ensure exported and virtual functions are implemented
 	implement_functions(context, none as SourceFile, false)
 
-	if bundle.get_integer(String(BUNDLE_OUTPUT_TYPE), BINARY_TYPE_EXECUTABLE) != BINARY_TYPE_STATIC_LIBRARY {
+	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY {
 		function = context.get_function(String('init'))
 		if function == none => Status('Can not find the entry function \'init()\'')
 
-		function.overloads[0].implement(List<Type>())
+		function.overloads[0].get(List<Type>())
 	}
 
-	bundle.put(String(BUNDLE_PARSE), Parse(context, root as Node) as link)
+	settings.parse = Parse(context, root as Node)
 	=> Status()
 }
 
@@ -540,7 +577,7 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
 		# Static variables must be accessed using their parent types
 		if variable.is_static and not linked => LinkNode(TypeNode(variable.parent as Type, position), VariableNode(variable, position), position)
 
-		if variable.is_member and not linked {
+		if variable.is_member and not variable.is_static and not variable.is_constant and not linked {
 			self = common.get_self_pointer(context, position)
 
 			=> LinkNode(self, VariableNode(variable, position), position)

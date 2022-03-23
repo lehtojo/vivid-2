@@ -1,4 +1,5 @@
 SYSTEM_FORMAT = 17 # FORMAT_UINT64
+SYSTEM_SIGNED = 16 # FORMAT_INT64
 SYSTEM_BITS = 64
 SYSTEM_BYTES = 8
 
@@ -17,6 +18,19 @@ is_verbose_output_enabled: bool
 is_target_windows: bool
 use_indirect_access_tables: bool
 is_assembly_output_enabled: bool
+parse: Parse
+object_files: Map<SourceFile, BinaryObjectFile> # Stores all imported objects (compiler and user)
+user_imported_object_files: List<String> # Stores the object files added by the user
+source_files: List<SourceFile> # Stores compiler generated information about the source files specified by the user
+libraries: List<String> # Stores the libraries needed to link the program
+output_name: String # Stores the name of the output file
+output_type: normal # Stores the output type of the program (executable, library, etc.)
+link_objects: bool # Whether to link the object files produced by the compiler (relevant only in textual assembly mode)
+time: bool # Whether to print the time taken to execute various parts of the compiler.
+rebuild: bool # Whether to rebuild all the specified source files
+service: bool # Whether to start a compiler service for code completion
+filenames: List<String> # Stores the user-defined source files to load
+textual_assembly: bool # Stores whether textual assembly mode is enabled
 
 allocation_function: FunctionImplementation
 deallocation_function: FunctionImplementation
@@ -40,5 +54,18 @@ initialize() {
 	is_target_windows = true
 	use_indirect_access_tables = false
 	is_assembly_output_enabled = false
+	parse = none as Parse
+	object_files = Map<SourceFile, BinaryObjectFile>()
+	user_imported_object_files = List<String>()
+	source_files = List<SourceFile>()
+	libraries = List<String>()
+	output_name = String('v')
+	output_type = BINARY_TYPE_EXECUTABLE
+	link_objects = false
+	time = false
+	rebuild = false
+	service = false
+	filenames = List<String>()
+	textual_assembly = false
 	included_folders = List<String>()
 }

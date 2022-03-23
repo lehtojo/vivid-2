@@ -194,12 +194,6 @@ Instruction CacheVariablesInstruction {
 				usages.remove_at(i)
 				continue
 			}
-
-			# If the variable is not used after the roots, there is no need to load it now, if it is not a memory address
-			if not analysis.is_used_later(usage.variable, roots[0], true) and not usage.result.is_memory_address {
-				usages.remove_at(i)
-				continue
-			}
 		}
 
 		# Removed linked variables since they will be handled by the branching system

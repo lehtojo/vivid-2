@@ -2,11 +2,25 @@ namespace analysis
 
 # Summary: Loads all variable usages from the specified function
 load_variable_usages(implementation: FunctionImplementation) {
-	# Reset all local variables
+	# Reset all parameters and locals
+	loop parameter in implementation.parameters {
+		parameter.usages.clear()
+		parameter.writes.clear()
+		parameter.reads.clear()
+	}
+
 	loop local in implementation.locals {
 		local.usages.clear()
 		local.writes.clear()
 		local.reads.clear()
+	}
+
+	self = implementation.self
+
+	if self != none {
+		self.usages.clear()
+		self.writes.clear()
+		self.reads.clear()
 	}
 
 	usages = implementation.node.find_all(NODE_VARIABLE)
@@ -130,13 +144,112 @@ apply_constants(root: Node) {
 	}
 }
 
-analyze(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to analyze')
+# Summary: Processes static variables
+configure_static_variables(context: Context) {
+	types = common.get_all_types(context)
 
-	context = parse.context
+	loop type in types {
+		loop iterator in type.variables {
+			variable = iterator.value
+
+			# Static variables should be treated like global variables
+			if variable.is_static { variable.category = VARIABLE_CATEGORY_GLOBAL }
+		}
+	}
+}
+
+# Summary: Resets all variable usages in the specified context
+reset_variable_usages(context: Context) {
+	loop implementation in common.get_all_function_implementations(context) {
+		loop variable in implementation.parameters {
+			variable.usages.clear()
+			variable.writes.clear()
+			variable.reads.clear()
+		}
+
+		loop variable in implementation.locals {
+			variable.usages.clear()
+			variable.writes.clear()
+			variable.reads.clear()
+		}
+
+		self = implementation.self
+
+		if self != none {
+			self.usages.clear()
+			self.writes.clear()
+			self.reads.clear()
+		}
+	}
+
+	loop type in common.get_all_types(context) {
+		loop iterator in type.variables {
+			variable = iterator.value
+			variable.usages.clear()
+			variable.writes.clear()
+			variable.reads.clear()
+		}
+	}
+
+	loop iterator in context.variables {
+		variable = iterator.value
+		variable.usages.clear()
+		variable.writes.clear()
+		variable.reads.clear()
+	}
+}
+
+# Summary: Load all variable usages in the specified context
+load_variable_usages(context: Context, root: Node) {
+	implementations = common.get_all_function_implementations(context)
+	usages = root.find_all(NODE_VARIABLE)
+
+	loop usage in usages {
+		usage.(VariableNode).variable.usages.add(usage)
+	}
+
+	# Load all usages
+	loop implementation in implementations {
+		usages = implementation.node.find_all(NODE_VARIABLE)
+
+		loop usage in usages {
+			usage.(VariableNode).variable.usages.add(usage)
+		}
+	}
+
+	# Classify the loaded usages
+	loop implementation in implementations {
+		loop variable in implementation.parameters {
+			classify_variable_usages(variable)
+		}
+
+		loop variable in implementation.locals {
+			classify_variable_usages(variable)
+		}
+
+		if implementation.self != none {
+			classify_variable_usages(implementation.self)
+		}
+	}
+
+	loop type in common.get_all_types(context) {
+		loop iterator in type.variables {
+			variable = iterator.value
+			classify_variable_usages(variable)
+		}
+	}
+}
+
+analyze() {
+	root = settings.parse.root
+	context = settings.parse.context
+
+	reset_variable_usages(context)
+	load_variable_usages(context, root)
 	apply_constants(context)
 
 	implementations = common.get_all_function_implementations(context)
+
 	#resolver.debug_print(context)
 
 	loop (i = 0, i < implementations.size, i++) {
@@ -155,6 +268,8 @@ analyze(bundle: Bundle) {
 	}
 
 	#resolver.debug_print(context)
+
+	configure_static_variables(context)
 }
 
 # Summary: Finds the branch which contains the specified node
@@ -184,6 +299,7 @@ is_inside_branch_condition(perspective: Node, branch: Node) {
 		=> perspective == branch.(ElseIfNode).condition_container or perspective.is_under(branch.(ElseIfNode).condition_container)
 	}
 	else branch.instance == NODE_LOOP {
+		if branch.(LoopNode).is_forever_loop => false
 		=> perspective == branch.(LoopNode).condition_container or perspective.is_under(branch.(LoopNode).condition_container) 
 	}
 

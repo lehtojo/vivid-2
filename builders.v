@@ -96,15 +96,15 @@ build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 # Summary: Builds a left shift operation which can not assign
 build_shift_left(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
-	right = references.get(unit, shift.first, ACCESS_READ)
-	=> BitwiseInstruction.create_shift_left(unit, left, right, SYSTEM_FORMAT).add()
+	right = references.get(unit, shift.last, ACCESS_READ)
+	=> BitwiseInstruction.create_shift_left(unit, left, right, shift.get_type().format).add()
 }
 
 # Summary: Builds a right shift operation which can not assign
 build_shift_right(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
-	right = references.get(unit, shift.first, ACCESS_READ)
-	=> BitwiseInstruction.create_shift_right(unit, left, right, SYSTEM_FORMAT).add()
+	right = references.get(unit, shift.last, ACCESS_READ)
+	=> BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format).add()
 }
 
 # Summary: Builds a not operation which can not assign and work with booleans as well
@@ -193,7 +193,7 @@ build_pack(unit: Unit, node: PackNode) {
 
 # Summary:
 # Returns the specified pack by using the registers used when passing packs in parameters
-return_pack(unit: Unit, value: Result) {
+return_pack(unit: Unit, value: Result, type: Type) {
 	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 
@@ -205,7 +205,7 @@ return_pack(unit: Unit, value: Result) {
 	if settings.is_x64 { offset = SYSTEM_BYTES }
 
 	position = StackMemoryHandle(unit, offset, true)
-	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, SYSTEM_FORMAT)
+	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, SYSTEM_FORMAT)
 
 	unit.add(ReorderInstruction(unit, destinations, sources, unit.function.return_type))
 }
@@ -218,7 +218,7 @@ build_return(unit: Unit, node: ReturnNode) {
 		to = unit.function.return_type
 		value = casts.cast(unit, value, from, to)
 
-		if to.is_pack return_pack(unit, value)
+		if to.is_pack return_pack(unit, value, to)
 		=> ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
 
@@ -248,7 +248,7 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 		# Link nodes can also access static variables for example
 		if member.is_global => references.get_variable(unit, member, mode)
 
-		left = references.get(unit, node.first, ACCESS_READ) as Result
+		left = references.get(unit, node.first, mode) as Result
 
 		# Packs:
 		if left.value.instance == INSTANCE_DISPOSABLE_PACK => left.value.(DisposablePackHandle).members[member]
@@ -263,12 +263,12 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 }
 
 build_accessor(unit: Unit, node: AccessorNode, mode: large) {
-	start = references.get(unit, node.first, ACCESS_READ) as Result
+	start = references.get(unit, node.first, mode) as Result
 	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
 	stride = node.get_stride()
 
 	# The memory address of the accessor must be created is multiple steps, if the stride is too large and it can not be combined with the offset
-	if stride >= platform.x64.EVALUATE_MAX_MULTIPLIER and offset.value.type != HANDLE_CONSTANT {
+	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER {
 		# Pattern:
 		# index = offset * stride
 		# => [start + index]

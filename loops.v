@@ -69,6 +69,7 @@ build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction
 	unit.add_debug_position(statement.body.end)
 	unit.add(MergeScopeInstruction(unit, scope))
 
+	scope.exit()
 	=> result
 }
 

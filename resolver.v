@@ -1,8 +1,8 @@
 namespace resolver
 
 get_shared_type(expected: Type, actual: Type) {
-	if expected == actual => expected
 	if expected == none or actual == none => none as Type
+	if expected == actual or expected.match(actual) => expected
 
 	if expected.is_number and actual.is_number {
 		bits = max(expected.reference_size * 8, actual.reference_size * 8)
@@ -14,8 +14,8 @@ get_shared_type(expected: Type, actual: Type) {
 	expected_all_types = expected.get_all_supertypes()
 	actual_all_types = actual.get_all_supertypes()
 
-	expected_all_types.add(expected)
-	actual_all_types.add(actual)
+	expected_all_types.insert(0, expected)
+	actual_all_types.insert(0, actual)
 
 	loop type in expected_all_types {
 		if actual_all_types.contains(type) => type
@@ -78,7 +78,11 @@ resolve(context: Context, node: Node) {
 resolve_tree(context: Context, node: Node) {
 	# If the node is unresolved, try to resolve it
 	if node.is_resolvable => node.resolve(context)
-	loop child in node { resolve(context, child) }
+
+	loop child in node {
+		resolve(context, child)
+	}
+
 	=> none as Node
 }
 
@@ -234,6 +238,23 @@ resolve_virtual_functions(type: Type) {
 	}
 }
 
+# Summary: Tries to resolve supertypes which were not found previously
+resolve_supertypes(context: Context, type: Type) {
+	loop (i = type.supertypes.size - 1, i >= 0, i--) {
+		supertype = type.supertypes[i]
+		if supertype.is_resolved continue
+
+		# Try to resolve the supertype
+		resolved = resolve(context, supertype)
+
+		# Skip the supertype if it could not be resolved or if it is not allowed to be inherited
+		if resolved as link == none or not type.is_inheriting_allowed(resolved) continue
+
+		# Replace the old unresolved supertype with the resolved one
+		type.supertypes[i] = resolved
+	}
+}
+
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context) {
 	functions = common.get_all_visible_functions(context)
@@ -243,6 +264,8 @@ resolve_context(context: Context) {
 	
 	# Resolve all the types
 	loop type in types {
+		resolve_supertypes(context, type)
+
 		# Resolve all member variables
 		loop iterator in type.variables {
 			resolve(iterator.value)
@@ -390,6 +413,14 @@ register_default_functions(context: Context) {
 	
 	settings.inheritance_function = inheritance_function_overloads.get_implementation(types)
 	if settings.inheritance_function == none abort('Missing the inheritance function, please implement it or include the standard library')
+
+	# Initialization function:
+	initialization_function_overloads = context.get_function(String('internal_init'))
+	if initialization_function_overloads != none {
+		# Try to implement the initialization function with a link as parameter and without
+		settings.initialization_function = initialization_function_overloads.get_implementation(Link())
+		if settings.initialization_function == none { settings.initialization_function = initialization_function_overloads.get_implementation(List<Type>()) }
+	}
 }
 
 output(status: Status) {
@@ -429,8 +460,8 @@ debug_print(context: Context) {
 	}
 }
 
-resolve(bundle: Bundle) {
-	if not (bundle.get_object(String(BUNDLE_PARSE)) as Optional<Parse> has parse) => Status('Nothing to resolve')
+resolve() {
+	parse = settings.parse
 
 	context = parse.context
 	root = parse.root

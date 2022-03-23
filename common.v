@@ -170,6 +170,26 @@ read_type(context: Context, tokens: List<Token>, start: large) {
 	=> read_type(context, tokens.slice(start, tokens.size))
 }
 
+# Summary: Returns whether the specified node is a function call
+is_function_call(node: Node) {
+	if node.instance == NODE_LINK { node = node.last }
+	=> node.instance == NODE_CALL or node.instance == NODE_FUNCTION
+}
+
+# Summary: Returns whether the specified node accesses any member of the specified type and the access requires self pointer
+is_self_pointer_required(node: Node) {
+	if node.instance != NODE_FUNCTION and node.instance != NODE_VARIABLE => false
+	if node.parent.match(NODE_CONSTRUCTION | NODE_LINK) => false
+
+	if node.instance == NODE_FUNCTION {
+		function = node.(FunctionNode).function
+		=> function.is_member and not function.is_static
+	}
+
+	variable = node.(VariableNode).variable
+	=> variable.is_member and not variable.is_static
+}
+
 # Summary:
 # Pattern: <$1, $2, ... $n>
 consume_template_arguments(state: ParserState) {
@@ -335,7 +355,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 
 	loop (priority = parser.MAX_FUNCTION_BODY_PRIORITY, priority >= parser.MIN_PRIORITY, priority--) {
 		loop {
-			if not parser.next(context, tokens, priority, 0, state, disabled) stop
+			if not parser.next_consumable(context, tokens, priority, 0, state, disabled) stop
 			
 			state.error = none
 			node = state.pattern.build(context, state, state.tokens)
@@ -954,7 +974,7 @@ align_members(type: Type) {
 	# Member variables:
 	loop iterator in type.variables {
 		variable = iterator.value
-		if variable.is_static continue
+		if variable.is_static or variable.is_constant continue
 		variable.alignment = position
 		variable.is_aligned = true
 		position += variable.type.allocation_size

@@ -10,7 +10,7 @@ evaluate_logical_operator(expression: OperatorNode) {
 		evaluate_logical_operator(expression.last as OperatorNode)
 	}
 
-	if not expression.first.instance == NODE_NUMBER and not expression.last.instance == NODE_NUMBER return
+	if expression.first.instance != NODE_NUMBER and expression.last.instance != NODE_NUMBER return
 
 	a = expression.first.instance == NODE_NUMBER and expression.first.(NumberNode).value == 0
 	b = expression.last.instance == NODE_NUMBER and expression.last.(NumberNode).value == 0

@@ -8,7 +8,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 		if not (from.get_supertype_base_offset(to) has offset) abort('Could not compute base offset of a supertype while building down cast')
 		if offset == 0 => result
 
-		=> AdditionInstruction(unit, result, Result(ConstantHandle(offset), SYSTEM_FORMAT), result.format, false).add()
+		=> AdditionInstruction(unit, result, Result(ConstantHandle(offset), SYSTEM_SIGNED), result.format, false).add()
 	}
 
 	# Determine whether the cast is a up cast
@@ -16,7 +16,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 		if not (to.get_supertype_base_offset(from) has offset) abort('Could not compute base offset of a supertype while building up cast')
 		if offset == 0 => result
 
-		=> AdditionInstruction(unit, result, Result(ConstantHandle(-offset), SYSTEM_FORMAT), result.format, false).add()
+		=> AdditionInstruction(unit, result, Result(ConstantHandle(-offset), SYSTEM_SIGNED), result.format, false).add()
 	}
 
 	# This means that the cast is unsafe since the types have nothing in common
@@ -31,12 +31,11 @@ build(unit: Unit, node: CastNode, mode: large) {
 
 	# Number casts:
 	if from.is_number and to.is_number {
-		a = from.(Number).format == FORMAT_DECIMAL
-		b = to.(Number).format == FORMAT_DECIMAL
+		a = from.(Number).format
+		b = to.(Number).format
 
-		# 1. Execute only if exactly one of the types is a decimal number
-		# 2. Execute only if the current format does not match the target format
-		if a ¤ b != 0 and b != (result.format == FORMAT_DECIMAL) => ConvertInstruction(unit, result, not b).add()
+		# Execute only if exactly one of the types is a decimal number
+		if (a ¤ b) != 0 => ConvertInstruction(unit, result, b).add()
 
 		=> result
 	}

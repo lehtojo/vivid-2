@@ -344,6 +344,10 @@ DataEncoderModule {
 		symbols.clear()
 		relocations.clear()
 	}
+
+	deinit() {
+		deallocate(output)
+	}
 }
 
 namespace data_encoder {

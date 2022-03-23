@@ -494,6 +494,26 @@ Context {
 		parent = none
 	}
 
+	default_dispose() {
+		variables.clear()
+		functions.clear()
+		types.clear()
+		labels.clear()
+		imports.clear()
+
+		distinct_subcontexts = List<Context>(subcontexts).distinct()
+
+		loop subcontext in distinct_subcontexts {
+			subcontext.dispose()
+		}
+
+		subcontexts.clear()
+	}
+
+	virtual dispose() {
+		default_dispose()
+	}
+
 	virtual string() {
 		=> String.empty
 	}
@@ -519,7 +539,7 @@ Function Constructor {
 		parent: Type = this.parent as Type
 
 		loop (i = parent.initialization.size - 1, i >= 0, i--) {
-			initialization = parent.initialization[i]
+			initialization = parent.initialization[i].clone()
 
 			# Skip initializations of static and constant variables
 			if initialization.match(Operators.ASSIGN) {
@@ -529,6 +549,15 @@ Function Constructor {
 					variable = edited.(VariableNode).variable
 					if variable.is_static or variable.is_constant continue
 				}
+			}
+
+			# Find all member accesses, which do not use the self pointer but require it
+			self_pointer_node = common.get_self_pointer(implementation, none as Position)
+			member_accessors = initialization.find_all(i -> common.is_self_pointer_required(i))
+
+			# Add self pointer to all member accessors
+			loop member_accessor in member_accessors {
+				member_accessor.replace(LinkNode(self_pointer_node.clone(), member_accessor.clone()))
 			}
 
 			root.insert(root.first, initialization)
@@ -674,7 +703,13 @@ Context Type {
 
 		loop variable in variables {
 			if variable.value.is_static or variable.value.is_constant continue
-			bytes += variable.value.type.allocation_size
+
+			if variable.value.is_inlined {
+				bytes += variable.value.type.content_size
+			}
+			else {
+				bytes += variable.value.type.allocation_size
+			}
 		}
 
 		loop supertype in supertypes { bytes += supertype.content_size }
@@ -977,7 +1012,8 @@ Context Type {
 
 	get_register_format() {
 		if format == FORMAT_DECIMAL => FORMAT_DECIMAL
-		=> SYSTEM_FORMAT
+		if (format & 1) != 0 => SYSTEM_FORMAT
+		=> SYSTEM_SIGNED
 	}
 
 	override on_mangle(mangle: Mangle) {
@@ -1004,6 +1040,15 @@ Context Type {
 		}
 
 		=> this.name == other.name and this.identity == other.identity
+	}
+
+	override dispose() {
+		Context.default_dispose()
+		template_arguments.clear()
+		initialization.clear()
+		supertypes.clear()
+		virtuals.clear()
+		overrides.clear()
 	}
 
 	override string() {
@@ -1450,6 +1495,13 @@ Context Function {
 
 		if is_member { mangle.add(Mangle.END_COMMAND) }
 	}
+
+	override dispose() {
+		Context.default_dispose()
+		parameters.clear()
+		blueprint.clear()
+		implementations.clear()
+	}
 }
 
 TemplateTypeVariant {
@@ -1520,8 +1572,8 @@ Type TemplateType {
 	}
 
 	try_get_variant(arguments: List<Type>) {
-		identifier = get_variant_identifier(arguments)
-		if variants.contains_key(identifier) => variants[identifier].type
+		variant_identifier = get_variant_identifier(arguments)
+		if variants.contains_key(variant_identifier) => variants[variant_identifier].type
 		=> none as Type
 	}
 
@@ -1596,9 +1648,9 @@ Function TemplateFunction {
 	try_get_variant(template_arguments: List<Type>) {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
-		identifier = String.join(String(', '), names)
+		variant_identifier = String.join(String(', '), names)
 
-		if variants.contains_key(identifier) => variants[identifier]
+		if variants.contains_key(variant_identifier) => variants[variant_identifier]
 		=> none as FunctionImplementation
 	}
 
@@ -1627,11 +1679,11 @@ Function TemplateFunction {
 	create_variant(template_arguments: List<Type>) {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
-		identifier = String.join(String(', '), names)
+		variant_identifier = String.join(String(', '), names)
 
 		# Copy the blueprint and insert the specified arguments to their places
 		blueprint: List<Token> = clone(this.blueprint)
-		blueprint[0].(FunctionToken).identifier.value = name + `<` + identifier + `>`
+		blueprint[0].(FunctionToken).identifier.value = name + `<` + variant_identifier + `>`
 
 		insert_arguments(blueprint, template_arguments)
 
@@ -1641,7 +1693,7 @@ Function TemplateFunction {
 
 		# Register the new variant
 		variant = result.(FunctionDefinitionNode).function
-		variants.add(identifier, variant)
+		variants.add(variant_identifier, variant)
 		=> variant
 	}
 
@@ -1814,7 +1866,7 @@ Context FunctionImplementation {
 			declare(self)
 		}
 
-		node = ScopeNode(this, metadata.start, metadata.end)
+		node = ScopeNode(this, metadata.start, metadata.end, false)
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 	}
 
@@ -1870,6 +1922,23 @@ Context FunctionImplementation {
 		}
 
 		=> result
+	}
+
+	delete_node_tree(tree: Node) {
+		if tree as link == none return
+
+		loop (iterator = tree.last, iterator != none, iterator = iterator.previous) {
+			delete_node_tree(iterator)
+		}
+
+		deallocate(tree as link)
+	}
+
+	override dispose() {
+		Context.default_dispose()
+		usages.clear()
+		template_arguments.clear()
+		delete_node_tree(node)
 	}
 
 	override string() {
@@ -1954,14 +2023,14 @@ FunctionImplementation LambdaImplementation {
 		root = parent
 		loop (root.parent != none) { root = root.parent }
 
-		internal_type = Type(root, identity, MODIFIER_DEFAULT, metadata.start)
+		internal_type = Type(root, identity.replace(`.`, `_`), MODIFIER_DEFAULT, metadata.start)
 		internal_type.add_runtime_configuration()
 
 		# Add the default constructor and destructor
 		internal_type.add_constructor(Constructor.empty(internal_type, metadata.start, metadata.end))
 		internal_type.add_destructor(Destructor.empty(internal_type, metadata.start, metadata.end))
 
-		node = ScopeNode(this, metadata.start, metadata.end)
+		node = ScopeNode(this, metadata.start, metadata.end, false)
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 	}
 
@@ -2034,7 +2103,7 @@ UnresolvedTypeComponent {
 			argument = arguments[i]
 			if argument.is_resolved continue
 
-			replacement = argument.(UnresolvedType).try_resolve_type(context)
+			replacement = resolver.resolve(context, argument)
 			if replacement == none continue
 
 			arguments[i] = replacement
