@@ -1507,6 +1507,87 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 	}
 }
 
+# Summary: Casts called objects to match the expected self pointer type
+cast_member_calls(root: Node) {
+	calls = root.find_all(i -> i.instance == NODE_LINK and i.last.instance == NODE_FUNCTION)
+
+	loop call in calls {
+		left = call.first
+		function = call.last as FunctionNode
+
+		# Ensure the called object has the correct type when it is passed as a parameter
+		expected = function.function.metadata.find_type_parent()
+		if expected == none abort('Missing parent type for member call')
+
+		actual = left.get_type()
+
+		if (actual as link) == (expected as link) or actual.get_supertype_base_offset(expected) == 0 continue
+
+		# Cast the left side to the expected type
+		left.remove()
+		call.last.insert(CastNode(left, TypeNode(expected), left.start))
+	}
+}
+
+# Summary:
+# Finds comparisons between packs and replaces them with member-wise comparisons.
+# Example:
+#   a: large
+#   b: large
+# }
+# 
+# a == b
+# =>
+# a.a == b.a && a.b == b.b
+rewrite_pack_comparisons(root: Node) {
+	# Find all comparisons
+	comparisons = root.find_all(NODE_OPERATOR).filter(i -> i.match(Operators.EQUALS) or i.match(Operators.NOT_EQUALS))
+
+	loop comparison in comparisons {
+		# Find the left and right side of the comparison
+		left = comparison.first
+		right = comparison.last
+
+		# Find the type of the left and right side
+		left_type = left.get_type()
+		right_type = right.get_type()
+
+		# Verify the comparison is between two packs
+		if not left_type.is_pack or left_type != right_type continue
+
+		left_members = create_pack_member_accessors(left, left_type, left.start)
+		right_members = create_pack_member_accessors(right, right_type, right.start)
+
+		# Rewrite the comparisons as follows:
+		if comparison.match(Operators.EQUALS) {
+			# Equals: a == b => a.a == b.a && a.b == b.b && ...
+			result = OperatorNode(Operators.EQUALS).set_operands(left_members[0], right_members[0])
+
+			loop (i = 1, l = left_members.size, i++) {
+				left_member = left_members[i]
+				right_member = right_members[i]
+
+				result = OperatorNode(Operators.LOGICAL_AND).set_operands(result, OperatorNode(Operators.EQUALS).set_operands(left_member, right_member))
+			}
+
+			comparison.replace(result)
+		}
+		else {
+			# Not equals: a != b => a.a != b.a || a.b != b.b || ...
+			result = OperatorNode(Operators.NOT_EQUALS).set_operands(left_members[0], right_members[0])
+
+			loop (i = 1, l = left_members.size, i++) {
+				left_member = left_members[i]
+				right_member = right_members[i]
+
+				result = OperatorNode(Operators.LOGICAL_OR).set_operands(result, OperatorNode(Operators.NOT_EQUALS).set_operands(left_member, right_member))
+			}
+
+			comparison.replace(result)
+		}
+	}
+}
+
 start(implementation: FunctionImplementation, root: Node) {
 	add_default_constructors(implementation)
 	rewrite_inspections(root)
@@ -1525,8 +1606,9 @@ start(implementation: FunctionImplementation, root: Node) {
 	rewrite_constructions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
+	cast_member_calls(root)
+	rewrite_pack_comparisons(root)
 	remove_redundant_inline_nodes(root)
-	# TODO: Implement pack comparisons
 }
 
 end(root: Node) {
