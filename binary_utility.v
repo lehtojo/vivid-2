@@ -205,7 +205,7 @@ BinaryStringTable {
 
 		if size {
 			# Since the size of the String table is included, we must insert a 4-byte integer before the String table, which contains the size of the String table.
-			bytes = sizeof(normal) + payload.length
+			bytes = sizeof(normal) + payload.length + 1
 			result = Array<byte>(bytes)
 			
 			# Insert the size of the String table
