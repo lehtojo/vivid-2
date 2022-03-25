@@ -1693,6 +1693,8 @@ Function TemplateFunction {
 
 		# Register the new variant
 		variant = result.(FunctionDefinitionNode).function
+		variant.modifiers = modifiers & (!MODIFIER_IMPORTED) # Remove the imported modifier, because new variants are not imported
+
 		variants.add(variant_identifier, variant)
 		=> variant
 	}

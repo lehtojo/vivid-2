@@ -329,7 +329,7 @@ DataEncoderModule {
 		section.offsets = offsets
 
 		# If this section represents the primary data section, add the default flags
-		if symbol_name == DATA_SECTION_NAME { section.flags = BINARY_SECTION_FLAGS_WRITE | BINARY_SECTION_FLAGS_ALLOCATE }
+		if name == DATA_SECTION_NAME { section.flags = BINARY_SECTION_FLAGS_WRITE | BINARY_SECTION_FLAGS_ALLOCATE }
 
 		loop symbol in symbols { symbol.value.section = section }
 		loop relocation in relocations { relocation.section = section }
