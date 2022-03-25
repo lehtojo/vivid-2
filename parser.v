@@ -356,12 +356,12 @@ create_root_node(context: Context) {
 
 	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
 		VariableNode(positive_infinity, position),
-		NumberNode(FORMAT_DECIMAL, POSITIVE_INFINITY, position)
+		NumberNode(FORMAT_DECIMAL, decimal_to_bits(POSITIVE_INFINITY), position)
 	))
 
 	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
 		VariableNode(negative_infinity, position),
-		NumberNode(FORMAT_DECIMAL, NEGATIVE_INFINITY, position)
+		NumberNode(FORMAT_DECIMAL, decimal_to_bits(NEGATIVE_INFINITY), position)
 	))
 
 	root.add(OperatorNode(Operators.ASSIGN, position).set_operands(
