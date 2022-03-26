@@ -1418,6 +1418,7 @@ namespace instruction_encoder {
 
 				if information.type == ENCODER_DEBUG_FRAME_INFORMATION_TYPE_START {
 					frames.start(information.(EncoderDebugFrameStartInformation).symbol, offset)
+					position = offset
 				}
 				else information.type == ENCODER_DEBUG_FRAME_INFORMATION_TYPE_SET_FRAME_OFFSET {
 					frames.move(offset - position)

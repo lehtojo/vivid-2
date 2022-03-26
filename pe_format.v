@@ -379,8 +379,21 @@ namespace pe_format {
 	}
 
 	# Summary:
+	# Fills all the empty section in the specified list of sections with one byte.
+	# Instead of just removing these sections, this is done to preserve all the properties of these sections such as symbols.
+	# If these sections would have a size of zero, then overlapping sections could emerge.
+	fill_empty_sections(sections: List<BinarySection>) {
+		loop section in sections {
+			if section.data.count > 0 continue
+			section.data = Array<byte>(1)
+		}
+	}
+
+	# Summary:
 	# Creates an object file from the specified sections
 	create_object_file(name: String, sections: List<BinarySection>, exports: Set<String>) {
+		fill_empty_sections(sections)
+
 		# Load all the symbols from the specified sections
 		symbols = binary_utility.get_all_symbols_from_sections(sections)
 
@@ -402,6 +415,8 @@ namespace pe_format {
 	# Summary:
 	# Creates an object file from the specified sections
 	build(sections: List<BinarySection>, exports: Set<String>) {
+		fill_empty_sections(sections)
+
 		# Load all the symbols from the specified sections
 		symbols = binary_utility.get_all_symbols_from_sections(sections)
 
@@ -446,7 +461,7 @@ namespace pe_format {
 		header = PeObjectFileHeader()
 		header.number_of_sections = sections.size
 		header.machine = PE_MACHINE_X64
-		header.timestamp = time.now()
+		header.timestamp = 0
 		header.characteristics = PE_IMAGE_CHARACTERISTICS_LARGE_ADDRESS_AWARE | PE_IMAGE_CHARACTERISTICS_LINENUMBERS_STRIPPED | PE_IMAGE_CHARACTERISTICS_DEBUG_STRIPPED
 
 		# Add symbols and relocations of each section needing that
@@ -1025,7 +1040,7 @@ namespace pe_format {
 
 		header = PeHeader()
 		header.machine = PE_MACHINE_X64
-		header.timestamp = time.now()
+		header.timestamp = 0
 		header.file_alignment = FileSectionAlignment
 		header.section_alignment = VirtualSectionAlignment
 		header.characteristics = PE_IMAGE_CHARACTERISTICS_LARGE_ADDRESS_AWARE | PE_IMAGE_CHARACTERISTICS_LINENUMBERS_STRIPPED | PE_IMAGE_CHARACTERISTICS_EXECUTABLE | PE_IMAGE_CHARACTERISTICS_DEBUG_STRIPPED
@@ -1041,6 +1056,8 @@ namespace pe_format {
 		# Ensure sections are ordered so that sections of same type are next to each other
 		fragment_sections = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections)
 		fragments = fragment_sections.filter((i: BinarySection) -> i.type != BINARY_SECTION_TYPE_NONE and linker.is_loadable_section(i))
+
+		fill_empty_sections(fragments)
 
 		# Load all the relocations from all the sections
 		relocations = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections).flatten<BinaryRelocation>((i: BinarySection) -> i.relocations)
