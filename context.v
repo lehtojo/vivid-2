@@ -2061,7 +2061,8 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override get_header() {
-		=> parent.string() + ' Lambda #' + name
+		parent_implementation = parent.find_implementation_parent()
+		=> parent_implementation.string() + ' Lambda #' + name
 	}
 }
 
