@@ -118,7 +118,9 @@ export RangeIterator {
 		=> ++position <= end
 	}
 
-	value() => position
+	value() {
+		=> position
+	}
 
 	reset() {
 		position = start - 1
@@ -134,5 +136,7 @@ export Range {
 		this.end = end
 	}
 
-	iterator() => RangeIterator(start, end)
+	iterator() {
+		=> RangeIterator(start, end)
+	}
 }

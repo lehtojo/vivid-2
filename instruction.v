@@ -75,8 +75,13 @@ get_system_format(format: large) {
 	=> SYSTEM_SIGNED
 }
 
-create_bit_limit_flag(bits) => FLAG_BIT_LIMIT | (bits <| 24)
-get_bit_limit_from_flags(bits) => bits |> 24
+create_bit_limit_flag(bits) {
+	=> FLAG_BIT_LIMIT | (bits <| 24)
+}
+
+get_bit_limit_from_flags(bits) {
+	=> bits |> 24
+}
 
 InstructionParameter {
 	result: Result
@@ -201,7 +206,9 @@ Instruction {
 		this.dependencies.add(result)
 	}
 
-	match(type: large) => this.type == type
+	match(type: large) {
+		=> this.type == type
+	}
 
 	# Summary: Adds this instruction to the unit and returns the result of this instruction
 	add() {

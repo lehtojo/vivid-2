@@ -647,7 +647,9 @@ Token NumberToken {
 		this.end = end
 	}
 
-	decimal_value() => bits_to_decimal(data)
+	decimal_value() {
+		=> bits_to_decimal(data)
+	}
 
 	string() {
 		if format == FORMAT_DECIMAL => to_string(decimal_value())

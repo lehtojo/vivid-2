@@ -9,7 +9,9 @@ NodeIterator {
 		this.next = node.first
 	}
 
-	value() => current
+	value() {
+		=> current
+	}
 
 	next() {
 		current = next
@@ -38,7 +40,9 @@ Node {
 		this.instance = NODE_NORMAL
 	}
 
-	match(instances: large) => (instances & this.instance) != 0
+	match(instances: large) {
+		=> (instances & this.instance) != 0
+	}
 
 	match(operator: Operator) {
 		=> instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
@@ -370,7 +374,9 @@ Node {
 		=> false
 	}
 
-	iterator() => NodeIterator(this)
+	iterator() {
+		=> NodeIterator(this)
+	}
 
 	get_type() {
 		type = try_get_type()

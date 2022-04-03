@@ -100,7 +100,9 @@ namespace primitives {
 	constant BYTE_IDENTIFIER = 'h'
 	constant CHAR_IDENTIFIER = 'c'
 
-	create_number(primitive: link, format: large) => create_number(String(primitive), format)
+	create_number(primitive: link, format: large) {
+		=> create_number(String(primitive), format)
+	}
 
 	create_number(primitive: String, format: large) {
 		number = Number(format, to_bits(format), primitive)
