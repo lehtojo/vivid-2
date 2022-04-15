@@ -54,7 +54,6 @@ CustomArray<T> {
 }
 
 Object {
-	public:
 	value: decimal
 	flag: bool = false
 	
