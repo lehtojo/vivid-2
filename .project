@@ -1,0 +1,30 @@
+{
+	"configurations": [
+		{
+			"name": "Compiler",
+			"output": "v",
+			"default": true,
+			"debug": true,
+			"include": [
+				"./entries/vivid.v",
+				"./libv/allocator/Primary2.v",
+				"./libv/windows-x64/io.v",
+				"./libv/",
+				"./"
+			]
+		},
+		{
+			"name": "Tests",
+			"output": "v",
+			"debug": true,
+			"include": [
+				"./entries/tests.v",
+				"./tests/assert.v",
+				"./libv/allocator/Primary2.v",
+				"./libv/windows-x64/io.v",
+				"./libv/",
+				"./"
+			]
+		}
+	]
+}
