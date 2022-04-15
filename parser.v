@@ -194,12 +194,20 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 	j = 0
 
 	loop (i < path.size, i++) {
+		types = path[i]
+
 		# Ensure there is a token available
-		if start + j >= tokens.size => false
+		if start + j >= tokens.size {
+			# If the token type is optional on the path, we can add a none token even though there are no tokens available
+			if has_flag(types, TOKEN_TYPE_OPTIONAL) {
+				result.add(Token(TOKEN_TYPE_NONE))
+				continue
+			}
+
+			=> false
+		}
 
 		token = tokens[start + j]
-
-		types = path[i]
 		type = token.type
 		
 		# Add the token if the allowed types contains its type
@@ -212,6 +220,7 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 			# NOTE: Do not skip the current token, since it was not consumed
 		}
 		else {
+			result.clear()
 			=> false
 		}
 	}
@@ -279,13 +288,139 @@ create_function_tokens(tokens: List<Token>) {
 	}
 }
 
-parse(context: Context, tokens: List<Token>, min: normal, max: normal) {
-	result = Node()
-	parse(result, context, tokens, min, max)
-	=> result
+is_line_related(tokens: List<Token>, i: large, j: large, k: large) {
+	first_line_end_index = j - 1
+	second_line_start_index = j + 1
+
+	first_line_end = none as Token
+	if first_line_end_index >= 0 { first_line_end = tokens[first_line_end_index] }
+
+	second_line_start = none as Token
+	if second_line_start_index < tokens.size { second_line_start = tokens[second_line_start_index] }
+
+	if first_line_end != none and first_line_end.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) => true
+	if second_line_start != none and (second_line_start.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) or second_line_start.match(`{`)) => true
+
+	loop (l = i, l < j, l++) {
+		if tokens[l].type != TOKEN_TYPE_KEYWORD continue
+
+		keyword = tokens[l].(KeywordToken).keyword
+		if keyword.type == KEYWORD_TYPE_FLOW => true
+	}
+
+	=> false
 }
 
-parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+is_consuming_namespace(tokens: List<Token>, i: large) {
+	# Save the position of the namespace keyword
+	start = i
+
+	# Move to the next token
+	i++
+
+	# Find the start of the body by skipping the name
+	loop (i < tokens.size and tokens[i].match(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_OPERATOR), i++) {}
+
+	# If we reached the end, stop and return none
+	if i >= tokens.size => none as List<Token>
+
+	# Optionally consume a line ending
+	if tokens[i].type == TOKEN_TYPE_END {
+		i++
+
+		# If we reached the end, stop and return none
+		if i >= tokens.size => none as List<Token>
+	}
+
+	# If this namespace is a consuming section, then the next token is not curly brackets
+	if tokens[i].match(`{`) => none as List<Token>
+
+	section = tokens.slice(start, tokens.size)
+	tokens.remove_range(start, tokens.size)
+
+	=> section
+}
+
+# Summary:
+# Returns the first section from the specified tokens that consumes all the lines below it.
+# If such section can not be found, none is returned.
+find_consuming_section(tokens: List<Token>) {
+	loop (i = 0, i < tokens.size, i++) {
+		section = none as List<Token>
+		next = tokens[i]
+
+		if next.match(Keywords.NAMESPACE) {
+			section = is_consuming_namespace(tokens, i)
+		}
+
+		if section != none => section
+	}
+
+	=> none as List<Token>
+}
+
+split(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+	consuming_section = find_consuming_section(tokens)
+
+	sections = List<List<Token>>()
+	i = 0
+
+	loop (i < tokens.size) {
+		# Look for the first line ending after i
+		j = i + 1
+		loop (j < tokens.size and tokens[j].type != TOKEN_TYPE_END, j++) {}
+
+		# If we reached the end here, we can just add the active section and stop
+		if j == tokens.size {
+			section = tokens.slice(i, j)
+			sections.add(section)
+			stop
+		}
+
+		# Start consuming lines after j
+		k = j + 1
+
+		loop (k < tokens.size, k++) {
+			if tokens[k].type != TOKEN_TYPE_END continue
+
+			# If the line is related to the active section, we can just consume it and continue
+			if is_line_related(tokens, i, j, k) {
+				j = k
+				continue
+			}
+
+			# Since the line is not related to the active section, the active section ends at j
+			section = tokens.slice(i, j)
+			sections.add(section)
+
+			i = j # Start over in a situation where the line i+1..j is the first 
+			stop
+		}
+
+		if k != tokens.size continue
+
+		if is_line_related(tokens, i, j, k) {
+			section = tokens.slice(i, k)
+			sections.add(section)
+		}
+		else {
+			section = tokens.slice(i, j)
+			sections.add(section)
+
+			section = tokens.slice(j, k)
+			sections.add(section)
+		}
+
+		stop
+	}
+
+	# Add the consuming section to the end of all sections, if such was found
+	if consuming_section != none sections.add(consuming_section)
+
+	=> sections
+}
+
+parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
 	create_function_tokens(tokens)
 	
 	state = ParserState()
@@ -298,10 +433,14 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 			state.error = none
 			node = state.pattern.build(context, state, state.tokens)
 
+			# Remove the consumed tokens
 			length = state.end - state.start
-
 			loop (length-- > 0) { tokens.remove_at(state.start) }
 
+			# Remove the consumed tokens from the state
+			state.tokens.clear()
+
+			# Replace the consumed tokens with the a dynamic token if a node was returned
 			if node != none tokens.insert(state.start, DynamicToken(node))
 			else state.error != none => state.error
 		}
@@ -321,6 +460,36 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 	}
 
 	=> Status()
+}
+
+clear_sections(sections: List<List<Token>>) {
+	loop section in sections {
+		section.clear()
+	}
+
+	sections.clear()
+}
+
+parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+	sections = split(root, context, tokens, min, max)
+
+	loop section in sections {
+		result = parse_section(root, context, section, min, max)
+
+		if result.problematic {
+			clear_sections(sections)
+			=> result
+		}
+	}
+
+	clear_sections(sections)
+	=> Status()
+}
+
+parse(context: Context, tokens: List<Token>, min: normal, max: normal) {
+	result = Node()
+	parse(result, context, tokens, min, max)
+	=> result
 }
 
 # Summary: Creates the root context, which might contain some default types

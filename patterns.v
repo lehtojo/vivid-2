@@ -1693,7 +1693,7 @@ Pattern VirtualFunctionPattern {
 		colon = tokens[COLON]
 
 		# If the colon token is not none, it must represent colon operator and the return type must be consumed successfully
-		if colon.type != TOKEN_TYPE_NONE and [not colon.match(Operators.COLON) or not common.consume_type(state)] => false
+		if colon.type != TOKEN_TYPE_NONE and (not colon.match(Operators.COLON) or not common.consume_type(state)) => false
 
 		state.consume(TOKEN_TYPE_END)
 
