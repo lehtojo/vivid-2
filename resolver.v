@@ -176,9 +176,6 @@ resolve_return_type(implementation: FunctionImplementation) {
 		return
 	}
 
-	# Do not try to resolve the return type by inspecting the node tree, if the function is imported, since the node tree will be empty
-	if implementation.metadata.is_imported return
-
 	statements = implementation.node.find_all(NODE_RETURN)
 
 	# If there are no return statements, the return type of the implementation must be unit

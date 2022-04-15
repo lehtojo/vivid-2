@@ -433,6 +433,10 @@ Context {
 		=> indexer.lambda
 	}
 
+	create_identity() {
+		=> identity + `.` + to_string(indexer.context)
+	}
+
 	# Summary: Moves all types, functions and variables from the specified context to this context
 	merge(context: Context) {
 		# Add all types

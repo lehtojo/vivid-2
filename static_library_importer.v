@@ -317,7 +317,7 @@ load_file_headers(bytes: Array<byte>) {
 # Imports the specified file.
 # This function assumes the file represents a library
 import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
-	import_context = parser.create_root_context(file)
+	import_context = parser.create_root_context(context.create_identity())
 
 	internal_import_static_library(import_context, file, files, object_files)
 
