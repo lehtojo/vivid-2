@@ -211,6 +211,11 @@ return_pack(unit: Unit, value: Result, type: Type) {
 }
 
 build_return(unit: Unit, node: ReturnNode) {
+	unit.add_debug_position(node)
+
+	# Find the parent scope, so that can add the last line of the scope as debugging information
+	scope = node.find_parent(NODE_SCOPE) as ScopeNode
+
 	if node.value != none {
 		value = references.get(unit, node.value, ACCESS_READ)
 
@@ -218,9 +223,13 @@ build_return(unit: Unit, node: ReturnNode) {
 		to = unit.function.return_type
 		value = casts.cast(unit, value, from, to)
 
+		unit.add_debug_position(scope.end)
+
 		if to.is_pack return_pack(unit, value, to)
 		=> ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
+
+	unit.add_debug_position(scope.end)
 
 	=> ReturnInstruction(unit, none as Result, unit.function.return_type).add()
 }
@@ -289,6 +298,8 @@ build_declaration(unit: Unit, node: DeclareNode) {
 }
 
 build_call(unit: Unit, node: CallNode) {
+	unit.add_debug_position(node)
+
 	self = references.get(unit, node.self, ACCESS_READ) as Result
 	if node.descriptor.self != none { self = casts.cast(unit, self, node.self.get_type(), node.descriptor.self) }
 

@@ -1158,7 +1158,7 @@ Node CommandNode {
 	}
 
 	override get_status() {
-		if finished and container != none => Status()
+		if finished and container != none => none as Status
 		=> Status('Keyword must be used inside a loop')
 	}
 
@@ -1807,7 +1807,7 @@ Node InspectionNode {
 	override get_status() {
 		type: Type = try_get_type()
 		if type == none or type.is_unresolved => Status(start, 'Can not resolve the type of the inspected object')
-		=> Status()
+		=> none as Status
 	}
 
 	override try_get_type() {
@@ -2242,7 +2242,7 @@ Node WhenNode {
 		section_return_type = resolver.get_shared_type(types)
 		if section_return_type == none => Status(start, 'Sections do not have a shared return type')
 
-		=> Status()
+		=> none as Status
 	}
 
 	override copy() {
@@ -2311,7 +2311,7 @@ Node ListConstructionNode {
 
 		if type == none => Status(start, 'Can not resolve the shared type between the elements')
 
-		=> Status()
+		=> none as Status
 	}
 
 	override copy() {
@@ -2400,7 +2400,7 @@ Node PackConstructionNode {
 
 		if type == none => Status(start, 'Can not resolve the types of the pack members')
 
-		=> Status()
+		=> none as Status
 	}
 
 	override copy() {

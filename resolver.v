@@ -164,7 +164,20 @@ resolve_variables(context: Context) {
 resolve_return_type(implementation: FunctionImplementation) {
 	# Do not resolve the return type if it is already resolved.
 	# This also prevents virtual function overrides from overriding the return type, enforced by the virtual function declaration
-	if implementation.return_type != none return
+	if implementation.return_type != none {
+		if implementation.return_type.is_resolved return
+
+		# Try to resolve the return type
+		resolved = implementation.return_type.(UnresolvedType).try_resolve_type(implementation)
+		if resolved as link == none return
+
+		# Update the return type, since we resolved it
+		implementation.return_type = resolved
+		return
+	}
+
+	# Do not try to resolve the return type by inspecting the node tree, if the function is imported, since the node tree will be empty
+	if implementation.metadata.is_imported return
 
 	statements = implementation.node.find_all(NODE_RETURN)
 
@@ -286,9 +299,10 @@ resolve_context(context: Context) {
 
 	# Resolve all implementation variables and node trees
 	loop implementation in implementations {
-		if implementation.node == none continue
 		resolve_return_type(implementation)
 		resolve_variables(implementation)
+
+		if implementation.node == none continue
 		resolve_tree(implementation, implementation.node)
 	}
 
@@ -301,7 +315,11 @@ get_tree_statuses(root: Node) {
 
 	loop child in root {
 		result.add_range(get_tree_statuses(child))
-		result.add(child.get_status())
+
+		status = child.get_status()
+		if status as link == none continue
+
+		result.add(status)
 	}
 
 	=> result
@@ -483,6 +501,12 @@ resolve() {
 		resolve_context(context)
 		current = get_report(context, root)
 
+		if settings.is_verbose_output_enabled {
+			print('Resolving ')
+			print(current.size)
+			println(' issues...')
+		}
+
 		# Try again only if the errors have changed
 		if not are_reports_equal(previous, current) continue
 		if evaluated stop
@@ -496,6 +520,8 @@ resolve() {
 		complain(current)
 		=> Status('Compilation error')
 	}
+
+	if settings.is_verbose_output_enabled println('Resolved')
 
 	=> Status()
 }

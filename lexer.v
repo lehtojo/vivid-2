@@ -340,7 +340,7 @@ get_modifier_excluder(modifiers: large) {
 
 # Summary: Adds the specified modifier to the specified modifiers
 combine_modifiers(modifiers: large, modifier: large) {
-	=> (modifiers | modifier) & [!get_modifier_excluder(modifier)]
+	=> (modifiers | modifier) & (!get_modifier_excluder(modifier))
 }
 
 namespace Keywords {
@@ -1027,11 +1027,11 @@ get_mixing_characters(i: char) {
 
 # Summary: Returns whether the two specified characters can mix
 mixes(a: char, b: char) {
-	x = get_mixing_characters(a)
-	if x != none => String(x).index_of(b) != -1
+	allowed = get_mixing_characters(a)
+	if allowed != none => index_of(allowed, b) != -1
 
-	y = get_mixing_characters(b)
-	if y != none => String(y).index_of(a) != -1
+	allowed = get_mixing_characters(b)
+	if allowed != none => index_of(allowed, a) != -1
 
 	=> true
 }
@@ -1479,7 +1479,7 @@ get_tokens(text: String, join: bool) {
 
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, anchor: Position, join: bool) {
-	tokens = List<Token>()
+	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
 	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
 
 	text = preprocess(text)

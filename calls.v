@@ -231,3 +231,53 @@ build(unit: Unit, self: Result, node: FunctionNode) {
 	unit.add_debug_position(node)
 	=> build(unit, self, node.parameters, node.function)
 }
+
+# Summary:
+# Moves the specified parameter or its representives to their own stack locations, if they are not already in the stack.
+# The location of the parameter is determined by using the specified registers.
+# This is used for debugging purposes.
+move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>) {
+	if parameter.type.is_pack {
+		loop representive in common.get_pack_representives(parameter) {
+			move_parameters_to_stack(unit, representive, standard_parameter_registers, decimal_parameter_registers)
+		}
+
+		return
+	}
+
+	register = none as Register
+
+	if parameter.type.format == FORMAT_DECIMAL {
+		register = decimal_parameter_registers.pop_or(none as Register)
+	}
+	else {
+		register = standard_parameter_registers.pop_or(none as Register)
+	}
+
+	if register != none {
+		destination = Result(references.create_variable_handle(unit, parameter, ACCESS_READ), parameter.type.format)
+		source = Result(RegisterHandle(register), parameter.type.get_register_format())
+
+		instruction = MoveInstruction(unit, destination, source)
+		instruction.type = MOVE_RELOCATE
+		unit.add(instruction)
+	}
+}
+
+# Summary:
+# Moves the specified parameters or their representives to their own stack locations, if they are not already in the stack.
+# This is used for debugging purposes.
+move_parameters_to_stack(unit: Unit) {
+	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+
+	if (unit.function.is_member and not unit.function.is_static) or unit.function.is_lambda_implementation {
+		self = unit.self
+		if self == none abort('Missing self pointer')
+		move_parameters_to_stack(unit, self, standard_parameter_registers, decimal_parameter_registers)
+	}
+
+	loop parameter in unit.function.parameters {
+		move_parameters_to_stack(unit, parameter, standard_parameter_registers, decimal_parameter_registers)
+	}
+}

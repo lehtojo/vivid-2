@@ -722,8 +722,8 @@ Context Type {
 	}
 
 	init(context: Context, name: String, modifiers: normal, position: Position) {
-		Context.init(name, TYPE_CONTEXT)
-		
+		Context.init(context, TYPE_CONTEXT)
+
 		this.name = name
 		this.identifier = name
 		this.modifiers = modifiers
@@ -735,7 +735,6 @@ Context Type {
 		add_constructor(Constructor.empty(this, position, position))
 		add_destructor(Destructor.empty(this, position, position))
 
-		connect(context)
 		context.declare(this)
 	}
 
@@ -1104,7 +1103,7 @@ Variable {
 	is_predictable => category == VARIABLE_CATEGORY_LOCAL or category == VARIABLE_CATEGORY_PARAMETER
 
 	is_hidden => name.index_of(`.`) != -1
-	is_generated => position == none
+	is_generated => position as link == none
 
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
@@ -1387,7 +1386,8 @@ Context Function {
 
 		# Pack parameters with names and types
 		loop (i = 0, i < parameters.size, i++) {
-			implementation_parameters.add(Parameter(parameters[i].name, parameter_types[i]))
+			parameter = parameters[i]
+			implementation_parameters.add(Parameter(parameter.name, parameter.position, parameter_types[i]))
 		}
 
 		# Create a function implementation
@@ -1474,6 +1474,10 @@ Context Function {
 
 			if matches => implementation
 		}
+
+		# Imported functions should have exactly one implementation
+		# This also prevents additional implementations when the parameters of an imported function are unresolved
+		if is_imported and implementations.size > 0 => none as FunctionImplementation
 
 		=> implement(implementation_types)
 	}
@@ -1850,6 +1854,7 @@ Context FunctionImplementation {
 	set_parameters(parameters: List<Parameter>) {
 		loop parameter in parameters {
 			variable = Variable(this, parameter.type, VARIABLE_CATEGORY_PARAMETER, parameter.name, MODIFIER_DEFAULT)
+			variable.position = parameter.position
 
 			if variables.contains_key(variable.name) => Status('Parameter with the same name already exists')
 
@@ -2335,7 +2340,7 @@ Number ArrayType {
 	}
 
 	get_status() {
-		if is_resolved => Status()
+		if is_resolved => none as Status
 		=> Status(start, 'Can not convert the size of the array to a constant number')
 	}
 
@@ -2346,9 +2351,9 @@ Number ArrayType {
 			size = String('?')
 		}
 		else {
-			size = expression.string()
+			size = to_string(this.size)
 		}
 
-		=> element.string() + size
+		=> element.string() + `[` + size + `]`
 	}
 }

@@ -30,8 +30,8 @@ to_size_modifier(bytes: large) {
 		2 => 'word'
 		4 => 'dword'
 		8 => 'qword'
-		16 => 'xmmword'
-		32 => 'ymmword'
+		16 => 'xword'
+		32 => 'yword'
 		else => {
 			abort('Invalid size')
 			'.?'
@@ -40,9 +40,9 @@ to_size_modifier(bytes: large) {
 }
 
 BYTE_ALLOCATOR = '.byte'
-SHORT_ALLOCATOR = '.short'
-LONG_ALLOCATOR = '.long'
-QUAD_ALLOCATOR = '.quad'
+SHORT_ALLOCATOR = '.word'
+LONG_ALLOCATOR = '.dword'
+QUAD_ALLOCATOR = '.qword'
 XWORD_ALLOCATOR = '.xword'
 YWORD_ALLOCATOR = '.yword'
 
@@ -50,9 +50,9 @@ YWORD_ALLOCATOR = '.yword'
 to_data_section_allocator(bytes: large) {
 	=> when(bytes) {
 		1 => '.byte'
-		2 => '.short'
-		4 => '.long'
-		8 => '.quad'
+		2 => '.word'
+		4 => '.dword'
+		8 => '.qword'
 		16 => '.xword'
 		32 => '.yword'
 		else => {

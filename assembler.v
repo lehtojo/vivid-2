@@ -917,7 +917,7 @@ Unit {
 		if settings.is_target_windows { volatility_flag = REGISTER_NONE }
 
 		base_pointer_flags = REGISTER_NONE
-		if settings.is_debugging_enabled { base_pointer_flags = REGISTER_RESERVED | REGISTER_STACK_POINTER }
+		if settings.is_debugging_enabled { base_pointer_flags = REGISTER_RESERVED }
 
 		registers.add(Register(platform.x64.RAX, String('rax eax ax al'), REGISTER_VOLATILE | REGISTER_RETURN | REGISTER_NUMERATOR))
 		registers.add(Register(platform.x64.RBX, String('rbx ebx bx bl'), REGISTER_NONE))
@@ -1559,7 +1559,7 @@ get_text_section(implementation: FunctionImplementation) {
 	unit.add(RequireVariablesInstruction(unit, parameters))
 
 	if settings.is_debugging_enabled {
-		# calls.move_parameters_to_stack(unit)
+		calls.move_parameters_to_stack(unit)
 	}
 
 	builders.build(unit, implementation.node)
@@ -1629,16 +1629,15 @@ get_text_section(implementation: FunctionImplementation) {
 
 	# If debug information is being generated, append a debug information label at the end
 	if settings.is_debugging_enabled {
-		# TODO: Support debug end labels
-		#end = LabelInstruction(unit, Label(debug.get_end(unit.function).name))
-		#end.on_build()
+		end = LabelInstruction(unit, Label(Debug.get_end(unit.function).name))
+		end.on_build()
 
-		#instructions.add(end)
+		instructions.add(end)
 
 		# Find sequential position instructions and separate them using debug break instructions
 		loop (i = instructions.size - 2, i >= 0, i--) {
-			if instructions[i].type != INSTRUCTION_ADD_DEBUG_POSITION continue
-			if instructions[i + 1].type != INSTRUCTION_ADD_DEBUG_POSITION continue
+			if instructions[i].type != INSTRUCTION_DEBUG_BREAK continue
+			if instructions[i + 1].type != INSTRUCTION_DEBUG_BREAK continue
 
 			instructions.insert(i + 1, DebugBreakInstruction(unit))
 		}
@@ -1659,6 +1658,11 @@ get_text_section(implementation: FunctionImplementation) {
 	# Build all return instructions
 	loop instruction in instructions {
 		if instruction.type != INSTRUCTION_RETURN continue
+
+		# Save the local memory size for later use
+		unit.function.size_of_locals = unit.stack_offset - local_memory_top
+		unit.function.size_of_local_memory = unit.function.size_of_locals + non_volatile_registers.size * SYSTEM_BYTES
+
 		instruction.(ReturnInstruction).build(non_volatile_registers, local_memory_top)
 	}
 
@@ -1901,9 +1905,9 @@ allocate_string(text: String) {
 
 		if buffer.length > 0 {
 			builder.append(CHARACTERS_ALLOCATION_DIRECTIVE)
-			builder.append(' \"')
+			builder.append(' \'')
 			builder.append(buffer)
-			builder.append_line(`\"`)
+			builder.append_line(`\'`)
 		}
 
 		if position >= text.length stop
@@ -2049,6 +2053,59 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 	}
 
 	=> builder.string()
+}
+
+# Summary:
+# Constructs debugging information for each of the files inside the context
+get_debug_sections(context: Context, files: List<SourceFile>) {
+	builders = Map<SourceFile, AssemblyBuilder>()
+	if not settings.is_debugging_enabled => builders
+
+	all_implementations = common.get_all_function_implementations(context, false)
+	loop (i = all_implementations.size - 1, i >= 0, i--) { if all_implementations[i].metadata.is_imported all_implementations.remove_at(i) }
+	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
+
+	loop file in files {
+		debug = Debug()
+		debug.begin_file(file)
+
+		types = Map<String, Type>()
+
+		if implementations.contains_key(file) {
+			loop implementation in implementations[file] {
+				debug.add_function(implementation, types)
+			}
+		}
+
+		# Save all processed types, so that types are not added multiple times
+		denylist = Map<String, Type>()
+
+		loop (types.size > 0) {
+			# Load the next batch
+			batch = types.get_values()
+
+			# Reset the types so that we can collect new types
+			types = Map<String, Type>()
+
+			loop type in batch {
+				# Mark the current type as processed
+				denylist[type.identity] = type
+
+				# Add the debugging information for the current type
+				debug.add_type(type, types)
+			}
+
+			# Remove all the processed types from the collected types
+			loop iterator in denylist {
+				types.remove(iterator.value.identity)
+			}
+		}
+
+		debug.end_file()
+		builders.add(file, debug.build(file))
+	}
+
+	=> builders
 }
 
 # Summary: Constructs file specific data sections based on the specified context
@@ -2223,10 +2280,37 @@ beautify(text: String) {
 	=> builder.string()
 }
 
+# Summary: Adds debug information to the header, if needed
+add_debug_information_to_header(builder: AssemblyBuilder, file: SourceFile) {
+	# Do nothing if debugging information is not requested
+	if not settings.is_debugging_enabled return
+
+	# Extract the full path to the source file, since we might have to modify it to a relative path
+	fullname = file.fullname
+
+	# Determine the current working folder, so that we can determine if full path can be expressed as a relative path
+	current_folder = io.get_process_working_folder().replace(`\\`, `/`)
+	if not current_folder.ends_with(`/`) { current_folder = current_folder + `/` }
+
+	# Convert the full path to a relative path if possible
+	if fullname.starts_with(current_folder) {
+		fullname = String('./') + fullname.slice(current_folder.length)
+	}
+
+	# Write a directive that stores the path to the specified source file, this is needed for debugging information
+	builder.write('.')
+	builder.write(AssemblyParser.DEBUG_FILE_DIRECTIVE)
+	builder.write(' \'')
+	builder.write(fullname)
+	builder.write_line('\'')
+}
+
 # Summary: Creates an assembler header for the specified file from the specified context. Depending on the situation, the header might be empty or it might have a entry function call and other directives.
 create_header(context: Context, file: SourceFile, output_type: large) {
 	builder = AssemblyBuilder()
 	builder.write_line(TEXT_SECTION_DIRECTIVE)
+
+	add_debug_information_to_header(builder, file)
 
 	# Do not add the entry function call, if the we are outputting a static library
 	if output_type == BINARY_TYPE_STATIC_LIBRARY => builder
@@ -2282,6 +2366,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 
 	text_sections = get_text_sections(context)
 	data_sections = get_data_sections(context)
+	debug_sections = get_debug_sections(context, files)
 
 	assemblies = Map<SourceFile, String>()
 	exports = Map<SourceFile, List<String>>()
@@ -2316,6 +2401,11 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 			if builder.constants.contains_key(file) allocate_constants(data_section_builder, file, builder.constants[file])
 
 			builder.add(data_section_builder)
+			builder.write('\n\n')
+		}
+
+		if debug_sections.contains_key(file) {
+			builder.add(debug_sections[file])
 			builder.write('\n\n')
 		}
 

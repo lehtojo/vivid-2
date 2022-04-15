@@ -899,7 +899,7 @@ Instruction InitializeInstruction {
 		# When debugging mode is enabled, the current stack pointer should be saved to the base pointer
 		if settings.is_debugging_enabled {
 			builder.append(`.`)
-			builder.append(AssemblyParser.DEBUG_END_DIRECTIVE)
+			builder.append(AssemblyParser.DEBUG_FRAME_OFFSET_DIRECTIVE)
 			builder.append(` `)
 			builder.append_line(unit.stack_offset + SYSTEM_BYTES)
 		}
@@ -2223,7 +2223,7 @@ Instruction AddDebugPositionInstruction {
 	}
 
 	init(unit: Unit, position: Position) {
-		Instruction.init(unit, INSTRUCTION_ADD_DEBUG_POSITION)
+		Instruction.init(unit, INSTRUCTION_DEBUG_BREAK)
 		this.position = position
 		this.operation = get_position_instruction(position)
 		this.state = INSTRUCTION_STATE_BUILT

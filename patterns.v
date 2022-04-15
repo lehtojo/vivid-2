@@ -101,6 +101,7 @@ Pattern FunctionPattern {
 		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_OPERATOR)
 
 		priority = 20
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -570,6 +571,7 @@ Pattern SingletonPattern {
 	init() {
 		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_FUNCTION | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_NUMBER | TOKEN_TYPE_STRING)
 		priority = 0
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -1003,6 +1005,7 @@ Pattern ConstructorPattern {
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
 		priority = 21
+		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
