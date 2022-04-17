@@ -40,7 +40,7 @@ Status {
 		a = position
 		b = other.position
 
-		if a as link == none or b as link == none => a as link == b as link
+		if a === none or b === none => a === b
 		=> a == b
 	}
 }

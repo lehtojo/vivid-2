@@ -1310,7 +1310,7 @@ get_next_token(text: String, start: Position) {
 	}
 	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
-		if end as link == none => Error<TextArea, String>(String('Can not find the closing parenthesis'))
+		if end === none => Error<TextArea, String>(String('Can not find the closing parenthesis'))
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
@@ -1323,7 +1323,7 @@ get_next_token(text: String, start: Position) {
 	}
 	else type == TEXT_TYPE_STRING {
 		end = skip_string(text, area.start)
-		if end as link == none {
+		if end === none {
 			=> Error<TextArea, String>(String('Can not find the end of the string'))
 		}
 

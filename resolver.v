@@ -169,7 +169,7 @@ resolve_return_type(implementation: FunctionImplementation) {
 
 		# Try to resolve the return type
 		resolved = implementation.return_type.(UnresolvedType).try_resolve_type(implementation)
-		if resolved as link == none return
+		if resolved === none return
 
 		# Update the return type, since we resolved it
 		implementation.return_type = resolved
@@ -258,7 +258,7 @@ resolve_supertypes(context: Context, type: Type) {
 		resolved = resolve(context, supertype)
 
 		# Skip the supertype if it could not be resolved or if it is not allowed to be inherited
-		if resolved as link == none or not type.is_inheriting_allowed(resolved) continue
+		if resolved === none or not type.is_inheriting_allowed(resolved) continue
 
 		# Replace the old unresolved supertype with the resolved one
 		type.supertypes[i] = resolved
@@ -314,7 +314,7 @@ get_tree_statuses(root: Node) {
 		result.add_range(get_tree_statuses(child))
 
 		status = child.get_status()
-		if status as link == none continue
+		if status === none continue
 
 		result.add(status)
 	}
@@ -327,7 +327,7 @@ get_tree_report(root: Node) {
 	if root == none => errors
 
 	loop status in get_tree_statuses(root) {
-		if status as link == none or not status.problematic continue
+		if status === none or not status.problematic continue
 		errors.add(status)
 	}
 
@@ -441,7 +441,7 @@ register_default_functions(context: Context) {
 output(status: Status) {
 	position = status.position
 
-	if position as link == none {
+	if position === none {
 		print('<Source>:<Line>:<Character>')
 	}
 	else {

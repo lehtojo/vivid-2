@@ -1233,7 +1233,7 @@ Unit {
 
 	add_debug_position(position: Position) {
 		if not settings.is_debugging_enabled => true
-		if position as link == none => false
+		if position === none => false
 
 		add(AddDebugPositionInstruction(this, position))
 
@@ -2113,7 +2113,7 @@ get_data_sections(context: Context) {
 	sections = Map<SourceFile, AssemblyBuilder>()
 	
 	all_types = common.get_all_types(context)
-	loop (i = all_types.size - 1, i >= 0, i--) { if all_types[i].position as link == none all_types.remove_at(i) }
+	loop (i = all_types.size - 1, i >= 0, i--) { if all_types[i].position === none all_types.remove_at(i) }
 	types = group_by<Type, SourceFile>(all_types, (i: Type) -> i.position.file)
 
 	data_section_identifier = String(SECTION_DIRECTIVE) + ` ` + DATA_SECTION_IDENTIFIER + `\n`
@@ -2175,7 +2175,7 @@ get_data_sections(context: Context) {
 		else { builder = AssemblyBuilder(data_section_identifier) }
 
 		loop node in nodes {
-			if node.identifier as link == none continue
+			if node.identifier === none continue
 
 			builder.write(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
 			builder.write_line(' 3')
@@ -2203,7 +2203,7 @@ get_text_sections(context: Context) {
 
 	# Remove all functions, which do not have start position
 	loop (i = all.size - 1, i >= 0, i--) {
-		if all[i].metadata.start as link == none all.remove_at(i)
+		if all[i].metadata.start === none all.remove_at(i)
 	}
 
 	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)

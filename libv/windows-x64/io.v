@@ -322,7 +322,7 @@ export start_process(executable: String, command_line_arguments: List<String>, w
 }
 
 export start_process(executable: String, command_line_arguments: List<String>, working_folder: String) {
-	if working_folder as link != none => start_process(executable, command_line_arguments, working_folder.text)
+	if working_folder !== none => start_process(executable, command_line_arguments, working_folder.text)
 	=> start_process(executable, command_line_arguments, none as link)
 }
 
@@ -332,7 +332,7 @@ export start_process(executable: String, command_line_arguments: List<String>) {
 
 shell(command: String, working_folder: link) {
 	shell = get_environment_variable('COMSPEC')
-	if shell as link == none => -1
+	if shell === none => -1
 
 	startup_information = inline internal.StartupInformation()
 	startup_information.size = 96
@@ -421,7 +421,7 @@ export get_process_working_folder() {
 # Summary: Returns the folder which contains the current process executable
 export get_process_folder() {
 	filename = get_process_filename()
-	if filename as link == none => none as String
+	if filename === none => none as String
 
 	# Find the index of the last separator
 	i = filename.last_index_of(`/`)

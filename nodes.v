@@ -221,7 +221,7 @@ Node ScopeNode {
 	}
 
 	override try_get_type() {
-		if last as link == none => none as Type
+		if last === none => none as Type
 		=> last.try_get_type()
 	}
 
@@ -511,7 +511,7 @@ Node UnresolvedFunction {
 				actual_parameter = actual.parameters[j]
 
 				# Ensure the parameter types do not conflict
-				if actual_parameter as link != none and not (expected_parameter.type == actual_parameter.type) return
+				if actual_parameter !== none and not (expected_parameter.type == actual_parameter.type) return
 			}
 
 			# Since none of the parameters conflicted with the expected parameters types, the expected parameter types can be transferred

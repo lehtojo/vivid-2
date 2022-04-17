@@ -313,7 +313,7 @@ build_call(unit: Unit, node: CallNode) {
 
 build_string(unit: Unit, node: StringNode) {
 	# Generate an identifier for the string, if it does not already exist
-	if node.identifier as link == none { node.identifier = unit.get_next_string() }
+	if node.identifier === none { node.identifier = unit.get_next_string() }
 
 	handle = DataSectionHandle(node.identifier, true)
 	if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }

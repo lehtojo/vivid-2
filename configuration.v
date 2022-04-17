@@ -72,7 +72,7 @@ initialize_configuration() {
 
 	if OS == OPERATING_SYSTEM_WINDOWS {
 		path = io.get_environment_variable('PATH')
-		if path as link == none { path = String('') }
+		if path === none { path = String('') }
 
 		folders = path.split(`;`).to_list()
 
@@ -83,7 +83,7 @@ initialize_configuration() {
 	}
 	else {
 		path = io.get_environment_variable('Path')
-		if path as link == none { path = String('') }
+		if path === none { path = String('') }
 
 		folders = path.split(`:`).to_list()
 	}
@@ -192,7 +192,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 
 		filename = find_library(library)
 
-		if filename as link == none => Status('Can not find the specified library')
+		if filename === none => Status('Can not find the specified library')
 
 		libraries.add(filename)
 	}

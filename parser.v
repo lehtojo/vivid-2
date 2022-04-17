@@ -604,7 +604,7 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 
 			loop overload in overloads {
 				# If the file filter is specified, skip all functions which are not defined inside that file
-				if file != none and (overload.start as link == none or overload.start.file != file) continue
+				if file != none and (overload.start === none or overload.start.file != file) continue
 
 				actual = List<Type>()
 				loop parameter in overload.parameters { actual.add(parameter.type) }

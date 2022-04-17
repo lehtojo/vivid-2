@@ -393,20 +393,20 @@ Node {
 	}
 
 	protected default_equals(other: Node) {
-		if this as link == none or other as link == none or this.instance != other.instance => false
+		if this === none or other === none or this.instance != other.instance => false
 
 		expected = first
 		actual = other.first
 
 		loop {
 			# If either one is none, return true only if both are none
-			if expected as link == none or actual as link == none => expected as link == actual as link
+			if expected === none or actual === none => expected === actual
 
 			# Compare the node instances
 			if expected.instance != actual.instance => false
 
 			# Compare the addresses of both nodes and use the internal comparison function
-			if expected as link != actual as link and not expected.equals(actual) => false
+			if expected !== actual and not expected.equals(actual) => false
 
 			expected = expected.next
 			actual = actual.next

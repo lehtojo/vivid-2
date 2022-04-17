@@ -382,7 +382,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 
 			if node == none {
 				error = state.error
-				if error as link == none { error = Status('Block consumption does not accept patterns returning nothing') }
+				if error === none { error = Status('Block consumption does not accept patterns returning nothing') }
 				=> error
 			}
 

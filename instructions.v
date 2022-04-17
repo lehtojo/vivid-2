@@ -652,7 +652,7 @@ DualParameterInstruction MoveInstruction {
 	}
 
 	is_move_instruction_x64() {
-		if operation as link == none => false
+		if operation === none => false
 		=> operation == platform.shared.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
 	}
 

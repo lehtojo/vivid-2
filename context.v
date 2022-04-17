@@ -1107,7 +1107,7 @@ Variable {
 	is_predictable => category == VARIABLE_CATEGORY_LOCAL or category == VARIABLE_CATEGORY_PARAMETER
 
 	is_hidden => name.index_of(`.`) != -1
-	is_generated => position as link == none
+	is_generated => position === none
 
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
@@ -1936,7 +1936,7 @@ Context FunctionImplementation {
 	}
 
 	delete_node_tree(tree: Node) {
-		if tree as link == none return
+		if tree === none return
 
 		loop (iterator = tree.last, iterator != none, iterator = iterator.previous) {
 			delete_node_tree(iterator)

@@ -466,7 +466,7 @@ Instruction {
 
 	finish() {
 		# Skip empty instructions
-		if operation as link == none or operation.length == 0 return
+		if operation === none or operation.length == 0 return
 
 		builder = StringBuilder()
 		builder.append(operation.text)

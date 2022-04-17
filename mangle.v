@@ -13,7 +13,7 @@ MangleDefinition {
 	}
 
 	string() {
-		if hexadecimal as link == none {
+		if hexadecimal === none {
 			digits = List<char>()
 			n = index - 1
 

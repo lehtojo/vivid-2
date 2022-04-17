@@ -810,7 +810,7 @@ namespace pe_format {
 			}
 
 			# Ensure the library was found
-			if library as link == none abort(String('Symbol ') + relocation.symbol.name + ' is not defined locally or externally')
+			if library === none abort(String('Symbol ') + relocation.symbol.name + ' is not defined locally or externally')
 
 			# Add the symbol to the import list linked to the library
 			if import_lists.contains_key(library) { import_lists[library].add(relocation.symbol.name) }
