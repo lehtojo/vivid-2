@@ -1541,7 +1541,7 @@ cast_member_calls(root: Node) {
 # a.a == b.a && a.b == b.b
 rewrite_pack_comparisons(root: Node) {
 	# Find all comparisons
-	comparisons = root.find_all(NODE_OPERATOR).filter(i -> i.match(Operators.EQUALS) or i.match(Operators.NOT_EQUALS))
+	comparisons = root.find_all(NODE_OPERATOR).filter(i -> i.match(Operators.EQUALS) or i.match(Operators.ABSOLUTE_EQUALS) or i.match(Operators.NOT_EQUALS) or i.match(Operators.ABSOLUTE_NOT_EQUALS))
 
 	loop comparison in comparisons {
 		# Find the left and right side of the comparison
@@ -1558,29 +1558,31 @@ rewrite_pack_comparisons(root: Node) {
 		left_members = create_pack_member_accessors(left, left_type, left.start)
 		right_members = create_pack_member_accessors(right, right_type, right.start)
 
+		operator = comparison.(OperatorNode).operator
+
 		# Rewrite the comparisons as follows:
-		if comparison.match(Operators.EQUALS) {
+		if operator == Operators.EQUALS or operator == Operators.ABSOLUTE_EQUALS {
 			# Equals: a == b => a.a == b.a && a.b == b.b && ...
-			result = OperatorNode(Operators.EQUALS).set_operands(left_members[0], right_members[0])
+			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
 
 			loop (i = 1, l = left_members.size, i++) {
 				left_member = left_members[i]
 				right_member = right_members[i]
 
-				result = OperatorNode(Operators.LOGICAL_AND).set_operands(result, OperatorNode(Operators.EQUALS).set_operands(left_member, right_member))
+				result = OperatorNode(Operators.LOGICAL_AND).set_operands(result, OperatorNode(operator).set_operands(left_member, right_member))
 			}
 
 			comparison.replace(result)
 		}
 		else {
 			# Not equals: a != b => a.a != b.a || a.b != b.b || ...
-			result = OperatorNode(Operators.NOT_EQUALS).set_operands(left_members[0], right_members[0])
+			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
 
 			loop (i = 1, l = left_members.size, i++) {
 				left_member = left_members[i]
 				right_member = right_members[i]
 
-				result = OperatorNode(Operators.LOGICAL_OR).set_operands(result, OperatorNode(Operators.NOT_EQUALS).set_operands(left_member, right_member))
+				result = OperatorNode(Operators.LOGICAL_OR).set_operands(result, OperatorNode(operator).set_operands(left_member, right_member))
 			}
 
 			comparison.replace(result)

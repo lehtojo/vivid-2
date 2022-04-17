@@ -1665,21 +1665,25 @@ Instruction JumpInstruction {
 		jumps = Map<ComparisonOperator, JumpOperatorBinding>()
 
 		if settings.is_x64 {
-			jumps.add(Operators.GREATER_THAN,     JumpOperatorBinding(platform.x64.JUMP_GREATER_THAN,           platform.x64.JUMP_ABOVE))
-			jumps.add(Operators.GREATER_OR_EQUAL, JumpOperatorBinding(platform.x64.JUMP_GREATER_THAN_OR_EQUALS, platform.x64.JUMP_ABOVE_OR_EQUALS))
-			jumps.add(Operators.LESS_THAN,        JumpOperatorBinding(platform.x64.JUMP_LESS_THAN,              platform.x64.JUMP_BELOW))
-			jumps.add(Operators.LESS_OR_EQUAL,    JumpOperatorBinding(platform.x64.JUMP_LESS_THAN_OR_EQUALS,    platform.x64.JUMP_BELOW_OR_EQUALS))
-			jumps.add(Operators.EQUALS,           JumpOperatorBinding(platform.x64.JUMP_EQUALS,                 platform.x64.JUMP_ZERO))
-			jumps.add(Operators.NOT_EQUALS,       JumpOperatorBinding(platform.x64.JUMP_NOT_EQUALS,             platform.x64.JUMP_NOT_ZERO))
+			jumps.add(Operators.GREATER_THAN,        JumpOperatorBinding(platform.x64.JUMP_GREATER_THAN,           platform.x64.JUMP_ABOVE))
+			jumps.add(Operators.GREATER_OR_EQUAL,    JumpOperatorBinding(platform.x64.JUMP_GREATER_THAN_OR_EQUALS, platform.x64.JUMP_ABOVE_OR_EQUALS))
+			jumps.add(Operators.LESS_THAN,           JumpOperatorBinding(platform.x64.JUMP_LESS_THAN,              platform.x64.JUMP_BELOW))
+			jumps.add(Operators.LESS_OR_EQUAL,       JumpOperatorBinding(platform.x64.JUMP_LESS_THAN_OR_EQUALS,    platform.x64.JUMP_BELOW_OR_EQUALS))
+			jumps.add(Operators.EQUALS,              JumpOperatorBinding(platform.x64.JUMP_EQUALS,                 platform.x64.JUMP_ZERO))
+			jumps.add(Operators.NOT_EQUALS,          JumpOperatorBinding(platform.x64.JUMP_NOT_EQUALS,             platform.x64.JUMP_NOT_ZERO))
+			jumps.add(Operators.ABSOLUTE_EQUALS,     JumpOperatorBinding(platform.x64.JUMP_EQUALS,                 platform.x64.JUMP_ZERO))
+			jumps.add(Operators.ABSOLUTE_NOT_EQUALS, JumpOperatorBinding(platform.x64.JUMP_NOT_EQUALS,             platform.x64.JUMP_NOT_ZERO))
 			return
 		}
 
-		#jumps.add(Operators.GREATER_THAN,     JumpOperatorBinding(platform.arm64.JUMP_GREATER_THAN,           platform.arm64.JUMP_GREATER_THAN))
-		#jumps.add(Operators.GREATER_OR_EQUAL, JumpOperatorBinding(platform.arm64.JUMP_GREATER_THAN_OR_EQUALS, platform.arm64.JUMP_GREATER_THAN_OR_EQUALS))
-		#jumps.add(Operators.LESS_THAN,        JumpOperatorBinding(platform.arm64.JUMP_LESS_THAN,              platform.arm64.JUMP_LESS_THAN))
-		#jumps.add(Operators.LESS_OR_EQUAL,    JumpOperatorBinding(platform.arm64.JUMP_LESS_THAN_OR_EQUALS,    platform.arm64.JUMP_LESS_THAN_OR_EQUALS))
-		#jumps.add(Operators.EQUALS,           JumpOperatorBinding(platform.arm64.JUMP_EQUALS,                 platform.arm64.JUMP_EQUALS))
-		#jumps.add(Operators.NOT_EQUALS,       JumpOperatorBinding(platform.arm64.JUMP_NOT_EQUALS,             platform.arm64.JUMP_NOT_EQUALS))
+		#jumps.add(Operators.GREATER_THAN,        JumpOperatorBinding(platform.arm64.JUMP_GREATER_THAN,           platform.arm64.JUMP_GREATER_THAN))
+		#jumps.add(Operators.GREATER_OR_EQUAL,    JumpOperatorBinding(platform.arm64.JUMP_GREATER_THAN_OR_EQUALS, platform.arm64.JUMP_GREATER_THAN_OR_EQUALS))
+		#jumps.add(Operators.LESS_THAN,           JumpOperatorBinding(platform.arm64.JUMP_LESS_THAN,              platform.arm64.JUMP_LESS_THAN))
+		#jumps.add(Operators.LESS_OR_EQUAL,       JumpOperatorBinding(platform.arm64.JUMP_LESS_THAN_OR_EQUALS,    platform.arm64.JUMP_LESS_THAN_OR_EQUALS))
+		#jumps.add(Operators.EQUALS,              JumpOperatorBinding(platform.arm64.JUMP_EQUALS,                 platform.arm64.JUMP_EQUALS))
+		#jumps.add(Operators.NOT_EQUALS,          JumpOperatorBinding(platform.arm64.JUMP_NOT_EQUALS,             platform.arm64.JUMP_NOT_EQUALS))
+		#jumps.add(Operators.ABSOLUTE_EQUALS,     JumpOperatorBinding(platform.arm64.JUMP_EQUALS,                 platform.arm64.JUMP_EQUALS))
+		#jumps.add(Operators.ABSOLUTE_NOT_EQUALS, JumpOperatorBinding(platform.arm64.JUMP_NOT_EQUALS,             platform.arm64.JUMP_NOT_EQUALS))
 	}
 
 	label: Label

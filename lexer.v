@@ -157,6 +157,8 @@ namespace Operators {
 	readonly LESS_OR_EQUAL: ComparisonOperator
 	readonly EQUALS: ComparisonOperator
 	readonly NOT_EQUALS: ComparisonOperator
+	readonly ABSOLUTE_EQUALS: ComparisonOperator
+	readonly ABSOLUTE_NOT_EQUALS: ComparisonOperator
 	readonly BITWISE_AND: ClassicOperator
 	readonly BITWISE_XOR: ClassicOperator
 	readonly BITWISE_OR: ClassicOperator
@@ -219,6 +221,8 @@ namespace Operators {
 		LESS_OR_EQUAL = ComparisonOperator(String('<='), 9)
 		EQUALS = ComparisonOperator(String('=='), 8)
 		NOT_EQUALS = ComparisonOperator(String('!='), 8)
+		ABSOLUTE_EQUALS = ComparisonOperator(String('==='), 8)
+		ABSOLUTE_NOT_EQUALS = ComparisonOperator(String('!=='), 8)
 		BITWISE_AND = ClassicOperator(String('&'), 7, true)
 		BITWISE_XOR = ClassicOperator(String('\xA4'), 6, true)
 		BITWISE_OR = ClassicOperator(String('|'), 5, true)
@@ -264,6 +268,8 @@ namespace Operators {
 		add(LESS_OR_EQUAL.set_counterpart(GREATER_THAN))
 		add(EQUALS.set_counterpart(NOT_EQUALS))
 		add(NOT_EQUALS.set_counterpart(EQUALS))
+		add(ABSOLUTE_EQUALS.set_counterpart(ABSOLUTE_NOT_EQUALS))
+		add(ABSOLUTE_NOT_EQUALS.set_counterpart(ABSOLUTE_EQUALS))
 		add(BITWISE_AND)
 		add(BITWISE_XOR)
 		add(BITWISE_OR)
