@@ -173,8 +173,8 @@ AssemblyParser {
 			if tokens.size < 5 or tokens[2].type != TOKEN_TYPE_NUMBER or tokens[3].type != TOKEN_TYPE_NUMBER or tokens[4].type != TOKEN_TYPE_NUMBER => false
 
 			file = tokens[2].(NumberToken).data
-			line = tokens[3].(NumberToken).data
-			character = tokens[4].(NumberToken).data
+			line = tokens[3].(NumberToken).data - 1
+			character = tokens[4].(NumberToken).data - 1
 
 			instructions.add(AddDebugPositionInstruction(unit, Position(none as SourceFile, line, character)))
 			=> true
