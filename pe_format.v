@@ -275,7 +275,7 @@ namespace pe_format {
 			# Index the section fragments as well according to the overlay section index
 			# Store the virtual address of the first fragment into all the fragments (base virtual address)
 			loop fragment in fragments {
-				if fragment.name != section.name continue
+				if not (fragment.name == section.name) continue
 				fragment.base_virtual_address = section.virtual_address
 				fragment.index = i
 			}
