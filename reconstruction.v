@@ -107,7 +107,7 @@ get_expression_root(node: Node) {
 		if next.instance == NODE_OPERATOR and next.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT {
 			iterator = next
 		}
-		else next.match(NODE_PARENTHESIS | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_OFFSET | NODE_PACK) {
+		else next.match(NODE_PARENTHESIS | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_PACK) {
 			iterator = next
 		}
 		else {
@@ -836,10 +836,10 @@ construct_assignment_operators(root: Node) {
 		value = none as Node
 
 		# Ensure either the left or the right operand is the same as the destination of the assignment
-		if expression.first.equals(assignment.first) {
+		if expression.first.is_equal(assignment.first) {
 			value = expression.last
 		}
-		else expression.last.equals(assignment.first) and expression.operator != Operators.DIVIDE and expression.operator != Operators.MODULUS and expression.operator != Operators.SUBTRACT {
+		else expression.last.is_equal(assignment.first) and expression.operator != Operators.DIVIDE and expression.operator != Operators.MODULUS and expression.operator != Operators.SUBTRACT {
 			value = expression.first
 		}
 
@@ -1376,21 +1376,15 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 	# Find all local variables, which are packs
 	local_packs = List<Variable>()
 
-	loop local in implementation.locals {
+	loop local in implementation.all_variables {
 		if local.type.is_pack { local_packs.add(local) }
 	}
 
-	loop parameter in implementation.parameters {
-		if parameter.type.is_pack { local_packs.add(parameter) }
-	}
+	self = implementation.self
 
-	###
-	NOTE: Locals and parameters should cover all
-	loop iterator in implementation.variables {
-		variable = iterator.value
-		if variable.type.is_pack { local_packs.add(variable) }
+	if self !== none and self.type.is_pack {
+		local_packs.add(self)
 	}
-	###
 
 	# Create the pack representives for all the collected local packs
 	loop local_pack in local_packs { common.get_pack_representives(local_pack) }
@@ -1485,6 +1479,32 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		iterator.replace(VariableNode(representive, usage.start))
 	}
 
+	# Replace all packers, which are accessed using link nodes with the accessed member values
+	packers = root.find_all(NODE_PACK)
+
+	loop packer in packers {
+		# Find all packers, whose members are accessed using a link node
+		if packer.parent.instance != NODE_LINK or packer.next.instance != NODE_VARIABLE continue
+
+		# Find the member value from the packer, which represents the accessed member
+		type = packer.(PackNode).type
+		member_value = packer.first
+		accessed_member = packer.next.(VariableNode).variable
+
+		loop iterator in type.variables {
+			member = iterator.value
+
+			if not (member.name == accessed_member.name) {
+				member_value = member_value.next
+				continue
+			}
+
+			# Replace the packer with the member value
+			packer.parent.replace(member_value)
+			stop
+		}
+	}
+
 	# Returned packs from function calls are handled last:
 	loop placeholder in placeholders {
 		placeholder.key.replace(placeholder.value)
@@ -1521,7 +1541,7 @@ cast_member_calls(root: Node) {
 
 		actual = left.get_type()
 
-		if (actual as link) == (expected as link) or actual.get_supertype_base_offset(expected) == 0 continue
+		if actual === expected or actual.get_supertype_base_offset(expected) == 0 continue
 
 		# Cast the left side to the expected type
 		left.remove()
@@ -1565,7 +1585,7 @@ rewrite_pack_comparisons(root: Node) {
 			# Equals: a == b => a.a == b.a && a.b == b.b && ...
 			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
 
-			loop (i = 1, l = left_members.size, i++) {
+			loop (i = 1, i < left_members.size, i++) {
 				left_member = left_members[i]
 				right_member = right_members[i]
 
@@ -1578,7 +1598,7 @@ rewrite_pack_comparisons(root: Node) {
 			# Not equals: a != b => a.a != b.a || a.b != b.b || ...
 			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
 
-			loop (i = 1, l = left_members.size, i++) {
+			loop (i = 1, i < left_members.size, i++) {
 				left_member = left_members[i]
 				right_member = right_members[i]
 
