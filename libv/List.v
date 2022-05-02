@@ -335,6 +335,16 @@ export List<T> {
 		=> default
 	}
 
+	# Summary: Returns the index of the first element, which passes the specified filter, otherwise the function returns -1
+	find_index(filter: (T) -> bool) {
+		loop (i = 0, i < position, i++) {
+			element = elements[i]
+			if filter(element) => i
+		}
+
+		=> -1
+	}
+
 	# Summary: Returns the first element to produce the maximum value using the specified mapper
 	find_max(mapper: (T) -> large) {
 		if position == 0 panic('Can not find the maximum value of an empty list')

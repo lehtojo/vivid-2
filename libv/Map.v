@@ -218,8 +218,8 @@ export Map<K, V> {
 		if location < 0 => false
 		
 		states[location] = false
-		keys[location] = none as K
-		values[location] = none as V
+		keys[location] = none
+		values[location] = none
 
 		loop (i = 0, i < items.size, i++) {
 			if not (items[i].key == key) continue
