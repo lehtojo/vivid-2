@@ -3,16 +3,10 @@ namespace analysis
 # Summary: Loads all variable usages from the specified function
 load_variable_usages(implementation: FunctionImplementation) {
 	# Reset all parameters and locals
-	loop parameter in implementation.parameters {
-		parameter.usages.clear()
-		parameter.writes.clear()
-		parameter.reads.clear()
-	}
-
-	loop local in implementation.locals {
-		local.usages.clear()
-		local.writes.clear()
-		local.reads.clear()
+	loop variable in implementation.all_variables {
+		variable.usages.clear()
+		variable.writes.clear()
+		variable.reads.clear()
 	}
 
 	self = implementation.self
@@ -161,13 +155,7 @@ configure_static_variables(context: Context) {
 # Summary: Resets all variable usages in the specified context
 reset_variable_usages(context: Context) {
 	loop implementation in common.get_all_function_implementations(context) {
-		loop variable in implementation.parameters {
-			variable.usages.clear()
-			variable.writes.clear()
-			variable.reads.clear()
-		}
-
-		loop variable in implementation.locals {
+		loop variable in implementation.all_variables {
 			variable.usages.clear()
 			variable.writes.clear()
 			variable.reads.clear()
@@ -219,11 +207,7 @@ load_variable_usages(context: Context, root: Node) {
 
 	# Classify the loaded usages
 	loop implementation in implementations {
-		loop variable in implementation.parameters {
-			classify_variable_usages(variable)
-		}
-
-		loop variable in implementation.locals {
+		loop variable in implementation.all_variables {
 			classify_variable_usages(variable)
 		}
 
@@ -300,7 +284,7 @@ is_inside_branch_condition(perspective: Node, branch: Node) {
 	}
 	else branch.instance == NODE_LOOP {
 		if branch.(LoopNode).is_forever_loop => false
-		=> perspective == branch.(LoopNode).condition_container or perspective.is_under(branch.(LoopNode).condition_container) 
+		=> perspective == branch.(LoopNode).condition_container or perspective.is_under(branch.(LoopNode).condition_container)
 	}
 
 	=> false

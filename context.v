@@ -69,6 +69,23 @@ Context {
 	is_inside_function => is_implementation or is_function or (parent != none and parent.is_inside_function)
 	is_inside_lambda => is_lambda_implementation or is_lambda or (parent != none and parent.is_inside_lambda)
 
+	all_variables() {
+		result = List<Variable>()
+
+		loop iterator in variables {
+			variable = iterator.value
+			if variable.category != VARIABLE_CATEGORY_LOCAL and variable.category != VARIABLE_CATEGORY_PARAMETER continue
+			result.add(variable)
+		}
+
+		loop subcontext in subcontexts {
+			if subcontext.type !== NORMAL_CONTEXT continue
+			result.add_range(subcontext.all_variables)
+		}
+
+		=> result
+	}
+
 	locals() {
 		result = List<Variable>()
 
@@ -79,6 +96,7 @@ Context {
 		}
 
 		loop subcontext in subcontexts {
+			if subcontext.type !== NORMAL_CONTEXT continue
 			result.add_range(subcontext.locals)
 		}
 
@@ -1773,6 +1791,10 @@ Function Lambda {
 
 		# Lambdas usually capture variables from the parent context
 		connect(context)
+
+		# Add import modifier if this lamdba is inside an imported function
+		implementation = context.find_implementation_parent()
+		if implementation.metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
 	}
 
 	# Summary: Implements the lambda using the specified parameter types
@@ -1790,6 +1812,7 @@ Function Lambda {
 		# Create a function implementation
 		implementation = LambdaImplementation(this, none as Type, parent)
 		implementation.set_parameters(parameters)
+		implementation.is_imported = is_imported
 
 		# Add the created implementation to the implementations list
 		implementations.add(implementation)
@@ -2311,7 +2334,7 @@ Number ArrayType {
 		if is_unresolved abort('Array size was not resolved')
 
 		count: large = expression.(NumberNode).value
-		=> element.reference_size * count
+		=> element.allocation_size * count
 	}
 
 	# Summary: Try to parse the expression using the internal tokens
