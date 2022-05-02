@@ -854,8 +854,13 @@ Handle StackAllocationHandle {
 	}
 }
 
+pack DisposablePackMember {
+	member: Variable
+	value: Result
+}
+
 Handle DisposablePackHandle {
-	members: Map<Variable, Result> = Map<Variable, Result>()
+	members: Map<String, DisposablePackMember> = Map<String, DisposablePackMember>()
 
 	init(unit: Unit, type: Type) {
 		this.type = HANDLE_EXPRESSION
@@ -864,20 +869,19 @@ Handle DisposablePackHandle {
 		# Initialize the members
 		loop iterator in type.variables {
 			member = iterator.value
-
 			value = Result()
 
 			if member.type.is_pack {
 				value.value = DisposablePackHandle(unit, member.type)
 			}
 
-			members[member] = value
+			members[member.name] = pack { member: member, value: value } as DisposablePackMember
 		}
 	}
 
 	override use(instruction: Instruction) {
 		loop iterator in members {
-			member = iterator.value
+			member = iterator.value.value
 			member.use(instruction)
 		}
 	}
@@ -886,7 +890,7 @@ Handle DisposablePackHandle {
 		all = List<Result>()
 
 		loop iterator in members {
-			member = iterator.value
+			member = iterator.value.value
 			all.add(member)
 		}
 

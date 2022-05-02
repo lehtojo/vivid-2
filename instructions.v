@@ -612,7 +612,7 @@ DualParameterInstruction MoveInstruction {
 		}
 		else {
 			# Examples: mov r, c / mov r, r
-			build(platform.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT | HANDLE_REGISTER))
+			build(platform.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 	}
 
@@ -1083,8 +1083,8 @@ Instruction CallInstruction {
 
 	output_pack(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
 		loop iterator in disposable_pack.members {
-			member = iterator.key
-			value = iterator.value
+			member = iterator.value.member
+			value = iterator.value.value
 
 			if member.type.is_pack {
 				output_pack(standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
@@ -1250,7 +1250,7 @@ Instruction ReorderInstruction {
 			# Find all memory handles
 			value = iterator.value
 			instance: large = value.value.instance
-			if instance != INSTANCE_STACK_VARIABLE and instance != INSTANCE_STACK_MEMORY and instance != INSTANCE_TEMPORARY_MEMORY and instance != INSTANCE_MEMORY continue
+			if instance != INSTANCE_STACK_MEMORY and instance != INSTANCE_TEMPORARY_MEMORY and instance != INSTANCE_MEMORY continue
 
 			memory_handle = value.value as MemoryHandle
 
@@ -1266,18 +1266,21 @@ Instruction ReorderInstruction {
 
 			# Try to get an available non-volatile register
 			destination = none as Handle
+			destination_format = 0
 			register = memory.get_next_register_without_releasing(unit, variable.type.format == FORMAT_DECIMAL, trace.for(unit, value), false)
 
 			# Use the non-volatile register, if one was found
 			if register != none {
 				destination = RegisterHandle(register)
+				destination_format = variable.type.get_register_format()
 			}
 			else {
 				# Since there are no non-volatile registers available, the value must be relocated to safe stack location
 				destination = references.create_variable_handle(unit, variable, ACCESS_WRITE)
+				destination_format = variable.type.format
 			}
 
-			instruction = MoveInstruction(unit, Result(destination, variable.type.get_register_format()), value)
+			instruction = MoveInstruction(unit, Result(destination, destination_format), value)
 			instruction.description = String('Evacuate overflow')
 			instruction.type = MOVE_RELOCATE
 			unit.add(instruction)
@@ -1428,26 +1431,8 @@ Instruction GetObjectPointerInstruction {
 
 	output_pack(disposable_pack: DisposablePackHandle, position: large) {
 		loop iterator in disposable_pack.members {
-			member = iterator.key
-			value = iterator.value
-
-			if member.type.is_pack {
-				position = output_pack(value.value as DisposablePackHandle, position)
-				continue
-			}
-
-			value.value = MemoryHandle(unit, start, offset + position)
-			value.format = member.type.format
-			position += member.type.allocation_size
-		}
-
-		=> position
-	}
-
-	output_pack(disposable_pack: DisposablePackHandle, position: large) {
-		loop iterator in disposable_pack.members {
-			member = iterator.key
-			value = iterator.value
+			member = iterator.value.member
+			value = iterator.value.value
 
 			if member.type.is_pack {
 				# Output the members of the nested pack using this function recursively
@@ -1468,7 +1453,7 @@ Instruction GetObjectPointerInstruction {
 				if unit.mode == UNIT_MODE_BUILD and not value.is_deactivating {
 					# Since we are in build mode and the member is required, we need to output a register value
 					value.value = MemoryHandle(unit, start, offset + position)
-					memory.move_to_register(unit, value, to_size(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+					memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
 				}
 				else {
 					value.value = Handle()
@@ -1561,8 +1546,8 @@ Instruction GetMemoryAddressInstruction {
 
 	output_pack(disposable_pack: DisposablePackHandle, position: large) {
 		loop iterator in disposable_pack.members {
-			member = iterator.key
-			value = iterator.value
+			member = iterator.value.member
+			value = iterator.value.value
 
 			if member.type.is_pack {
 				# Output the members of the nested pack using this function recursively
@@ -2371,11 +2356,12 @@ Instruction CreatePackInstruction {
 			member = iterator.value
 
 			if member.type.is_pack {
-				position = register_member_values(disposable_pack.members[member].value as DisposablePackHandle, member.type, position)
+				disposable_member_pack = disposable_pack.members[member.name].value as DisposablePackHandle
+				position = register_member_values(disposable_member_pack, member.type, position)
 				continue
 			}
 
-			disposable_pack.members[member] = values[position]
+			disposable_pack.members[member.name] = pack { member: member, value: values[position] } as DisposablePackMember
 			position++
 		}
 

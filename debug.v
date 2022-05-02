@@ -1034,15 +1034,16 @@ Debug {
 	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
 		if variable.is_generated or variable.type.is_array_type return
 
-		is_string = is_string_type(variable)
+		# Before adding the local variable, it must have a stack alignment
+		alignment = variable.alignment
+		if not variable.is_aligned return
 
 		information.add(local_variable_abbrevation) # DW_TAG_variable
-		
-		type = variable.type
-		alignment = variable.alignment
-		local_variable_alignment = to_sleb128(local_memory_size + variable.alignment)
 
-		if is_string {
+		type = variable.type
+		local_variable_alignment = to_sleb128(local_memory_size + alignment)
+
+		if is_string_type(variable) {
 			# Get the member variable which points to the actual data in the type
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
 			if data == none abort('Missing data variable')
@@ -1072,15 +1073,19 @@ Debug {
 	}
 
 	add_parameter_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
-		is_string = is_string_type(variable)
+		# Do not add generated variables
+		if variable.is_generated or variable.type.is_array_type return
+
+		# Before adding the local variable, it must have a stack alignment
+		alignment = variable.alignment
+		if not variable.is_aligned return
 
 		information.add(parameter_variable_abbrevation) # DW_TAG_variable
-		
-		type = variable.type
-		alignment = variable.alignment
-		parameter_alignment = to_sleb128(local_memory_size + variable.alignment)
 
-		if is_string {
+		type = variable.type
+		parameter_alignment = to_sleb128(local_memory_size + alignment)
+
+		if is_string_type(variable) {
 			# Get the member variable which points to the actual data in the type
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
 			if data == none abort('Missing data variable')

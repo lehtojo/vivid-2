@@ -90,8 +90,8 @@ is_self_pointer_required(current: FunctionImplementation, other: FunctionImpleme
 # Summary: Passes the specified disposable pack by passing its member one by one
 pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
 	loop iterator in disposable_pack.members {
-		member = iterator.key
-		value = iterator.value
+		member = iterator.value.member
+		value = iterator.value.value
 
 		if member.type.is_pack {
 			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
@@ -232,16 +232,52 @@ build(unit: Unit, self: Result, node: FunctionNode) {
 	=> build(unit, self, node.parameters, node.function)
 }
 
+move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
+	representives = common.get_pack_representives(parameter)
+
+	loop representive in representives {
+		# Do not use the default parameter alignment, use local stack memory, because we want the pack members to be sequentially
+		representive.alignment = 0
+		representive.is_aligned = false
+
+		register = none as Register
+		source = none as Result
+
+		if parameter.type.format == FORMAT_DECIMAL {
+			register = decimal_parameter_registers.pop_or(none as Register)
+		}
+		else {
+			register = standard_parameter_registers.pop_or(none as Register)
+		}
+
+		if register !== none {
+			source = Result(RegisterHandle(register), representive.type.get_register_format())
+		}
+		else {
+			source = Result(stack_position.finalize(), representive.type.get_register_format())
+		}
+
+		destination = Result(references.create_variable_handle(unit, parameter, ACCESS_READ), parameter.type.format)
+
+		instruction = MoveInstruction(unit, destination, source)
+		instruction.type = MOVE_RELOCATE
+		unit.add(instruction)
+
+		# Windows: Even though the first parameters are passed in registers, they still require their own stack memory (shadow space)
+		if register !== none and not settings.is_target_windows return
+
+		# Normal parameters consume one stack unit
+		stack_position.offset += SYSTEM_BYTES
+	}
+}
+
 # Summary:
 # Moves the specified parameter or its representives to their own stack locations, if they are not already in the stack.
 # The location of the parameter is determined by using the specified registers.
 # This is used for debugging purposes.
-move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>) {
+move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
 	if parameter.type.is_pack {
-		loop representive in common.get_pack_representives(parameter) {
-			move_parameters_to_stack(unit, representive, standard_parameter_registers, decimal_parameter_registers)
-		}
-
+		move_pack_to_stack(unit, parameter, standard_parameter_registers, decimal_parameter_registers, stack_position)
 		return
 	}
 
@@ -261,23 +297,33 @@ move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_reg
 		instruction = MoveInstruction(unit, destination, source)
 		instruction.type = MOVE_RELOCATE
 		unit.add(instruction)
+
+		# Windows: Even though the first parameters are passed in registers, they still require their own stack memory (shadow space)
+		if not settings.is_target_windows return
 	}
+
+	# Normal parameters consume one stack unit
+	stack_position.offset += SYSTEM_BYTES
 }
 
 # Summary:
 # Moves the specified parameters or their representives to their own stack locations, if they are not already in the stack.
 # This is used for debugging purposes.
 move_parameters_to_stack(unit: Unit) {
+	stack_offset = 0
+	if settings.is_x64 { stack_offset = SYSTEM_BYTES }
+
 	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+	stack_position = StackMemoryHandle(unit, stack_offset, true)
 
 	if (unit.function.is_member and not unit.function.is_static) or unit.function.is_lambda_implementation {
 		self = unit.self
 		if self == none abort('Missing self pointer')
-		move_parameters_to_stack(unit, self, standard_parameter_registers, decimal_parameter_registers)
+		move_parameters_to_stack(unit, self, standard_parameter_registers, decimal_parameter_registers, stack_position)
 	}
 
 	loop parameter in unit.function.parameters {
-		move_parameters_to_stack(unit, parameter, standard_parameter_registers, decimal_parameter_registers)
+		move_parameters_to_stack(unit, parameter, standard_parameter_registers, decimal_parameter_registers, stack_position)
 	}
 }

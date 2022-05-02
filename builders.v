@@ -260,7 +260,11 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 		left = references.get(unit, node.first, mode) as Result
 
 		# Packs:
-		if left.value.instance == INSTANCE_DISPOSABLE_PACK => left.value.(DisposablePackHandle).members[member]
+		if left.value.instance == INSTANCE_DISPOSABLE_PACK {
+			disposable_pack = left.value.(DisposablePackHandle)
+			member_state = disposable_pack.members[member.name]
+			=> member_state.value
+		}
 
 		alignment = member.get_alignment(type)
 		=> GetObjectPointerInstruction(unit, member, left, alignment, mode).add()

@@ -1414,9 +1414,56 @@ align(context: Context) {
 	}
 }
 
+# Summary:
+# Align all used local packs and their representives sequentially.
+# Returns the stack position after aligning.
+# NOTE: Available only in debugging mode, because in optimized builds pack representives might not be available
+align_packs_for_debugging(implementation: FunctionImplementation, local_variables: List<Variable>, position: large) {
+	# Do nothing if debugging mode is not enabled
+	if not settings.is_debugging_enabled => position
+
+	loop local in local_variables {
+		# Skip variables that are not packs
+		if not local.type.is_pack continue
+
+		# Align the whole pack if it is used
+		representives = common.get_pack_representives(local)
+		used = false
+
+		loop representive in representives {
+			if not local_variables.contains(representive) continue
+			used = true
+			stop
+		}
+
+		if not used continue
+
+		# Allocate stack memory for the whole pack
+		position -= local.type.allocation_size
+		local.alignment = position
+		local.is_aligned = true
+
+		# Keep track of the position inside the pack, so that we can align the members properly
+		subposition = position
+
+		# Align the pack representives inside the allocated stack memory
+		loop representive in representives {
+			representive.alignment = subposition
+			subposition += representive.type.allocation_size
+
+			# Remove the representive from the variable list that will be aligned later
+			local_variables.remove(representive)
+		}
+	}
+
+	=> position
+}
+
 # Summary: Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
-align_local_memory(local_variables: List<Variable>, temporary_handles: List<TemporaryMemoryHandle>, stack_allocation_handles: List<StackAllocationHandle>, top: normal) {
+align_local_memory(implementation: FunctionImplementation, local_variables: List<Variable>, temporary_handles: List<TemporaryMemoryHandle>, stack_allocation_handles: List<StackAllocationHandle>, top: normal) {
 	position = -top
+
+	position = align_packs_for_debugging(implementation, local_variables, position)
 
 	# Used local variables:
 	loop variable in local_variables {
@@ -1667,7 +1714,7 @@ get_text_section(implementation: FunctionImplementation) {
 	}
 
 	# Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
-	align_local_memory(local_variables, temporary_handles, stack_allocation_handles, local_memory_top)
+	align_local_memory(implementation, local_variables, temporary_handles, stack_allocation_handles, local_memory_top)
 
 	# Allocate all constant data section handles
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
