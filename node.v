@@ -48,6 +48,10 @@ Node {
 		=> instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
 	}
 
+	match(variable: Variable) {
+		=> instance == NODE_VARIABLE and this.(VariableNode).variable === variable
+	}
+
 	# Summary: Finds the first parent, which passes the specified filter
 	find_parent(filter: (Node) -> bool) {
 		if parent == none => none as Node
@@ -392,7 +396,7 @@ Node {
 		=> result
 	}
 
-	protected default_equals(other: Node) {
+	protected is_tree_equal(other: Node) {
 		if this === none or other === none or this.instance != other.instance => false
 
 		expected = first
@@ -406,15 +410,15 @@ Node {
 			if expected.instance != actual.instance => false
 
 			# Compare the addresses of both nodes and use the internal comparison function
-			if expected !== actual and not expected.equals(actual) => false
+			if expected !== actual and not expected.is_equal(actual) => false
 
 			expected = expected.next
 			actual = actual.next
 		}
 	}
 
-	virtual equals(other: Node) {
-		=> default_equals(other)
+	virtual is_equal(other: Node) {
+		=> is_tree_equal(other)
 	}
 
 	# Summary: Tries to resolve the potential error state of the node

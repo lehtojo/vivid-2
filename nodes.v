@@ -83,8 +83,8 @@ Node NumberNode {
 		this.format = format
 	}
 
-	override equals(other: Node) {
-		=> value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
+	override is_equal(other: Node) {
+		=> instance == other.instance and value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
 	}
 
 	override try_get_type() {
@@ -181,8 +181,8 @@ Node OperatorNode {
 		=> resolver.get_shared_type(left_type, right_type)
 	}
 
-	override equals(other: Node) {
-		=> operator == other.(OperatorNode).operator and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and operator == other.(OperatorNode).operator and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -225,8 +225,8 @@ Node ScopeNode {
 		=> last.try_get_type()
 	}
 
-	override equals(other: Node) {
-		=> context.identity == other.(ScopeNode).context.identity and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and context.identity == other.(ScopeNode).context.identity and is_tree_equal(other)
 	}
 
 	override copy() {
@@ -256,8 +256,8 @@ Node VariableNode {
 		variable.usages.add(this)
 	}
 
-	override equals(other: Node) {
-		=> variable == other.(VariableNode).variable
+	override is_equal(other: Node) {
+		=> instance == other.instance and variable == other.(VariableNode).variable
 	}
 
 	override try_get_type() {
@@ -369,8 +369,8 @@ Node UnresolvedIdentifier {
 		=> none as Node
 	}
 
-	override equals(other: Node) {
-		=> value == other.(UnresolvedIdentifier).value
+	override is_equal(other: Node) {
+		=> instance == other.instance and value == other.(UnresolvedIdentifier).value
 	}
 
 	override resolve(context: Context) {
@@ -599,8 +599,8 @@ Node UnresolvedFunction {
 		=> node
 	}
 
-	override equals(other: Node) {
-		=> name == other.(UnresolvedFunction).name and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and name == other.(UnresolvedFunction).name and is_tree_equal(other)
 	}
 
 	override resolve(context: Context) {
@@ -648,8 +648,8 @@ Node TypeNode {
 		=> none as Node
 	}
 
-	override equals(other: Node) {
-		=> type == other.(TypeNode).type
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(TypeNode).type
 	}
 
 	override try_get_type() {
@@ -693,8 +693,8 @@ Node TypeDefinitionNode {
 		}
 	}
 
-	override equals(other: Node) {
-		=> type == other.(TypeDefinitionNode).type
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(TypeDefinitionNode).type
 	}
 
 	override copy() {
@@ -715,8 +715,8 @@ Node FunctionDefinitionNode {
 		this.start = position
 	}
 
-	override equals(other: Node) {
-		=> function == other.(FunctionDefinitionNode).function
+	override is_equal(other: Node) {
+		=> instance == other.instance and function == other.(FunctionDefinitionNode).function
 	}
 
 	override copy() {
@@ -745,8 +745,8 @@ Node StringNode {
 		this.instance = NODE_STRING
 	}
 
-	override equals(other: Node) {
-		=> text == other.(StringNode).text
+	override is_equal(other: Node) {
+		=> instance == other.instance and text == other.(StringNode).text
 	}
 
 	override try_get_type() {
@@ -779,8 +779,8 @@ Node FunctionNode {
 		=> this
 	}
 
-	override equals(other: Node) {
-		=> function == other.(FunctionNode).function and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and function == other.(FunctionNode).function and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -1080,6 +1080,7 @@ Node CastNode {
 	init(object: Node, type: Node, position: Position) {
 		this.start = position
 		this.instance = NODE_CAST
+		this.is_resolvable = true
 
 		add(object)
 		add(type)
@@ -1090,8 +1091,41 @@ Node CastNode {
 		this.instance = NODE_CAST
 	}
 
+	is_free() {
+		from = first.get_type()
+		to = get_type()
+
+		a = from.get_supertype_base_offset(to)
+		b = to.get_supertype_base_offset(from)
+
+		# 1. Return true if both of the types have nothing in common: a == none and b == none
+		# 2. If either a or b is zero, no offset is required, so the cast is free: a == 0 or b == 0
+		# Result: (a == none and b == none) or (a == 0 or b == 0)
+		if a.empty => b.empty or b.value == 0
+		=> a.value == 0 or (not b.empty and b.value == 0)
+	}
+
 	override try_get_type() {
 		=> last.try_get_type()
+	}
+
+	override resolve(context: Context) {
+		# If the casted object is a pack construction:
+		# - Set the target type of the pack construction to the target type of this cast
+		# - Replace this cast node with the pack construction by returning it
+		if first.instance == NODE_PACK_CONSTRUCTION {
+			first.(PackConstructionNode).type = last.(TypeNode).type
+			=> first
+		}
+
+		resolver.resolve(context, first)
+		resolver.resolve(context, last)
+
+		=> none as Node
+	}
+
+	override get_status() {
+		=> none as Status
 	}
 
 	override copy() {
@@ -1149,8 +1183,8 @@ Node CommandNode {
 		=> result
 	}
 
-	override equals(other: Node) {
-		=> instruction == other.(CommandNode).instruction
+	override is_equal(other: Node) {
+		=> instance == other.instance and instruction == other.(CommandNode).instruction
 	}
 
 	override copy() {
@@ -1256,8 +1290,8 @@ Node IncrementNode {
 		this.post = post
 	}
 
-	override equals(other: Node) {
-		=> post == other.(IncrementNode).post and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and post == other.(IncrementNode).post and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -1290,8 +1324,8 @@ Node DecrementNode {
 		this.post = post
 	}
 
-	override equals(other: Node) {
-		=> post == other.(DecrementNode).post and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and post == other.(DecrementNode).post and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -1413,8 +1447,8 @@ Node InlineNode {
 		this.instance = NODE_INLINE
 	}
 
-	override equals(other: Node) {
-		=> is_context == other.(InlineNode).is_context and default_equals(other)
+	override is_equal(other: Node) {
+		=> instance == other.instance and is_context == other.(InlineNode).is_context and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -1442,9 +1476,10 @@ InlineNode ContextInlineNode {
 		this.is_context = true
 	}
 
-	override equals(other: Node) {
+	override is_equal(other: Node) {
+		if instance != other.instance => false
 		if is_context != other.(InlineNode).is_context or context.identity != other.(ContextInlineNode).context.identity => false
-		=> default_equals(other)
+		=> is_tree_equal(other)
 	}
 
 	override copy() {
@@ -1470,8 +1505,8 @@ Node DataPointerNode {
 		this.instance = NODE_DATA_POINTER
 	}
 
-	override equals(other: Node) {
-		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset
 	}
 
 	override try_get_type() {
@@ -1495,8 +1530,8 @@ DataPointerNode FunctionDataPointerNode {
 		this.function = function
 	}
 
-	override equals(other: Node) {
-		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and function == other.(FunctionDataPointerNode).function
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and function == other.(FunctionDataPointerNode).function
 	}
 
 	override copy() {
@@ -1516,8 +1551,8 @@ DataPointerNode TableDataPointerNode {
 		this.table = table
 	}
 
-	override equals(other: Node) {
-		=> type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and table == other.(TableDataPointerNode).table
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and table == other.(TableDataPointerNode).table
 	}
 
 	override copy() {
@@ -1548,8 +1583,8 @@ Node StackAddressNode {
 		this.start = position
 	}
 
-	override equals(other: Node) {
-		=> type == other.(DataPointerNode).type
+	override is_equal(other: Node) {
+		=> instance == other.instance and type == other.(DataPointerNode).type
 	}
 
 	override try_get_type() {
@@ -1574,8 +1609,8 @@ Node LabelNode {
 		this.instance = NODE_LABEL
 	}
 
-	override equals(other: Node) {
-		=> label == other.(LabelNode).label
+	override is_equal(other: Node) {
+		=> instance == other.instance and label == other.(LabelNode).label
 	}
 
 	override copy() {
@@ -1602,8 +1637,8 @@ Node JumpNode {
 		this.is_conditional = is_conditional
 	}
 
-	override equals(other: Node) {
-		=> label == other.(JumpNode).label and is_conditional == other.(JumpNode).is_conditional
+	override is_equal(other: Node) {
+		=> instance == other.instance and label == other.(JumpNode).label and is_conditional == other.(JumpNode).is_conditional
 	}
 
 	override copy() {
@@ -1630,8 +1665,8 @@ Node DeclareNode {
 		this.instance = NODE_DECLARE
 	}
 
-	override equals(other: Node) {
-		=> variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
+	override is_equal(other: Node) {
+		=> instance == other.instance and variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
 	}
 
 	override copy() {
@@ -1656,8 +1691,8 @@ Node SectionNode {
 		=> SectionNode(modifiers, start)
 	}
 
-	override equals(other: Node) {
-		=> modifiers == other.(SectionNode).modifiers
+	override is_equal(other: Node) {
+		=> instance == other.instance and modifiers == other.(SectionNode).modifiers
 	}
 }
 
@@ -2367,6 +2402,21 @@ Node PackConstructionNode {
 		=> true
 	}
 
+	# Summary:
+	# Returns whether the values for all the required members are present.
+	# If a value for a member is missing, this function returns the member.
+	# Otherwise, this function returns null.
+	capture_missing_member() {
+		loop iterator in type.variables {
+			member = iterator.value
+
+			if member.is_static or member.is_constant or member.is_hidden continue
+			if not members.contains(member.name) => member
+		}
+
+		=> none as Variable
+	}
+
 	override resolve(context: Context) {
 		# Resolve the arguments
 		loop argument in this {
@@ -2374,7 +2424,14 @@ Node PackConstructionNode {
 		}
 
 		# Skip the process below, if it has been executed already
-		if type != none => none as Node
+		if type != none {
+			# Try to resolve the target type, if it is unresolved
+			if type.is_unresolved {
+				type = resolver.resolve(context, type)
+			}
+
+			=> none as Node
+		}
 
 		# Try to resolve the type of the arguments, these types are the types of the members
 		types = resolver.get_types(this)
@@ -2397,8 +2454,12 @@ Node PackConstructionNode {
 	override get_status() {
 		# Ensure that all member names are unique
 		if not validate_member_names() => Status(start, 'All pack members must be named differently')
-
 		if type == none => Status(start, 'Can not resolve the types of the pack members')
+		if type.is_unresolved => Status(start, 'Can not resolve the target type')
+		if not type.is_pack => Status(start, 'Target type must be a pack type')
+
+		missing = capture_missing_member()
+		if missing !== none => Status(start, String('Missing value for member ') + missing.name)
 
 		=> none as Status
 	}
