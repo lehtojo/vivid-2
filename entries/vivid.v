@@ -53,7 +53,7 @@ init() {
 	if result.problematic complain(result)
 
 	analysis.analyze()
-	if result.problematic complain(result)
+	optimizer.optimize()
 
 	platform.x64.initialize()
 	assembler.assemble()

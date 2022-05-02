@@ -825,6 +825,12 @@ is_power_of_two(value: large) {
 	=> (value & (value - 1)) == 0
 }
 
+# Summary:
+# Returns whether the node represents a number that is power of two
+is_power_of_two(node: Node) {
+	=> node.instance == NODE_NUMBER and node.(NumberNode).format != FORMAT_DECIMAL and is_power_of_two(node.(NumberNode).value)
+}
+
 integer_log2(value: large) {
 	i = 0
 
