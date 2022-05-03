@@ -312,6 +312,59 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 }
 
 # Summary:
+# Removes the variable, if it represents an allocated object that is only written into.
+# Returns whether the specified variable was removed.
+remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescriptor) {
+	# Do nothing if optimizations are not enabled
+	if not settings.is_optimization_enabled => false
+
+	# If something is written into a parameter object, it can not be determined whether the written value is used elsewhere
+	if variable.is_parameter => false
+
+	# The writes must use the registered allocation function or stack allocation
+	loop write in descriptor.writes {
+		value = common.get_source(write.value)
+
+		if value.instance == NODE_STACK_ADDRESS continue
+		if value.instance == NODE_FUNCTION and value.(FunctionNode).function === settings.allocation_function continue
+
+		=> false
+	}
+
+	# If any of the reads of the variable is not used to write into the object, just abort
+	loop read in descriptor.reads {
+		selected = read.parent
+
+		if selected.instance == NODE_SCOPE {
+			# Abort if the scope returns the read
+			if selected.(ScopeNode).is_value_returned and read === selected.last => false
+			continue
+		}
+
+		if selected.instance == NODE_CAST { selected = selected.parent }
+		if selected.instance != NODE_LINK or not common.is_edited(selected) => false
+	}
+
+	# Since all of the usages are redundant and part of assignments, replace the assignments with the assigned values
+	loop read in descriptor.reads {
+		selected = read.parent
+
+		if selected.instance == NODE_SCOPE {
+			read.remove()
+			continue
+		}
+
+		if selected.instance == NODE_CAST { selected = selected.parent }
+
+		# Replace the editor with the assigned value
+		editor = common.get_editor(selected)
+		editor.replace(editor.last)
+	}
+
+	=> true
+}
+
+# Summary:
 # Looks for assignments of the specified variable which can be inlined
 assign_variables(implementation: FunctionImplementation, root: Node, hidden_only: bool) {
 	variables = List<Variable>(implementation.locals)
@@ -346,11 +399,10 @@ assign_variables(implementation: FunctionImplementation, root: Node, hidden_only
 	loop variable in variables {
 		descriptor = descriptors[variable]
 
-		#warning Implement
-		# if remove_unused_variables(variable, descriptor) {
-		# 	descriptors.remove(variable)
-		# 	continue
-		# }
+		if remove_unread_allocated_variables(variable, descriptor) {
+			descriptors.remove(variable)
+			continue
+		}
 
 		register_write_dependencies(descriptor, flow)
 
