@@ -15,6 +15,10 @@ optimize(implementation: FunctionImplementation, root: Node) {
 			assignment_optimizer.assign_variables(implementation, snapshot)
 		}
 
+		if settings.is_statement_analysis_enabled {
+			statement_optimizer.optimize(implementation, snapshot)
+		}
+
 		# Calculate the complexity of the current snapshot
 		cost = expression_optimizer.get_cost(snapshot)
 

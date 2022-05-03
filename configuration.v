@@ -228,7 +228,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.is_instruction_analysis_enabled = true
 		settings.is_mathematical_analysis_enabled = true
 		settings.is_repetion_analysis_enabled = true
-		settings.is_unwrapment_analysis_enabled = true
+		settings.is_statement_analysis_enabled = true
 		settings.is_function_inlining_enabled = false
 	}
 	else value == '-O2' {
@@ -239,7 +239,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.is_instruction_analysis_enabled = true
 		settings.is_mathematical_analysis_enabled = true
 		settings.is_repetion_analysis_enabled = true
-		settings.is_unwrapment_analysis_enabled = true
+		settings.is_statement_analysis_enabled = true
 		settings.is_function_inlining_enabled = true
 	}
 	else value == '-x64' {

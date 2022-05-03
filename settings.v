@@ -10,7 +10,7 @@ is_optimization_enabled: bool
 is_instruction_analysis_enabled: bool
 is_mathematical_analysis_enabled: bool
 is_repetion_analysis_enabled: bool
-is_unwrapment_analysis_enabled: bool
+is_statement_analysis_enabled: bool
 is_function_inlining_enabled: bool
 is_garbage_collector_enabled: bool
 is_debugging_enabled: bool
@@ -46,7 +46,7 @@ initialize() {
 	is_instruction_analysis_enabled = false
 	is_mathematical_analysis_enabled = false
 	is_repetion_analysis_enabled = false
-	is_unwrapment_analysis_enabled = false
+	is_statement_analysis_enabled = false
 	is_function_inlining_enabled = false
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
