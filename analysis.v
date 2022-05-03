@@ -239,8 +239,17 @@ analyze() {
 	loop (i = 0, i < implementations.size, i++) {
 		implementation = implementations[i]
 
+		if settings.is_verbose_output_enabled {
+			put(`[`)
+			print(i + 1)
+			put(`/`)
+			print(implementations.size)
+			put(`]`)
+			print(' Reconstructing ')
+			println(implementation.string())
+		}
+
 		reconstruction.start(implementation, implementation.node)
-		reconstruction.end(implementation.node)
 	}
 
 	#resolver.debug_print(context)
@@ -248,12 +257,26 @@ analyze() {
 	loop (i = 0, i < implementations.size, i++) {
 		implementation = implementations[i]
 
+		if settings.is_verbose_output_enabled {
+			put(`[`)
+			print(i + 1)
+			put(`/`)
+			print(implementations.size)
+			put(`]`)
+			print(' Optimizing ')
+			println(implementation.string())
+		}
+
 		reconstruction.rewrite_pack_usages(implementation, implementation.node)
+		implementation.node = optimizer.optimize(implementation, implementation.node)
+		reconstruction.end(implementation.node)
 	}
 
 	#resolver.debug_print(context)
 
 	configure_static_variables(context)
+	reset_variable_usages(context)
+	load_variable_usages(context, root)
 }
 
 # Summary: Finds the branch which contains the specified node

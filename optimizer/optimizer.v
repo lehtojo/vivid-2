@@ -41,29 +41,3 @@ optimize(implementation: FunctionImplementation, root: Node) {
 
 	=> result
 }
-
-optimize() {
-	root = settings.parse.root
-	context = settings.parse.context
-
-	implementations = common.get_all_function_implementations(context)
-	i = 0
-
-	loop implementation in implementations {
-		if settings.is_verbose_output_enabled {
-			put(`[`)
-			print(++i)
-			put(`/`)
-			print(implementations.size)
-			put(`]`)
-			print(' Optimizing ')
-			println(implementation.string())
-		}
-
-		implementation.node = optimize(implementation, implementation.node)
-	}
-
-	# Reload variable usages, because we have modified the functions
-	analysis.reset_variable_usages(context)
-	analysis.load_variable_usages(context, root)
-}
