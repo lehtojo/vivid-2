@@ -52,6 +52,10 @@ Node {
 		=> instance == NODE_VARIABLE and this.(VariableNode).variable === variable
 	}
 
+	match(implementation: FunctionImplementation) {
+		=> instance == NODE_FUNCTION and this.(FunctionNode).function === implementation
+	}
+
 	# Summary: Finds the first parent, which passes the specified filter
 	find_parent(filter: (Node) -> bool) {
 		if parent == none => none as Node

@@ -345,7 +345,12 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 		if selected.instance != NODE_LINK or not common.is_edited(selected) => false
 	}
 
-	# Since all of the usages are redundant and part of assignments, replace the assignments with the assigned values
+	# 1. Remove discarded usages
+	# 2. Replace the assignments with the assigned values
+	loop write in descriptor.writes {
+		write.node.replace(write.node.last)
+	}
+
 	loop read in descriptor.reads {
 		selected = read.parent
 
