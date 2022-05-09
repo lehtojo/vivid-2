@@ -76,7 +76,7 @@ start(unit: Unit, node: IfNode) {
 	}
 
 	Scope.cache(unit, branches, contexts, node.get_parent_context())
-	Scope.load_constants(unit, node)
+	Scope.load_constants(unit, node, [ node.condition_container.(ScopeNode).context ])
 
 	end = LabelInstruction(unit, unit.get_next_label())
 	result = build(unit, node, end)

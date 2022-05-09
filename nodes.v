@@ -28,7 +28,7 @@ NODE_ACCESSOR = 67108864
 NODE_INLINE = 134217728
 NODE_NORMAL = 268435456
 NODE_CALL = 536870912
-NODE_CONTEXT_INLINE = 1073741824
+# Free: 1073741824
 NODE_DATA_POINTER = 2147483648
 NODE_STACK_ADDRESS = 4294967296
 NODE_DISABLED = 8589934592
@@ -1442,15 +1442,13 @@ Node AccessorNode {
 }
 
 Node InlineNode {
-	is_context: bool = false
-
 	init(position: Position) {
 		this.start = position
 		this.instance = NODE_INLINE
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and is_context == other.(InlineNode).is_context and is_tree_equal(other)
+		=> instance == other.instance and is_tree_equal(other)
 	}
 
 	override try_get_type() {
@@ -1464,32 +1462,6 @@ Node InlineNode {
 
 	override string() {
 		=> String('Inline')
-	}
-}
-
-InlineNode ContextInlineNode {
-	context: Context
-
-	init(context: Context, position: Position) {
-		InlineNode.init(position)
-		this.start = position
-		this.instance = NODE_INLINE
-		this.context = context
-		this.is_context = true
-	}
-
-	override is_equal(other: Node) {
-		if instance != other.instance => false
-		if is_context != other.(InlineNode).is_context or context.identity != other.(ContextInlineNode).context.identity => false
-		=> is_tree_equal(other)
-	}
-
-	override copy() {
-		=> ContextInlineNode(context, start)
-	}
-
-	override string() {
-		=> String('Context Inline')
 	}
 }
 
@@ -2091,7 +2063,7 @@ Node HasNode {
 		assignment_context = Context(environment, NORMAL_CONTEXT)
 		assignment = IfNode(assignment_context, condition, body, position, none as Position)
 
-		result = ContextInlineNode(inline_context, position)
+		result = ScopeNode(inline_context, position, none as Position, true)
 		result.add(initialization)
 		result.add(load)
 		result.add(assignment)

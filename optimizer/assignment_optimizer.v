@@ -49,19 +49,12 @@ get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>) {
 }
 
 # Summary:
-# Produces descriptors for all the variables defined in the specified function implementation
-get_variable_descriptors(implementation: FunctionImplementation, root: Node) {
+# Produces descriptors for all the variables defined in the specified context
+get_variable_descriptors(context: Context, root: Node) {
 	nodes = assembler.group_by<Node, Variable>(root.find_all(NODE_VARIABLE), (i: Node) -> i.(VariableNode).variable)
 	result = Map<Variable, VariableDescriptor>()
 
-	loop local in implementation.locals {
-		result[local] = get_variable_descriptor(local, nodes)
-	}
-
-	loop iterator in implementation.variables {
-		variable = iterator.value
-		if result.contains_key(variable) continue
-
+	loop variable in context.all_variables {
 		result[variable] = get_variable_descriptor(variable, nodes)
 	}
 
@@ -182,7 +175,10 @@ update_variable_usages(descriptors: Map<Variable, VariableDescriptor>, from: Nod
 	previous_usages = get_all_variable_usages(from)
 
 	loop usage in previous_usages {
-		descriptor = descriptors[usage.(VariableNode).variable]
+		variable = usage.(VariableNode).variable
+		if not descriptors.contains_key(variable) continue
+
+		descriptor = descriptors[variable]
 		reads = descriptor.reads
 
 		loop (i = 0, i < reads.size, i++) {
@@ -199,7 +195,10 @@ update_variable_usages(descriptors: Map<Variable, VariableDescriptor>, from: Nod
 	assignment_usages = get_all_variable_usages(to)
 
 	loop usage in assignment_usages {
-		descriptors[usage.(VariableNode).variable].reads.add(usage)
+		variable = usage.(VariableNode).variable
+		if not descriptors.contains_key(variable) continue
+
+		descriptors[variable].reads.add(usage)
 	}
 }
 
@@ -209,7 +208,10 @@ add_variable_usages_from(descriptors: Map<Variable, VariableDescriptor>, from: N
 	usages = get_all_variable_usages(from)
 
 	loop usage in usages {
-		descriptors[usage.(VariableNode).variable].reads.add(usage)
+		variable = usage.(VariableNode).variable
+		if not descriptors.contains_key(variable) continue
+
+		descriptors[variable].reads.add(usage)
 	}
 }
 
@@ -371,9 +373,8 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 
 # Summary:
 # Looks for assignments of the specified variable which can be inlined
-assign_variables(implementation: FunctionImplementation, root: Node, hidden_only: bool) {
-	variables = List<Variable>(implementation.locals)
-	variables.add_range(implementation.variables.get_values())
+assign_variables(context: Context, root: Node, hidden_only: bool) {
+	variables = List<Variable>(context.all_variables)
 	variables.distinct()
 
 	if hidden_only { variables = variables.filter(i -> i.is_hidden) }
@@ -383,7 +384,7 @@ assign_variables(implementation: FunctionImplementation, root: Node, hidden_only
 	# Without the initialization, the value of the single assignment would be inlined.
 	initializations = List<Node>()
 
-	loop iterator in implementation.variables {
+	loop iterator in context.variables {
 		parameter = iterator.value
 		if not parameter.is_parameter continue
 
@@ -396,7 +397,7 @@ assign_variables(implementation: FunctionImplementation, root: Node, hidden_only
 		root.insert(root.first, initialization)
 	}
 
-	descriptors = get_variable_descriptors(implementation, root)
+	descriptors = get_variable_descriptors(context, root)
 	flow = StatementFlow(root)
 
 	capture_nested_assignments(root)
@@ -428,6 +429,7 @@ assign_variables(implementation: FunctionImplementation, root: Node, hidden_only
 
 			# Add each write of all value dependencies as an obstacle, because any one of them might affect the value of the current write
 			loop dependency in value_dependencies {
+				if not descriptors.contains_key(dependency) continue
 				dependency_writes = descriptors[dependency].writes
 
 				loop dependency_write in dependency_writes {
@@ -490,6 +492,6 @@ assign_variables(implementation: FunctionImplementation, root: Node, hidden_only
 
 # Summary:
 # Looks for assignments of the specified variable which can be inlined
-assign_variables(implementation: FunctionImplementation, root: Node) {
-	assign_variables(implementation, root, not settings.is_optimization_enabled)
+assign_variables(context: Context, root: Node) {
+	assign_variables(context, root, not settings.is_optimization_enabled)
 }

@@ -47,13 +47,17 @@ CacheState {
 		available_standard_registers = none as List<Register>
 		available_media_registers = none as List<Register>
 
-		if non_volatile_only { available_standard_registers = unit.non_volatile_standard_registers }
+		if non_volatile_only {
+			available_standard_registers = List<Register>(unit.non_volatile_standard_registers)
+		}
 		else {
 			available_standard_registers = List<Register>(unit.volatile_standard_registers)
 			available_standard_registers.add_range(unit.non_volatile_standard_registers)
 		}
 
-		if non_volatile_only { available_media_registers = unit.non_volatile_media_registers }
+		if non_volatile_only {
+			available_media_registers = List<Register>(unit.non_volatile_media_registers)
+		}
 		else {
 			available_media_registers = List<Register>(unit.volatile_media_registers)
 			available_media_registers.add_range(unit.non_volatile_media_registers)
@@ -194,6 +198,13 @@ Instruction CacheVariablesInstruction {
 				usages.remove_at(i)
 				continue
 			}
+		}
+
+		# Do not load or release variables that have empty values.
+		# Scopes will decide the locations of such variables.
+		loop (i = usages.size - 1, i >= 0, i--) {
+			value = usages[i].result.value
+			if value.instance == INSTANCE_NONE usages.remove_at(i)
 		}
 
 		# Removed linked variables since they will be handled by the branching system

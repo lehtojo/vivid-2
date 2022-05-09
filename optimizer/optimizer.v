@@ -1,6 +1,6 @@
 namespace optimizer
 
-optimize(implementation: FunctionImplementation, root: Node) {
+optimize(context: Context, root: Node) {
 	minimum_cost_snapshot = root
 	minimum_cost = expression_optimizer.get_cost(root)
 
@@ -12,11 +12,11 @@ optimize(implementation: FunctionImplementation, root: Node) {
 		snapshot = minimum_cost_snapshot.clone()
 
 		if settings.is_mathematical_analysis_enabled {
-			assignment_optimizer.assign_variables(implementation, snapshot)
+			assignment_optimizer.assign_variables(context, snapshot)
 		}
 
 		if settings.is_statement_analysis_enabled {
-			statement_optimizer.optimize(implementation, snapshot)
+			statement_optimizer.optimize(context, snapshot)
 		}
 
 		# Calculate the complexity of the current snapshot

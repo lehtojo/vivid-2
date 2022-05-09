@@ -783,6 +783,14 @@ is_statement(node: Node) {
 	=> type == NODE_ELSE or type == NODE_ELSE_IF or type == NODE_IF or type == NODE_LOOP or type == NODE_SCOPE
 }
 
+# Summary: Returns whether the specified node represents a constant
+is_constant(node: Node) {
+	source = common.get_source(node)
+
+	if source.instance == NODE_VARIABLE => node.(VariableNode).variable.is_constant
+	=> source.match(NODE_NUMBER | NODE_STRING | NODE_DATA_POINTER)
+}
+
 # Summary: Returns whether the specified node represents a statement condition
 is_condition(node: Node) {
 	statement = node.find(NODE_ELSE_IF | NODE_IF | NODE_LOOP)

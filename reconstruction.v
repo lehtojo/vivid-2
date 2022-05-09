@@ -332,10 +332,10 @@ extract_expressions(root: Node) {
 
 InlineContainer {
 	destination: Node
-	node: InlineNode
+	node: Node
 	result: Variable
 
-	init(destination: Node, node: InlineNode, result: Variable) {
+	init(destination: Node, node: Node, result: Variable) {
 		this.destination = destination
 		this.node = node
 		this.result = result
@@ -355,7 +355,7 @@ create_inline_container(type: Type, node: Node) {
 	}
 
 	environment = node.get_parent_context()
-	container = ContextInlineNode(Context(environment, NORMAL_CONTEXT), node.start)
+	container = ScopeNode(Context(environment, NORMAL_CONTEXT), node.start, none as Position, false)
 	instance = container.context.declare_hidden(type)
 
 	=> InlineContainer(node, container, instance)
@@ -799,7 +799,7 @@ rewrite_edits_as_assignments(root: Node) {
 
 # Summary: Finds all inlines nodes, which can be replaced with their own child nodes
 remove_redundant_inline_nodes(root: Node) {
-	inlines = root.find_all(NODE_INLINE | NODE_CONTEXT_INLINE)
+	inlines = root.find_all(NODE_INLINE)
 
 	loop iterator in inlines {
 		# If the inline node contains only one child node, the inline node can be replaced with it
@@ -812,11 +812,6 @@ remove_redundant_inline_nodes(root: Node) {
 		else {
 			continue
 		}
-
-		if not iterator.(InlineNode).is_context continue
-
-		environment = iterator.get_parent_context()
-		environment.merge(iterator.(ContextInlineNode).context)
 	}
 }
 

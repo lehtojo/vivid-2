@@ -272,6 +272,11 @@ analyze() {
 		reconstruction.end(implementation.node)
 	}
 
+	if settings.is_function_inlining_enabled {
+		# Perform inline optimizations
+		inliner.optimize(context)
+	}
+
 	#resolver.debug_print(context)
 
 	configure_static_variables(context)

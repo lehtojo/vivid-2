@@ -2375,3 +2375,91 @@ Instruction CreatePackInstruction {
 		result.format = SYSTEM_FORMAT
 	}
 }
+
+Instruction LabelMergeInstruction {
+	label: Label
+
+	init(unit: Unit, label: Label) {
+		Instruction.init(unit, INSTRUCTION_LABEL_MERGE)
+		this.label = label
+		this.is_abstract = true
+	}
+
+	create_state() {
+		variables = List<Variable>()
+
+		loop iterator in scope.variables {
+			variable = iterator.key
+
+			# Packs variables are not merged, their members are instead
+			if variable.type.is_pack continue
+
+			# Get the current value of the variable
+			result: Result = unit.get_variable_value(variable)
+
+			# Ensure the variable is still active
+			if not result.is_active continue
+
+			# If the result is in a register, ensure it owns the register
+			if result.is_any_register and result.value.(RegisterHandle).register.value !== result continue
+
+			# Load complex values into registers
+			instance = result.value.instance
+			allowed = INSTANCE_REGISTER | INSTANCE_STACK_MEMORY | INSTANCE_STACK_VARIABLE | INSTANCE_TEMPORARY_MEMORY
+
+			if (instance & allowed) == 0 {
+				memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))
+			}
+
+			variables.add(variable)
+		}
+
+		# Save the locations of the processed variables as a state
+		state: List<VariableState> = List<VariableState>()
+
+		loop variable in variables {
+			state.add(VariableState.create(variable, unit.get_variable_value(variable)))
+		}
+
+		unit.states[label.name] = state
+	}
+
+	merge_with_state(state: List<VariableState>) {
+		# Collect the destination handles and the current values of the corresponding variables
+		destinations = List<Handle>()
+		sources = List<Result>()
+
+		loop descriptor in state {
+			source = unit.get_variable_value(descriptor.variable)
+			if source === none continue
+
+			destinations.add(descriptor.handle)
+			sources.add(source)
+		}
+
+		# Relocate the sources so that they match the destinations
+		unit.add(ReorderInstruction(unit, destinations, sources, none as Type))
+
+		# Update the sources manually
+		loop (i = 0, i < destinations.size, i++) {
+			destination = destinations[i]
+			source = sources[i]
+
+			source.value = destination
+			source.format = destination.format
+
+			# If the destination is a register, attach the source to it
+			if destination.instance == INSTANCE_REGISTER { destination.(RegisterHandle).register.value = source }
+		}
+	}
+
+	override on_build() {
+		# If the unit does not have a registered state for the label, then we must make one
+		if not unit.states.contains_key(label.name) {
+			create_state()
+			return
+		}
+
+		merge_with_state(unit.states[label.name])
+	}
+}

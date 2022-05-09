@@ -32,7 +32,7 @@ build_command(unit: Unit, node: CommandNode) {
 		statement.condition.instance = NODE_DISABLED
 
 		# Initialization of the condition might happen multiple times, therefore inner labels can duplicate
-		inlines.localize_labels(unit.function, statement.initialization.next)
+		inliner.localize_labels(unit.function, statement.initialization.next)
 
 		builders.build(unit, statement.initialization.next)
 
@@ -101,7 +101,7 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction, active
 	statement.condition.instance = NODE_DISABLED
 
 	# Initialization of the condition might happen multiple times, therefore inner labels can duplicate
-	inlines.localize_labels(unit.function, statement.initialization.next)
+	inliner.localize_labels(unit.function, statement.initialization.next)
 
 	builders.build(unit, statement.initialization.next)
 
@@ -124,10 +124,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 	}
 
 	# Load constants which might be edited inside the loop
-	contexts = List<Context>(2, false)
-	contexts.add(statement.context)
-	contexts.add(statement.body.context)
-	Scope.load_constants(unit, statement, contexts)
+	Scope.load_constants(unit, statement, [ statement.context, statement.body.context ])
 
 	# Register the start and exit label to the loop for control keywords
 	statement.start_label = unit.get_next_label()
@@ -171,9 +168,7 @@ build(unit: Unit, statement: LoopNode) {
 	}
 
 	# Load constants which might be edited inside the loop
-	contexts = List<Context>(1, false)
-	contexts.add(statement.body.context)
-	Scope.load_constants(unit, statement, contexts)
+	Scope.load_constants(unit, statement, [ statement.body.context ])
 
 	# Build the nodes around the actual condition by disabling the condition temporarily
 	instance = statement.condition.instance

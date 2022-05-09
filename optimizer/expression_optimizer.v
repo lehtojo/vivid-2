@@ -91,6 +91,10 @@ get_cost(node: Node) {
 			iterator = iterator.next
 			continue
 		}
+		else instance == NODE_DISABLED {
+			iterator = iterator.next
+			continue
+		}
 
 		result += get_cost(iterator)
 		iterator = iterator.next

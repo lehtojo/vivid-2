@@ -248,6 +248,21 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 	=> calls.build(unit, self, function)
 }
 
+# Summary:
+# Builds the specified jump node, while merging with its container scope
+build_jump(unit: Unit, node: JumpNode) {
+	# TODO: Support conditional jumps
+	unit.add(LabelMergeInstruction(unit, node.label))
+
+	=> JumpInstruction(unit, node.label).add()
+}
+
+# Summary:
+# Adds the label to the specified unit
+build_label(unit: Unit, node: LabelNode) {
+	unit.add(LabelInstruction(unit, node.label))
+}
+
 build_link(unit: Unit, node: LinkNode, mode: large) {
 	type = node.first.get_type()
 
@@ -371,6 +386,8 @@ build(unit: Unit, node: Node) {
 		NODE_ELSE_IF => Result()
 		NODE_FUNCTION => calls.build(unit, node as FunctionNode)
 		NODE_IF => conditionals.start(unit, node as IfNode) as Result
+		NODE_JUMP => build_jump(unit, node as JumpNode) as Result
+		NODE_LABEL => build_label(unit, node as LabelNode) as Result
 		NODE_LINK => build_link(unit, node as LinkNode, ACCESS_READ)
 		NODE_LOOP => loops.build(unit, node as LoopNode)
 		NODE_NOT => build_not(unit, node as NotNode)

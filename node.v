@@ -155,7 +155,7 @@ Node {
 	}
 
 	find_context() {
-		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_CONTEXT_INLINE | NODE_TYPE, instance) => this
+		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_TYPE, instance) => this
 		if parent == none => none as Node
 		=> parent.find_context() as Node
 	}
@@ -178,7 +178,6 @@ Node {
 		=> when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context
 			NODE_LOOP => node.(LoopNode).context
-			NODE_CONTEXT_INLINE => node.(ContextInlineNode).context
 			NODE_TYPE => node.(TypeNode).type
 			else => none as Context
 		}
@@ -190,7 +189,6 @@ Node {
 		=> when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context
 			NODE_LOOP => node.(LoopNode).context
-			NODE_CONTEXT_INLINE => node.(ContextInlineNode).context
 			NODE_TYPE => node.(TypeNode).type
 			else => {
 				abort('Invalid context node')
@@ -248,6 +246,16 @@ Node {
 		child.parent = position.parent
 		child.previous = left
 		child.next = position
+	}
+
+	insert_children(children: Node) {
+		iterator = children.first
+
+		loop (iterator !== none) {
+			next: Node = iterator.next
+			insert(iterator)
+			iterator = next
+		}
 	}
 
 	# Summary: Moves the specified node into the place of this node
