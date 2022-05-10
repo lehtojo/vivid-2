@@ -256,7 +256,7 @@ find_edited_locals(statement: Node) {
 }
 
 # Summary:
-# Returns whether the condition is not dependent on the statements inside the specfied loop.
+# Returns whether the condition is not dependent on the statements inside the specified loop.
 # However, the condition can be dependent on the statements that originate from the condition of the specified conditional.
 is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementLiftupDescriptor, edited_locals: Map<Variable, List<Node>>) {
 	condition_scope = statement.condition_container as ScopeNode

@@ -844,7 +844,7 @@ Context Type {
 		entry.add(function)
 	}
 
-	# Summary: Declares the specfied virtual function overload
+	# Summary: Declares the specified virtual function overload
 	declare_override(function: Function) {
 		entry = none as FunctionList
 
@@ -964,7 +964,7 @@ Context Type {
 		=> none as FunctionList
 	}
 
-	# Summary: Returns all virtual function declarations contained in this type and its supertypese
+	# Summary: Returns all virtual function declarations contained in this type and its supertypes
 	get_all_virtual_functions() {
 		result = List<VirtualFunction>()
 		loop supertype in supertypes { result.add_range(supertype.get_all_virtual_functions()) }
@@ -1073,7 +1073,7 @@ Context Type {
 	}
 
 	override string() {
-		# Handle unnamed packs seperately
+		# Handle unnamed packs separately
 		if is_unnamed_pack {
 			# Pattern: { $member-1: $type-1, $member-2: $type-2, ... }
 			member_sections = List<String>(variables.size, false)
@@ -1792,7 +1792,7 @@ Function Lambda {
 		# Lambdas usually capture variables from the parent context
 		connect(context)
 
-		# Add import modifier if this lamdba is inside an imported function
+		# Add import modifier if this lambda is inside an imported function
 		implementation = context.find_implementation_parent()
 		if implementation.metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
 	}

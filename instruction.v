@@ -37,7 +37,7 @@ INSTRUCTION_REQUIRE_VARIABLES = 36
 INSTRUCTION_RETURN = 37
 INSTRUCTION_LOCK_STATE = 38
 INSTRUCTION_SET_VARIABLE = 39
-INSTRUCTION_SINGLE_PARAMATER = 40
+# Free: 40
 INSTRUCTION_SUBTRACT = 41
 INSTRUCTION_SINGLE_PARAMETER = 42
 INSTRUCTION_DEBUG_START = 43
@@ -90,7 +90,7 @@ InstructionParameter {
 	types: large
 	flags: large
 
-	writes => has_flag(flags, FLAH_WRITES)
+	writes => has_flag(flags, FLAG_WRITES)
 
 	is_hidden => has_flag(flags, FLAG_HIDDEN)
 	is_destination => has_flag(flags, FLAG_DESTINATION)
@@ -144,7 +144,7 @@ InstructionParameter {
 			=> bits <= get_bit_limit_from_flags(flags)
 		}
 
-		# Datasection handles should be moved into a register
+		# Data section handles should be moved into a register
 		if result.value.instance == INSTANCE_DATA_SECTION or result.value.instance == INSTANCE_CONSTANT_DATA_SECTION {
 			handle = result.value as DataSectionHandle
 

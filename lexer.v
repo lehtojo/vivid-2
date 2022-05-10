@@ -1177,7 +1177,7 @@ skip_comment(text: String, start: Position) {
 		# Determine the index of the last line ending inside the multiline comment
 		last_line_ending = comment.last_index_of(`\n`)
 
-		# If the 'multiline comment' is actually expressed in a single line, handle it separetely
+		# If the 'multiline comment' is actually expressed in a single line, handle it separately
 		if last_line_ending == -1 => Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
 
 		last_line_ending += start.local # The index must be relative to the whole text
@@ -1290,7 +1290,7 @@ get_character_value(text: String, position: Position) {
 }
 
 get_next_token(text: String, start: Position) {
-	# Firsly the spaces must be skipped to find the next token
+	# Firstly the spaces must be skipped to find the next token
 	position = skip_spaces(text, start)
 
 	# Verify there is text to iterate

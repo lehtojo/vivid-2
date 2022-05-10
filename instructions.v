@@ -645,7 +645,7 @@ DualParameterInstruction MoveInstruction {
 		if type == MOVE_LOAD { flags_first = flags_first | FLAG_ATTACH_TO_DESTINATION }
 		else type == MOVE_RELOCATE { flags_second = flags_second | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
 
-		# Handle decimal moves seperately
+		# Handle decimal moves separately
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL => on_build_decimal_moves(flags_first, flags_second)
 
 		on_build_x64(flags_first, flags_second)
@@ -1258,7 +1258,7 @@ Instruction ReorderInstruction {
 			start = memory_handle.get_start()
 			if start == none or start != unit.get_stack_pointer() continue
 
-			# Ensure the memort address overlaps with the overflow
+			# Ensure the memory address overlaps with the overflow
 			offset = memory_handle.get_absolute_offset()
 			if offset < 0 or offset >= overflow continue
 

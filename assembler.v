@@ -729,7 +729,7 @@ Scope {
 		# First check if the variable handle list already exists
 		if variables.contains_key(variable) {
 			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
-			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to invidual local variables
+			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to individual local variables
 			value = variables[variable]
 			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK => none as Result
 			=> value

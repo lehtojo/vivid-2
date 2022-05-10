@@ -144,7 +144,7 @@ get_value_dependencies(value: Node) {
 }
 
 # Summary:
-# Returns if any of the writes of the specified variable expect the specifed write contains the specified read as dependency.
+# Returns if any of the writes of the specified variable expect the specified write contains the specified read as dependency.
 is_dependent_on_other_write(descriptor: VariableDescriptor, write: VariableWrite, read: Node) {
 	loop other in descriptor.writes {
 		if other === write continue

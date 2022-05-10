@@ -16,7 +16,7 @@ DataEncoderModule DebugFrameEncoderModule {
 		write(`z`)
 		write(`R`)
 		write(0) # Augmentation
-		write_uleb128(1) # Code aligment factor
+		write_uleb128(1) # Code alignment factor
 		write_sleb128(-8) # Data alignment factor
 		write_uleb128(16) # Return address register
 		write(1)

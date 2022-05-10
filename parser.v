@@ -900,8 +900,8 @@ print(node: Node) {
 	print(node, 0, 0)
 }
 
-print(node: Node, identation: large, total: large) {
-	padding = Array<char>(identation * 2 + 1)
+print(node: Node, indentation: large, total: large) {
+	padding = Array<char>(indentation * 2 + 1)
 	padding[padding.count - 1] = 0
 	fill(padding.data, padding.count, ` `)
 
@@ -910,7 +910,7 @@ print(node: Node, identation: large, total: large) {
 
 	total++
 
-	loop child in node { total += print(child, identation + 1, 0) }
+	loop child in node { total += print(child, indentation + 1, 0) }
 
 	=> total
 }

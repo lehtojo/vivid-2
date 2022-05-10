@@ -803,7 +803,7 @@ namespace pe_format {
 
 				if not symbols.contains(relocation.symbol.name) continue
 
-				# Ensure the external symbol is not defined in multiple libraries, because this could cause weird behaviour depending on the order of the imported libraries
+				# Ensure the external symbol is not defined in multiple libraries, because this could cause weird behavior depending on the order of the imported libraries
 				if library != none abort(String('Symbol ') + relocation.symbol.name + ' is defined in both ' + library + ' and ' + imports[i])
 
 				library = imports[i]

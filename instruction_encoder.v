@@ -376,13 +376,13 @@ namespace instruction_encoder {
 	}
 
 	# Summary:
-	# Returns whether the specified register can be overriden to represent another register using the REX-prefix
+	# Returns whether the specified register can be overridden to represent another register using the REX-prefix
 	is_overridable_register(register: large, size: large) {
 		=> size == 1 and register >= platform.x64.RSP and register <= platform.x64.RDI
 	}
 
 	# Summary:
-	# Returns whether the specified register can be overriden to represent another register using the REX-prefix
+	# Returns whether the specified register can be overridden to represent another register using the REX-prefix
 	is_overridable_register(register: Register, size: large) {
 		=> is_overridable_register(register.identifier, size)
 	}
@@ -534,7 +534,7 @@ namespace instruction_encoder {
 	}
 
 	# Summary:
-	# Writes register and memort address operands
+	# Writes register and memory address operands
 	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, offset: large) {
 		#warning The register might also be the second operand
 		force = encoding.modifier == 0 and is_overridable_register(first, encoding.input_size_of_first)
@@ -567,9 +567,7 @@ namespace instruction_encoder {
 		write(module, offset)
 	}
 
-	# Summary:
-	# Writes register and memort address operands
-	# </summmary>
+	# Summary: Writes register and memory address operands
 	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, index: Register, scale: large, offset: large) {
 		# Convert [start+index*0+offset] => [start+offset]
 		if scale == 0 {
@@ -602,8 +600,7 @@ namespace instruction_encoder {
 	}
 
 	# Summary:
-	# Writes register and memort address operands
-	# </summmary>
+	# Writes register and memory address operands
 	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, index: Register, scale: large, offset: large) {
 		# Convert [index*0+offset] => [offset]
 		if scale == 0 {
@@ -628,8 +625,7 @@ namespace instruction_encoder {
 	}
 
 	# Summary:
-	# Writes register and memort address operands
-	# </summmary>
+	# Writes register and memory address operands
 	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, offset: large) {
 		force = encoding.modifier == 0 and is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, is_extension_register(first), false, false, force)
@@ -1190,7 +1186,7 @@ namespace instruction_encoder {
 			start = descriptor.module.index
 			end = module.index
 
-			# Start          Distace 0     Distance 1         Distance n - 1      Distance n        End
+			# Start          Distance 0    Distance 1         Distance n - 1      Distance n        End
 			# [ ... L0: ...............] [  Module 1  ] ... [  Module n - 1  ] [ ............ Jump L0 ]
 			distance = 0
 			distance += descriptor.module.position - descriptor.position # Distance 0

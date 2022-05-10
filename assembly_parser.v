@@ -83,7 +83,7 @@ AssemblyParser {
 
 	# Summary:
 	# Handles symbol reference allocators: . $allocator $symbol
-	private execute_symbol_reference_allocactor(tokens: List<Token>) {
+	private execute_symbol_reference_allocator(tokens: List<Token>) {
 		# Pattern: . $allocator $symbol
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER => false
 
@@ -295,7 +295,7 @@ AssemblyParser {
 		if data == none => false
 
 		if execute_offset_allocator(tokens) => true
-		if execute_symbol_reference_allocactor(tokens) => true
+		if execute_symbol_reference_allocator(tokens) => true
 		if execute_constant_allocator(tokens) => true
 		if execute_string_allocator(tokens) => true
 		if execute_alignment(tokens) => true
@@ -327,7 +327,7 @@ AssemblyParser {
 
 	# Summary:
 	# Tries to form a instruction parameter handle from the specified tokens starting at the specified offset.
-	# Instrucion parameters are registers, memory addresses and numbers for instance.
+	# Instruction parameters are registers, memory addresses and numbers for instance.
 	private parse_instruction_parameter(all: List<Token>, i: large) {
 		parameter = all[i]
 
@@ -605,7 +605,7 @@ AssemblyParser {
 	# Summary: Finds instruction prefixes and merges them into the instruction
 	join_instruction_prefixes(tokens: List<Token>) {
 		loop (i = tokens.size - 2, i >= 0, i--) {
-			# Find ajacent identifier tokens
+			# Find adjacent identifier tokens
 			current = tokens[i]
 			next = tokens[i + 1]
 			if current.type != TOKEN_TYPE_IDENTIFIER or next.type != TOKEN_TYPE_IDENTIFIER continue

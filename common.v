@@ -494,7 +494,7 @@ try_get_virtual_function_call(self: Node, self_type: Type, name: String, argumen
 
 	function_pointer = AccessorNode(LinkNode(self.clone(), VariableNode(configuration)), NumberNode(SYSTEM_FORMAT, alignment + 1, position), position)
 
-	# Cast the self pointer, if neccessary
+	# Cast the self pointer, if necessary
 	if self_type != required_self_type {
 		casted = CastNode(self, TypeNode(required_self_type), self.start)
 		self = casted

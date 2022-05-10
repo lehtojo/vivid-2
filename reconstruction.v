@@ -797,7 +797,7 @@ rewrite_edits_as_assignments(root: Node) {
 	}
 }
 
-# Summary: Finds all inlines nodes, which can be replaced with their own child nodes
+# Summary: Finds all inline nodes, which can be replaced with their own child nodes
 remove_redundant_inline_nodes(root: Node) {
 	inlines = root.find_all(NODE_INLINE)
 
@@ -963,7 +963,7 @@ is_using_local_self_pointer(node: Node) {
 	=> link.first.instance == NODE_LINK and link.first.last == NODE_TYPE
 }
 
-# Summary: Adds default constructors to all supertypes, if the specified function implemenation represents a constructor
+# Summary: Adds default constructors to all supertypes, if the specified function implementation represents a constructor
 add_default_constructors(iterator: FunctionImplementation) {
 	# Ensure the function represents a constructor or a destructor
 	if not iterator.is_constructor and not iterator.is_destructor return
@@ -1340,7 +1340,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 
 		is_function_assignment = assignment.last.match(NODE_CALL | NODE_FUNCTION) or (assignment.last.instance == NODE_LINK and assignment.last.last.match(NODE_CALL | NODE_FUNCTION))
 
-		# The sources of function assignments must be replaced with placeholders, so that they do not get overriden by the local representives of the members
+		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local representives of the members
 		if is_function_assignment {
 			loads = create_pack_member_accessors(destination, type, position)
 			sources = List<Node>()
@@ -1360,7 +1360,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 			container.insert(assignment.next, OperatorNode(Operators.ASSIGN, position).set_operands(destinations[j], sources[j]))
 		}
 
-		# The assigment must be removed, if its source is not a function call
+		# The assignment must be removed, if its source is not a function call
 		# NOTE: The function call assignment must be left intact, because it must assign the disposable pack handle, whose usage is demonstrated above
 		if not is_function_assignment { assignment.remove() }
 

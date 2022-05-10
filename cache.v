@@ -1,4 +1,4 @@
-RegisterOccuptionInfo {
+RegisterOccupationInfo {
 	information: VariableUsageDescriptor
 	register: Register
 
@@ -12,19 +12,19 @@ CacheState {
 	unit: Unit
 	available_standard_registers: List<Register>
 	available_media_registers: List<Register>
-	occupied_standard_registers: List<RegisterOccuptionInfo> = List<RegisterOccuptionInfo>()
-	occupied_media_registers: List<RegisterOccuptionInfo> = List<RegisterOccuptionInfo>()
+	occupied_standard_registers: List<RegisterOccupationInfo> = List<RegisterOccupationInfo>()
+	occupied_media_registers: List<RegisterOccupationInfo> = List<RegisterOccupationInfo>()
 	remaining_variables: List<VariableUsageDescriptor> = List<VariableUsageDescriptor>()
 
 	# Summary: Occupies the specified register with the specified variable and stores its usage information
-	occupie(register: Register, usage: VariableUsageDescriptor) {
+	occupy(register: Register, usage: VariableUsageDescriptor) {
 		if register.is_media_register {
 			available_media_registers.remove(register)
-			occupied_media_registers.add(RegisterOccuptionInfo(usage, register))
+			occupied_media_registers.add(RegisterOccupationInfo(usage, register))
 		}
 		else {
 			available_standard_registers.remove(register)
-			occupied_standard_registers.add(RegisterOccuptionInfo(usage, register))
+			occupied_standard_registers.add(RegisterOccupationInfo(usage, register))
 		}
 	}
 
@@ -32,11 +32,11 @@ CacheState {
 	init(register: Register, usage: VariableUsageDescriptor) {
 		if register.is_media_register {
 			available_media_registers.remove(register)
-			occupied_media_registers.add(RegisterOccuptionInfo(usage, register))
+			occupied_media_registers.add(RegisterOccupationInfo(usage, register))
 		}
 		else {
 			available_standard_registers.remove(register)
-			occupied_standard_registers.add(RegisterOccuptionInfo(usage, register))
+			occupied_standard_registers.add(RegisterOccupationInfo(usage, register))
 		}
 	}
 
@@ -86,12 +86,12 @@ CacheState {
 			remaining_variables.remove(usage)
 
 			# The current variable occupies the register so it is not available
-			occupie(register, usage)
+			occupy(register, usage)
 		}
 
 		# Sort the variables based on their number of usages (the least used variables first)
-		sort<RegisterOccuptionInfo>(occupied_standard_registers, (a: RegisterOccuptionInfo, b: RegisterOccuptionInfo) -> a.information.usages - b.information.usages)
-		sort<RegisterOccuptionInfo>(occupied_media_registers, (a: RegisterOccuptionInfo, b: RegisterOccuptionInfo) -> a.information.usages - b.information.usages)
+		sort<RegisterOccupationInfo>(occupied_standard_registers, (a: RegisterOccupationInfo, b: RegisterOccupationInfo) -> a.information.usages - b.information.usages)
+		sort<RegisterOccupationInfo>(occupied_media_registers, (a: RegisterOccupationInfo, b: RegisterOccupationInfo) -> a.information.usages - b.information.usages)
 
 		# Sort the variables based on their number of usages (the most used variables first)
 		sort<VariableUsageDescriptor>(remaining_variables, (a: VariableUsageDescriptor, b: VariableUsageDescriptor) -> b.usages - a.usages)
