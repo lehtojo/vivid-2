@@ -53,7 +53,7 @@ for(unit: Unit, result: Result) {
 	# Do not process results, which have already expired
 	if start > end => List<Directive>()
 
-	loop (i = start, i < end, i++) {
+	loop (i = start, i <= end, i++) {
 		instruction = instructions[i]
 
 		if instruction.type == INSTRUCTION_CALL {
