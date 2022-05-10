@@ -58,16 +58,16 @@ localize_subcontext(context: Context, replacement_context: Context, usages_by_va
 # Finds subcontexts under the specified root and localizes them by declaring new subcontexts to the specified context
 localize_subcontexts(context: Context, start: Node, root: Node, usages_by_variable: Map<Variable, List<Node>>) {
 	loop node in start {
-		context = when(node.instance) {
+		subcontext = when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context,
 			NODE_LOOP => node.(LoopNode).context,
 			else => none as Context
 		}
 
-		if context !== none {
+		if subcontext !== none {
 			replacement_context = Context(context, context.type)
 
-			localize_subcontext(context, replacement_context, usages_by_variable)
+			localize_subcontext(subcontext, replacement_context, usages_by_variable)
 
 			# Update the context of the node
 			if node.instance == NODE_SCOPE {
@@ -79,7 +79,7 @@ localize_subcontexts(context: Context, start: Node, root: Node, usages_by_variab
 
 			# Go through all its children with the new context
 			localize_subcontexts(replacement_context, node, root, usages_by_variable)
-			return
+			continue
 		}
 
 		# Since the node does not have a context, go through all its children
@@ -307,7 +307,8 @@ finish_inlining(state: State) {
 	environment.merge(state.context)
 
 	# Localize all the labels and subcontexts
-	localize_labels(environment, state.body)
+	implementation_parent = environment.find_implementation_parent()
+	localize_labels(implementation_parent, state.body)
 
 	# Get the node before which to insert the body of the called function
 	insertion_position = reconstruction.get_expression_extract_position(state.caller)
