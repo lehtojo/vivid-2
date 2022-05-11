@@ -1510,6 +1510,57 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 	}
 }
 
+# Summary: Removes unreachable instructions from the specified instructions.
+remove_unreachable_instructions(instructions: List<Instruction>) {
+	loop (i = 0, i < instructions.size, i++) {
+		instruction = instructions[i]
+
+		# Find the next unconditional jump or return instruction
+		if instruction.type != INSTRUCTION_RETURN and (instruction.type != INSTRUCTION_JUMP or instruction.(JumpInstruction).is_conditional) continue
+
+		# Find the index j of the next label
+		j = i + 1
+
+		loop (j < instructions.size, j++) {
+			if instructions[j].type == INSTRUCTION_LABEL stop
+		}
+
+		# Instructions from i + 1 to j will never execute, they can be removed
+		instructions.remove_range(i + 1, j)
+	}
+}
+
+# Summary: Remove unnecessary jumps from the specified instructions.
+remove_unnecessary_jumps(instructions: List<Instruction>) {
+	# Look for jumps whose destination label is the next instruction
+	loop (i = 0, i < instructions.size - 1, i++) {
+		# Find the next jump instruction
+		instruction = instructions[i]
+		if instruction.type != INSTRUCTION_JUMP continue
+
+		# The next instruction must be a label
+		next = instructions[i + 1]
+		if next.type != INSTRUCTION_LABEL continue
+
+		destination = instruction.(JumpInstruction).label
+
+		# If the destination is the next instruction, the jump can be removed
+		if destination !== next.(LabelInstruction).label {
+			i++ # Skip the label instruction
+			continue
+		}
+
+		# Remove the jump instruction
+		instructions.remove_at(i)
+	}
+}
+
+# Summary: Performs some processing to the specified instructions such as removing unreachable instructions.
+postprocess(instructions: List<Instruction>) {
+	remove_unreachable_instructions(instructions)
+	remove_unnecessary_jumps(instructions)
+}
+
 get_text_section(implementation: FunctionImplementation) {
 	builder = AssemblyBuilder()
 
@@ -1679,6 +1730,9 @@ get_text_section(implementation: FunctionImplementation) {
 
 	# Allocate all constant data section handles
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
+
+	# Postprocess the instructions before giving them to the builder
+	postprocess(instructions)
 
 	file = unit.function.metadata.start.file
 
