@@ -426,7 +426,11 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 		# 5. If the decrease in the cost reaches a specific threshold, proceed with inlining the function
 		if (before - after) + heuristical_cost(called_function, usage) >= INLINE_THRESHOLD {
 			finish_inlining(state)
-			cost = after
+
+			# 6. Optimize the whole function body, because the inlined function can affect decisions
+			snapshot = optimizer.optimize(implementation, snapshot)
+
+			cost = expression_optimizer.get_cost(snapshot)
 		}
 	}
 
