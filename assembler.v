@@ -175,11 +175,11 @@ Register {
 	}
 
 	is_value_copy() {
-		=> value != none and not [value.value.instance == INSTANCE_REGISTER and value.value.(RegisterHandle).register == this]
+		=> value != none and not (value.value.instance == INSTANCE_REGISTER and value.value.(RegisterHandle).register == this)
 	}
 
 	is_available() {
-		=> not is_locked and [value == none or not value.is_active() or is_value_copy()]
+		=> not is_locked and (value == none or not value.is_active() or is_value_copy())
 	}
 
 	is_deactivating() {
@@ -187,7 +187,7 @@ Register {
 	}
 
 	is_releasable(unit: Unit) {
-		=> not is_locked and [value == none or value.is_releasable(unit)]
+		=> not is_locked and (value == none or value.is_releasable(unit))
 	}
 
 	get(size: large) {

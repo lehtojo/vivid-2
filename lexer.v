@@ -891,7 +891,7 @@ to_bytes(format: large) {
 }
 
 to_bits(format: large) {
-	=> [(format |> 1) & FORMAT_SIZE_MASK] * 8
+	=> ((format |> 1) & FORMAT_SIZE_MASK) * 8
 }
 
 # Summary: Returns whether the specified flags contains the specified flag

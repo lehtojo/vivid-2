@@ -259,7 +259,7 @@ get_next_register(unit: Unit, media_register: bool, directives: List<Directive>,
 
 			if result == none or media_register != result.is_media_register continue
 
-			if [is_result and (result.is_available() or result.is_deactivating())] or [not is_result and result.is_available()] {
+			if (is_result and (result.is_available() or result.is_deactivating())) or (not is_result and result.is_available()) {
 				register = result
 				stop
 			}

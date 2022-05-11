@@ -277,7 +277,7 @@ Context {
 
 	# Summary: Returns whether the specified context is this context or one of the parent contexts
 	is_inside(context: Context) {
-		=> context == this or [parent != none and parent.is_inside(context)]
+		=> context == this or (parent != none and parent.is_inside(context))
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context

@@ -806,7 +806,7 @@ remove_redundant_inline_nodes(root: Node) {
 		if iterator.first != none and iterator.first == iterator.last {
 			iterator.replace(iterator.first)
 		}
-		else iterator.parent != none and [common.is_statement(iterator.parent) or iterator.parent.match(NODE_INLINE | NODE_NORMAL)] {
+		else iterator.parent != none and (common.is_statement(iterator.parent) or iterator.parent.match(NODE_INLINE | NODE_NORMAL)) {
 			iterator.replace_with_children(iterator)
 		}
 		else {
