@@ -1539,9 +1539,6 @@ Instruction GetMemoryAddressInstruction {
 			result.format = SYSTEM_FORMAT
 			return
 		}
-
-		result.value = ComplexMemoryHandle(start, offset, stride, 0)
-		result.format = format
 	}
 
 	output_pack(disposable_pack: DisposablePackHandle, position: large) {

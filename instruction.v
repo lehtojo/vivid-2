@@ -431,6 +431,9 @@ Instruction {
 	reindex() {
 		dependencies: List<Result> = get_all_dependencies()
 		loop dependency in dependencies { dependency.use(this) }
+
+		# Use the result at its usages
+		result.use(result.lifetime.usages)
 	}
 
 	build() {
