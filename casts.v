@@ -31,11 +31,11 @@ build(unit: Unit, node: CastNode, mode: large) {
 
 	# Number casts:
 	if from.is_number and to.is_number {
-		a = from.(Number).format
-		b = to.(Number).format
+		a = from.(Number).format == FORMAT_DECIMAL
+		b = to.(Number).format == FORMAT_DECIMAL
 
 		# Execute only if exactly one of the types is a decimal number
-		if (a ¤ b) != 0 => ConvertInstruction(unit, result, b).add()
+		if (a ¤ b) != 0 => ConvertInstruction(unit, result, to.(Number).format).add()
 
 		=> result
 	}
