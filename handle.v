@@ -425,11 +425,11 @@ Handle DataSectionHandle {
 		# If a modifier is attached, the offset is taken into account elsewhere
 		if modifier != DATA_SECTION_MODIFIER_NONE {
 			if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE {
-				=> String(to_size_modifier(size)) + ' [rip+' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+				=> String(to_size_modifier(size)) + ' [' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
 			}
 
 			if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE {
-				=> String(to_size_modifier(size)) + ' [rip+' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+				=> String(to_size_modifier(size)) + ' [' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
 			}
 
 			=> String.empty
@@ -440,10 +440,10 @@ Handle DataSectionHandle {
 			postfix = to_string(offset)
 			if offset > 0 { postfix = String('+') + postfix }
 
-			=> String(to_size_modifier(size)) + ' [rip+' + identifier + postfix + ']'
+			=> String(to_size_modifier(size)) + ' [' + identifier + postfix + ']'
 		}
 
-		=> String(to_size_modifier(size)) + ' [rip+' + identifier + ']'
+		=> String(to_size_modifier(size)) + ' [' + identifier + ']'
 	}
 
 	override finalize() {
