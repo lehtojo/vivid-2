@@ -864,7 +864,7 @@ namespace instruction_encoder {
 	# Handles debug line information instructions and other similar instructions
 	process_debug_instructions(module: EncoderModule, instruction: Instruction) {
 		if instruction.type == INSTRUCTION_DEBUG_BREAK {
-			position = instruction.(AddDebugPositionInstruction).position
+			position = instruction.(DebugBreakInstruction).position
 			module.debug_line_information.add(EncoderDebugLineInformation(module.position, position.friendly_line, position.friendly_character))
 			module.debug_frame_information.add(EncoderDebugFrameInformation(ENCODER_DEBUG_FRAME_INFORMATION_TYPE_ADVANCE, module.position))
 			return

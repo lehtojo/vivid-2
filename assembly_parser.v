@@ -176,7 +176,7 @@ AssemblyParser {
 			line = tokens[3].(NumberToken).data - 1
 			character = tokens[4].(NumberToken).data - 1
 
-			instructions.add(AddDebugPositionInstruction(unit, Position(none as SourceFile, line, character)))
+			instructions.add(DebugBreakInstruction(unit, Position(none as SourceFile, line, character)))
 			=> true
 		}
 

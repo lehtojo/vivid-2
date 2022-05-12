@@ -1196,7 +1196,7 @@ Unit {
 		if not settings.is_debugging_enabled => true
 		if position === none => false
 
-		add(AddDebugPositionInstruction(this, position))
+		add(DebugBreakInstruction(this, position))
 
 		=> true
 	}
@@ -1510,6 +1510,40 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 	}
 }
 
+# Summary: Finds sequential debug break instructions and separates them using NOP-instructions
+separate_debug_breaks(unit: Unit, instructions: List<Instruction>) {
+	i = 0
+
+	loop (i < instructions.size) {
+		# Find the next debug break instruction
+		if instructions[i].type != INSTRUCTION_DEBUG_BREAK {
+			i++
+			continue
+		}
+
+		# Find the next hardware instruction or debug break instruction
+		j = i + 1
+
+		loop (j < instructions.size, j++) {
+			instruction = instructions[j]
+
+			if instruction.type == INSTRUCTION_LABEL continue
+			if instruction.type == INSTRUCTION_DEBUG_BREAK or not instruction.is_abstract stop
+		}
+
+		# We need to insert a NOP-instruction in the following cases:
+		# - We reached the end of the instruction list
+		# - We found a debug break instruction
+		# In the above cases, there are no hardware instructions where the debugger could stop after the debug break instruction.
+		if j == instructions.size or instructions[j].type == INSTRUCTION_DEBUG_BREAK {
+			instructions.insert(i + 1, NoOperationInstruction(unit))
+			j++ # Update the index, because we inserted a new instruction
+		}
+
+		i = j
+	}
+}
+
 # Summary: Removes unreachable instructions from the specified instructions.
 remove_unreachable_instructions(instructions: List<Instruction>) {
 	loop (i = 0, i < instructions.size, i++) {
@@ -1680,7 +1714,7 @@ get_text_section(implementation: FunctionImplementation) {
 	# Append a return instruction at the end if there is no return instruction present
 	if instructions.size == 0 or instructions[instructions.size - 1].type != INSTRUCTION_RETURN {
 		if settings.is_debugging_enabled and unit.function.metadata.end != none {
-			instructions.add(AddDebugPositionInstruction(unit, unit.function.metadata.end))
+			instructions.add(DebugBreakInstruction(unit, unit.function.metadata.end))
 		}
 
 		instructions.add(ReturnInstruction(unit, none as Result, none as Type))
@@ -1693,13 +1727,7 @@ get_text_section(implementation: FunctionImplementation) {
 
 		instructions.add(end)
 
-		# Find sequential position instructions and separate them using debug break instructions
-		loop (i = instructions.size - 2, i >= 0, i--) {
-			if instructions[i].type != INSTRUCTION_DEBUG_BREAK continue
-			if instructions[i + 1].type != INSTRUCTION_DEBUG_BREAK continue
-
-			instructions.insert(i + 1, DebugBreakInstruction(unit))
-		}
+		separate_debug_breaks(unit, instructions)
 	}
 
 	local_memory_top = 0

@@ -840,7 +840,7 @@ Instruction InitializeInstruction {
 			builder.append(AssemblyParser.DEBUG_START_DIRECTIVE)
 			builder.append(` `)
 			builder.append_line(unit.function.get_fullname())
-			builder.append_line(AddDebugPositionInstruction.get_position_instruction(unit.function.metadata.start))
+			builder.append_line(DebugBreakInstruction.get_position_instruction(unit.function.metadata.start))
 		}
 
 		if not settings.is_x64 and call_instructions.size > 0 save_registers.add(unit.get_return_address_register())
@@ -2199,7 +2199,7 @@ Instruction SingleParameterInstruction {
 	}
 }
 
-Instruction AddDebugPositionInstruction {
+Instruction DebugBreakInstruction {
 	constant INSTRUCTION = '.loc'
 
 	position: Position
@@ -2302,11 +2302,11 @@ Instruction DeclareInstruction {
 # Summary:
 # This instruction does nothing. However, this instruction is used for stopping the debugger.
 # This instruction works on all architectures
-Instruction DebugBreakInstruction {
+Instruction NoOperationInstruction {
 	init(unit: Unit) {
-		Instruction.init(unit, INSTRUCTION_DEBUG_BREAK)
+		Instruction.init(unit, INSTRUCTION_NO_OPERATION)
 		this.operation = String(platform.shared.NOP)
-		this.description = String('Debug break')
+		this.description = String('No operation')
 	}
 }
 
