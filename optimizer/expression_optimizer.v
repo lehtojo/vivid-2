@@ -122,21 +122,24 @@ recreate(components: List<Component>) {
 		}
 		else component.is_variable {
 			variable_component = component as VariableComponent
+
 			coefficient = variable_component.coefficient
+			operator = Operators.ADD
+
+			if coefficient.is_negative {
+				coefficient = coefficient.negation()
+				operator = Operators.SUBTRACT
+			}
 
 			# When the coefficient is exactly zero (double), the variable can be ignored, meaning the inaccuracy of the comparison is expected
 			if coefficient.is_zero() continue
 
 			node = create_variable_with_order(variable_component.variable, variable_component.order)
-			is_coefficient_negative = false
 
 			# When the coefficient is exactly one (double), the coefficient can be ignored, meaning the inaccuracy of the comparison is expected
 			if not coefficient.is_one() {
-				node = OperatorNode(Operators.MULTIPLY).set_operands(node, NumberNode(coefficient.format, coefficient.absolute(), none as Position))
+				node = OperatorNode(Operators.MULTIPLY).set_operands(node, NumberNode(coefficient.format, coefficient.data, none as Position))
 			}
-
-			operator = Operators.ADD
-			if coefficient.is_negative { operator = Operators.SUBTRACT }
 
 			result = OperatorNode(operator).set_operands(result, node)
 		}
