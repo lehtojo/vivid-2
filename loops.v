@@ -2,6 +2,9 @@ namespace loops
 
 # Summary: Builds a loop command such as continue and stop
 build_command(unit: Unit, node: CommandNode) {
+	# Add position of the command node as debug information
+	unit.add_debug_position(node.start)
+
 	if node.container == none abort('Loop command was not inside a loop')
 
 	scope = node.container.scope
