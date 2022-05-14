@@ -9,14 +9,14 @@ DynamicBitset {
 		require(size <= max_size, 'Maximum bitset size was exceeded')
 		this.max_size = max_size
 		this.size = size
-		this.data = allocate(size / sizeof(byte) + 1)
+		this.data = allocate(size / 8 + 1)
 	}
 
 	private grow(expanded_size: normal) {
 		require(expanded_size <= max_size, 'Maximum bitset size was exceeded')
 
 		# Allocate a larger memory buffer, copy the old data there and deallocate the old memory
-		expanded_data = allocate(expanded_size / sizeof(byte) + 1)
+		expanded_data = allocate(expanded_size / 8 + 1)
 		copy(data, size, expanded_data)
 		deallocate(data)
 
@@ -31,7 +31,7 @@ DynamicBitset {
 		if i >= size grow(i + 1)
 
 		# Set the corresponding bit as follows: data[i / 8] |= (1 <| (i % 8))
-		slot = i / sizeof(byte)
+		slot = i / 8
 		mask = 1 <| (i - i * slot)
 		data[slot] |= mask
 	}
@@ -43,7 +43,7 @@ DynamicBitset {
 		if i >= size grow(i + 1)
 
 		# Determine if the bit is set as follows: (data[i / 8] & (1 <| (i % 8))) != 0
-		slot = i / sizeof(byte)
+		slot = i / 8
 		mask = 1 <| (i - i * slot)
 		=> (data[slot] & mask) != 0
 	}
