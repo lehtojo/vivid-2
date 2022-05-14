@@ -55,8 +55,8 @@ localize_subcontext(context: Context, replacement_context: Context, usages_by_va
 }
 
 # Summary:
-# Finds subcontexts under the specified root and localizes them by declaring new subcontexts to the specified context
-localize_subcontexts(context: Context, start: Node, root: Node, usages_by_variable: Map<Variable, List<Node>>) {
+# Finds subcontexts under the specified start node and localizes them by declaring new subcontexts to the specified context
+localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Variable, List<Node>>) {
 	loop node in start {
 		subcontext = when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context,
@@ -78,12 +78,12 @@ localize_subcontexts(context: Context, start: Node, root: Node, usages_by_variab
 			}
 
 			# Go through all its children with the new context
-			localize_subcontexts(replacement_context, node, root, usages_by_variable)
+			localize_subcontexts(replacement_context, node, usages_by_variable)
 			continue
 		}
 
 		# Since the node does not have a context, go through all its children
-		localize_subcontexts(context, node, root, usages_by_variable)
+		localize_subcontexts(context, node, usages_by_variable)
 	}
 }
 
@@ -235,7 +235,7 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 
 	# Localize all the contexts
 	localize_subcontext(implementation, context, usages_by_variable)
-	localize_subcontexts(context, body, body, usages_by_variable)
+	localize_subcontexts(context, body, usages_by_variable)
 
 	# Handle the self argument
 	localize_member_access(context, implementation, self_argument, body, usages_by_variable)
