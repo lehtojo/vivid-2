@@ -1,6 +1,5 @@
 namespace statement_optimizer
 
-###
 LoopConditionalStatementLiftupDescriptor {
 	statement: IfNode
 	dependencies: List<Variable>
@@ -14,7 +13,7 @@ LoopConditionalStatementLiftupDescriptor {
 		condition_container = statement.condition_container
 
 		# The condition is predictable when it is not dependent on external factors such as function calls
-		is_condition_predictable = condition_container.find(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_LINK | NODE_OFFSET) === none
+		is_condition_predictable = condition_container.find(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_LINK | NODE_ACCESSOR) === none
 
 		# Load the dependencies only if the condition is predictable, because the loop can not be pulled out if the condition is not predictable
 		if not is_condition_predictable {
@@ -23,11 +22,10 @@ LoopConditionalStatementLiftupDescriptor {
 		}
 
 		dependencies = condition_container.find_all(NODE_VARIABLE)
-			.map<Variable>(i -> i.(VariableNode).variable)
+			.map<Variable>((i: Node) -> i.(VariableNode).variable)
 			.filter(i -> i.is_predictable)
 	}
 }
-###
 
 # Summary: Returns whether the specified node might have a direct effect on the flow
 is_affector(node: Node) {
@@ -231,7 +229,6 @@ remove_abandoned_expressions(root: Node) {
 	}
 }
 
-###
 find_edited_locals(statement: Node) {
 	# Find all edited variables inside the specified statement
 	editors = statement.find_all(i -> i.match(Operators.ASSIGN))
@@ -291,6 +288,29 @@ is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalSta
 	=> true
 }
 
+# Summary:
+# Copies the nodes and contexts inside the specified statement and connects it to the specified context.
+deep_copy_statement(statement: Node, context: Context) {
+	copy = statement.clone()
+
+	# Place the copy inside a container, so that the function below will process the copy by iterating the container node
+	container = Node()
+	container.add(copy)
+
+	# Group variable usages inside the copied statement by the variable
+	usages = container.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_predictable)
+	usages_by_variable = assembler.group_by<Node, Variable>(usages, (i: Node) -> i.(VariableNode).variable)
+
+	# Cloning nodes does not copy the context, so we need to copy the contexts as well
+	inliner.localize_subcontexts(context, container, usages_by_variable)
+
+	# Detach the copy from the container
+	copy.remove()
+	copy.parent = none as Node
+
+	=> copy
+}
+
 liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) {
 	# Get the environment context
 	environment = statement.context.parent
@@ -299,31 +319,8 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 	placeholder = Node()
 	statement.replace(placeholder)
 
-	positive_statement = statement
-	negative_statement = statement.clone()
-
-	# Remove all the successors of the conditional, because they will not be executed inside the positive branch
+	replacement = none as Node
 	successors = conditional.get_successors()
-
-	loop successor in successors {
-		successor.remove()
-	}
-
-	# Replace the conditional with its own body, since we are inside the positive branch where it will always be executed
-	body = conditional.body
-	conditional.replace(body)
-	conditional.detach()
-
-	# Find the copy of the conditional inside the negative branch.
-	# It can be found by searching for a conditional statement with the same context as the original conditional
-	context = body.context
-	copy = negative_statement.find(i -> i.instance == NODE_IF and i.(IfNode).body.context === context) as IfNode
-
-	# Find the successors of the copy of the conditional
-	successors = copy.get_successors()
-
-	# Remove the copy of the conditional, because we are inside the negative branch where it will not be executed
-	copy.remove()
 
 	# 1. If the only successor is an else statement, we can replace it with its own body
 	# 2. If the first successor is an else-if statement, we can rewrite it to an if-statement
@@ -332,7 +329,8 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 
 		if successor.instance == NODE_ELSE {
 			# Replace the else statement with its body
-			successor.replace(successor.(ElseNode).body)
+			replacement = successor.(ElseNode).body
+			successor.replace(replacement)
 		}
 		else {
 			# Rewrite the else-if statement to an if-else statement
@@ -347,18 +345,61 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 			# Replace the else-if statement with the if-else statement
 			successor.replace(replacement)
 		}
+
+		successors[0] = replacement
 	}
 
-	# Add the positive statement inside the conditional
-	conditional.add(positive_statement)
+	# 3. Remove the specified conditional statement. This will form the negative statement, because the successors will be executed.
+	negative_scope_context = Context(environment, NORMAL_CONTEXT)
+	negative_scope = Node()
 
-	# Create a negative branch in which the negative statement is executed, it should be an else-statement
-	negative_branch_context = Context(environment, NORMAL_CONTEXT)
-	negative_branch_body = Node()
-	negative_branch_body.add(negative_statement)
-	negative_branch = ElseNode(negative_branch_context, negative_branch_body, conditional.start, none as Position)
+	conditional.remove()
+	negative_statement = deep_copy_statement(statement, negative_scope_context)
 
-	
+	# 4. Insert the body of the conditional before the successors and remove the successors. This will form the positive statement, because the successors will not be executed.
+	replacement.insert(conditional.body)
+
+	loop successor in successors {
+		successor.remove()
+	}
+
+	# 5. Create the positive branch:
+
+	# 5.1. Disconnect the condition context from the loop context
+	condition_context = conditional.condition_container.(ScopeNode).context
+	condition_context.destroy()
+
+	# 5.2. Connect the condition context to the context surrounding the statement
+	condition_context.connect(environment)
+
+	# 5.3. Create a scope for the positive statement
+	positive_scope_context = Context(environment, NORMAL_CONTEXT)
+	positive_scope = ScopeNode(positive_scope_context, none as Position, none as Position, false)
+
+	# 5.4. Add the positive statement to the scope
+	positive_scope.add(statement)
+
+	# 5.5. Connect the context of the statement to the scope context
+	statement.context.destroy()
+	statement.context.connect(positive_scope_context)
+
+	# 5.6. Form the positive branch by giving the conditional statement the positive scope as body
+	# NOTE: The body of the conditional statement was removed at step 4.
+	conditional.add(positive_scope)
+
+	# 6. Create the negative branch:
+
+	# 6.1. Add the negative statement to the scope
+	negative_scope.add(negative_statement)
+
+	# 6.2. Create an else-statement that will be the negative branch
+	negative_branch = ElseNode(negative_scope_context, negative_scope, none as Position, none as Position)
+
+	# 7. Insert the positive branch before the placeholder
+	placeholder.insert(conditional)
+
+	# 8. Replace the placeholder with the negative branch
+	placeholder.replace(negative_branch)
 }
 
 # Summary:
@@ -374,7 +415,7 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 liftup_conditional_statements_from_loops(root: Node) {
 	statements = root.find_all(NODE_LOOP)
 	conditionals = root.find_all(NODE_IF | NODE_ELSE_IF)
-		.map<LoopConditionalStatementLiftupDescriptor>(i -> LoopConditionalStatementLiftupDescriptor(i as IfNode))
+		.map<LoopConditionalStatementLiftupDescriptor>((i: Node) -> LoopConditionalStatementLiftupDescriptor(i as IfNode))
 		.filter(i -> i.is_potentially_liftable)
 
 	loop (i = 0, i < statements.size, i++) {
@@ -393,9 +434,9 @@ liftup_conditional_statements_from_loops(root: Node) {
 		}
 	}
 }
-###
 
 optimize(context: Context, root: Node) {
 	remove_unreachable_statements(root)
 	remove_abandoned_expressions(root)
+	liftup_conditional_statements_from_loops(root)
 }
