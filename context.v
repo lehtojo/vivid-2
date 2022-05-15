@@ -272,6 +272,7 @@ Context {
 			iterator = iterator.parent
 		}
 
+		result.reverse()
 		=> result
 	}
 
