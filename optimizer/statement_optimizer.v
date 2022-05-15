@@ -319,13 +319,16 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 	placeholder = Node()
 	statement.replace(placeholder)
 
-	replacement = none as Node
-	successors = conditional.get_successors()
+	# Store the parent node that contains the conditional statement
+	container = conditional.parent
 
 	# 1. If the only successor is an else statement, we can replace it with its own body
 	# 2. If the first successor is an else-if statement, we can rewrite it to an if-statement
+	successors = conditional.get_successors()
+
 	if successors.size > 0 {
 		successor = successors[0]
+		replacement = none as Node
 
 		if successor.instance == NODE_ELSE {
 			# Replace the else statement with its body
@@ -353,11 +356,15 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 	negative_scope_context = Context(environment, NORMAL_CONTEXT)
 	negative_scope = Node()
 
+	# 3.1. Save the position of the conditional statement and detach it from its parent
+	position = conditional.next
 	conditional.remove()
+
+	# 3.2. Clone the statement, this will be the negative statement
 	negative_statement = deep_copy_statement(statement, negative_scope_context)
 
 	# 4. Insert the body of the conditional before the successors and remove the successors. This will form the positive statement, because the successors will not be executed.
-	replacement.insert(conditional.body)
+	container.insert(position, conditional.body)
 
 	loop successor in successors {
 		successor.remove()
@@ -414,7 +421,7 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 # else { loop (i = 0, i < n, i++) { # If-statement is optimized out } }
 liftup_conditional_statements_from_loops(root: Node) {
 	statements = root.find_all(NODE_LOOP)
-	conditionals = root.find_all(NODE_IF | NODE_ELSE_IF)
+	conditionals = root.find_all(NODE_IF)
 		.map<LoopConditionalStatementLiftupDescriptor>((i: Node) -> LoopConditionalStatementLiftupDescriptor(i as IfNode))
 		.filter(i -> i.is_potentially_liftable)
 
