@@ -24,7 +24,7 @@ DynamicBitset {
 		this.size = expanded_size
 	}
 
-	set(i: large, value: bool) {
+	set(i: large) {
 		require(i >= 0, 'Index can not be negative')
 
 		# Grow the bitset if the specified index is outside the allocated memory
@@ -32,8 +32,20 @@ DynamicBitset {
 
 		# Set the corresponding bit as follows: data[i / 8] |= (1 <| (i % 8))
 		slot = i / 8
-		mask = 1 <| (i - i * slot)
+		mask = 1 <| (i - slot * 8)
 		data[slot] |= mask
+	}
+
+	unset(i: large) {
+		require(i >= 0, 'Index can not be negative')
+
+		# Grow the bitset if the specified index is outside the allocated memory
+		if i >= size grow(i + 1)
+
+		# Unset the corresponding bit as follows: data[i / 8] &= !(1 <| (i % 8))
+		slot = i / 8
+		mask = 1 <| (i - slot * 8)
+		data[slot] &= !mask
 	}
 
 	get(i: large) {
@@ -44,7 +56,7 @@ DynamicBitset {
 
 		# Determine if the bit is set as follows: (data[i / 8] & (1 <| (i % 8))) != 0
 		slot = i / 8
-		mask = 1 <| (i - i * slot)
+		mask = 1 <| (i - slot * 8)
 		=> (data[slot] & mask) != 0
 	}
 
@@ -410,7 +422,7 @@ StatementFlow {
 			if positions.size == 0 or closest == NORMAL_MAX or closest == closest_obstacle or visited[closest] => executable
 
 			# Do not visit this jump again
-			visited[closest_jump] = true
+			visited.set(closest_jump)
 
 			if closest_jump_node.is_conditional {
 				# Visit the jump destination and try to reach the positions there
