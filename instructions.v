@@ -1267,7 +1267,7 @@ Instruction ReorderInstruction {
 			# Try to get an available non-volatile register
 			destination = none as Handle
 			destination_format = 0
-			register = memory.get_next_register_without_releasing(unit, variable.type.format == FORMAT_DECIMAL, trace.for(unit, value), false)
+			register = memory.get_next_register_without_releasing(unit, variable.type.format == FORMAT_DECIMAL, trace.for(unit, value))
 
 			# Use the non-volatile register, if one was found
 			if register != none {

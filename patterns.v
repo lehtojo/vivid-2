@@ -1539,7 +1539,7 @@ Pattern TemplateFunctionPattern {
 		}
 
 		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, template_parameters_end)
-		template_parameters = common.get_template_parameters(template_parameter_tokens, tokens[TEMPLATE_PARAMETERS_START + 1].position)
+		template_parameters = common.get_template_parameters(template_parameter_tokens)
 
 		if template_parameters.size == 0 {
 			state.error = Status(start, 'Expected at least one template parameter')
@@ -1660,7 +1660,7 @@ Pattern TemplateTypePattern {
 		body = tokens[tokens.size - 1] as ParenthesisToken
 
 		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, tokens.size - TEMPLATE_PARAMETERS_END)
-		template_parameters = common.get_template_parameters(template_parameter_tokens, tokens[TEMPLATE_PARAMETERS].position)
+		template_parameters = common.get_template_parameters(template_parameter_tokens)
 
 		blueprint = List<Token>(2, false)
 		blueprint.add(name.clone())
@@ -2394,7 +2394,7 @@ Pattern ExtensionFunctionPattern {
 
 		template_parameters_start = i + 1
 		template_parameters_end = tokens.size - 1 - TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET
-		template_parameters = common.get_template_parameters(tokens.slice(template_parameters_start, template_parameters_end), tokens[i].position)
+		template_parameters = common.get_template_parameters(tokens.slice(template_parameters_start, template_parameters_end))
 		
 		name = tokens[i - 1] as IdentifierToken
 		parameters = tokens[tokens.size - 1 - PARAMETERS_OFFSET] as ParenthesisToken

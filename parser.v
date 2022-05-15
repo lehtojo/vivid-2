@@ -359,7 +359,7 @@ find_consuming_section(tokens: List<Token>) {
 	=> none as List<Token>
 }
 
-split(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+split(tokens: List<Token>) {
 	consuming_section = find_consuming_section(tokens)
 
 	sections = List<List<Token>>()
@@ -471,7 +471,7 @@ clear_sections(sections: List<List<Token>>) {
 }
 
 parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
-	sections = split(root, context, tokens, min, max)
+	sections = split(tokens)
 
 	loop section in sections {
 		result = parse_section(root, context, section, min, max)

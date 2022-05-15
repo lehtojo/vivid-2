@@ -464,7 +464,7 @@ CONSTANT_TYPE_BYTES = 2
 DataSectionHandle ConstantDataSectionHandle {
 	value_type: large
 
-	init(identifier: String, address: bool) {
+	init(identifier: String) {
 		DataSectionHandle.init(identifier, false)
 		this.instance = INSTANCE_CONSTANT_DATA_SECTION
 	}
@@ -474,7 +474,7 @@ ConstantDataSectionHandle NumberDataSectionHandle {
 	value: large
 
 	init(handle: ConstantHandle) {
-		ConstantDataSectionHandle.init(handle.string(), false)
+		ConstantDataSectionHandle.init(handle.string())
 		this.value = handle.value
 
 		if handle.format == FORMAT_DECIMAL { value_type = CONSTANT_TYPE_DECIMAL }
@@ -482,7 +482,7 @@ ConstantDataSectionHandle NumberDataSectionHandle {
 	}
 
 	init(identifier: String, value: large, value_type: large) {
-		ConstantDataSectionHandle.init(identifier, false)
+		ConstantDataSectionHandle.init(identifier)
 		this.value = value
 		this.value_type = value_type
 	}
@@ -504,13 +504,13 @@ ConstantDataSectionHandle ByteArrayDataSectionHandle {
 	init(bytes: Array<byte>) {
 		values = List<String>()
 		loop value in bytes { values.add(to_string(value)) }
-		ConstantDataSectionHandle.init(String('{ ') + String.join(String(', '), values) + ' }', false)
+		ConstantDataSectionHandle.init(String('{ ') + String.join(String(', '), values) + ' }')
 		this.value = bytes
 		this.value_type = CONSTANT_TYPE_BYTES
 	}
 
 	init(identifier: String, bytes: Array<byte>) {
-		ConstantDataSectionHandle.init(identifier, false)
+		ConstantDataSectionHandle.init(identifier)
 		this.value = bytes
 		this.value_type = CONSTANT_TYPE_BYTES
 	}

@@ -422,7 +422,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 	=> none as Status
 }
 
-get_template_parameters(template_parameter_tokens: List<Token>, template_parameter_start: Position) {
+get_template_parameters(template_parameter_tokens: List<Token>) {
 	template_parameters = List<String>()
 
 	loop (i = 0, i < template_parameter_tokens.size, i++) {

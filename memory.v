@@ -135,7 +135,7 @@ clear_register(unit: Unit, target: Register) {
 	directives = none as List<Directive>
 	if target.value != none { directives = trace.for(unit, target.value) }
 
-	register = get_next_register_without_releasing(unit, target.is_media_register, directives, false)
+	register = get_next_register_without_releasing(unit, target.is_media_register, directives)
 
 	target.unlock()
 
@@ -218,7 +218,7 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 # Summary: Tries to apply the most important directive
 consider(unit: Unit, directive: Directive, media_register: bool) {
 	=> when(directive.type) {
-		DIRECTIVE_NON_VOLATILITY => unit.get_next_non_volatile_register(media_register, false)
+		DIRECTIVE_NON_VOLATILITY => unit.get_next_non_volatile_register(media_register, false),
 		DIRECTIVE_AVOID_REGISTERS => {
 			register = none as Register
 			denylist = directive.(AvoidRegistersDirective).registers
@@ -227,8 +227,8 @@ consider(unit: Unit, directive: Directive, media_register: bool) {
 			else { register = unit.get_next_register_without_releasing(denylist) }
 
 			register
-		}
-		DIRECTIVE_SPECIFIC_REGISTER => directive.(SpecificRegisterDirective).register
+		},
+		DIRECTIVE_SPECIFIC_REGISTER => directive.(SpecificRegisterDirective).register,
 		else => abort('Unknown directive type encountered') as Register
 	}
 }
@@ -275,7 +275,7 @@ get_next_register(unit: Unit, media_register: bool, directives: List<Directive>,
 }
 
 # Summary: Tries to get a register without releasing based on the specified directives
-get_next_register_without_releasing(unit: Unit, media_register: bool, directives: List<Directive>, is_result: bool) {
+get_next_register_without_releasing(unit: Unit, media_register: bool, directives: List<Directive>) {
 	register = none as Register
 
 	if directives != none {

@@ -3,7 +3,7 @@ namespace calls
 constant SHADOW_SPACE_SIZE = 32
 constant STACK_ALIGNMENT = 16
 
-get_standard_parameter_register_names(unit: Unit) {
+get_standard_parameter_register_names() {
 	result = List<link>(8, false)
 
 	if settings.is_x64 {
@@ -57,7 +57,7 @@ get_decimal_parameter_register_count() {
 get_standard_parameter_registers(unit: Unit) {
 	registers = List<Register>()
 
-	loop name in get_standard_parameter_register_names(unit) {
+	loop name in get_standard_parameter_register_names() {
 		loop register in unit.standard_registers {
 			if not (register[8] == name) continue
 			registers.add(register)

@@ -1271,7 +1271,7 @@ get_special_character_value(text: String) {
 }
 
 # Summary: Returns the integer value of the character value
-get_character_value(text: String, position: Position) {
+get_character_value(text: String) {
 	text = text.slice(1, text.length - 1) # Remove the closures
 
 	if text.length == 0 => Error<large, String>(String('Character value is empty'))
@@ -1334,7 +1334,7 @@ get_next_token(text: String, start: Position) {
 	else type == TEXT_TYPE_CHARACTER {
 		area.end = skip_character_value(text, area.start)
 
-		result = get_character_value(text.slice(area.start.local, area.end.local), area.start)
+		result = get_character_value(text.slice(area.start.local, area.end.local))
 		if not (result has value) => Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
