@@ -74,7 +74,7 @@ initialize_configuration() {
 		path = io.get_environment_variable('PATH')
 		if path === none { path = String('') }
 
-		folders = path.split(`;`).to_list()
+		folders = path.split(`;`)
 
 		# Ensure all the separators are the same
 		loop (i = 0, i < folders.size, i++) {
@@ -85,7 +85,7 @@ initialize_configuration() {
 		path = io.get_environment_variable('Path')
 		if path === none { path = String('') }
 
-		folders = path.split(`:`).to_list()
+		folders = path.split(`:`)
 	}
 
 	# Look for empty folder strings and remove them
@@ -94,7 +94,7 @@ initialize_configuration() {
 		folders.remove_at(i)
 	}
 
-	settings.included_folders.add_range(folders)
+	settings.included_folders.add_all(folders)
 
 	# Ensure all the included folders ends with a separator
 	loop (i = 0, i < settings.included_folders.size, i++) {
@@ -137,27 +137,27 @@ find_library(library: String) {
 
 configure(parameters: List<String>, files: List<String>, libraries: List<String>, value: String) {
 	if value == '-help' {
-		println('Usage: v [options] <folders / files>')
-		println('Options:')
-		println('-help')
-		println('-r <folder> / -recursive <folder>')
-		println('-d / -debug')
-		println('-o <filename> / -output <filename>')
-		println('-l <library> / -library <library>')
-		println('-link')
-		println('-a / -assembly')
-		println('-shared / -dynamic / -dll')
-		println('-static')
-		println('-st / -single-thread')
-		println('-q / -quiet')
-		println('-v / -verbose')
-		println('-f / -force / -rebuild')
-		println('-t / -time')
-		println('-O, -O1, -O2')
-		println('-x64')
-		println('-arm64')
-		println('-version')
-		println('-s')
+		console.write_line('Usage: v [options] <folders / files>')
+		console.write_line('Options:')
+		console.write_line('-help')
+		console.write_line('-r <folder> / -recursive <folder>')
+		console.write_line('-d / -debug')
+		console.write_line('-o <filename> / -output <filename>')
+		console.write_line('-l <library> / -library <library>')
+		console.write_line('-link')
+		console.write_line('-a / -assembly')
+		console.write_line('-shared / -dynamic / -dll')
+		console.write_line('-static')
+		console.write_line('-st / -single-thread')
+		console.write_line('-q / -quiet')
+		console.write_line('-v / -verbose')
+		console.write_line('-f / -force / -rebuild')
+		console.write_line('-t / -time')
+		console.write_line('-O, -O1, -O2')
+		console.write_line('-x64')
+		console.write_line('-arm64')
+		console.write_line('-version')
+		console.write_line('-s')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -249,8 +249,8 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.architecture = ARCHITECTURE_ARM64
 	}
 	else value == '-version' {
-		print('Vivid version ')
-		println(COMPILER_VERSION)
+		console.write('Vivid version ')
+		console.write_line(COMPILER_VERSION)
 		application.exit(0)
 	}
 	else value == '-s' {

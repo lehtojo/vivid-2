@@ -121,5 +121,5 @@ init() {
 	are_equal(-16, range_when(-8))
 	are_equal(-84, range_when(-42))
 	are_equal(3, range_when(3))
-	=> 1
+	=> 0
 }

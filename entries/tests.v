@@ -1,25 +1,29 @@
 constant UNIT_TEST_PREFIX = 'unit_'
 
 abort(message: String) {
-	print('Internal error: ')
-	println(message)
+	console.write('Internal error: ')
+	console.write_line(message)
 	application.exit(1)
 }
 
 abort(message: link) {
-	print('Internal error: ')
-	println(message)
+	console.write('Internal error: ')
+	console.write_line(message)
 	application.exit(1)
 }
 
 complain(status: Status) {
-	print('Compilation terminated: ')
-	println(status.message)
+	console.write('Compilation terminated: ')
+	console.write_line(status.message)
 	application.exit(1)
 }
 
 project_file(folder: link, name: link) {
 	=> io.get_process_working_folder() + `/` + folder + `/` + name
+}
+
+relative_file(name: link) {
+	=> io.get_process_working_folder() + `/` + name
 }
 
 compile(output: link, source_files: List<String>, optimization: large, prebuilt: bool) {
@@ -28,7 +32,7 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	initialize_configuration()
 
 	arguments = List<String>()
-	arguments.add_range(source_files)
+	arguments.add_all(source_files)
 	arguments.add(String('-a'))
 	arguments.add(String('-l'))
 	arguments.add(String('kernel32'))
@@ -41,8 +45,9 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	}
 	else {
 		# Add the built standard library
-		arguments.add(String('-l'))
-		arguments.add(String('v'))
+		# arguments.add(String('-l'))
+		# arguments.add(String('v'))
+		arguments.add_all(get_standard_library_utility())
 	}
 
 	# Add optimization level
@@ -96,11 +101,11 @@ execute(name: link) {
 	}
 
 	exit_code = io.wait_for_exit(pid)
-	if exit_code != 1 abort('Executed process exited with an error code')
+	if exit_code != 0 abort('Executed process exited with an error code')
 
-	if not [io.read_file(executable_name + '.out') has log] => String.empty
+	if not (io.read_file(executable_name + '.out') has log) => String.empty
 
-	=> String(log.data, log.count)
+	=> String(log.data, log.size)
 }
 
 # Summary: Loads the specified assembly output file and returns the section which represents the specified function
@@ -172,14 +177,24 @@ get_function_from_assembly(assembly: String, function: link) {
 
 get_standard_library_utility() {
 	files = List<String>()
-	files.add(project_file('tests', 'assert.v'))
-	files.add(project_file('libv', 'Core.v'))
-	files.add(project_file('libv', 'Console.v'))
-	files.add(project_file('libv', 'String.v'))
-	files.add(project_file('libv', 'StringBuilder.v'))
-	files.add(project_file('libv', 'List.v'))
-	files.add(project_file('libv', 'Array.v'))
-	files.add(project_file('libv', 'Exceptions.v'))
+	files.add(project_file('libv/tests', 'core.v'))
+	files.add(project_file('libv/windows-x64', 'application.v'))
+	files.add(project_file('libv/windows-x64', 'internal-console.v'))
+	files.add(project_file('libv/windows-x64', 'internal-memory.v'))
+	files.add(project_file('libv', 'array.v'))
+	files.add(project_file('libv', 'console.v'))
+	files.add(project_file('libv', 'exceptions.v'))
+	files.add(project_file('libv', 'list.v'))
+	files.add(project_file('libv', 'math.v'))
+	files.add(project_file('libv', 'memory-utility.v'))
+	files.add(project_file('libv', 'sequential-iterator.v'))
+	files.add(project_file('libv', 'sort.v'))
+	files.add(project_file('libv', 'string-builder.v'))
+	files.add(project_file('libv', 'string-utility.v'))
+	files.add(project_file('libv', 'string.v'))
+	files.add(relative_file('minimum.math.obj'))
+	files.add(relative_file('minimum.memory.obj'))
+	files.add(relative_file('minimum.tests.obj'))
 	=> files
 }
 
@@ -392,7 +407,7 @@ fibonacci(optimization: large) {
 	log = execute('fibonacci')
 
 	if not (log == '0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n') {
-		println('Fibonacci unit test did not produce the correct output')
+		console.write_line('Fibonacci unit test did not produce the correct output')
 	}
 }
 
@@ -405,13 +420,13 @@ pi(optimization: large) {
 	log = execute('pi')
 
 	if not (io.read_file(project_file('tests', 'pi.txt')) has bytes) {
-		println('Could not load the expected Pi unit test output')
+		console.write_line('Could not load the expected Pi unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.count)
+	expected = String.from(bytes.data, bytes.size)
 
 	if not (log == expected) {
-		println('Pi unit test did not produce the correct output')
+		console.write_line('Pi unit test did not produce the correct output')
 	}
 }
 
@@ -433,7 +448,7 @@ namespaces(optimization: large) {
 	log = execute('namespaces')
 
 	if not (log == 'Apple\nBanana\nFactory Foo.Apple\nFactory Foo.Apple\nFactory Foo.Apple\n') {
-		println('Namespaces unit test did not produce the correct output')
+		console.write_line('Namespaces unit test did not produce the correct output')
 	}
 }
 
@@ -446,7 +461,7 @@ extensions(optimization: large) {
 	log = execute('extensions')
 
 	if not (log == 'Decimal seems to be larger than tiny\nFactory created new Foo.Bar.Counter\n7\n') {
-		println('Extensions unit test did not produce the correct output')
+		console.write_line('Extensions unit test did not produce the correct output')
 	}
 }
 
@@ -459,13 +474,13 @@ virtuals(optimization: large) {
 	log = execute('virtuals')
 
 	if not (io.read_file(project_file('tests', 'virtuals.txt')) has bytes) {
-		println('Could not load the expected Virtuals unit test output')
+		console.write_line('Could not load the expected Virtuals unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.count)
+	expected = String.from(bytes.data, bytes.size)
 
 	if not (log == expected) {
-		println('Virtuals unit test did not produce the correct output')
+		console.write_line('Virtuals unit test did not produce the correct output')
 	}
 }
 
@@ -478,13 +493,13 @@ expression_variables(optimization: large) {
 	log = execute('expression_variables')
 
 	if not (io.read_file(project_file('tests', 'expression_variables.txt')) has bytes) {
-		println('Could not load the expected Expression variables unit test output')
+		console.write_line('Could not load the expected Expression variables unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.count)
+	expected = String.from(bytes.data, bytes.size)
 
 	if not (log == expected) {
-		println('Expression variables unit test did not produce the correct output')
+		console.write_line('Expression variables unit test did not produce the correct output')
 	}
 }
 
@@ -506,13 +521,13 @@ lambdas(optimization: large) {
 	log = execute('lambdas')
 
 	if not (io.read_file(project_file('tests', 'lambdas.txt')) has bytes) {
-		println('Could not load the expected Lambdas unit test output')
+		console.write_line('Could not load the expected Lambdas unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.count)
+	expected = String.from(bytes.data, bytes.size)
 
 	if not (log == expected) {
-		println('Lambdas unit test did not produce the correct output')
+		console.write_line('Lambdas unit test did not produce the correct output')
 	}
 }
 
@@ -552,7 +567,7 @@ lists(optimization: large) {
 	expected = '1, 2, 3, 5, 7, 11, 13, \n42, 69, \nFoo, Bar, Baz, Qux, Xyzzy, \nFoo, Bar, Baz x 3, Qux, Xyzzy x 7, \n'
 
 	if not (log == expected) {
-		println('Lists unit test did not produce the correct output')
+		console.write_line('Lists unit test did not produce the correct output')
 	}
 }
 
@@ -565,7 +580,7 @@ packs(optimization: large) {
 	expected = '170\n2143\n20716\n3050\n4058\n3502\n354256\n'
 
 	if not (log == expected) {
-		println('Packs unit test did not produce the correct output')
+		console.write_line('Packs unit test did not produce the correct output')
 	}
 }
 
@@ -578,78 +593,78 @@ unnamed_packs(optimization: large) {
 	expected = '420\n420\n2310\n'
 
 	if not (log == expected) {
-		println('Unnamed packs unit test did not produce the correct output')
+		console.write_line('Unnamed packs unit test did not produce the correct output')
 	}
 }
 
 init() {
-	println('Arithmetic')
+	console.write_line('Arithmetic')
 	arithmetic(0)
-	println('Assignment')
+	console.write_line('Assignment')
 	assignment(0)
-	println('Bitwise')
+	console.write_line('Bitwise')
 	bitwise(0)
-	println('Conditionally changing constant')
+	console.write_line('Conditionally changing constant')
 	conditionally_changing_constant(0)
-	println('Conditionals')
+	console.write_line('Conditionals')
 	conditionals_statements(0)
-	println('Constant permanence')
+	console.write_line('Constant permanence')
 	constant_permanence(0)
-	println('Decimals')
+	console.write_line('Decimals')
 	decimals(0)
-	println('Evacuation')
+	console.write_line('Evacuation')
 	evacuation(0)
-	println('Large functions')
+	console.write_line('Large functions')
 	large_functions(0)
-	println('Linkage')
+	console.write_line('Linkage')
 	linkage(0)
-	println('Logical operators')
+	console.write_line('Logical operators')
 	logical_operators(0)
-	println('Loops')
+	console.write_line('Loops')
 	loops_statements(0)
-	println('Objects')
+	console.write_line('Objects')
 	objects(0)
-	println('Register utilization')
+	console.write_line('Register utilization')
 	register_utilization(0)
-	println('Scopes')
+	console.write_line('Scopes')
 	scopes(0)
-	println('Special multiplications')
+	console.write_line('Special multiplications')
 	special_multiplications(0)
-	println('Stack')
+	console.write_line('Stack')
 	stack(0)
-	println('Memory')
+	console.write_line('Memory')
 	memory_operations(0)
-	println('Templates')
+	console.write_line('Templates')
 	templates(0)
-	println('Fibonacci')
+	console.write_line('Fibonacci')
 	fibonacci(0)
-	println('Pi')
+	console.write_line('Pi')
 	pi(0)
-	println('Inheritance')
+	console.write_line('Inheritance')
 	inheritance(0)
-	println('Namespaces')
+	console.write_line('Namespaces')
 	namespaces(0)
-	println('Extensions')
+	console.write_line('Extensions')
 	extensions(0)
-	println('Virtuals')
+	console.write_line('Virtuals')
 	virtuals(0)
-	println('Conversions')
+	console.write_line('Conversions')
 	conversions(0)
-	println('Expression variables')
+	console.write_line('Expression variables')
 	expression_variables(0)
-	println('Iteration')
+	console.write_line('Iteration')
 	iteration(0)
-	println('Lambdas')
+	console.write_line('Lambdas')
 	lambdas(0)
-	println('Is')
+	console.write_line('Is')
 	is_expressions(0)
-	println('Whens')
+	console.write_line('Whens')
 	whens_expressions(0)
-	println('Lists')
+	console.write_line('Lists')
 	lists(0)
-	println('Packs')
+	console.write_line('Packs')
 	packs(0)
-	println('Unnamed packs')
+	console.write_line('Unnamed packs')
 	unnamed_packs(0)
 	=> 0
 }

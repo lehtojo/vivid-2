@@ -68,5 +68,5 @@ init() {
 
 	are_equal(3622080, scopes_single_loop(7, 8, 11, 16, 23, 32, 43, 56))
 	are_equal(3622080, scopes_nested_loops(7, 8, 11, 16, 23, 32, 43, 56))
-	=> 1
+	=> 0
 }

@@ -45,5 +45,5 @@ init() {
 	are_equal(-123.456, sequence.address[0])
 	are_equal(-987.654, sequence.address[1])
 	are_equal(101.010, sequence.address[2])
-	=> 1
+	=> 0
 }

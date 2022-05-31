@@ -1099,14 +1099,14 @@ namespace instruction_encoder {
 				is_conditional_jump = not (instructions[end - 1].operation == platform.x64.JUMP)
 
 				module = EncoderModule(label, is_conditional_jump)
-				module.instructions.add_range(instructions.slice(start, end))
+				module.instructions.add_all(instructions.slice(start, end))
 				module.output = allocate(module.get_max_instruction_buffer_size())
 				module.index = modules.size
 				modules.add(module)
 			}
 			else {
 				module = EncoderModule()
-				module.instructions.add_range(instructions.slice(start, instructions.size))
+				module.instructions.add_all(instructions.slice(start, instructions.size))
 				module.output = allocate(module.get_max_instruction_buffer_size())
 				module.index = modules.size
 				modules.add(module)

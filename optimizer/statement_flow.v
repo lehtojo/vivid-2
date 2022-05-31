@@ -434,7 +434,7 @@ StatementFlow {
 				result = get_executable_positions(destination, obstacles, positions, visited, depth - 1)
 				if result == none => none as List<normal>
 
-				executable.add_range(result)
+				executable.add_all(result)
 
 				# Delete the result, since we copied it
 				result.clear()

@@ -76,7 +76,7 @@ Node {
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if filter(iterator) result.add(iterator)
-			result.add_range(iterator.find_all(filter))
+			result.add_all(iterator.find_all(filter))
 		}
 
 		=> result
@@ -88,7 +88,7 @@ Node {
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if (iterator.instance & types) != 0 result.add(iterator)
-			result.add_range(iterator.find_all(types))
+			result.add_all(iterator.find_all(types))
 		}
 
 		=> result
@@ -100,7 +100,7 @@ Node {
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if has_flag(types, iterator.instance) result.add(iterator)
-			result.add_range(iterator.find_every(types))
+			result.add_all(iterator.find_every(types))
 		}
 
 		=> result
@@ -136,7 +136,7 @@ Node {
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if filter(iterator) { result.add(iterator) }
-			else { result.add_range(iterator.find_top(filter)) }
+			else { result.add_all(iterator.find_top(filter)) }
 		}
 
 		=> result
@@ -148,7 +148,7 @@ Node {
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if (iterator.instance & types) != none { result.add(iterator) }
-			else { result.add_range(iterator.find_top(types)) }
+			else { result.add_all(iterator.find_top(types)) }
 		}
 
 		=> result

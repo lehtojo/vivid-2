@@ -31,5 +31,5 @@ init() {
 	are_equal(20000.0, car.price)
 
 	are_equal('Flash', car.brand, 0, 5)
-	=> 1
+	=> 0
 }

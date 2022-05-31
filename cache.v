@@ -52,7 +52,7 @@ CacheState {
 		}
 		else {
 			available_standard_registers = List<Register>(unit.volatile_standard_registers)
-			available_standard_registers.add_range(unit.non_volatile_standard_registers)
+			available_standard_registers.add_all(unit.non_volatile_standard_registers)
 		}
 
 		if non_volatile_only {
@@ -60,12 +60,12 @@ CacheState {
 		}
 		else {
 			available_media_registers = List<Register>(unit.volatile_media_registers)
-			available_media_registers.add_range(unit.non_volatile_media_registers)
+			available_media_registers.add_all(unit.non_volatile_media_registers)
 		}
 
 		# Pack all register together for simple iteration
 		registers = List<Register>(available_standard_registers)
-		registers.add_range(available_media_registers)
+		registers.add_all(available_media_registers)
 
 		remaining_variables = List<VariableUsageDescriptor>(usages)
 

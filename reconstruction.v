@@ -120,7 +120,7 @@ get_expression_root(node: Node) {
 
 extract_calls(root: Node) {
 	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
-	nodes.add_range(find_bool_values(root))
+	nodes.add_all(find_bool_values(root))
 
 	loop (i = 0, i < nodes.size, i++) {
 		node = nodes[i]
@@ -283,7 +283,7 @@ find_increments(root: Node) {
 	result = List<Node>()
 
 	loop node in root {
-		result.add_range(find_increments(node))
+		result.add_all(find_increments(node))
 
 		# Add the increment later than its child nodes, since the child nodes are executed first
 		if node.instance == NODE_INCREMENT or node.instance == NODE_DECREMENT { result.add(node) }
@@ -1268,7 +1268,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 		else { accessor = LinkNode(root.clone(), VariableNode(member), position) }
 
 		if member.type.is_pack {
-			result.add_range(create_pack_member_accessors(accessor, member.type, position))
+			result.add_all(create_pack_member_accessors(accessor, member.type, position))
 			continue
 		}
 
@@ -1323,7 +1323,6 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 
 		destination = assignment.first
 		source = assignment.last
-
 		type = destination.get_type()
 
 		# Skip assignments, whose destination is not a pack
@@ -1338,7 +1337,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		destinations = create_pack_member_accessors(destination, type, position)
 		sources = none as List<Node>
 
-		is_function_assignment = assignment.last.match(NODE_CALL | NODE_FUNCTION) or (assignment.last.instance == NODE_LINK and assignment.last.last.match(NODE_CALL | NODE_FUNCTION))
+		is_function_assignment = common.is_function_call(assignment.last)
 
 		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local representives of the members
 		if is_function_assignment {
@@ -1389,6 +1388,7 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 
 	loop (i = local_pack_usages.size - 1, i >= 0, i--) {
 		usage = local_pack_usages[i]
+		usage_variable = usage.(VariableNode).variable
 		type = usage.get_type()
 
 		# Leave function assignments intact
@@ -1400,9 +1400,12 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		# We start moving from the brackets, because variable a is a local pack usage.
 		# [a].b.c
 		# We must move all the way to nested pack c, because only the members of c are expanded.
-		# a.b.[c] => Packer { a.b.c.x, a.b.c.y }
-		# The next loop will transform the packer elements:
-		# a.b.[c] => Packer { a.b.c.x, a.b.c.y } => Packer { $local-1, $local-2 }
+		# a.b.[c] => PackNode { a.b.c.x, a.b.c.y } => PackNode { $.a.b.c.x, $.a.b.c.y }
+		# If we access a normal member through a pack, we replace the usage directly with a local:
+		# a.b.[c].x => a.b.c.x => $.a.b.c.x
+		member = none as Variable
+		path = StringBuilder(usage_variable.name)
+
 		loop {
 			# The parent node must be a link, since a member access is expected
 			parent = usage.parent
@@ -1414,90 +1417,41 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 
 			# Continue if a nested pack is accessed
 			member = next.(VariableNode).variable
-			if not member.type.is_pack stop
-
 			type = member.type
 			usage = parent
-		}
 
-		# Remove the usage from the list, because it will be replaced with a pack node
-		local_pack_usages.remove_at(i)
-		
-		packer = PackNode(type)
-
-		loop accessor in create_pack_member_accessors(usage, type, usage.start) {
-			packer.add(accessor)
-		}
-
-		usage.replace(packer)
-	}
-
-	# Member accessors are replaced with local variables:
-	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> local_packs.contains(i.(VariableNode).variable))
-
-	# NOTE: All usages are used to access a member here
-	loop usage in local_pack_usages {
-		# Leave the function assignments intact
-		if common.is_edited(usage) continue
-
-		# NOTE: Add a prefix, because name could conflict with hidden variables
-		name = String(`.`) + usage.(VariableNode).variable.name
-		iterator = usage
-		type = none as Type
-
-		loop (iterator != none) {
-			# The parent node must be a link, since a member access is expected
-			parent = iterator.parent
-			if parent == none or parent.instance != NODE_LINK stop
-
-			# Ensure the current iterator is used for member access
-			next = iterator.next
-			if next.instance != NODE_VARIABLE stop
-
-			# Append the member to the name
-			member = next.(VariableNode).variable
-			name = name + String(`.`) + member.name
-
-			iterator = parent
-			type = member.type
+			path.append(`.`)
+			path.append(member.name)
 
 			if not type.is_pack stop
 		}
 
-		if type == none abort('Pack member did not have a type')
+		# If we are accessing at least one member, add a dot to the beginning of the path
+		if member !== none path.insert(0, `.`)
 
-		# Find or create the representive for the member access
-		context = usage.(VariableNode).variable.parent
-		representive = context.get_variable(name)
-		if representive == none abort('Missing pack member')
+		# Find the local variable that represents the accessed path
+		context = usage_variable.parent
+		accessed = context.get_variable(path.string())
+		require(accessed !== none, 'Failed to find local variable for pack access')
 
-		iterator.replace(VariableNode(representive, usage.start))
-	}
+		if member !== none and not type.is_pack {
+			# Replace the usage with a local variable:
+			usage.replace(VariableNode(accessed, usage.start))
+		}
+		else {
+			# Since we are accessing a pack, we must create a pack from its representives:
+			packer = PackNode(type)
+			representives = common.get_pack_representives(accessed)
 
-	# Replace all packers, which are accessed using link nodes with the accessed member values
-	packers = root.find_all(NODE_PACK)
-
-	loop packer in packers {
-		# Find all packers, whose members are accessed using a link node
-		if packer.parent.instance != NODE_LINK or packer.next.instance != NODE_VARIABLE continue
-
-		# Find the member value from the packer, which represents the accessed member
-		type = packer.(PackNode).type
-		member_value = packer.first
-		accessed_member = packer.next.(VariableNode).variable
-
-		loop iterator in type.variables {
-			member = iterator.value
-
-			if not (member.name == accessed_member.name) {
-				member_value = member_value.next
-				continue
+			loop representive in representives {
+				packer.add(VariableNode(representive, usage.start))
 			}
 
-			# Replace the packer with the member value
-			packer.parent.replace(member_value)
-			stop
+			usage.replace(packer)
 		}
+
+		# Remove the usage from the list, because it was replaced
+		local_pack_usages.remove_at(i)
 	}
 
 	# Returned packs from function calls are handled last:

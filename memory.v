@@ -26,7 +26,7 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 	}
 
 	# Append the created exchanges and remove the moves which were replaced by the exchanges
-	result.add_range(exchanges)
+	result.add_all(exchanges)
 	
 	loop (i = result.size - 1, i >= 0, i--) {
 		if not exchanged_indices.contains(i) continue
@@ -108,8 +108,8 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 		}
 	}
 
-	locks.add_range(aligned)
-	locks.add_range(unlocks)
+	locks.add_all(aligned)
+	locks.add_all(unlocks)
 	=> locks
 }
 

@@ -87,5 +87,5 @@ init() {
 	are_equal(-1231, postdecrement(-1234))
 	are_equal(1016064, increments(-1010))
 	are_equal(826277, decrements(909))
-	=> 1
+	=> 0
 }

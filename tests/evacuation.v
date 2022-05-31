@@ -22,5 +22,5 @@ export evacuation_with_memory(a: large, b: large, c: decimal, d: decimal) {
 init() {
 	are_equal(570, evacuation(10, 50))
 	are_equal(-8284.8593704716513, evacuation_with_memory(42, -10, -77.101, 101.77))
-	=> 1
+	=> 0
 }

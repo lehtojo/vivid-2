@@ -2098,7 +2098,7 @@ DualParameterInstruction BitwiseInstruction {
 
 		if first.is_memory_address and assigns {
 			# Example: sal/sar [...], rcx
-			build(instruction.text, 0,
+			build(instruction.data, 0,
 				InstructionParameter(first, FLAG_DESTINATION | FLAG_READS | flags, HANDLE_MEMORY),
 				InstructionParameter(shifter, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER)
 			)
@@ -2109,7 +2109,7 @@ DualParameterInstruction BitwiseInstruction {
 		}
 
 		# Example: sal/sar r, c/rcx
-		build(instruction.text, 0,
+		build(instruction.data, 0,
 			InstructionParameter(first, FLAG_DESTINATION | FLAG_READS | flags, HANDLE_REGISTER),
 			InstructionParameter(shifter, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER)
 		)
@@ -2122,7 +2122,7 @@ DualParameterInstruction BitwiseInstruction {
 		if instruction == platform.x64.DOUBLE_PRECISION_XOR {
 			if assigns abort('Assigning bitwise XOR-operation on media registers is not allowed')
 
-			=> build(instruction.text, 0,
+			=> build(instruction.data, 0,
 				InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_MEDIA_REGISTER),
 				InstructionParameter(second, FLAG_NONE, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY)
 			)
@@ -2136,14 +2136,14 @@ DualParameterInstruction BitwiseInstruction {
 
 		if first.is_memory_address and assigns {
 			# Example: ... [...], c/r
-			=> build(instruction.text, first.size,
+			=> build(instruction.data, first.size,
 				InstructionParameter(first, FLAG_READS | flags, HANDLE_MEMORY),
 				InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER)
 			)
 		}
 
 		# Example: ... r, c/r/[...]
-		build(instruction.text, SYSTEM_BYTES,
+		build(instruction.data, SYSTEM_BYTES,
 			InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER),
 			InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY)
 		)
@@ -2342,7 +2342,7 @@ Instruction CreatePackInstruction {
 
 		dependencies = List<Result>()
 		dependencies.add(result)
-		dependencies.add_range(values)
+		dependencies.add_all(values)
 
 		value = DisposablePackHandle(unit, type)
 		on_build()
@@ -2353,8 +2353,8 @@ Instruction CreatePackInstruction {
 			member = iterator.value
 
 			if member.type.is_pack {
-				disposable_member_pack = disposable_pack.members[member.name].value as DisposablePackHandle
-				position = register_member_values(disposable_member_pack, member.type, position)
+				member_value = disposable_pack.members[member.name].value
+				position = register_member_values(member_value.value as DisposablePackHandle, member.type, position)
 				continue
 			}
 

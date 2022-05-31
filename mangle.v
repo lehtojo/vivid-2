@@ -27,7 +27,7 @@ MangleDefinition {
 				digits.insert(0, TABLE[r])
 			}
 
-			hexadecimal = String(digits.elements, digits.size)
+			hexadecimal = String(digits.data, digits.size)
 		}
 
 		result = String(`S`)

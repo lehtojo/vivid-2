@@ -273,14 +273,14 @@ build_logical_condition(unit: Unit, condition: OperatorNode, success: Label, fai
 	interphase = unit.get_next_label()
 
 	if condition.operator == Operators.LOGICAL_AND {
-		instructions.add_range(build_condition(unit, condition.first, interphase, failure))
+		instructions.add_all(build_condition(unit, condition.first, interphase, failure))
 		instructions.add(LabelInstruction(unit, interphase))
-		instructions.add_range(build_condition(unit, condition.last, success, failure))
+		instructions.add_all(build_condition(unit, condition.last, success, failure))
 	}
 	else condition.operator == Operators.LOGICAL_OR {
-		instructions.add_range(build_condition(unit, condition.first, success, interphase))
+		instructions.add_all(build_condition(unit, condition.first, success, interphase))
 		instructions.add(LabelInstruction(unit, interphase))
-		instructions.add_range(build_condition(unit, condition.last, success, failure))
+		instructions.add_all(build_condition(unit, condition.last, success, failure))
 	}
 	else {
 		abort('Unsupported logical operator encountered while building a conditional statement')

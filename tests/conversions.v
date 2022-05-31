@@ -417,5 +417,5 @@ init() {
 	are_equal(49, lb.x)
 	are_equal(36, lb.y)
 	are_equal(49.36, lb.z)
-	=> 1
+	=> 0
 }

@@ -595,7 +595,7 @@ AssemblyParser {
 		if is_jump(operation) { instruction_type = INSTRUCTION_JUMP }
 
 		instruction = Instruction(unit, instruction_type)
-		instruction.parameters.add_range(parameters)
+		instruction.parameters.add_all(parameters)
 		instruction.operation = operation
 
 		instructions.add(instruction)

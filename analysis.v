@@ -240,13 +240,13 @@ analyze() {
 		implementation = implementations[i]
 
 		if settings.is_verbose_output_enabled {
-			put(`[`)
-			print(i + 1)
-			put(`/`)
-			print(implementations.size)
-			put(`]`)
-			print(' Reconstructing ')
-			println(implementation.string())
+			console.put(`[`)
+			console.write(i + 1)
+			console.put(`/`)
+			console.write(implementations.size)
+			console.put(`]`)
+			console.write(' Reconstructing ')
+			console.write_line(implementation.string())
 		}
 
 		reconstruction.start(implementation, implementation.node)
@@ -258,13 +258,13 @@ analyze() {
 		implementation = implementations[i]
 
 		if settings.is_verbose_output_enabled {
-			put(`[`)
-			print(i + 1)
-			put(`/`)
-			print(implementations.size)
-			put(`]`)
-			print(' Optimizing ')
-			println(implementation.string())
+			console.put(`[`)
+			console.write(i + 1)
+			console.put(`/`)
+			console.write(implementations.size)
+			console.put(`]`)
+			console.write(' Optimizing ')
+			console.write_line(implementation.string())
 		}
 
 		reconstruction.rewrite_pack_usages(implementation, implementation.node)

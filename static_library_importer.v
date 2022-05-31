@@ -34,7 +34,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		start = header.pointer_of_data
 		end = start + header.size
 
-		if start < 0 or start > bytes.count or end < 0 or end > bytes.count => false
+		if start < 0 or start > bytes.size or end < 0 or end > bytes.size => false
 
 		# Determine the next available index for the new source file
 		index = 0
@@ -117,7 +117,7 @@ import_template_type_variants(context: Context, headers: List<StaticLibraryForma
 		if not header.filename.ends_with(TEMPLATE_TYPE_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.count).split(`\n`)
+		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant in template_variants {
 			if template_variant.length == 0 continue
@@ -139,7 +139,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 		if not header.filename.ends_with(TEMPLATE_FUNCTION_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.count).split(`\n`)
+		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant_text in template_variants {
 			if template_variant_text.length == 0 continue
@@ -242,13 +242,13 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 		if not is_extended_filename continue
 
 		# This still might fail if the index is too large
-		if not (as_number(digits) has offset) continue
+		if not (as_integer(digits) has offset) continue
 
 		# Compute the position of the filename
 		position = filenames.pointer_of_data + offset
 
 		# Check whether the position is out of bounds
-		if position < 0 or position >= bytes.count continue
+		if position < 0 or position >= bytes.size continue
 
 		# Extract the name until a zero byte is found
 		end = position
@@ -267,7 +267,7 @@ load_file_headers(bytes: Array<byte>) {
 	headers = List<StaticLibraryFormatFileHeader>()
 	position = 8 # Skip signature: !<arch>\n
 
-	loop (position < bytes.count) {
+	loop (position < bytes.size) {
 		# If a line ending is encountered, it means that the file headers have been consumed
 		if bytes[position] == `\n` stop
 
@@ -285,7 +285,7 @@ load_file_headers(bytes: Array<byte>) {
 		size_text = String(size_text_buffer.data, size_text_end)
 
 		# Parse the file size
-		if not (as_number(size_text) has size) => List<StaticLibraryFormatFileHeader>()
+		if not (as_integer(size_text) has size) => List<StaticLibraryFormatFileHeader>()
 
 		# Go to the end of the header, that is the start of the file data
 		position += SIZE_LENGTH + 2 # Skip end command as well: \x60\n

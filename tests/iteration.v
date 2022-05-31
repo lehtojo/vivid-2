@@ -217,5 +217,5 @@ init() {
 
 	are_equal(144, range.start)
 	are_equal(196, range.end)
-	=> 1
+	=> 0
 }

@@ -616,7 +616,7 @@ get_all_types(context: Context, include_imported: bool) {
 	loop iterator in context.types {
 		type = iterator.value
 		if include_imported or not type.is_imported result.add(type)
-		result.add_range(get_all_types(type))
+		result.add_all(get_all_types(type))
 	}
 
 	=> result
@@ -630,16 +630,16 @@ get_all_visible_functions(context: Context) {
 	functions = List<Function>()
 
 	loop type in get_all_types(context) {
-		loop a in type.functions { functions.add_range(a.value.overloads) }
-		loop b in type.virtuals { functions.add_range(b.value.overloads) }
-		loop c in type.overrides { functions.add_range(c.value.overloads) }
+		loop a in type.functions { functions.add_all(a.value.overloads) }
+		loop b in type.virtuals { functions.add_all(b.value.overloads) }
+		loop c in type.overrides { functions.add_all(c.value.overloads) }
 
-		functions.add_range(type.constructors.overloads)
-		functions.add_range(type.destructors.overloads)
+		functions.add_all(type.constructors.overloads)
+		functions.add_all(type.destructors.overloads)
 	}
 
 	loop function in context.functions {
-		functions.add_range(function.value.overloads)
+		functions.add_all(function.value.overloads)
 	}
 	
 	=> functions.distinct()
@@ -656,16 +656,16 @@ get_all_function_implementations(context: Context, include_imported: bool) {
 	functions = List<Function>()
 
 	loop type in get_all_types(context) {
-		loop a in type.functions { functions.add_range(a.value.overloads) }
-		loop b in type.virtuals { functions.add_range(b.value.overloads) }
-		loop c in type.overrides { functions.add_range(c.value.overloads) }
+		loop a in type.functions { functions.add_all(a.value.overloads) }
+		loop b in type.virtuals { functions.add_all(b.value.overloads) }
+		loop c in type.overrides { functions.add_all(c.value.overloads) }
 
-		functions.add_range(type.constructors.overloads)
-		functions.add_range(type.destructors.overloads)
+		functions.add_all(type.constructors.overloads)
+		functions.add_all(type.destructors.overloads)
 	}
 
 	loop function in context.functions {
-		functions.add_range(function.value.overloads)
+		functions.add_all(function.value.overloads)
 	}
 
 	implementations = List<FunctionImplementation>()
@@ -673,7 +673,7 @@ get_all_function_implementations(context: Context, include_imported: bool) {
 	# Collect all the implementations from the functions and collect the inner implementations as well such as lambdas
 	loop function in functions {
 		loop implementation in function.implementations {
-			implementations.add_range(get_all_function_implementations(implementation))
+			implementations.add_all(get_all_function_implementations(implementation))
 			if include_imported or not implementation.is_imported implementations.add(implementation)
 		}
 	}
@@ -855,7 +855,7 @@ join(separator: Token, parts: List<List<Token>>) {
 	if parts.size == 0 => result
 
 	loop tokens in parts {
-		result.add_range(tokens)
+		result.add_all(tokens)
 		result.add(separator)
 	}
 
@@ -877,7 +877,7 @@ get_tokens(type: Type, position: Position) {
 			member_tokens = List<Token>()
 			member_tokens.add(IdentifierToken(member.name, position))
 			member_tokens.add(OperatorToken(Operators.COLON, position))
-			member_tokens.add_range(get_tokens(member.type, position))
+			member_tokens.add_all(get_tokens(member.type, position))
 
 			members.add(member_tokens)
 		}
@@ -896,19 +896,19 @@ get_tokens(type: Type, position: Position) {
 
 		result.add(ParenthesisToken(`(`, position, position, join(separator, parameters)))
 		result.add(OperatorToken(Operators.ARROW, position))
-		result.add_range(get_tokens(function.return_type, position))
+		result.add_all(get_tokens(function.return_type, position))
 
 		=> result
 	}
 
 	if type.is_array_type {
-		result.add_range(get_tokens(type.(ArrayType).element, position))
+		result.add_all(get_tokens(type.(ArrayType).element, position))
 		result.add(ParenthesisToken(`[`, position, position, [ NumberToken(type.(ArrayType).size, SYSTEM_FORMAT, position, position) as Token ]))
 		=> result
 	}
 
 	if type.parent != none and type.parent.is_type {
-		result.add_range(get_tokens(type.parent, position))
+		result.add_all(get_tokens(type.parent, position))
 		result.add(OperatorToken(Operators.DOT, position))
 	}
 
@@ -925,7 +925,7 @@ get_tokens(type: Type, position: Position) {
 		}
 
 		separator = OperatorToken(Operators.COMMA, position)
-		result.add_range(join(separator, arguments))
+		result.add_all(join(separator, arguments))
 
 		result.add(OperatorToken(Operators.GREATER_THAN, position))
 	}
@@ -1004,12 +1004,14 @@ get_pack_representives(context: Context, prefix: String, type: Type, category: l
 		member = iterator.value
 		name = prefix + '.' + member.name
 
+		# Create representives for each member, even for nested pack members
+		representive = context.get_variable(name)
+		if representive == none { representive = context.declare(member.type, category, name) }
+
 		if member.type.is_pack {
-			representives.add_range(get_pack_representives(context, name, member.type, category))
+			representives.add_all(get_pack_representives(context, name, member.type, category))
 		}
 		else {
-			representive = context.get_variable(name)
-			if representive == none { representive = context.declare(member.type, category, name) }
 			representives.add(representive)
 		}
 	}
@@ -1020,6 +1022,9 @@ get_pack_representives(context: Context, prefix: String, type: Type, category: l
 # Summary:
 # Returns all local variables, which represent the specified pack variable
 get_pack_representives(variable: Variable) {
+	# If we are accessing a pack representive, no need to add dot to the name
+	if variable.name.starts_with(`.`) => get_pack_representives(variable.parent, variable.name, variable.type, variable.category)
+
 	=> get_pack_representives(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
 }
 

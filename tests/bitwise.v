@@ -76,5 +76,5 @@ init() {
 
 	# 10101 ¤ 00001 = 10100
 	are_equal(96, assign_bitwise_or(32, 64))
-	=> 1
+	=> 0
 }

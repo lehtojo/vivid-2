@@ -25,5 +25,5 @@ init() {
 	are_equal(200, conditionally_changing_constant_with_loop_statement(3, 2))
 	are_equal(515, conditionally_changing_constant_with_loop_statement(2, 5))
 
-	=> 1
+	=> 0
 }

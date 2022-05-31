@@ -29,7 +29,7 @@ AssemblyBuilder {
 
 	add(file: SourceFile, instructions: List<Instruction>) {
 		if this.instructions.contains_key(file) {
-			this.instructions[file].add_range(instructions)
+			this.instructions[file].add_all(instructions)
 			return
 		}
 
@@ -47,7 +47,7 @@ AssemblyBuilder {
 
 	add(file: SourceFile, constants: List<ConstantDataSectionHandle>) {
 		if this.constants.contains_key(file) {
-			this.constants[file].add_range(constants)
+			this.constants[file].add_all(constants)
 			return
 		}
 
@@ -56,7 +56,7 @@ AssemblyBuilder {
 
 	add(file: SourceFile, modules: List<DataEncoderModule>) {
 		if this.modules.contains_key(file) {
-			this.modules[file].add_range(modules)
+			this.modules[file].add_all(modules)
 			return
 		}
 
@@ -150,7 +150,7 @@ AssemblyBuilder {
 Register {
 	identifier: byte = 0
 	name: byte = 0
-	partitions: Array<String>
+	partitions: List<String>
 	value: Result
 	flags: large
 	is_locked: bool
@@ -192,7 +192,7 @@ Register {
 
 	get(size: large) {
 		i = 1
-		count = partitions.count
+		count = partitions.size
 
 		loop (j = 0, j < count, j++) {
 			if size == i => partitions[count - 1 - j]
@@ -846,8 +846,8 @@ Unit {
 		loop register in non_volatile_registers { if not register.is_media_register { non_volatile_standard_registers.add(register) } }
 		loop register in non_volatile_registers { if register.is_media_register { non_volatile_media_registers.add(register) } }
 
-		non_reserved_registers.add_range(volatile_registers)
-		non_reserved_registers.add_range(non_volatile_registers)
+		non_reserved_registers.add_all(volatile_registers)
+		non_reserved_registers.add_all(non_volatile_registers)
 	}
 
 	init() {
@@ -869,8 +869,8 @@ Unit {
 		loop register in non_volatile_registers { if not register.is_media_register { non_volatile_standard_registers.add(register) } }
 		loop register in non_volatile_registers { if register.is_media_register { non_volatile_media_registers.add(register) } }
 
-		non_reserved_registers.add_range(volatile_registers)
-		non_reserved_registers.add_range(non_volatile_registers)
+		non_reserved_registers.add_all(volatile_registers)
+		non_reserved_registers.add_all(non_volatile_registers)
 	}
 
 	load_architecture_x64() {
@@ -1270,7 +1270,7 @@ get_all_handles(results: List<Result>) {
 
 	loop result in results {
 		handles.add(result.value)
-		handles.add_range(get_all_handles(result.value.get_inner_results()))
+		handles.add_all(get_all_handles(result.value.get_inner_results()))
 	}
 
 	=> handles
@@ -1282,7 +1282,7 @@ get_all_handles(instructions: List<Instruction>) {
 	loop instruction in instructions {
 		loop parameter in instruction.parameters {
 			handles.add(parameter.value)
-			handles.add_range(get_all_handles(parameter.value.get_inner_results()))
+			handles.add_all(get_all_handles(parameter.value.get_inner_results()))
 		}
 	}
 
@@ -1560,7 +1560,7 @@ remove_unreachable_instructions(instructions: List<Instruction>) {
 		}
 
 		# Instructions from i + 1 to j will never execute, they can be removed
-		instructions.remove_range(i + 1, j)
+		instructions.remove_all(i + 1, j)
 	}
 }
 
@@ -1646,7 +1646,7 @@ get_text_section(implementation: FunctionImplementation) {
 		parameter = parameters[i]
 		if not parameter.type.is_pack continue
 
-		parameters.add_range(common.get_pack_representives(parameter))
+		parameters.add_all(common.get_pack_representives(parameter))
 	}
 
 	unit.add(RequireVariablesInstruction(unit, parameters))
@@ -2078,7 +2078,7 @@ allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<Const
 		if item.value_type == CONSTANT_TYPE_BYTES {
 			bytes = item.(ByteArrayDataSectionHandle).value
 			data = bytes.data
-			size = bytes.count
+			size = bytes.size
 		}
 		else item.value_type == CONSTANT_TYPE_INTEGER or item.value_type == CONSTANT_TYPE_DECIMAL {
 			temporary[0] = item.(NumberDataSectionHandle).value
@@ -2256,7 +2256,7 @@ get_data_sections(context: Context) {
 
 		loop implementation in iterator.value {
 			if implementation.node == none continue
-			nodes.add_range(implementation.node.find_all(NODE_STRING) as List<StringNode>)
+			nodes.add_all(implementation.node.find_all(NODE_STRING) as List<StringNode>)
 		}
 
 		builder = none as AssemblyBuilder
@@ -2316,13 +2316,13 @@ get_text_sections(context: Context) {
 			if implementation.is_imported continue
 
 			if settings.is_verbose_output_enabled {
-				put(`[`)
-				print(assembled_functions + 1)
-				put(`/`)
-				print(all.size)
-				put(`]`)
-				print(' Assembling ')
-				println(implementation.string())
+				console.put(`[`)
+				console.write(assembled_functions + 1)
+				console.put(`/`)
+				console.write(all.size)
+				console.put(`]`)
+				console.write(' Assembling ')
+				console.write_line(implementation.string())
 			}
 
 			builder.add(get_text_section(implementation))
@@ -2523,7 +2523,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 
 		sections = List<BinarySection>()
 		sections.add(encoder_output.section) # Add the text section
-		sections.add_range(modules.map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
+		sections.add_all(modules.map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
 
 		if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
 		if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames

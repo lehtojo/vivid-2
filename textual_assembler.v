@@ -28,7 +28,7 @@ assemble() {
 
 			sections = List<BinarySection>()
 			sections.add(encoder_output.section) # Add the text section
-			sections.add_range(parser.sections.get_values().map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
+			sections.add_all(parser.sections.get_values().map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
 
 			if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
 			if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames
@@ -65,7 +65,7 @@ assemble() {
 			
 			sections = List<BinarySection>()
 			sections.add(encoder_output.section) # Add the text section
-			sections.add_range(parser.sections.get_values().map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
+			sections.add_all(parser.sections.get_values().map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
 
 			if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
 			if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames

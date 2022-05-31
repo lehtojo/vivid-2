@@ -123,7 +123,7 @@ DataEncoderModule DebugLineEncoderModule {
 	offset: large = -1
 
 	private add_folder(folder: String) {
-		components = folder.split(`\\`).to_list()
+		components = folder.split(`\\`)
 		string(String.join(String('\\\\'), components)) # Terminated folder path
 	}
 

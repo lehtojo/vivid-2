@@ -207,5 +207,5 @@ init() {
 	are_equal(7, logical_operators_1(0, 7))
 	are_equal(1, logical_operators_1(1, 1))
 	are_equal(0, logical_operators_1(3, 3))
-	=> 1
+	=> 0
 }

@@ -149,9 +149,9 @@ DataEncoderModule {
 	# Summary:
 	# Writes the specified bytes into this module
 	write(bytes: Array<byte>) {
-		reserve(bytes.count)
-		copy(bytes.data, bytes.count, output + position)
-		position += bytes.count
+		reserve(bytes.size)
+		copy(bytes.data, bytes.size, output + position)
+		position += bytes.size
 	}
 
 	# Summary:
@@ -166,7 +166,7 @@ DataEncoderModule {
 	# Writes the specified bytes into this module
 	write(bytes: List<byte>) {
 		reserve(bytes.size)
-		copy(bytes.elements, bytes.size, output + position)
+		copy(bytes.data, bytes.size, output + position)
 		position += bytes.size
 	}
 
@@ -198,7 +198,7 @@ DataEncoderModule {
 			position += slice.length
 
 			# Write the slice
-			if slice.length > 0 write(Array<byte>(slice.text, slice.length))
+			if slice.length > 0 write(Array<byte>(slice.data, slice.length))
 
 			# Stop if the end has been reached
 			if position >= text.length stop

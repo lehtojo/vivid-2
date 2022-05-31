@@ -42,6 +42,8 @@ namespace internal {
 
 	import 'C' GetFileAttributesA(path: link): u32
 
+	import 'C' GetExitCodeProcess(handle: link, exit_code: link<u32>): bool
+
 	constant MAXIMUM_PATH_LENGTH = 260
 
 	plain FileIterator {
@@ -96,7 +98,8 @@ namespace internal {
 
 	import 'C' CreateProcessA(name: link, command_line: link, process_attributes: link, thread_attributes: link, inherit_handles: bool, creation_flags: large, environment: link, working_folder: link, startup_information: StartupInformation, process_information: ProcessInformation): bool
 
-	constant PROCESS_ACCESS_SYNCHRONIZE = 1048576
+	constant PROCESS_ACCESS_SYNCHRONIZE = 0x100000
+	constant PROCESS_QUERY_INFORMATION = 0x0400
 
 	import 'C' OpenProcess(desired_access: normal, inherit_handles: bool, pid: normal): link
 	import 'C' WaitForSingleObject(handle: link, milliseconds: normal): normal
@@ -131,7 +134,7 @@ export get_folder_items(folder: String, all: bool) {
 	}
 
 	filter = folder + '*'
-	copy(filter.data(), internal.MAXIMUM_PATH_LENGTH, filename as link)
+	copy(filter.data, internal.MAXIMUM_PATH_LENGTH, filename as link)
 
 	file = internal.FindFirstFileA(filename as link, iterator)
 	items = List<FolderItem>()
@@ -149,7 +152,7 @@ export get_folder_items(folder: String, all: bool) {
 		}
 		else all and not (name == '.' or name == '..') {
 			items.add(FolderItem(fullname, true))
-			items.add_range(get_folder_items(fullname, true))
+			items.add_all(get_folder_items(fullname, true))
 		}
 		
 		# Try to get the next file, if it is none, it means all the files have been collected
@@ -177,17 +180,17 @@ export get_folder_files(folder: link, all: bool) {
 
 # Summary: Writes the specified text to the specified file
 export write_file(filename: String, text: String) {
-	=> write_file(filename.text, Array<byte>(text.text, text.length))
+	=> write_file(filename.data, Array<byte>(text.data, text.length))
 }
 
 # Summary: Writes the specified text to the specified file
 export write_file(filename: String, bytes: Array<byte>) {
-	=> write_file(filename.text, bytes)
+	=> write_file(filename.data, bytes)
 }
 
 # Summary: Writes the specified text to the specified file
 export write_file(filename: link, text: String) {
-	=> write_file(filename, Array<byte>(text.text, text.length))
+	=> write_file(filename, Array<byte>(text.data, text.length))
 }
 
 # Summary: Writes the specified byte array to the specified file
@@ -198,7 +201,7 @@ export write_file(filename: link, bytes: Array<byte>) {
 
 	# Write the specified byte array to the opened file
 	written: large[1]
-	result = internal.WriteFile(file, bytes.data, bytes.count, written as link<large>, none)
+	result = internal.WriteFile(file, bytes.data, bytes.size, written as link<large>, none)
 
 	# Finally, release the handle
 	internal.CloseHandle(file)
@@ -208,7 +211,7 @@ export write_file(filename: link, bytes: Array<byte>) {
 
 # Summary: Opens the specified file and returns its contents
 export read_file(filename: String) {
-	=> read_file(filename.text)
+	=> read_file(filename.data)
 }
 
 # Summary: Opens the specified file and returns its contents
@@ -227,7 +230,7 @@ export read_file(filename: link) {
 	
 	buffer = Array<byte>(size[0])
 
-	if internal.ReadFile(file, buffer.data, buffer.count, size as link<large>, none) == 0 {
+	if internal.ReadFile(file, buffer.data, buffer.size, size as link<large>, none) == 0 {
 		internal.CloseHandle(file)
 		=> Optional<Array<byte>>()
 	}
@@ -240,7 +243,7 @@ export read_file(filename: link) {
 
 # Summary: Returns whether the specified file or folder exists
 export exists(path: String) {
-	=> exists(path.text)
+	=> exists(path.data)
 }
 
 # Summary: Returns whether the specified file or folder exists
@@ -250,7 +253,7 @@ export exists(path: link) {
 
 # Summary: Returns whether the path represents a folder in the filesystem
 export is_folder(path: String) {
-	=> is_folder(path.text)
+	=> is_folder(path.data)
 }
 
 # Summary: Returns whether the path represents a folder in the filesystem
@@ -263,7 +266,7 @@ export is_folder(path: link) {
 
 # Summary: Returns the size of the specified file or folder
 export size(path: String) {
-	=> size(path.text)
+	=> size(path.data)
 }
 
 # Summary: Returns the size of the specified file or folder
@@ -273,11 +276,11 @@ export size(path: link) {
 		files = get_folder_files(path, true)
 		total = 0
 
-		loop (i = 0, i < files.size(), i++) {
+		loop (i = 0, i < files.size, i++) {
 			# Try to get the size of the file
 			result = size(files[i].fullname)
 
-			# If the size if negative, it means an error has occured
+			# If the size if negative, it means an error has occurred
 			if result < 0 => -1
 
 			total += result
@@ -316,13 +319,13 @@ export start_process(executable: String, command_line_arguments: List<String>, w
 	command_line = String.join(` `, command_line_arguments)
 
 	# Try to create the requested process: Return -1, if the process creation fails, otherwise return the PID
-	if not internal.CreateProcessA(executable.text, command_line.text, none as link, none as link, true, 0, none as link, working_folder, startup_information, process_information) => -1
+	if not internal.CreateProcessA(executable.data, command_line.data, none as link, none as link, true, 0, none as link, working_folder, startup_information, process_information) => -1
 	
 	=> process_information.pid
 }
 
 export start_process(executable: String, command_line_arguments: List<String>, working_folder: String) {
-	if working_folder !== none => start_process(executable, command_line_arguments, working_folder.text)
+	if working_folder !== none => start_process(executable, command_line_arguments, working_folder.data)
 	=> start_process(executable, command_line_arguments, none as link)
 }
 
@@ -343,13 +346,13 @@ shell(command: String, working_folder: link) {
 	command = String('/C ') + command
 
 	# Try to create the requested process: Return -1, if the process creation fails, otherwise return the PID
-	if not internal.CreateProcessA(shell.text, command.text, none as link, none as link, true, 0, none as link, working_folder, startup_information, process_information) => -1
+	if not internal.CreateProcessA(shell.data, command.data, none as link, none as link, true, 0, none as link, working_folder, startup_information, process_information) => -1
 	
 	=> process_information.pid
 }
 
 export shell(command: String, working_folder: String) {
-	if working_folder != none => shell(command, working_folder.text)
+	if working_folder != none => shell(command, working_folder.data)
 	=> shell(command, none as link)
 }
 
@@ -359,9 +362,17 @@ export shell(command: String) {
 
 # Summary: Waits for the specified process to exit
 export wait_for_exit(pid: large) {
-	handle = internal.OpenProcess(internal.PROCESS_ACCESS_SYNCHRONIZE, false, pid)
+	handle = internal.OpenProcess(internal.PROCESS_ACCESS_SYNCHRONIZE | internal.PROCESS_QUERY_INFORMATION, false, pid)
 	internal.WaitForSingleObject(handle, internal.INFINITE)
+
+	exit_code: u32[1]
+
+	if not internal.GetExitCodeProcess(handle, exit_code as link<u32>) {
+		exit_code[0] = 1
+	}
+
 	internal.CloseHandle(handle)
+	=> exit_code[0] as large
 }
 
 # Command line:

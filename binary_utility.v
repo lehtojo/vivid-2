@@ -32,8 +32,8 @@ BinarySection {
 		this.name = name
 		this.type = type
 		this.data = data
-		this.virtual_size = data.count
-		this.load_size = data.count
+		this.virtual_size = data.size
+		this.load_size = data.size
 	}
 
 	init(name: String, type: large, data: link, data_size: large) {
@@ -215,7 +215,7 @@ BinaryStringTable {
 			copy(payload.data, payload.length, result.data + sizeof(normal))
 		}
 		else {
-			result = Array<byte>(payload.text, payload.length)
+			result = Array<byte>(payload.data, payload.length)
 		}
 
 		=> result

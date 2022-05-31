@@ -95,7 +95,7 @@ register_write_dependencies(descriptor: VariableDescriptor, flow: StatementFlow)
 
 			# Add all the non-write usages in the reached statements as dependencies to the current write
 			loop statement in reached {
-				write.dependencies.add_range(reads_by_statement[statement])
+				write.dependencies.add_all(reads_by_statement[statement])
 			}
 		}
 	}
@@ -247,7 +247,7 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 			# Revert back the changes since the cost has risen
 			value.replace(read)
 
-			if settings.is_verbose_output_enabled { print('Did not assign ') }
+			if settings.is_verbose_output_enabled { console.write('Did not assign ') }
 		}
 		else {
 			# Remove the read from the write dependencies
@@ -268,16 +268,16 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 			add_variable_usages_from(descriptors, root)
 			assigned = true
 
-			if settings.is_verbose_output_enabled { print('Assigned ') }
+			if settings.is_verbose_output_enabled { console.write('Assigned ') }
 		}
 
 		if settings.is_verbose_output_enabled {
-			print(variable.name)
-			print(', Cost: ')
+			console.write(variable.name)
+			console.write(', Cost: ')
 
-			if after > before { put(`+`) println(after - before) }
-			else after < before { println(after - before) }
-			else { println('0') }
+			if after > before { console.put(`+`) console.write_line(after - before) }
+			else after < before { console.write_line(after - before) }
+			else { console.write_line('0') }
 		}
 	}
 

@@ -258,15 +258,15 @@ collect_components(expression: Node) {
 		result.add(VariableComponent(expression.(VariableNode).variable))
 	}
 	else expression.match(NODE_OPERATOR) {
-		result.add_range(collect_components(expression as OperatorNode) as List<Component>)
+		result.add_all(collect_components(expression as OperatorNode) as List<Component>)
 	}
 	else expression.match(NODE_PARENTHESIS) {
 		if expression.first !== none {
-			result.add_range(collect_components(expression.first) as List<Component>)
+			result.add_all(collect_components(expression.first) as List<Component>)
 		}
 	}
 	else expression.match(NODE_NEGATE) {
-		result.add_range(negate(collect_components(expression.first) as List<Component>))
+		result.add_all(negate(collect_components(expression.first) as List<Component>))
 	}
 	else expression.match(NODE_CAST) {
 		# Look for number casts, which do not change the format from integer to decimal or vice versa
@@ -294,7 +294,7 @@ collect_components(expression: Node) {
 			=> result
 		}
 
-		result.add_range(collect_components(expression.first) as List<Component>)
+		result.add_all(collect_components(expression.first) as List<Component>)
 	}
 	else {
 		result.add(ComplexComponent(expression))
@@ -384,8 +384,8 @@ simplify(components: List<Component>) {
 # Simplifies the addition between the specified operands
 simplify_addition(left_components: List<Component>, right_components: List<Component>) {
 	components = List<Component>()
-	components.add_range(left_components)
-	components.add_range(right_components)
+	components.add_all(left_components)
+	components.add_all(right_components)
 	=> simplify(components)
 }
 

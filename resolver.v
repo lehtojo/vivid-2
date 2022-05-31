@@ -209,7 +209,7 @@ resolve_return_type(implementation: FunctionImplementation) {
 # Summary: Resolves return types of the virtual functions declared in the specified type
 resolve_virtual_functions(type: Type) {
 	overloads = List<VirtualFunction>()
-	loop iterator in type.virtuals { overloads.add_range(iterator.value.overloads as List<VirtualFunction>) }
+	loop iterator in type.virtuals { overloads.add_all(iterator.value.overloads as List<VirtualFunction>) }
 
 	# Virtual functions do not have return types defined sometimes, the return types of those virtual functions are dependent on their default implementations
 	loop virtual_function in overloads {
@@ -311,7 +311,7 @@ get_tree_statuses(root: Node) {
 	result = List<Status>()
 
 	loop child in root {
-		result.add_range(get_tree_statuses(child))
+		result.add_all(get_tree_statuses(child))
 
 		status = child.get_status()
 		if status === none continue
@@ -344,7 +344,7 @@ get_type_report(type: Type) {
 	}
 
 	loop initialization in type.initialization {
-		errors.add_range(get_tree_report(initialization))
+		errors.add_all(get_tree_report(initialization))
 	}
 
 	loop supertype in type.supertypes {
@@ -367,7 +367,7 @@ get_function_report(implementation: FunctionImplementation) {
 		errors.add(Status(implementation.metadata.start, 'Can not resolve the return type'))
 	}
 
-	errors.add_range(get_tree_report(implementation.node))
+	errors.add_all(get_tree_report(implementation.node))
 	=> errors
 }
 
@@ -377,16 +377,16 @@ get_report(context: Context, root: Node) {
 	types = common.get_all_types(context)
 
 	loop type in types {
-		errors.add_range(get_type_report(type))
+		errors.add_all(get_type_report(type))
 	}
 
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {
-		errors.add_range(get_function_report(implementation))
+		errors.add_all(get_function_report(implementation))
 	}
 
-	errors.add_range(get_tree_report(root))
+	errors.add_all(get_tree_report(root))
 	=> errors
 }
 
@@ -442,22 +442,22 @@ output(status: Status) {
 	position = status.position
 
 	if position === none {
-		print('<Source>:<Line>:<Character>')
+		console.write('<Source>:<Line>:<Character>')
 	}
 	else {
 		file = position.file
 
-		if file != none print(file.fullname)
-		else { print('<Source>') }
+		if file != none console.write(file.fullname)
+		else { console.write('<Source>') }
 
-		print(':')
-		print(to_string(position.line + 1))
-		print(':')
-		print(to_string(position.character + 1))
+		console.write(':')
+		console.write(to_string(position.line + 1))
+		console.write(':')
+		console.write(to_string(position.character + 1))
 	}
 
-	print(': Error: ')
-	println(status.message)
+	console.write(': Error: ')
+	console.write_line(status.message)
 }
 
 complain(report: List<Status>) {
@@ -499,9 +499,9 @@ resolve() {
 		current = get_report(context, root)
 
 		if settings.is_verbose_output_enabled {
-			print('Resolving ')
-			print(current.size)
-			println(' issues...')
+			console.write('Resolving ')
+			console.write(current.size)
+			console.write_line(' issues...')
 		}
 
 		# Try again only if the errors have changed
@@ -518,7 +518,7 @@ resolve() {
 		=> Status('Compilation error')
 	}
 
-	if settings.is_verbose_output_enabled println('Resolved')
+	if settings.is_verbose_output_enabled console.write_line('Resolved')
 
 	=> Status()
 }

@@ -115,7 +115,7 @@ namespace linker {
 			alignment = inner_fragments[0].alignment
 
 			# Move over the first inner fragment
-			file_position += inner_fragments[0].data.count
+			file_position += inner_fragments[0].data.size
 
 			# Skip the first fragment, since it is already part of the section
 			loop (j = 1, j < inner_fragments.size, j++) {
@@ -132,7 +132,7 @@ namespace linker {
 					file_position += margin
 				}
 
-				file_position += fragment.data.count
+				file_position += fragment.data.size
 			}
 
 			overlay_size = file_position - start_file_position

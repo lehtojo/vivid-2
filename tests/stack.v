@@ -18,5 +18,5 @@ init() {
 	are_equal(1, multi_return(7, 1))
 	are_equal(0, multi_return(-1, -1))
 	are_equal(-1, multi_return(5, 20))
-	=> 1
+	=> 0
 }

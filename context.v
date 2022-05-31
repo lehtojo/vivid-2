@@ -80,7 +80,7 @@ Context {
 
 		loop subcontext in subcontexts {
 			if subcontext.type !== NORMAL_CONTEXT continue
-			result.add_range(subcontext.all_variables)
+			result.add_all(subcontext.all_variables)
 		}
 
 		=> result
@@ -97,7 +97,7 @@ Context {
 
 		loop subcontext in subcontexts {
 			if subcontext.type !== NORMAL_CONTEXT continue
-			result.add_range(subcontext.locals)
+			result.add_all(subcontext.locals)
 		}
 
 		=> result
@@ -863,7 +863,7 @@ Context Type {
 	# Summary: Returns all supertypes this type inherits
 	get_all_supertypes() {
 		result = List<Type>(supertypes)
-		loop supertype in supertypes { result.add_range(supertype.get_all_supertypes()) }
+		loop supertype in supertypes { result.add_all(supertype.get_all_supertypes()) }
 		=> result
 	}
 
@@ -968,7 +968,7 @@ Context Type {
 	# Summary: Returns all virtual function declarations contained in this type and its supertypes
 	get_all_virtual_functions() {
 		result = List<VirtualFunction>()
-		loop supertype in supertypes { result.add_range(supertype.get_all_virtual_functions()) }
+		loop supertype in supertypes { result.add_all(supertype.get_all_virtual_functions()) }
 
 		loop iterator in virtuals {
 			loop overload in iterator.value.overloads { result.add(overload) }
@@ -1092,9 +1092,13 @@ Context Type {
 		}
 
 		names = List<String>()
-		loop iterator in get_parent_types() { names.add(iterator.name) }
-		names.reverse()
+
+		loop iterator in get_parent_types() {
+			names.add(iterator.name)
+		}
+
 		names.add(name)
+
 		=> String.join(`.`, names)
 	}
 }
@@ -1580,7 +1584,7 @@ Type TemplateType {
 				position = token.position
 
 				tokens.remove_at(i)
-				tokens.insert_range(i, common.get_tokens(arguments[j], position))
+				tokens.insert_all(i, common.get_tokens(arguments[j], position))
 			}
 			else token.type == TOKEN_TYPE_FUNCTION {
 				insert_arguments(token.(FunctionToken).parameters.tokens, arguments)
@@ -1613,7 +1617,7 @@ Type TemplateType {
 		blueprint: List<Token> = clone(this.blueprint)
 		blueprint[0].(IdentifierToken).value = name + `<` + identifier + `>`
 
-		tokens.add_range(blueprint)
+		tokens.add_all(blueprint)
 
 		# Now, insert the specified arguments to their places
 		insert_arguments(tokens, arguments)
@@ -1634,7 +1638,7 @@ Type TemplateType {
 		result.(TypeDefinitionNode).parse()
 
 		# Finally, add the inherited supertypes to the new variant
-		variant.supertypes.add_range(supertypes)
+		variant.supertypes.add_all(supertypes)
 
 		=> variant
 	}
@@ -1665,7 +1669,7 @@ Function TemplateFunction {
 		result = header.get_parameters(Context(String.empty, FUNCTION_CONTEXT))
 
 		if result has parameters {
-			parameters.add_range(parameters)
+			parameters.add_all(parameters)
 			=> true
 		}
 
@@ -1692,7 +1696,7 @@ Function TemplateFunction {
 				position = token.position
 
 				tokens.remove_at(i)
-				tokens.insert_range(i, common.get_tokens(arguments[j], position))
+				tokens.insert_all(i, common.get_tokens(arguments[j], position))
 			}
 			else token.type == TOKEN_TYPE_FUNCTION {
 				insert_arguments(token.(FunctionToken).parameters.tokens, arguments)

@@ -144,7 +144,7 @@ Pattern FunctionPattern {
 			=> none as Node
 		}
 
-		function.parameters.add_range(parameters)
+		function.parameters.add_all(parameters)
 
 		conflict = context.declare(function)
 		if conflict != none {
@@ -1112,7 +1112,7 @@ Pattern ExpressionVariablePattern {
 		}
 
 		# Save the blueprint
-		function.blueprint.add_range(blueprint)
+		function.blueprint.add_all(blueprint)
 
 		# Finally, declare the function
 		type.declare(function)
@@ -1177,7 +1177,7 @@ Pattern InheritancePattern {
 				loop template_parameter in template_type.template_parameters {
 					if not (template_parameter == token.(IdentifierToken).value) continue
 
-					template_type.inherited.insert_range(0, inheritant_tokens)
+					template_type.inherited.insert_all(0, inheritant_tokens)
 					=> inheritor_node
 				}
 			}
@@ -1351,7 +1351,7 @@ Pattern NamespacePattern {
 				blueprint.add(state.all[i])
 			}
 
-			state.tokens.add_range(blueprint)
+			state.tokens.add_all(blueprint)
 			state.end += blueprint.size
 		}
 		else {
@@ -1558,7 +1558,7 @@ Pattern TemplateFunctionPattern {
 			=> none as Node
 		}
 
-		template_function.parameters.add_range(parameters)
+		template_function.parameters.add_all(parameters)
 
 		if blueprint == none {
 			# Take the heavy arrow token into the blueprint as well
@@ -1750,7 +1750,7 @@ Pattern VirtualFunctionPattern {
 			=> none as VirtualFunction
 		}
 
-		function.parameters.add_range(parameters)
+		function.parameters.add_all(parameters)
 
 		type.declare(function)
 		=> function
@@ -1825,7 +1825,7 @@ Pattern VirtualFunctionPattern {
 			=> none as VirtualFunction
 		}
 
-		virtual_function.parameters.add_range(parameters)
+		virtual_function.parameters.add_all(parameters)
 
 		# Create the default implementation of the virtual function
 		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, descriptor.position, end)
@@ -1836,7 +1836,7 @@ Pattern VirtualFunctionPattern {
 			=> none as VirtualFunction
 		}
 
-		function.parameters.add_range(implementation_parameters)
+		function.parameters.add_all(implementation_parameters)
 		
 		# Declare both the virtual function and its default implementation
 		type.declare(virtual_function)
@@ -2105,7 +2105,7 @@ Pattern OverrideFunctionPattern {
 			=> none as Node
 		}
 
-		function.parameters.add_range(parameters)
+		function.parameters.add_all(parameters)
 
 		# Declare the override function and return a function definition node
 		context.(Type).declare_override(function)
@@ -2195,7 +2195,7 @@ Pattern LambdaPattern {
 			=> none as Node
 		}
 
-		function.parameters.add_range(parameters)
+		function.parameters.add_all(parameters)
 
 		# The lambda can be implemented already, if all parameters are resolved
 		implement = true
@@ -2505,7 +2505,7 @@ Pattern WhenPattern {
 			condition_tokens = tokens.slice(0, index)
 			condition = none as Node
 
-			tokens.remove_range(0, index + 1)
+			tokens.remove_all(0, index + 1)
 
 			if not condition_tokens[0].match(Keywords.ELSE) {
 				# Insert an equals-operator to the condition, if it does start with a keyword or an operator
@@ -2548,7 +2548,7 @@ Pattern WhenPattern {
 				body = parser.parse(context, result, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
 				# Remove the consumed tokens
-				tokens.remove_range(0, state.end)
+				tokens.remove_all(0, state.end)
 			}
 
 			# Finish the when-statement, when an else-section is encountered

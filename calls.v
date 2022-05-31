@@ -174,7 +174,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, type.get_register_format())
 	}
 
-	call.destinations.add_range(destinations)
+	call.destinations.add_all(destinations)
 	unit.add(ReorderInstruction(unit, destinations, sources, call.return_type))
 }
 

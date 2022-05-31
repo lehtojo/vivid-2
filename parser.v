@@ -17,9 +17,9 @@ ParserState {
 
 	restore(from: ParserState) {
 		all.clear()
-		all.add_range(from.all)
+		all.add_all(from.all)
 		tokens.clear()
-		tokens.add_range(from.tokens)
+		tokens.add_all(from.tokens)
 		start = from.start
 		end = from.end
 	}
@@ -131,7 +131,7 @@ add_pattern(pattern: Pattern) {
 		return
 	}
 
-	loop (i = 0, i < patterns.count, i++) {
+	loop (i = 0, i < patterns.size, i++) {
 		get_patterns(i).add(pattern)
 	}
 }
@@ -336,7 +336,7 @@ is_consuming_namespace(tokens: List<Token>, i: large) {
 	if tokens[i].match(`{`) => none as List<Token>
 
 	section = tokens.slice(start, tokens.size)
-	tokens.remove_range(start, tokens.size)
+	tokens.remove_all(start, tokens.size)
 
 	=> section
 }
@@ -902,8 +902,8 @@ print(node: Node) {
 
 print(node: Node, indentation: large, total: large) {
 	padding = Array<char>(indentation * 2 + 1)
-	padding[padding.count - 1] = 0
-	fill(padding.data, padding.count, ` `)
+	padding[padding.size - 1] = 0
+	fill(padding.data, padding.size, ` `)
 
 	internal.console.write(padding.data, length_of(padding.data))
 	println(node.string())

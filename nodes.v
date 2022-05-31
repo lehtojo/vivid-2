@@ -938,7 +938,7 @@ Node IfNode {
 		if successor == none => branches
 
 		if successor.instance == NODE_ELSE_IF {
-			branches.add_range(successor.(ElseIfNode).get_branches())
+			branches.add_all(successor.(ElseIfNode).get_branches())
 		}
 		else {
 			branches.add(successor)
@@ -2145,7 +2145,7 @@ Node ExtensionFunctionNode {
 			result = descriptor.get_parameters(function)
 			if not (result has parameters) => none as Node
 
-			function.parameters.add_range(parameters)
+			function.parameters.add_all(parameters)
 		}
 
 		# If the destination is a namespace, mark the function as a static function

@@ -116,5 +116,5 @@ init() {
 	are_equal(5, linkage_3(42))
 	are_equal(243, linkage_4(42))
 	are_equal(175, linkage_5(-10))
-	=> 1
+	=> 0
 }

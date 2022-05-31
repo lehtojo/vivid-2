@@ -1,27 +1,27 @@
 DECIMAL_PRECISION = 0.000000001
 
 export are_equal(a: large, b: large) {
-	print(a)
-	print(' == ')
-	println(b)
+	console.write(a)
+	console.write(' == ')
+	console.write_line(b)
 
 	if a == b return
 	application.exit(1)
 }
 
 export are_equal(a: char, b: char) {
-	print(String(a))
-	print(' == ')
-	println(String(b))
+	console.write(String(a))
+	console.write(' == ')
+	console.write_line(String(b))
 
 	if a == b return
 	application.exit(1)
 }
 
 export are_equal(a: decimal, b: decimal) {
-	print(to_string(a))
-	print(' == ')
-	println(b)
+	console.write(to_string(a))
+	console.write(' == ')
+	console.write_line(b)
 
 	d = a - b
 
@@ -30,48 +30,48 @@ export are_equal(a: decimal, b: decimal) {
 }
 
 export are_equal(a: String, b: String) {
-	print(a)
-	print(' == ')
-	println(b)
+	console.write(a)
+	console.write(' == ')
+	console.write_line(b)
 
 	if a == b return
 	application.exit(1)
 }
 
 export are_equal(a: link, b: link) {
-	print(a as large)
-	print(' == ')
-	println(b as large)
+	console.write(a as large)
+	console.write(' == ')
+	console.write_line(b as large)
 
 	if a == b return
 	application.exit(1)
 }
 
 export are_equal(a: link, b: link, offset: large, length: large) {
-	print('Memory comparison: Offset=')
-	print(offset)
-	print(', Length=')
-	println(length)
+	console.write('Memory comparison: Offset=')
+	console.write(offset)
+	console.write(', Length=')
+	console.write_line(length)
 
 	loop (i = 0, i < length, i++) {
-		print(i)
-		print(': ')
+		console.write(i)
+		console.write(': ')
 
 		x = a[offset + i]
 		y = b[offset + i]
 
-		print(to_string(x))
-		print(' == ')
-		println(to_string(y))
+		console.write(to_string(x))
+		console.write(' == ')
+		console.write_line(to_string(y))
 
 		if x != y application.exit(1)
 	}
 }
 
 export are_not_equal(a: large, b: large) {
-	print(a)
-	print(' != ')
-	println(b)
+	console.write(a)
+	console.write(' != ')
+	console.write_line(b)
 
 	if a != b return
 	application.exit(1)

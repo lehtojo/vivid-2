@@ -150,5 +150,5 @@ init() {
 	are_equal(875000.0, get_product_price(bundle, 0, 1))
 	are_equal(100.0, get_product_price(bundle, 1, 1))
 	are_equal(40000.0, get_product_price(bundle, 2, 1))
-	=> 1
+	=> 0
 }

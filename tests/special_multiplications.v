@@ -4,5 +4,5 @@ export special_multiplications(a: large, b: large) {
 
 init() { 
 	are_equal(1802, special_multiplications(7, 100))
-	=> 1
+	=> 0
 }

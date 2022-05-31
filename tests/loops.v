@@ -158,5 +158,5 @@ init() {
 
 	are_equal(expected, actual, 0, 27)
 	are_equal(13, result)
-	=> 1
+	=> 0
 }

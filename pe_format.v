@@ -75,7 +75,7 @@ namespace pe_format {
 		length = PeDataDirectory.Size
 		end = false
 
-		loop (start + length <= bytes.count) {
+		loop (start + length <= bytes.size) {
 			if count-- <= 0 {
 				end = true
 				stop
@@ -98,7 +98,7 @@ namespace pe_format {
 		length = PeSectionTable.Size
 		end = false
 
-		loop (start + length <= bytes.count) {
+		loop (start + length <= bytes.size) {
 			if count-- <= 0 {
 				end = true
 				stop
@@ -119,7 +119,7 @@ namespace pe_format {
 		if not (io.read_file(file) has bytes) => none as PeMetadata
 		header_offset = get_header_offset(bytes)
 
-		if header_offset < 0 or header_offset + PeHeader.Size > bytes.count => none as PeMetadata
+		if header_offset < 0 or header_offset + PeHeader.Size > bytes.size => none as PeMetadata
 
 		# Read the PE-header
 		header = binary_utility.read_object<PeHeader>(bytes, header_offset)
@@ -156,7 +156,7 @@ namespace pe_format {
 
 		loop (i = 0, i < count, i++) {
 			end = position
-			loop (end < bytes.count and bytes[end] != 0, end++) { }
+			loop (end < bytes.size and bytes[end] != 0, end++) { }
 
 			strings[i] = String.from(bytes.data + position, end - position)
 
@@ -356,14 +356,14 @@ namespace pe_format {
 			sections.add(relocation_table_section) # Add the relocation table section to the list of sections
 
 			# Update the file position
-			file_position += relocation_table_section_data.count
+			file_position += relocation_table_section_data.size
 		}
 
 		# Export the data from the generated string table, since it has to come directly after the symbol table
 		symbol_name_table_data = symbol_name_table.build()
 
 		# Create the symbol table section
-		symbol_table_section_data = Array<byte>(PeSymbolEntry.Size * symbol_entries.size + symbol_name_table_data.count)
+		symbol_table_section_data = Array<byte>(PeSymbolEntry.Size * symbol_entries.size + symbol_name_table_data.size)
 		symbol_table_section = BinarySection(String(SymbolTableSection), BINARY_SECTION_TYPE_SYMBOL_TABLE, symbol_table_section_data)
 		symbol_table_section.offset = file_position
 
@@ -371,7 +371,7 @@ namespace pe_format {
 		binary_utility.write_all<PeSymbolEntry>(symbol_table_section_data, 0, symbol_entries)
 
 		# Store the string table data into the symbol table section as well
-		copy(symbol_name_table_data.data, symbol_name_table_data.count, symbol_table_section_data.data + symbol_entries.size * PeSymbolEntry.Size)
+		copy(symbol_name_table_data.data, symbol_name_table_data.size, symbol_table_section_data.data + symbol_entries.size * PeSymbolEntry.Size)
 
 		sections.add(symbol_table_section) # Add the symbol table section to the list of sections
 
@@ -384,7 +384,7 @@ namespace pe_format {
 	# If these sections would have a size of zero, then overlapping sections could emerge.
 	fill_empty_sections(sections: List<BinarySection>) {
 		loop section in sections {
-			if section.data.count > 0 continue
+			if section.data.size > 0 continue
 			section.data = Array<byte>(1)
 		}
 	}
@@ -478,7 +478,7 @@ namespace pe_format {
 
 		loop section in sections {
 			section.offset = file_position
-			file_position += section.data.count
+			file_position += section.data.size
 		}
 
 		# Now, finish the section tables
@@ -528,7 +528,7 @@ namespace pe_format {
 			section_data = section.data
 
 			# Write the section data
-			copy(section_data.data, section_data.count, binary.data + section.offset)
+			copy(section_data.data, section_data.size, binary.data + section.offset)
 		}
 
 		=> binary
@@ -546,10 +546,10 @@ namespace pe_format {
 		section.offset = file_position
 
 		# Update the section size
-		section.virtual_size = section.data.count
-		section.load_size = section.data.count
+		section.virtual_size = section.data.size
+		section.load_size = section.data.size
 
-		=> file_position + section.data.count
+		=> file_position + section.data.size
 	}
 
 	align_sections(overlays: List<BinarySection>, fragments: List<BinarySection>, file_position: large) {
@@ -575,7 +575,7 @@ namespace pe_format {
 				fragment.offset = file_position
 
 				# Move to the next fragment
-				file_position += fragment.data.count
+				file_position += fragment.data.size
 			}
 
 			# Update the overlay size
@@ -648,13 +648,13 @@ namespace pe_format {
 
 		# Add the string table inside the exporter section
 		string_table_data = string_table.build()
-		exporter_section.data = Array<byte>(exporter_section_data.count + string_table_data.count)
-		copy(exporter_section_data.data, exporter_section_data.count, exporter_section.data.data)
-		copy(string_table_data.data, string_table_data.count, exporter_section.data.data + exporter_section_data.count)
+		exporter_section.data = Array<byte>(exporter_section_data.size + string_table_data.size)
+		copy(exporter_section_data.data, exporter_section_data.size, exporter_section.data.data)
+		copy(string_table_data.data, string_table_data.size, exporter_section.data.data + exporter_section_data.size)
 
 		# Update the exporter section size
-		exporter_section.virtual_size = exporter_section.data.count
-		exporter_section.load_size = exporter_section.data.count
+		exporter_section.virtual_size = exporter_section.data.size
+		exporter_section.load_size = exporter_section.data.size
 
 		#warning Fix the timestamp
 		export_directory_table = PeExportDirectoryTable()
@@ -678,7 +678,7 @@ namespace pe_format {
 
 		# Export the created section and its relocations
 		sections.add(exporter_section)
-		relocations.add_range(exporter_section.relocations)
+		relocations.add_all(exporter_section.relocations)
 
 		=> exporter_section
 	}
@@ -797,7 +797,7 @@ namespace pe_format {
 
 				# Not being able to load the exported symbols is not fatal, so we can continue, however we should notify the user
 				if symbols == none {
-					println(String('Warning: Could not load exported symbols from library: ') + imports[i])
+					console.write_line(String('Warning: Could not load exported symbols from library: ') + imports[i])
 					continue
 				}
 
@@ -934,8 +934,8 @@ namespace pe_format {
 		binary_utility.update_relocations(import_section_build.relocations, import_address_section.symbols)
 
 		# Export the relocation needed by the import section. The relocations point to import address tables.
-		relocations.add_range(import_section_build.relocations)
-		relocations.add_range(import_address_section.relocations)
+		relocations.add_all(import_section_build.relocations)
+		relocations.add_all(import_address_section.relocations)
 
 		# Now, currently the relocations which use the imported functions, have symbols which basically point to nothing. We need to connect them to the indirect jumps.
 		loop relocation_symbol in relocation_symbols {
@@ -952,9 +952,9 @@ namespace pe_format {
 		# Mesh the importer data with the string table
 		string_table_data = string_table.build().data
 
-		new_importer_section_data = Array<byte>(importer_section.data.count + string_table_data.count)
-		copy(importer_section.data.data, importer_section.data.count, new_importer_section_data.data)
-		copy(string_table_data.data, string_table_data.count, new_importer_section_data.data + importer_section.data.count)
+		new_importer_section_data = Array<byte>(importer_section.data.size + string_table_data.size)
+		copy(importer_section.data.data, importer_section.data.size, new_importer_section_data.data)
+		copy(string_table_data.data, string_table_data.size, new_importer_section_data.data + importer_section.data.size)
 
 		importer_section.data = new_importer_section_data
 
@@ -1219,12 +1219,12 @@ namespace pe_format {
 			# Loadable sections are handled with the fragments
 			if linker.is_loadable_section(section) continue
 
-			copy(section.data.data, section.data.count, binary.data + section.offset)
+			copy(section.data.data, section.data.size, binary.data + section.offset)
 		}
 
 		# Write the loadable sections
 		loop fragment in fragments {
-			copy(fragment.data.data, fragment.data.count, binary.data + fragment.offset)
+			copy(fragment.data.data, fragment.data.size, binary.data + fragment.offset)
 		}
 
 		=> binary
@@ -1346,7 +1346,7 @@ namespace pe_format {
 			if not section.name.starts_with(`/`) continue
 
 			# Extract the section offset in the string table
-			section_name_offset = to_number(section.name.slice(1, section.name.length))
+			section_name_offset = to_integer(section.name.slice(1, section.name.length))
 
 			# Load the section name from the string table
 			section.name = String(symbol_name_table_start + section_name_offset)
@@ -1384,7 +1384,7 @@ namespace pe_format {
 
 			# Now load the section data into a buffer
 			section_data = Array<byte>(section_table.size_of_raw_data)
-			copy(section_data_start, section_data.count, section_data.data)
+			copy(section_data_start, section_data.size, section_data.data)
 
 			# Extract the section name from the section table
 			section_name = decode_integer_name(section_table.name)

@@ -18,7 +18,7 @@ StaticLibraryFormatFile {
 	init(name: String, symbols: List<String>, value: String) {
 		this.name = name
 		this.symbols = symbols
-		this.bytes = Array<byte>(value.text, value.length)
+		this.bytes = Array<byte>(value.data, value.length)
 	}
 
 	load() {
@@ -76,12 +76,12 @@ write_padding(builder: DataEncoderModule, length: large) {
 
 write_file_header(builder: DataEncoderModule, filename: String, timestamp: large, size: large, filemode: String) {
 	# Write the filename
-	builder.write(filename.text, min(FILENAME_LENGTH, filename.length))
+	builder.write(filename.data, min(FILENAME_LENGTH, filename.length))
 	write_padding(builder, FILENAME_LENGTH - filename.length)
 
 	# Write the timestamp
 	timestamp_text = to_string(timestamp)
-	builder.write(timestamp_text.text, min(TIMESTAMP_LENGTH, timestamp_text.length))
+	builder.write(timestamp_text.data, min(TIMESTAMP_LENGTH, timestamp_text.length))
 	write_padding(builder, TIMESTAMP_LENGTH - timestamp_text.length)
 
 	# Identities are not supported
@@ -91,12 +91,12 @@ write_file_header(builder: DataEncoderModule, filename: String, timestamp: large
 	write_padding(builder, IDENTITY_LENGTH - 1)
 
 	# Write the file mode
-	builder.write(filemode.text, min(FILEMODE_LENGTH, filemode.length))
+	builder.write(filemode.data, min(FILEMODE_LENGTH, filemode.length))
 	write_padding(builder, FILEMODE_LENGTH - filemode.length)
 
 	# Write the size of the file
 	size_text = to_string(size)
-	builder.write(size_text.text, min(SIZE_LENGTH, size_text.length))
+	builder.write(size_text.data, min(SIZE_LENGTH, size_text.length))
 	write_padding(builder, SIZE_LENGTH - size_text.length)
 
 	# End the header
@@ -116,7 +116,7 @@ write_symbols(builder: DataEncoderModule, symbols: List<String>) {
 		indices[i] = builder.position
 
 		symbol = symbols[i]
-		builder.write(symbol.text, symbol.length)
+		builder.write(symbol.data, symbol.length)
 		builder.write(0)
 	}
 
@@ -159,10 +159,10 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 
 		bytes = file.get_bytes()
 
-		write_file_header(contents, file.name, timestamp, bytes.count, String(DEFAULT_FILEMODE))
+		write_file_header(contents, file.name, timestamp, bytes.size, String(DEFAULT_FILEMODE))
 		contents.write(bytes)
 
-		position += FILEHEADER_LENGTH + bytes.count
+		position += FILEHEADER_LENGTH + bytes.size
 
 		# Align the position to 2 bytes
 		if position % 2 == 0 continue

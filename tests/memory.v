@@ -176,5 +176,5 @@ init() {
 	memory_case_13(a, -7)
 	are_equal(0, a.x)
 	are_equal(0.0, a.y)
-	=> 1
+	=> 0
 }

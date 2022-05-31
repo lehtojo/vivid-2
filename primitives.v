@@ -124,7 +124,7 @@ namespace primitives {
 			U8 => U8_IDENTIFIER
 			BYTE => BYTE_IDENTIFIER
 			CHAR => CHAR_IDENTIFIER
-			else => number.name.text
+			else => number.name.data
 		})
 
 		=> number
@@ -167,7 +167,7 @@ namespace primitives {
 			U32 => U32_IDENTIFIER,
 			U16 => U16_IDENTIFIER,
 			U8 => U8_IDENTIFIER,
-			else => number.name.text
+			else => number.name.data
 		})
 
 		=> number

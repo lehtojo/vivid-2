@@ -773,7 +773,7 @@ Token FunctionToken {
 	# Summary: Returns the parameters of this token
 	get_parameters(context: Context) {
 		tokens = List<Token>(parameters.tokens.size, false)
-		tokens.add_range(parameters.tokens)
+		tokens.add_all(parameters.tokens)
 
 		result = List<Parameter>()
 
@@ -928,7 +928,7 @@ private get_exponent(text: String) {
 	exponent = text.slice(i, j)
 
 	# Try to convert the exponent string to an integer
-	if as_number(exponent) has result => Ok<large, String>(sign * result)
+	if as_integer(exponent) has result => Ok<large, String>(sign * result)
 
 	=> Error<large, String>(String('Invalid exponent'))
 }
@@ -968,7 +968,7 @@ private get_number_format(text: String) {
 	loop (j < text.length and is_digit(text[j++])) {}
 
 	# If digits were captured and the number can be parsed, return a format, which matches it
-	if j > i and as_number(text.slice(i, j)) has bits => get_format(bits, unsigned)
+	if j > i and as_integer(text.slice(i, j)) has bits => get_format(bits, unsigned)
 
 	# Return the default format
 	=> get_format(SYSTEM_BITS, unsigned)
@@ -991,7 +991,7 @@ try_create_number_token(text: String, position: Position) {
 		=> Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
 	}
 	else {
-		if not (as_number(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
+		if not (as_integer(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
 
 		# Apply the exponent
 		scale = 1

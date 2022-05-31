@@ -145,5 +145,5 @@ init() {
 	are_equal(94, salmon.energy)
 	are_equal(6, salmon.hunger)
 	are_equal(false, salmon.is_hiding)
-	=> 1
+	=> 0
 }

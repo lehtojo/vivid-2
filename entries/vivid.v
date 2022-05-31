@@ -1,20 +1,20 @@
 none = 0
 
 abort(message: String) {
-	print('Internal error: ')
-	println(message)
+	console.write('Internal error: ')
+	console.write_line(message)
 	application.exit(1)
 }
 
 abort(message: link) {
-	print('Internal error: ')
-	println(message)
+	console.write('Internal error: ')
+	console.write_line(message)
 	application.exit(1)
 }
 
 complain(status: Status) {
-	print('Compilation terminated: ')
-	println(status.message)
+	console.write('Compilation terminated: ')
+	console.write_line(status.message)
 	application.exit(1)
 }
 
@@ -59,7 +59,7 @@ init() {
 	if result.problematic complain(result)
 
 	end = time.now()
-	print(to_string((end - start) / 10000.0))
-	println(' ms')
+	console.write(to_string((end - start) / 10000.0))
+	console.write_line(' ms')
 	=> 0
 }

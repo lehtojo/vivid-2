@@ -84,5 +84,5 @@ init() {
 	are_equal(true, if_statement_not_equals(100, 999))
 	are_equal(true, if_statement_not_equals(999, 100))
 	are_equal(false, if_statement_not_equals(100, 100))
-	=> 1
+	=> 0
 }

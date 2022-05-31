@@ -9,45 +9,17 @@ import offset_copy(source: link, bytes: large, destination: link, offset: large)
 
 none = 0
 
-namespace internal.allocator {
-	arena: link
-
-	initialize() {
-		arena = internal.allocate(100000000)
-	}
+outline allocate<T>(amount: large) {
+	=> allocate(amount * sizeof(T)) as link<T>
 }
 
 outline allocate(bytes: large) {
-	address = internal.allocator.arena
-	internal.allocator.arena += sizeof(normal) * 2 + bytes
-
-	# Save the size of the allocation
-	address.(link<normal>)[0] = bytes
-	address += sizeof(normal)
-
-	# Save the size of the allocation at the end (for safety)
-	(address + bytes).(link<normal>)[0] = bytes
-
-	# Zero the allocated memory
-	zero(address, bytes)
-
-	=> address
+	=> internal.allocate(bytes)
 }
 
 outline deallocate(address: link) {
-	# Extract the size of the allocation
-	bytes = (address - sizeof(normal)).(link<normal>)[0]
-
-	# Ensure the size of the allocation is correct by comparing it to the size at the end
-	if (address + bytes).(link<normal>)[0] != bytes {
-		panic('Invalid deallocation size')
-	}
-
-	# Fill the allocation with zeros
-	zero(address - sizeof(normal), bytes + sizeof(normal) * 2)
+	address = none # Dummy usage of address to avoid warning
 }
-
-outline allocate<T>(count: large) => allocate(count * sizeof(T)) as link<T>
 
 TYPE_DESCRIPTOR_FULLNAME_OFFSET = 0
 TYPE_DESCRIPTOR_FULLNAME_END = 1
