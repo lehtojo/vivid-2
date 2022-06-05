@@ -208,10 +208,15 @@ add_variable_usages_from(descriptors: Map<Variable, VariableDescriptor>, from: N
 	usages = get_all_variable_usages(from)
 
 	loop usage in usages {
+		# If the variable is not in the descriptors, we do not need to add it
 		variable = usage.(VariableNode).variable
 		if not descriptors.contains_key(variable) continue
 
-		descriptors[variable].reads.add(usage)
+		# Do not add the usage to the descriptor, if it is already in the list
+		descriptor = descriptors[variable]
+		if descriptor.reads.contains(usage) continue
+
+		descriptor.reads.add(usage)
 	}
 }
 

@@ -906,7 +906,7 @@ print(node: Node, indentation: large, total: large) {
 	fill(padding.data, padding.size, ` `)
 
 	internal.console.write(padding.data, length_of(padding.data))
-	println(node.string())
+	console.write_line(node.string())
 
 	total++
 
