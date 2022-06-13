@@ -342,8 +342,11 @@ StatementFlow {
 				add(node)
 				add(JumpNode(end))
 			}
+			else {
+				abort('Invalid command node')
+			}
 
-			abort('Invalid command node')
+			return
 		}
 
 		if instance == NODE_RETURN {
