@@ -35,7 +35,7 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	arguments.add_all(source_files)
 	arguments.add(String('-a'))
 	arguments.add(String('-l'))
-	arguments.add(String('kernel32'))
+	arguments.add(String('kernel32.dll'))
 	arguments.add(String('-o'))
 	arguments.add(String(UNIT_TEST_PREFIX) + output)
 
