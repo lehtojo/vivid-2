@@ -1,5 +1,8 @@
 namespace reconstruction
 
+constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
+constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
+
 # Summary: Removes redundant parentheses in the specified node tree
 # Example: x = x * (((x + 1))) => x = x * (x + 1)
 remove_redundant_parentheses(root: Node) {
@@ -119,7 +122,7 @@ get_expression_root(node: Node) {
 }
 
 extract_calls(root: Node) {
-	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
+	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
 	nodes.add_all(find_bool_values(root))
 
 	loop (i = 0, i < nodes.size, i++) {
@@ -1252,6 +1255,81 @@ rewrite_lambda_constructions(root: Node) {
 	}
 }
 
+# Summary: Rewrites has nodes using simpler nodes
+rewrite_has_expressions(root: Node) {
+	expressions = root.find_all(NODE_HAS) as List<HasNode>
+
+	loop expression in expressions {
+		container = create_inline_container(primitives.create_bool(), expression)
+
+		context = expression.get_parent_context()
+		position = expression.start
+
+		source = expression.(HasNode).source
+		source_type = source.get_type()
+		source_variable = none as Variable
+		source_load = none as Node
+
+		has_value_function = source_type.get_function(String(RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		get_value_function = source_type.get_function(String(RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		require(has_value_function !== none and get_value_function !== none, 'Inspected object did not have the required functions')
+
+		# 1. Determine the variable that will store the source value
+		# 2. Load the source value into the variable if necessary
+		if source.instance == NODE_VARIABLE {
+			source_variable = source.(VariableNode).variable
+		}
+		else {
+			source_variable = context.declare_hidden(source_type)
+			source_load = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(source_variable, position), source)
+		}
+
+		# Initialize the output variable before the expression
+		output_variable = expression.(HasNode).output.variable
+
+		output_initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(output_variable, position),
+			CastNode(NumberNode(SYSTEM_FORMAT, 0, position), TypeNode(get_value_function.return_type, position), position)
+		)
+
+		get_insert_position(expression).insert(output_initialization)
+
+		# Set the result variable equal to false
+		result_initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(container.result, position),
+			NumberNode(SYSTEM_FORMAT, 0, position)
+		)
+
+		# First the function 'has_value(): bool' must return true in order to call the function 'get_value(): any'
+		condition = LinkNode(VariableNode(source_variable, position), FunctionNode(has_value_function, position), position)
+
+		# If the function 'has_value(): bool' returns true, load the value using the function 'get_value(): any' and set the result variable equal to true
+		body = Node()
+
+		# Load the value and store it in the output variable
+		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(output_variable, position),
+			LinkNode(VariableNode(source_variable), FunctionNode(get_value_function, position), position)
+		))
+
+		# Indicate we have loaded a value
+		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
+			VariableNode(container.result, position),
+			NumberNode(SYSTEM_FORMAT, 1, position)
+		))
+
+		conditional_context = Context(context, NORMAL_CONTEXT)
+		conditional = IfNode(conditional_context, condition, body, position, none as Position)
+
+		container.node.add(result_initialization)
+		if source_load !== none container.node.add(source_load)
+		container.node.add(conditional)
+		container.node.add(VariableNode(container.result))
+
+		container.destination.replace(container.node)
+	}
+}
+
 # Summary:
 # Creates all member accessors that represent all non-pack members
 # Example (root = object.pack, type = { a: large, other: { b: large, c: large } })
@@ -1575,6 +1653,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	rewrite_list_constructions(root)
 	rewrite_pack_constructions(root)
 	rewrite_constructions(root)
+	rewrite_has_expressions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
 	cast_member_calls(root)

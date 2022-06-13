@@ -1987,22 +1987,16 @@ Node LambdaNode {
 }
 
 Node HasNode {
-	constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
-	constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
-
-	constant RUNTIME_HAS_VALUE_FUNCTION_HEADER = 'has_value(): bool'
-	constant RUNTIME_GET_VALUE_FUNCTION_HEADER = 'get_value(): any'
-
 	source => first
-	result => last as VariableNode
+	output => last as VariableNode
 
-	init(source: Node, result: VariableNode, position: Position) {
+	init(source: Node, output: VariableNode, position: Position) {
 		this.start = position
 		this.instance = NODE_HAS
 		this.is_resolvable = true
 
 		add(source)
-		add(result)
+		add(output)
 	}
 
 	init(position: Position) {
@@ -2012,63 +2006,20 @@ Node HasNode {
 	}
 
 	override resolve(environment: Context) {
-		position = start
 		resolver.resolve(environment, source)
 
+		# Continue if the type of the source object can be extracted
 		type = source.try_get_type()
-		if type == none or type.is_unresolved => none as Node
+		if type === none or type.is_unresolved => none as Node
 
-		has_value_function = type.get_function(String(RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
-		if has_value_function == none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => none as Node
-
-		get_value_function = type.get_function(String(RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		# Continue if the source object has the required getter function
+		get_value_function = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
 		if get_value_function == none or get_value_function.return_type == none or get_value_function.return_type.is_unresolved => none as Node
 
-		inline_context = Context(environment, NORMAL_CONTEXT)
+		# Set the type of the output variable to the return type of the getter function
+		output.variable.type = get_value_function.return_type
 
-		source_variable = inline_context.declare_hidden(type)
-		result_variable = inline_context.declare_hidden(primitives.create_bool())
-
-		# Declare the result variable at the start of the function
-		declaration = OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(result.variable, position),
-			CastNode(NumberNode(SYSTEM_FORMAT, 0, position), TypeNode(get_value_function.return_type, position), position)
-		)
-
-		reconstruction.get_insert_position(this).insert(declaration)
-
-		# Set the result variable equal to false
-		initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(result_variable, position),
-			NumberNode(SYSTEM_FORMAT, 0, position)
-		)
-
-		# Load the source into a variable
-		load = OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(source_variable, position), source)
-
-		# First the function 'has_value(): bool' must return true in order to call the function 'get_value(): any'
-		condition = LinkNode(VariableNode(source_variable, position), FunctionNode(has_value_function, position), position)
-
-		# If the function 'has_value(): bool' returns true, load the value using the function 'get_value(): any' and set the result variable equal to true
-		body = Node()
-		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(result.variable, position),
-			LinkNode(VariableNode(source_variable), FunctionNode(get_value_function, position), position)
-		))
-		body.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			VariableNode(result_variable, position),
-			NumberNode(SYSTEM_FORMAT, 1, position)
-		))
-
-		assignment_context = Context(environment, NORMAL_CONTEXT)
-		assignment = IfNode(assignment_context, condition, body, position, none as Position)
-
-		result = ScopeNode(inline_context, position, none as Position, true)
-		result.add(initialization)
-		result.add(load)
-		result.add(assignment)
-		result.add(VariableNode(result_variable))
-		=> result
+		=> none as Node
 	}
 
 	override try_get_type() {
@@ -2079,8 +2030,13 @@ Node HasNode {
 		type = source.try_get_type()
 		if type == none or type.is_unresolved => Status(source.start, 'Can not resolve the type of the inspected object')
 
-		message = String('Ensure the inspected object has the following functions ') + RUNTIME_HAS_VALUE_FUNCTION_HEADER + ' and ' + RUNTIME_GET_VALUE_FUNCTION_HEADER
-		=> Status(start, message)
+		has_value_function = type.get_function(String(reconstruction.RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		if has_value_function == none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
+
+		get_value_function = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
+		if get_value_function == none or get_value_function.return_type == none or get_value_function.return_type.is_unresolved => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
+
+		=> none as Status
 	}
 
 	override copy() {
