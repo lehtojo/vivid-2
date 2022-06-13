@@ -295,6 +295,11 @@ Component ComplexComponent {
 Component NumberComponent {
 	value: Number
 
+	init(value: large, is_decimal: bool) {
+		this.type = COMPONENT_TYPE_NUMBER
+		this.value = pack { data: value, is_decimal: is_decimal }
+	}
+
 	init(value: large) {
 		this.type = COMPONENT_TYPE_NUMBER
 		this.value = pack { data: value, is_decimal: false }
@@ -435,7 +440,7 @@ Component VariableComponent {
 			left = VariableComponent(variable, 1, order)
 			right = VariableComponent(other.(VariableComponent).variable, 1, other.(VariableComponent).order)
 
-			=> VariableProductComponent(coefficient, [ left, right ])
+			=> VariableProductComponent(result_coefficient, [ left, right ])
 		}
 
 		if other.is_number {
@@ -539,12 +544,12 @@ Component VariableProductComponent {
 			result_coefficient = coefficient * other.(VariableComponent).coefficient
 
 			result = clone() as VariableProductComponent
-			result.coefficient = coefficient
+			result.coefficient = result_coefficient
 
 			variable_component_index = result.variables.find_index(i -> i.variable == other.(VariableComponent).variable)
-			variable_component = result.variables[variable_component_index]
 
-			if variable_component != none {
+			if variable_component_index >= 0 {
+				variable_component = result.variables[variable_component_index]
 				variable_component.order += other.(VariableComponent).order
 
 				if variable_component.order == 0 {
@@ -566,7 +571,7 @@ Component VariableProductComponent {
 			result_coefficient = coefficient * other.(VariableProductComponent).coefficient
 
 			result = clone() as VariableProductComponent
-			result.coefficient = coefficient
+			result.coefficient = result_coefficient
 
 			loop variable in other.(VariableProductComponent).variables {
 				result = (result * variable) as VariableProductComponent

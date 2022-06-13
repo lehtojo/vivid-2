@@ -252,7 +252,7 @@ collect_components(expression: Node) {
 	result = List<Component>()
 
 	if expression.match(NODE_NUMBER) {
-		result.add(NumberComponent(expression.(NumberNode).value))
+		result.add(NumberComponent(expression.(NumberNode).value, expression.(NumberNode).format == FORMAT_DECIMAL))
 	}
 	else expression.match(NODE_VARIABLE) {
 		result.add(VariableComponent(expression.(VariableNode).variable))
