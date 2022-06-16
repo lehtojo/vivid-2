@@ -211,9 +211,10 @@ recreate(component: Component) {
 
 	if component.is_complex {
 		complex_component = component as ComplexComponent
+		complex_node = complex_component.node.clone()
 
-		if complex_component.is_negative => NegateNode(complex_component.node, none as Position)
-		=> complex_component.node
+		if complex_component.is_negative => NegateNode(complex_node, none as Position)
+		=> complex_node
 	}
 
 	if component.is_variable_product {
@@ -306,6 +307,11 @@ collect_components(expression: Node) {
 # Summary:
 # Returns a component list which describes the specified operator node
 collect_components(node: OperatorNode) {
+	#warning Remove
+	if node.start !== none and node.start.line == 79 {
+		unused = 0
+	}
+
 	left_components = collect_components(node.first)
 	right_components = collect_components(node.last)
 

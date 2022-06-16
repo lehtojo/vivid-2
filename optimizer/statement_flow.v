@@ -17,7 +17,7 @@ DynamicBitset {
 
 		# Allocate a larger memory buffer, copy the old data there and deallocate the old memory
 		expanded_data = allocate(expanded_size / 8 + 1)
-		copy(data, size, expanded_data)
+		copy(data, size / 8 + 1, expanded_data)
 		deallocate(data)
 
 		this.data = expanded_data
