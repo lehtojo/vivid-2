@@ -3,6 +3,11 @@ $Arguments = './', './entries/vivid.v', './optimizer/', './tests/assert.v', './l
 # Should the script remove the build files?
 $Clean = $true
 
+if ( $args.Count -gt 0 ) {
+	Write-Output "Additional arguments: $args"
+	$Arguments += $args
+}
+
 function Write-ColorOutput($ForegroundColor)
 {
 	# Save the current color

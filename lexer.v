@@ -522,6 +522,11 @@ Position {
 	equals(other: Position) {
 		=> absolute == other.absolute and file == other.file
 	}
+
+	string() {
+		if file === none => String('<unknown>') + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
+		=> file.fullname + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
+	}
 }
 
 Token {

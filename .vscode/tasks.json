@@ -106,5 +106,17 @@
 				"isDefault": true
 			}
 		},
+		{
+			"label": "Verify -O1",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify -O1",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
 	]
 }

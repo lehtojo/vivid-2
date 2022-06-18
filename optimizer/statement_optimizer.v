@@ -35,6 +35,8 @@ is_affector(node: Node) {
 # Summary:
 # Removes the specified conditional branch while taking into account other branches
 remove_conditional_branch(branch: Node) {
+	logger.verbose.write_line('Removing conditional branch')
+
 	if branch.instance != NODE_IF and branch.instance != NODE_ELSE_IF {
 		branch.remove()
 		return
@@ -84,6 +86,8 @@ remove_unreachable_statements(root: Node) {
 		iterator = return_statement.parent.last
 
 		loop (iterator !== return_statement) {
+			logger.verbose.write_line('Removing unreachable statement')
+
 			previous = iterator.previous
 			iterator.remove()
 			iterator = previous
@@ -112,6 +116,8 @@ remove_abandoned_statements_in_scope(statement: Node) {
 
 		# 2. Remove abandoned allocation function calls
 		if not contains_affector or common.get_source(iterator).match(settings.allocation_function) {
+			logger.verbose.write_line('Removing abandoned statement')
+
 			iterator.remove()
 		}
 
@@ -218,6 +224,7 @@ remove_abandoned_expressions(root: Node) {
 			if statement.first !== none continue
 		}
 
+		logger.verbose.write_line('Removing abandoned statement')
 		statement.remove()
 	}
 
@@ -254,34 +261,25 @@ find_edited_locals(statement: Node) {
 
 # Summary:
 # Returns whether the condition is not dependent on the statements inside the specified loop.
-# However, the condition can be dependent on the statements that originate from the condition of the specified conditional.
 is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementLiftupDescriptor, edited_locals: Map<Variable, List<Node>>) {
-	condition_scope = statement.condition_container as ScopeNode
-
-	# 1. Dependencies must be defined outside the statement or inside the condition scope
+	# 1. Dependencies must be defined outside the statement
 	statement_context = statement.context
-	condition_context = condition_scope.context
 
 	loop dependency in inner_conditional.dependencies {
 		# 1. If the parent context of the dependency is not inside the statement, the dependency is defined outside
-		if not dependency.parent.is_inside(statement_context) continue
-
-		# 2. We can continue, if the dependency is defined inside the condition scope
-		if dependency.parent.is_inside(condition_context) continue
-
-		=> false
+		if dependency.parent.is_inside(statement_context) => false
 	}
 
-	# 2. Dependencies can only be edited outside the statement or inside the condition scope
+	# 2. Dependencies can only be edited outside the statement
 	loop dependency in inner_conditional.dependencies {
 		if not edited_locals.contains_key(dependency) continue
 
-		# If any of the edited usages is not inside the condition scope, it means the dependency is edited inside the statement
-		# NOTE: All the edited usages are inside the statement, not the whole function
+		# Verify the dependency is not edited inside the statement
+		# NOTE: All the processed edited usages are inside the statement, not the whole function
 		all_edited = edited_locals[dependency]
 
 		loop edited in all_edited {
-			if not edited.is_under(condition_scope) => false
+			if edited.is_under(statement) => false
 		}
 	}
 
@@ -436,6 +434,15 @@ liftup_conditional_statements_from_loops(root: Node) {
 		loop (j = inner_conditionals.size - 1, j >= 0, j--) {
 			inner_conditional = inner_conditionals[j]
 			if not is_condition_isolated(statement, inner_conditional, edited_locals) continue
+
+			inner_conditional_position = inner_conditional.statement.start
+
+			if inner_conditional_position !== none {
+				logger.verbose.write_line(String('Lifting conditional statement from loop at ') + inner_conditional_position.string())
+			}
+			else {
+				logger.verbose.write_line('Lifting conditional statement from loop')
+			}
 
 			liftup_conditional_statements_from_loop(statement, inner_conditional.statement)
 		}
