@@ -592,7 +592,7 @@ DualParameterInstruction MoveInstruction {
 			if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 			# Examples: mov [...], c / mov [...], r
-			build(platform.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_MEMORY), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER))
+			build(platform.shared.MOVE, first.size, InstructionParameter(first, flags_first, HANDLE_MEMORY), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 		else second.is_data_section_handle and second.value.(DataSectionHandle).address {
 			# Disable the address flag while building

@@ -93,6 +93,18 @@
 				"kind": "build",
 				"isDefault": true
 			}
-		}
+		},
+		{
+			"label": "Verify",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
 	]
 }
