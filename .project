@@ -6,11 +6,13 @@
 			"default": true,
 			"debug": true,
 			"include": [
+				"./",
 				"./entries/vivid.v",
-				"./libv/allocator/Primary2.v",
-				"./libv/windows-x64/io.v",
+				"./optimizer/",
+				"./tests/assert.v",
 				"./libv/",
-				"./"
+				"./libv/windows-x64/",
+				"./libv/allocator/allocator.v"
 			]
 		},
 		{
@@ -18,12 +20,13 @@
 			"output": "v",
 			"debug": true,
 			"include": [
+				"./",
 				"./entries/tests.v",
+				"./optimizer/",
 				"./tests/assert.v",
-				"./libv/allocator/Primary2.v",
-				"./libv/windows-x64/io.v",
 				"./libv/",
-				"./"
+				"./libv/windows-x64/",
+				"./libv/allocator/allocator.v"
 			]
 		}
 	]
