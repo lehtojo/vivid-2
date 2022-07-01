@@ -427,11 +427,6 @@ DualParameterInstruction MoveInstruction {
 	}
 
 	on_build_decimal_zero_move(flags_first, flags_second) {
-		if not settings.is_x64 {
-			# Examples: fmov r, xzr
-			return
-		}
-
 		# Example: pxor x, x
 		=> build(platform.x64.MEDIA_REGISTER_BITWISE_XOR, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
@@ -440,9 +435,36 @@ DualParameterInstruction MoveInstruction {
 		)
 	}
 
+	on_build_constant_to_decimal_move(flags_first, flags_second, first_parameter_type) {
+		if type == MOVE_RELOCATE {
+			# Convert the source value to match the destination format
+			second.value.(ConstantHandle).convert(first.format)
+			second.format = SYSTEM_SIGNED
+
+			# Example: mov r/[...], r/c
+			=> build(platform.shared.MOVE, 0,
+				InstructionParameter(first, flags_first, first_parameter_type),
+				InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_CONSTANT)
+			)
+		}
+
+		# Clone the source value, because it must not be affected by this move
+		second_value = second.value.finalize() as ConstantHandle
+		second_value.convert(first.format)
+		second_value.format = SYSTEM_SIGNED
+
+		second_parameter = Result(second_value, SYSTEM_SIGNED)
+
+		# Example: mov r/[...], r/c
+		build(platform.shared.MOVE, 0,
+			InstructionParameter(first, flags_first, first_parameter_type),
+			InstructionParameter(second_parameter, flags_second, HANDLE_REGISTER | HANDLE_CONSTANT)
+		)
+	}
+
 	on_build_decimal_conversion(flags_first, flags_second) {
-		is_destination_media_register = first.is_media_register
-		is_destination_register = first.is_standard_register
+		is_destination_media_register = first.is_media_register or (first.is_empty and first.format == FORMAT_DECIMAL)
+		is_destination_register = first.is_standard_register or (first.is_empty and first.format != FORMAT_DECIMAL)
 		is_destination_memory_address = first.is_memory_address
 		is_source_constant = second.is_constant
 
@@ -451,63 +473,32 @@ DualParameterInstruction MoveInstruction {
 				if second.value.(ConstantHandle).value == 0 => on_build_decimal_zero_move(flags_first, flags_second)
 
 				build_decimal_constant_move_x64(flags_first, flags_second)
+				return
 			}
-			else settings.is_x64 {
-				# Examples: cvtsi2sd r, [...]
 
-				build(platform.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION, SYSTEM_BYTES,
-					InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
-					InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_MEMORY)
-				)
-			}
+			# Examples: cvtsi2sd r, [...]
+			build(platform.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION, SYSTEM_BYTES,
+				InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
+				InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_MEMORY)
+			)
 		}
 		else is_destination_register {
-			if is_source_constant {
-				# Examples: mov r, c
-
-				# Ensure the source value is in integer format
-				second.value.(ConstantHandle).convert(first.format)
-				second.format = first.format
-
-				=> build(platform.shared.MOVE, 0,
-					InstructionParameter(first, flags_first, HANDLE_REGISTER),
-					InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT)
-				)
-			}
+			if is_source_constant => on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_REGISTER)
 
 			# Examples: cvttsd2si r, x/[...]
-
 			build(platform.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER, SYSTEM_BYTES,
 				InstructionParameter(first, flags_first, HANDLE_REGISTER),
-				InstructionParameter(second, flags_second, HANDLE_MEDIA_REGISTER	 | HANDLE_MEMORY)
+				InstructionParameter(second, flags_second, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY)
 			)
 		}
 		else is_destination_memory_address {
+			if is_source_constant => on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_MEMORY)
+
 			if first.format != FORMAT_DECIMAL {
-				if is_source_constant {
-					# Convert the decimal value to integer format
-					second.value.(ConstantHandle).convert(first.format)
-					second.format = SYSTEM_SIGNED
-
-					# Example: mov [...], c
-					=> build(platform.shared.MOVE, 0,
-						InstructionParameter(first, flags_first, HANDLE_MEMORY),
-						InstructionParameter(second, flags_second, HANDLE_CONSTANT)
-					)
-				}
-
 				# Load the value from memory into a register and use the system size, because if it is smaller than the destination value size, it might not be sign extended
 				if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 				# Example: mov [...], r
-				=> build(platform.shared.MOVE, 0,
-					InstructionParameter(first, flags_first, HANDLE_MEMORY),
-					InstructionParameter(second, flags_second, HANDLE_REGISTER)
-				)
-			}
-
-			if is_source_constant {
-				# Example: mov [...], c
 				=> build(platform.shared.MOVE, 0,
 					InstructionParameter(first, flags_first, HANDLE_MEMORY),
 					InstructionParameter(second, flags_second, HANDLE_REGISTER)
@@ -1367,37 +1358,40 @@ Instruction EvacuateInstruction {
 	}
 
 	override on_build() {
-		# Save all important values in the standard volatile registers
-		loop register in unit.volatile_registers {
-			register.lock()
+		loop {
+			evacuated = false
 
-			# Skip values which are not needed after the call instruction
-			# NOTE: The availability of the register is not checked the standard way since they are usually locked at this stage
-			if register.value == none or not register.value.is_active or register.value.is_deactivating or register.is_value_copy continue
+			# Save all important values in the standard volatile registers
+			loop register in unit.volatile_registers {
+				# Skip values which are not needed after the call instruction
+				# NOTE: The availability of the register is not checked the standard way since they are usually locked at this stage
+				if register.value == none or not register.value.is_active or register.value.is_deactivating or register.is_value_copy continue
 
-			# Try to get an available non-volatile register
-			destination = none as Handle
-			non_volatile_register = unit.get_next_non_volatile_register(register.is_media_register, false)
+				evacuated = true
 
-			# Use the non-volatile register, if one was found
-			if non_volatile_register != none {
-				destination = RegisterHandle(non_volatile_register)
+				# Try to get an available non-volatile register
+				destination = none as Handle
+				non_volatile_register = unit.get_next_non_volatile_register(register.is_media_register, false)
+
+				# Use the non-volatile register, if one was found
+				if non_volatile_register != none {
+					destination = RegisterHandle(non_volatile_register)
+				}
+				else {
+					# Since there are no non-volatile registers available, the value must be relocated to stack memory
+					unit.release(register)
+					continue
+				}
+
+				instruction = MoveInstruction(unit, Result(destination, register.value.format), register.value)
+				instruction.description = String('Evacuates a value')
+				instruction.type = MOVE_RELOCATE
+
+				unit.add(instruction)
 			}
-			else {
-				# Since there are no non-volatile registers available, the value must be relocated to stack memory
-				unit.release(register)
-				continue
-			}
 
-			instruction = MoveInstruction(unit, Result(destination, register.value.format), register.value)
-			instruction.description = String('Evacuates a value')
-			instruction.type = MOVE_RELOCATE
-
-			unit.add(instruction)
+			if not evacuated stop
 		}
-
-		# Unlock all the volatile registers
-		loop register in unit.volatile_registers { register.unlock() }
 	}
 }
 

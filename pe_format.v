@@ -1535,7 +1535,7 @@ plain PeHeader {
 	subsystem: small = 3
 	dll_characteristics: small = 0
 	size_of_stack_reserve: large = 0x200000
-	size_of_stack_commit: large = 0x1000
+	size_of_stack_commit: large = 0x10000
 	size_of_heap_reserve: large = 0x100000
 	size_of_heap_commit: large = 0x1000
 	loader_version: normal = 0

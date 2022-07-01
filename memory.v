@@ -52,6 +52,7 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 
 # Summary: Aligns the specified moves so that intersections are minimized
 align(unit: Unit, moves: List<MoveInstruction>) {
+	result = List<Instruction>()
 	locks = List<Instruction>()
 	unlocks = List<Instruction>()
 	registers = List<Register>()
@@ -68,6 +69,23 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 	# Now remove all redundant moves
 	loop (i = moves.size - 1, i >= 0, i--) {
 		if not moves[i].is_redundant continue
+		moves.remove_at(i)
+	}
+
+	# Execute complex moves before anything else, because they might require multiple steps
+	loop (i = moves.size - 1, i >= 0, i--) {
+		move = moves[i]
+
+		# Skip non-complex moves
+		if move.first.is_empty or move.second.is_empty {
+			result.add(move)
+			moves.remove_at(i)
+			continue
+		}
+
+		if (move.first.is_any_register or move.first.is_constant) or (move.second.is_any_register or move.second.is_constant) continue
+
+		result.add(move)
 		moves.remove_at(i)
 	}
 
@@ -108,9 +126,10 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 		}
 	}
 
-	locks.add_all(aligned)
-	locks.add_all(unlocks)
-	=> locks
+	result.add_all(locks)
+	result.add_all(aligned)
+	result.add_all(unlocks)
+	=> result
 }
 
 # Summary: Loads the operand so that it is ready based on the specified settings

@@ -7,7 +7,7 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/build/vc.exe",
 			"cwd": "${workspaceRoot}",
-			//"programArgs": "${workspaceFolder}/box/main.v minimum.math.obj minimum.memory.obj minimum.tests.obj -a -l kernel32.dll -o box -verbose"
+			//"programArgs": "${workspaceFolder}/box/main.v minimum.math.obj minimum.memory.obj minimum.tests.obj -a -l kernel32.dll -o box -verbose -O2"
 
 			// Build the standard library (Windows)
 			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 minimum.math.obj minimum.memory.obj minimum.tests.obj -static -o v"

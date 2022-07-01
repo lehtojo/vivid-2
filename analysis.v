@@ -269,12 +269,17 @@ analyze() {
 
 		reconstruction.rewrite_pack_usages(implementation, implementation.node)
 		implementation.node = optimizer.optimize(implementation, implementation.node)
-		reconstruction.end(implementation.node)
 	}
 
 	if settings.is_function_inlining_enabled {
 		# Perform inline optimizations
 		inliner.optimize(context)
+	}
+
+	# End reconstruction now that inlining has been completed
+	loop (i = 0, i < implementations.size, i++) {
+		implementation = implementations[i]
+		reconstruction.end(implementation.node)
 	}
 
 	#resolver.debug_print(context)

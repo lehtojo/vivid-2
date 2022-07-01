@@ -224,7 +224,10 @@ Instruction {
 				memory.move_to_register(unit, iterator, SYSTEM_BYTES, false, trace.for(unit, iterator))
 			}
 
-			locked.add(iterator.register)
+			register = iterator.register
+			register.lock()
+
+			locked.add(register)
 		}
 	}
 

@@ -107,7 +107,7 @@ get_expression_root(node: Node) {
 		next = iterator.parent
 		if next == none stop
 
-		if next.instance == NODE_OPERATOR and next.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT {
+		if next.instance == NODE_OPERATOR and next.(OperatorNode).operator.type == OPERATOR_TYPE_CLASSIC {
 			iterator = next
 		}
 		else next.match(NODE_PARENTHESIS | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_PACK) {
@@ -346,7 +346,7 @@ InlineContainer {
 }
 
 # Summary: Determines the variable which will store the result and the node that should contain the inlined content
-create_inline_container(type: Type, node: Node) {
+create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 	editor = common.try_get_editor(node)
 
 	if editor != none and editor.match(Operators.ASSIGN) {
@@ -358,7 +358,7 @@ create_inline_container(type: Type, node: Node) {
 	}
 
 	environment = node.get_parent_context()
-	container = ScopeNode(Context(environment, NORMAL_CONTEXT), node.start, none as Position, false)
+	container = ScopeNode(Context(environment, NORMAL_CONTEXT), node.start, none as Position, is_value_returned)
 	instance = container.context.declare_hidden(type)
 
 	=> InlineContainer(node, container, instance)
@@ -471,7 +471,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 
 # Summary: Constructs an object using stack memory
 create_stack_construction(type: Type, construction: Node, constructor: FunctionNode) {
-	container = create_inline_container(type, construction)
+	container = create_inline_container(type, construction, true)
 	position = construction.start
 
 	container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
@@ -514,7 +514,7 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 
 # Summary: Constructs an object using heap memory
 create_heap_construction(type: Type, construction: Node, constructor: FunctionNode) {
-	container = create_inline_container(type, construction)
+	container = create_inline_container(type, construction, true)
 	position = construction.start
 
 	size = max(1, type.content_size)
@@ -601,7 +601,7 @@ rewrite_list_constructions(root: Node) {
 	loop construction in constructions {
 		list_type = construction.get_type()
 		list_constructor = list_type.constructors.get_implementation(List<Type>())
-		container = create_inline_container(list_type, construction)
+		container = create_inline_container(list_type, construction, false)
 
 		# Create a new list and assign it to the result variable
 		container.node.add(OperatorNode(Operators.ASSIGN, construction.start).set_operands(
@@ -639,7 +639,7 @@ rewrite_pack_constructions(root: Node) {
 	loop construction in constructions {
 		type = construction.get_type()
 		members = construction.members
-		container = create_inline_container(type, construction)
+		container = create_inline_container(type, construction, false)
 
 		# Initialize the pack result variable
 		container.node.add(VariableNode(container.result))
@@ -694,7 +694,7 @@ extract_bool_values(root: Node) {
 	expressions = find_bool_values(root)
 
 	loop expression in expressions {
-		container = create_inline_container(primitives.create_bool(), expression)
+		container = create_inline_container(primitives.create_bool(), expression, true)
 		position = expression.start
 
 		# Create the container, since it will contain a conditional statement
@@ -1169,7 +1169,7 @@ rewrite_when_expressions(root: Node) {
 		return_type = expression.try_get_type()
 		if return_type == none abort('Could not resolve the return type of a when expression')
 
-		container = create_inline_container(return_type, expression)
+		container = create_inline_container(return_type, expression, false)
 
 		# The load must be executed before the actual when-statement
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
@@ -1216,7 +1216,7 @@ rewrite_lambda_constructions(root: Node) {
 
 		type = implementation.internal_type
 
-		container = create_inline_container(type, construction)
+		container = create_inline_container(type, construction, true)
 		allocator = none as Node
 
 		if is_stack_construction_preferred(root, construction) {
@@ -1260,7 +1260,7 @@ rewrite_has_expressions(root: Node) {
 	expressions = root.find_all(NODE_HAS) as List<HasNode>
 
 	loop expression in expressions {
-		container = create_inline_container(primitives.create_bool(), expression)
+		container = create_inline_container(primitives.create_bool(), expression, true)
 
 		context = expression.get_parent_context()
 		position = expression.start
@@ -1390,7 +1390,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 # $c.x = c.x
 # $c.y = c.y
 # g({ $c.x, $c.y })
-rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
+rewrite_pack_usages(environment: Context, root: Node) {
 	placeholders = List<KeyValuePair<Node, Node>>()
 
 	# Direct assignments are expanded:
@@ -1444,25 +1444,16 @@ rewrite_pack_usages(implementation: FunctionImplementation, root: Node) {
 		assignments.remove_at(i)
 	}
 
-	# Pack values are replaced with pack nodes:
-	# Find all local variables, which are packs
-	local_packs = List<Variable>()
+	# Find all the usages of the collected local packs
+	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> {
+		variable: Variable = i.(VariableNode).variable
+		=> variable.type.is_pack and variable.is_predictable
+	})
 
-	loop local in implementation.all_variables {
-		if local.type.is_pack { local_packs.add(local) }
-	}
-
-	self = implementation.self
-
-	if self !== none and self.type.is_pack {
-		local_packs.add(self)
-	}
+	local_packs = local_pack_usages.map<Variable>((i: Node) -> i.(VariableNode).variable).distinct()
 
 	# Create the pack representives for all the collected local packs
 	loop local_pack in local_packs { common.get_pack_representives(local_pack) }
-
-	# Find all the usages of the collected local packs
-	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> local_packs.contains(i.(VariableNode).variable))
 
 	loop (i = local_pack_usages.size - 1, i >= 0, i--) {
 		usage = local_pack_usages[i]

@@ -89,7 +89,10 @@ localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Vari
 
 # Summary:
 # Initializes all the function parameters at the beginning of the function body with the provided arguments.
-insert_parameter_initializations(implementation: FunctionImplementation, arguments: Node, body: Node) {
+insert_parameter_initializations(context: Context, implementation: FunctionImplementation, arguments: Node, body: Node) {
+	assignments = Node()
+	body.insert(body.first, assignments)
+
 	# Find all the parameters
 	parameters = implementation.parameters
 	parameter_index = 0
@@ -98,15 +101,28 @@ insert_parameter_initializations(implementation: FunctionImplementation, argumen
 		# Find the parameter which corresponds to the current argument
 		parameter = parameters[parameter_index]
 
+		# Cast the argument if necessary
+		parameter_value = argument
+
+		if parameter.type !== argument.get_type() {
+			parameter_value = CastNode(argument.clone(), TypeNode(parameter.type), argument.start)
+		}
+
 		# Assign the current argument to the corresponding parameter
-		assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(parameter), argument)
+		assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(parameter), parameter_value)
 
 		# Insert the assignment at the beginning of the function body
-		body.insert(body.first, assignment)
+		assignments.insert(assignments.first, assignment)
 
 		# Increment the parameter index
 		parameter_index++
 	}
+
+	# Rewrite pack arguments
+	reconstruction.rewrite_pack_usages(context, assignments)
+
+	# Inline the assignments
+	assignments.replace_with_children(assignments)
 }
 
 # Summary:
@@ -148,15 +164,32 @@ rewrite_return_statements_with_values(context: Context, body: Node, result: Vari
 	# Request a label representing the end of the function only if needed
 	end = none as Label
 
+	# Create a container node that will store the required statements for storing the return value
+	return_value_container = Node()
+
 	# Replace all the return statements with an assign operator which stores the value to the result variable
 	loop return_statement in return_statements {
+		# Cast the return value if necessary
+		return_value = return_statement.value
+		return_type = result.type
+
+		if return_value.get_type() !== return_type {
+			return_value = CastNode(return_statement.value, TypeNode(return_type), return_value.start)
+		}
+
 		# Assign the return value of the function to the variable which represents the result of the function
-		assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(result), return_statement.value)
+		assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(result), return_value)
+		return_value_container.add(assignment)
+
+		# If the return value is a pack, then the assignment must be rewritten
+		if return_type.is_pack {
+			reconstruction.rewrite_pack_usages(context, return_value_container)
+		}
 
 		# If the return statement is the last statement in the function, no need to create a jump
 		if return_statement.next === none and return_statement.parent.parent === none {
 			# Replace the return statement with the assignment
-			return_statement.replace(assignment)
+			return_statement.replace_with_children(return_value_container)
 			continue
 		}
 
@@ -175,7 +208,7 @@ rewrite_return_statements_with_values(context: Context, body: Node, result: Vari
 		jump = JumpNode(end)
 
 		# Replace the return statement with the assignment and the jump
-		return_statement.insert(assignment)
+		return_statement.insert_children(return_value_container)
 		return_statement.replace(jump)
 	}
 
@@ -220,6 +253,29 @@ pack State {
 }
 
 # Summary:
+# Returns whether the specified assignment saves a value to the specified variable.
+is_pack_member_assignment(assignment: Node, representive: Variable) {
+	=> assignment !== none and 
+		assignment.match(Operators.ASSIGN) and
+		assignment.first.instance == NODE_VARIABLE and
+		assignment.first.(VariableNode).variable == representive
+}
+
+# Summary:
+# Removes statements that save a returned pack to the representives of the specified pack variable.
+# These statements are expected to come after the specified assignment.
+remove_pack_return_value_assignments(assignment: Node, variable: Variable) {
+	representives = common.get_pack_representives(variable)
+
+	loop representive in representives {
+		member_assignment = assignment.next
+		require(is_pack_member_assignment(member_assignment, representive), 'Expected pack member assignment')
+
+		member_assignment.remove()
+	}
+}
+
+# Summary:
 # Returns a state containing a node tree that represents the body of the specified function implementation and other related information.
 # The returned node tree will not have any connections to the original function implementation.
 start_inlining(context: Context, implementation: FunctionImplementation, caller: Node, self_argument: Node, arguments: Node) {
@@ -227,7 +283,7 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 	body = implementation.node.clone()
 
 	# Initialize the parameters at the beginning of the function body
-	insert_parameter_initializations(implementation, arguments, body)
+	insert_parameter_initializations(context, implementation, arguments, body)
 
 	# Group all variable usages by variable
 	usages = body.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_predictable)
@@ -252,6 +308,12 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 
 		if is_assigned_to_local {
 			result = caller.previous.(VariableNode).variable
+
+			# Following code assumes that calls returning packs always have the corresponding member assignments directly after them.
+			# This means that nothing should move those assignments.
+			if result.type.is_pack {
+				remove_pack_return_value_assignments(caller.parent, result)
+			}
 		}
 		else {
 			result = context.declare_hidden(implementation.return_type)
@@ -343,6 +405,8 @@ finish_inlining(state: State) {
 # Summary:
 # Returns whether the called function can be inlined. Do not inline when recursion is detected.
 is_inlinable(destination: FunctionImplementation, called: FunctionImplementation) {
+	if called.metadata.is_outlined => false
+
 	calls = called.node.find_all(NODE_FUNCTION)
 
 	loop call in calls {
@@ -370,6 +434,11 @@ heuristical_cost(called: FunctionImplementation, arguments: Node) {
 		if return_value !== none and common.is_constant(return_value) => INLINE_THRESHOLD
 	}
 
+	# If the called function is small, inlining is likely to be a win.
+	cost = expression_optimizer.get_cost(called.node)
+
+	if cost <= expression_optimizer.SMALL_FUNCTION_THRESHOLD => INLINE_THRESHOLD
+
 	=> 0
 }
 
@@ -379,6 +448,8 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 	# Do not process the same function twice
 	if states.contains_key(implementation) return
 	states[implementation] = true # Mark the implementation as visited
+
+	logger.verbose.write_line(String('Inlining in ') + implementation.string())
 
 	# Get the root of the function implementation and clone it
 	snapshot = implementation.node.clone()
@@ -394,6 +465,8 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 		# 2. Do not inline recursive function and the current function
 		if called_function.is_imported or not is_inlinable(implementation, called_function) continue
 
+		logger.verbose.write_line(String('- Deciding inlining of ') + called_function.string())
+
 		# Perform inlining in the called function before doing anything, so that obvious inlining is not done multiple times when others call the same function
 		optimize(called_function, states)
 
@@ -401,40 +474,42 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 		state = start_inlining(called_function, usage)
 
 		# 2. Optimize the isolated node tree
-		state.body = optimizer.optimize(state.context, state.body)
+		# state.body = optimizer.optimize(state.context, state.body)
 
 		# 3. Approximate the cost of executing the called function separately from the current function
-		before = cost + expression_optimizer.get_cost(called_function.node)
+		# before = cost + expression_optimizer.get_cost(called_function.node)
 
 		# 4. Approximate the cost after inlining the function
 		# Cost after inlining = (Cost of nodes surrounding the function call) + (Cost of the optimized function body)
 		# NOTE: Costs is affected by several factors, such as the size of the node tree and the number of function calls and memory accesses
 		
 		# 4.1. Disable the function call so that its cost will not be approximated
-		instance = usage.instance
-		usage.instance = NODE_DISABLED
+		# instance = usage.instance
+		# usage.instance = NODE_DISABLED
 
 		# 4.2. Approximate the cost of the current function without the function call
-		after = expression_optimizer.get_cost(snapshot)
+		# after = expression_optimizer.get_cost(snapshot)
 
 		# 4.3. Add the cost of the optimized function body to the cost after inlining
-		after += expression_optimizer.get_cost(state.body)
+		# after += expression_optimizer.get_cost(state.body)
 
 		# 4.4. Restore the function call instance
-		usage.instance = instance
+		# usage.instance = instance
 
 		# 5. If the decrease in the cost reaches a specific threshold, proceed with inlining the function
-		if (before - after) + heuristical_cost(called_function, usage) >= INLINE_THRESHOLD {
+		if heuristical_cost(called_function, usage) >= INLINE_THRESHOLD {
 			finish_inlining(state)
 
+			logger.verbose.write_line('Inlined function', usage)
+
 			# 6. Optimize the whole function body, because the inlined function can affect decisions
-			snapshot = optimizer.optimize(implementation, snapshot)
+			# snapshot = optimizer.optimize(implementation, snapshot)
 
 			cost = expression_optimizer.get_cost(snapshot)
 		}
 	}
 
-	implementation.node = snapshot
+	implementation.node = optimizer.optimize(implementation, snapshot)
 }
 
 # Summary:
@@ -442,8 +517,20 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 optimize(context: Context) {
 	implementations = common.get_all_function_implementations(context, false)
 	states = Map<FunctionImplementation, bool>()
+	i = 0
 
 	loop implementation in implementations {
+		if settings.is_verbose_output_enabled {
+			console.put(`[`)
+			console.write(i + 1)
+			console.put(`/`)
+			console.write(implementations.size)
+			console.put(`]`)
+			console.write(' Inlining ')
+			console.write_line(implementation.string())
+		}
+
 		optimize(implementation, states)
+		i++
 	}
 }

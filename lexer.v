@@ -940,6 +940,7 @@ private get_exponent(text: String) {
 
 # Summary: Returns the format which has the same properties as specified
 private get_format(bits: large, unsigned: bool) {
+	# TODO: Compute this instead
 	format = when(bits) {
 		8 => FORMAT_INT8,
 		16 => FORMAT_INT16,

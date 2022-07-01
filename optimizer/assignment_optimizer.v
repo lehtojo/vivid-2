@@ -251,8 +251,6 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 		if not recursive and after > before {
 			# Revert back the changes since the cost has risen
 			value.replace(read)
-
-			if settings.is_verbose_output_enabled { console.write('Did not assign ') }
 		}
 		else {
 			# Remove the read from the write dependencies
@@ -272,17 +270,19 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 			# Update the local variable usages, since the assigned value 
 			add_variable_usages_from(descriptors, root)
 			assigned = true
-
-			if settings.is_verbose_output_enabled { console.write('Assigned ') }
 		}
 
-		if settings.is_verbose_output_enabled {
-			console.write(variable.name)
-			console.write(', Cost: ')
+		logger.verbose.write('Variable ')
+		logger.verbose.write(variable.name)
+		logger.verbose.write(', ')
 
-			if after > before { console.put(`+`) console.write_line(after - before) }
-			else after < before { console.write_line(after - before) }
-			else { console.write_line('0') }
+		if after > before {
+			logger.verbose.write('Loss: ')
+			logger.verbose.write_line(to_string(before - after))
+		}
+		else {
+			logger.verbose.write('Gain: ')
+			logger.verbose.write_line(to_string(before - after))
 		}
 	}
 

@@ -787,7 +787,7 @@ is_statement(node: Node) {
 is_constant(node: Node) {
 	source = common.get_source(node)
 
-	if source.instance == NODE_VARIABLE => node.(VariableNode).variable.is_constant
+	if source.instance == NODE_VARIABLE => source.(VariableNode).variable.is_constant
 	=> source.match(NODE_NUMBER | NODE_STRING | NODE_DATA_POINTER)
 }
 

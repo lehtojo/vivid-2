@@ -20,6 +20,8 @@ constant MEMORY_ADDRESS_CALL_COST = 240 # 2 * FUNCTION_CALL_COST
 
 constant MAXIMUM_LOOP_UNWRAP_STEPS = 100
 
+constant SMALL_FUNCTION_THRESHOLD = 2000 # 20 * MEMORY_ACCESS_COST
+
 # Summary:
 # Approximates the complexity of the specified node tree to execute
 get_cost(node: Node) {
