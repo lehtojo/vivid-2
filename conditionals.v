@@ -1,20 +1,12 @@
 namespace conditionals
 
 # Summary: Builds the body of an if-statement or an else-if-statement
-build_body(unit: Unit, body: ScopeNode, active_variables: List<Variable>) {
-	scope = Scope(unit, body, active_variables)
-	
-	# Merges all changes that happen in the scope with the outer scope
-	merge = MergeScopeInstruction(unit, scope)
-
+build_body(unit: Unit, body: ScopeNode) {
 	# Build the body
-	result = builders.build(unit, body)
+	result = builders.build(unit, body) as Result
 
 	# Restore the state after the body
 	unit.add_debug_position(body.end)
-	unit.add(merge)
-
-	scope.exit()
 	=> result
 }
 
@@ -32,13 +24,11 @@ build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction) {
 
 	statement.condition.instance = instance
 
-	active_variables = Scope.get_all_active_variables(unit, statement)
-
 	# Jump to the next label based on the comparison
-	build_condition(unit, condition, interphase, active_variables)
+	build_condition(unit, condition, interphase)
 
 	# Build the body of this if-statement
-	result = build_body(unit, statement.body, active_variables)
+	result = build_body(unit, statement.body)
 
 	# If the body of the if-statement is executed it must skip the potential successors
 	if statement.successor == none => result
@@ -56,8 +46,7 @@ build(unit: Unit, node: Node, end: LabelInstruction) {
 
 	if node.match(NODE_IF | NODE_ELSE_IF) => build(unit, node as IfNode, node.(IfNode).condition, end)
 
-	active_variables = Scope.get_all_active_variables(unit, node)
-	result = build_body(unit, node.(ElseNode).body, active_variables)
+	result = build_body(unit, node.(ElseNode).body)
 
 	=> result
 }
@@ -85,7 +74,7 @@ start(unit: Unit, node: IfNode) {
 	=> result
 }
 
-build_condition(unit: Unit, condition: Node, failure: Label, active_variables: List<Variable>) {
+build_condition(unit: Unit, condition: Node, failure: Label) {
 	# Load constants which might be edited inside the condition
 	Scope.load_constants(unit, condition, List<Context>())
 
@@ -94,10 +83,10 @@ build_condition(unit: Unit, condition: Node, failure: Label, active_variables: L
 	instructions = build_condition(unit, condition, success, failure) as List<Instruction>
 	instructions.add(LabelInstruction(unit, success))
 
-	build_condition_instructions(unit, instructions, active_variables)
+	build_condition_instructions(unit, instructions)
 }
 
-build_condition_instructions(unit: Unit, instructions: List<Instruction>, active_variables: List<Variable>) {
+build_condition_instructions(unit: Unit, instructions: List<Instruction>) {
 	# Remove all occurrences of the following pattern from the instructions:
 	# Jump L0
 	# L0:
@@ -164,7 +153,7 @@ build_condition_instructions(unit: Unit, instructions: List<Instruction>, active
 	# Append all the instructions to the unit
 	loop instruction in instructions {
 		if instruction.match(INSTRUCTION_TEMPORARY_COMPARE) {
-			instruction.(TemporaryCompareInstruction).add(active_variables)
+			instruction.(TemporaryCompareInstruction).add()
 		}
 		else {
 			unit.add(instruction)
@@ -190,13 +179,7 @@ TemporaryInstruction TemporaryCompareInstruction {
 		this.comparison = comparison
 	}
 
-	add(active_variables: List<Variable>) {
-		# Since this is a body of some statement is also has a scope
-		scope = Scope(unit, comparison, active_variables)
-
-		# Merges all changes that happen in the scope with the outer scope
-		merge = MergeScopeInstruction(unit, scope)
-
+	add() {
 		if root != none {
 			# Build the code surrounding the comparison
 			instance = comparison.instance
@@ -211,11 +194,6 @@ TemporaryInstruction TemporaryCompareInstruction {
 
 		# Compare the two operands
 		unit.add(CompareInstruction(unit, left, right))
-
-		# Restore the state after the body
-		unit.add(merge)
-
-		scope.exit()
 	}
 }
 

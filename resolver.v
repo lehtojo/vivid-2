@@ -25,7 +25,7 @@ get_shared_type(expected: Type, actual: Type) {
 }
 
 # Summary: Returns the shared type between all the specified types
-get_shared_type(types: List<Type>) {
+outline get_shared_type(types: List<Type>) {
 	if types.size == 0 => none as Type
 	shared = types[0]
 

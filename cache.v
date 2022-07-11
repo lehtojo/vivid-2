@@ -171,9 +171,7 @@ Instruction CacheVariablesInstruction {
 		}
 	}
 
-	# <summary>
 	# Summary: Removes all usages which should not be cached
-	# </summary>
 	filter() {
 		# Remove all readonly constants
 		loop (i = usages.size - 1, i >= 0, i--) {
@@ -250,6 +248,7 @@ Instruction CacheVariablesInstruction {
 		}
 
 		# Release the remaining variables
+		#warning Will this ever even execute?
 		loop (j = i, j < cache.remaining_variables.size, j++) {
 			cache.release(cache.remaining_variables[j])
 		}

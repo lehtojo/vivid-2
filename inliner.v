@@ -33,9 +33,6 @@ localize_subcontext(context: Context, replacement_context: Context, usages_by_va
 	loop iterator in context.variables {
 		variable = iterator.value
 
-		# Skip the variable if it is the self pointer
-		if variable.is_self_pointer continue
-
 		# Create a new variable which represents the original variable and redirect all the usages of the original variable
 		replacement_variable = replacement_context.declare_hidden(variable.type)
 
@@ -49,8 +46,6 @@ localize_subcontext(context: Context, replacement_context: Context, usages_by_va
 
 			usages_by_variable.remove(variable)
 		}
-
-		# TODO: Update declarations?
 	}
 }
 
@@ -88,31 +83,40 @@ localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Vari
 }
 
 # Summary:
+# Initializes the specified function parameter at the beginning of the function body with the provided argument.
+insert_parameter_initialization(assignments: Node, parameter: Variable, argument: Node) {
+	# Cast the argument if necessary
+	parameter_value = argument
+
+	if parameter.type !== argument.get_type() {
+		parameter_value = CastNode(argument.clone(), TypeNode(parameter.type), argument.start)
+	}
+
+	# Assign the current argument to the corresponding parameter
+	assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(parameter), parameter_value)
+
+	# Insert the assignment at the beginning of the function body
+	assignments.insert(assignments.first, assignment)
+}
+
+# Summary:
 # Initializes all the function parameters at the beginning of the function body with the provided arguments.
-insert_parameter_initializations(context: Context, implementation: FunctionImplementation, arguments: Node, body: Node) {
+insert_parameter_initializations(context: Context, implementation: FunctionImplementation, self_argument: Node, arguments: Node, body: Node) {
 	assignments = Node()
 	body.insert(body.first, assignments)
+
+	# Handle the self argument
+	if implementation.self !== none {
+		require(self_argument !== none, 'Missing self argument')
+		insert_parameter_initialization(assignments, implementation.self, self_argument)
+	}
 
 	# Find all the parameters
 	parameters = implementation.parameters
 	parameter_index = 0
 
 	loop argument in arguments {
-		# Find the parameter which corresponds to the current argument
-		parameter = parameters[parameter_index]
-
-		# Cast the argument if necessary
-		parameter_value = argument
-
-		if parameter.type !== argument.get_type() {
-			parameter_value = CastNode(argument.clone(), TypeNode(parameter.type), argument.start)
-		}
-
-		# Assign the current argument to the corresponding parameter
-		assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(parameter), parameter_value)
-
-		# Insert the assignment at the beginning of the function body
-		assignments.insert(assignments.first, assignment)
+		insert_parameter_initialization(assignments, parameters[parameter_index], argument)
 
 		# Increment the parameter index
 		parameter_index++
@@ -123,35 +127,6 @@ insert_parameter_initializations(context: Context, implementation: FunctionImple
 
 	# Inline the assignments
 	assignments.replace_with_children(assignments)
-}
-
-# Summary:
-# Initializes the potential self variable at the beginning of the function body with the provided self argument.
-# If the self variable exists, its usages are updated with a localized version of the self argument.
-localize_member_access(context: Context, implementation: FunctionImplementation, self_argument: Node, body: Node, usages_by_variable: Map<Variable, List<Node>>) {
-	self_pointer = implementation.self
-
-	if self_pointer === none {
-		# The function does not have a self pointer, so there is nothing to localize
-		return
-	}
-
-	# Create a new variable which represents the self pointer and initialize it at the beginning of the function body
-	replacement_self_pointer = context.declare_hidden(self_pointer.type)
-
-	assignment = OperatorNode(Operators.ASSIGN).set_operands(VariableNode(replacement_self_pointer), self_argument)
-	body.insert(body.first, assignment)
-
-	if usages_by_variable.contains_key(self_pointer) {
-			# Replace the usages of the self pointer with the new variable
-		usages = usages_by_variable[self_pointer]
-
-		loop usage in usages {
-			usage.(VariableNode).variable = replacement_self_pointer
-		}
-
-		usages_by_variable.remove(self_pointer)
-	}
 }
 
 # Summary:
@@ -196,11 +171,6 @@ rewrite_return_statements_with_values(context: Context, body: Node, result: Vari
 		# Create a jump to the end of the function
 		if end === none {
 			end = context.create_label()
-
-			# Initialize the result variable with an empty value at the beginning of the function
-			body.insert(body.first, OperatorNode(Operators.ASSIGN).set_operands(VariableNode(result), Node()))
-
-			body.add(JumpNode(end)) # Add this jump because it will trigger label merging
 			body.add(LabelNode(end, none as Position))
 		}
 
@@ -283,7 +253,7 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 	body = implementation.node.clone()
 
 	# Initialize the parameters at the beginning of the function body
-	insert_parameter_initializations(context, implementation, arguments, body)
+	insert_parameter_initializations(context, implementation, self_argument, arguments, body)
 
 	# Group all variable usages by variable
 	usages = body.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_predictable)
@@ -292,9 +262,6 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 	# Localize all the contexts
 	localize_subcontext(implementation, context, usages_by_variable)
 	localize_subcontexts(context, body, usages_by_variable)
-
-	# Handle the self argument
-	localize_member_access(context, implementation, self_argument, body, usages_by_variable)
 
 	has_return_value = not primitives.is_primitive(implementation.return_type, primitives.UNIT)
 
@@ -308,12 +275,6 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 
 		if is_assigned_to_local {
 			result = caller.previous.(VariableNode).variable
-
-			# Following code assumes that calls returning packs always have the corresponding member assignments directly after them.
-			# This means that nothing should move those assignments.
-			if result.type.is_pack {
-				remove_pack_return_value_assignments(caller.parent, result)
-			}
 		}
 		else {
 			result = context.declare_hidden(implementation.return_type)
@@ -362,6 +323,12 @@ start_inlining(implementation: FunctionImplementation, usage: Node) {
 # Summary:
 # Finishes inlining the function by inserting the function body into the node tree containing the caller.
 finish_inlining(state: State) {
+	# Following code assumes that calls returning packs always have the corresponding member assignments directly after them.
+	# This means that nothing should move those assignments.
+	if state.implementation.return_type.is_pack {
+		remove_pack_return_value_assignments(state.caller.parent, state.result)
+	}
+
 	# Get the environment context surrounding the caller
 	environment = state.caller.get_parent_context()
 

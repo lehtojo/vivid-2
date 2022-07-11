@@ -1,6 +1,6 @@
 INSTRUCTION_ADDITION = 1
 INSTRUCTION_ALLOCATE_STACK = 2
-# Free: 3
+INSTRUCTION_ENTER_SCOPE = 3
 INSTRUCTION_ATOMIC_EXCHANGE_ADDITION = 4
 INSTRUCTION_BITWISE = 5
 INSTRUCTION_CACHE_VARIABLES = 6
@@ -498,7 +498,6 @@ Instruction {
 		unit.write(builder.string())
 	}
 
-	virtual on_simulate() {}
 	virtual on_build() {}
 	virtual on_post_build() {}
 	virtual redirect(handle: Handle) { => false }

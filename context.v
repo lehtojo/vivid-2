@@ -28,6 +28,7 @@ Indexer {
 	private string_count = 0
 	private lambda_count = 0
 	private constant_value_count = 0
+	private scope_count = 0
 
 	context => context_count++
 	hidden => hidden_count++
@@ -37,6 +38,7 @@ Indexer {
 	string => string_count++
 	lambda => lambda_count++
 	constant_value => constant_value_count++
+	scope => scope_count++
 }
 
 Context {

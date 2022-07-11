@@ -236,7 +236,7 @@ Node ScopeNode {
 	}
 
 	override string() {
-		=> String('Scope')
+		=> String('Scope ') + context.identity
 	}
 }
 
@@ -1027,7 +1027,6 @@ Node LoopNode {
 	initialization => first.first
 	action => first.last
 
-	scope: Scope
 	start_label: Label
 	exit_label: Label
 

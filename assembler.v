@@ -367,18 +367,18 @@ VariableUsageDescriptor {
 }
 
 Scope {
+	constant ENTRY = '.entry'
+
 	unit: Unit
-	outer: Scope
-	root: Node
-	end: Instruction
+	id: String
+	index: large
 
-	actives: List<Variable> = List<Variable>()
 	variables: Map<Variable, Result> = Map<Variable, Result>()
-	transferers: Map<Variable, Result> = Map<Variable, Result>()
+	inputs: Map<Variable, Result> = Map<Variable, Result>()
+	outputs: Map<Variable, bool> = Map<Variable, bool>()
 
-	loads: List<Pair<Variable, Result>>
-	activators: bool = false
-	deactivators: bool = false
+	inputter: RequireVariablesInstruction
+	outputter: RequireVariablesInstruction
 
 	# Summary: Returns true if the variable is not defined inside any of the specified contexts
 	static is_non_local_variable(variable: Variable, contexts: List<Context>) {
@@ -406,6 +406,10 @@ Scope {
 
 	# Summary: Loads constants which might be edited inside the specified root
 	static load_constants(unit: Unit, root: Node, contexts: List<Context>) {
+		# TODO: Verify
+		# NOTE: Loads constants from other scopes during build mode
+		return
+
 		# Find all variables inside the root node which are edited
 		edited = List<Variable>()
 		roots = List<Node>(1, false)
@@ -418,44 +422,6 @@ Scope {
 
 		# All edited variables that are constants must be moved into registers or into memory
 		loop variable in edited { unit.add(SetModifiableInstruction(unit, variable)) }
-	}
-
-	# Summary: Returns all variables that the scope must take care of
-	static get_all_active_variables(unit: Unit, roots: List<Node>) {
-		result = List<Variable>()
-
-		loop iterator in unit.scope.variables {
-			variable = iterator.key
-			added = false
-
-			# 1. If the variable is used inside any of the roots, it must be included
-			loop root in roots {
-				loop usage in variable.usages {
-					if not usage.is_under(root) continue
-					result.add(variable)
-					added = true
-					stop
-				}
-			}
-
-			if added continue
-
-			# 2. If the variable is used after any of the roots, it must be included
-			loop root in roots {
-				if not analysis.is_used_later(variable, root) continue
-				result.add(variable)
-				stop
-			}
-		}
-
-		=> result
-	}
-
-	# Summary: Returns all variables that the scope must take care of
-	static get_all_active_variables(unit: Unit, root: Node) {
-		roots = List<Node>()
-		roots.add(root)
-		=> get_all_active_variables(unit, roots)
 	}
 
 	static get_non_local_variable_usage_descriptors(root: Node, context: Context) {
@@ -529,6 +495,10 @@ Scope {
 
 	# Summary: Tries to move most used variables in the specified loop into registers
 	static cache(unit: Unit, root: LoopNode) {
+		# TODO: Support
+		# NOTE: Caches deactivated variables that causes problems
+		return
+
 		roots = List<Node>(1, false)
 		roots.add(root)
 		contexts = List<Context>(1, false)
@@ -543,6 +513,10 @@ Scope {
 
 	# Summary: Tries to move most used variables in the specified roots into registers
 	static cache(unit: Unit, roots: List<Node>, contexts: List<Context>, current: Context) {
+		# TODO: Support
+		# NOTE: Caches deactivated variables that causes problems
+		return
+
 		variables: List<VariableUsageDescriptor> = get_all_variable_usages(unit, roots, contexts)
 
 		# Ensure the variables are declared in the current context or in one of its parents
@@ -563,44 +537,46 @@ Scope {
 		unit.add(CacheVariablesInstruction(unit, roots, variables, non_volatile_mode))
 	}
 
-	init(unit: Unit, root: Node) {
+	init(unit: Unit, id: String) {
 		this.unit = unit
-		this.root = root
+		this.id = id
+		this.index = unit.scopes.size
+		this.inputter = RequireVariablesInstruction(unit, true)
+		this.outputter = RequireVariablesInstruction(unit, false)
+
+		# Register this scope
+		unit.scopes[id] = this
+
 		enter()
+
+		unit.add(inputter)
 	}
 
-	init(unit: Unit, root: Node, actives: List<Variable>) {
-		this.unit = unit
-		this.root = root
-		this.actives = List<Variable>(actives)
-		enter()
-	}
-
-	set_or_create_transition_handle(variable: Variable, handle: Handle, format: large) {
-		if not variable.is_predictable abort('Tried to create transition handle for an unpredictable variable')
+	set_or_create_input(variable: Variable, handle: Handle, format: large) {
+		if not variable.is_predictable abort('Unpredictable variable can not be an input')
 
 		handle = handle.finalize()
-		transferer = none as Result
+		input = none as Result
 
-		if transferers.contains_key(variable) {
-			transferer = transferers[variable]
-			transferer.value = handle
-			transferer.format = format
+		if inputs.contains_key(variable) {
+			input = inputs[variable]
+			input.value = handle
+			input.format = format
 		}
 		else {
-			transferer = Result(handle, format)
-			transferers.add(variable, transferer)
+			input = Result(handle, format)
+			inputs.add(variable, input)
 		}
 
 		# Update the current handle to the variable
-		variables[variable] = transferer
+		variables[variable] = input
 
-		# If the transferrer is a register, the transferrer value must be attached there
-		if transferer.value.instance == INSTANCE_REGISTER {
-			transferer.value.(RegisterHandle).register.value = transferer
+		# If the input is a register, the input value must be attached there
+		if input.value.instance == INSTANCE_REGISTER {
+			input.value.(RegisterHandle).register.value = input
 		}
 
-		=> transferer
+		=> input
 	}
 
 	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
@@ -624,89 +600,73 @@ Scope {
 			if standard_parameter_registers.size > 0 { register = standard_parameter_registers.pop_or(none as Register) }
 		}
 
+		add_input(parameter)
+
 		if register != none {
-			register.value = set_or_create_transition_handle(parameter, RegisterHandle(register), parameter.type.get_register_format())
+			register.value = set_or_create_input(parameter, RegisterHandle(register), parameter.type.get_register_format())
 		}
 		else {
-			set_or_create_transition_handle(parameter, references.create_variable_handle(unit, parameter, ACCESS_WRITE), parameter.type.get_register_format())
+			set_or_create_input(parameter, references.create_variable_handle(unit, parameter, ACCESS_WRITE), parameter.type.get_register_format())
 		}
 	}
 
+	add_input(variable: Variable) {
+		# If the variable is already in the input list, do nothing
+		if inputs.contains_key(variable) => inputs[variable]
+
+		# Create a placeholder handle for the variable
+		handle = Handle()
+		handle.format = variable.type.get_register_format()
+
+		input = set_or_create_input(variable, Handle(), handle.format)
+		inputter.dependencies.add(input)
+		input.lifetime.usages.add(inputter)
+
+		=> input
+	}
+
+	add_output(variable: Variable, value: Result) {
+		# If the variable is already in the output list, do nothing
+		if outputs.contains_key(variable) return
+
+		outputter.dependencies.add(value)
+		value.lifetime.usages.add(outputter)
+
+		# Register the variable as an output
+		outputs[variable] = true
+	}
+
 	enter() {
+		# Exit the current scope before entering the new one
+		if unit.scope !== none unit.scope.exit()
+
 		# Reset variable data
-		reset()
+		variables.clear()
 
 		# Save the outer scope so that this scope can be exited later
 		if unit.scope != this { outer = unit.scope }
 
-		# Detect if there are new variables to load
-		if loads == none {
-			loads = List<Pair<Variable, Result>>()
-
-			if actives.size != 0 {
-				instruction = RequireVariablesInstruction(unit, actives)
-				instruction.description = String('Requires variables to enter a scope')
-				unit.add(instruction)
-
-				loop (i = 0, i < instruction.variables.size, i++) {
-					loads.add(Pair<Variable, Result>(instruction.variables[i], instruction.dependencies[i]))
-				}
-			}
-		}
-
-		if unit.mode == UNIT_MODE_BUILD {
-			# Load all memory handles into registers which do not use the stack
-			loop load in loads {
-				result = load.value
-				instance = result.value.instance
-
-				# 1. Load all memory handles into registers which do not use the stack
-				is_complex_memory_address = result.is_memory_address and instance != INSTANCE_STACK_MEMORY and instance != INSTANCE_STACK_VARIABLE and instance != INSTANCE_TEMPORARY_MEMORY
-
-				# 2. Load all expressions into registers
-				is_expression = instance == INSTANCE_EXPRESSION or instance == INSTANCE_STACK_ALLOCATION
-
-				if is_complex_memory_address or is_expression {
-					memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))
-				}
-			}
-		}
-
 		# Switch the current unit scope to be this scope
 		unit.scope = this
 
-		if outer != none {
-			loop (i = 0, i < actives.size, i++) {
-				variable = actives[i]
-				result = loads[i].value
-
-				set_or_create_transition_handle(variable, result.value, result.format)
-			}
-
-			if not activators {
-				activators = true
-
-				instruction = RequireVariablesInstruction(unit, actives)
-				instruction.description = String('Initializes outer scope variables')
-				unit.add(instruction)
-			}
-
-			# Get all the register which hold any active variable
-			denylist = List<Register>()
-
-			loop iterator in variables {
-				value = iterator.value.value
-				if value.instance != INSTANCE_REGISTER continue
-				denylist.add(value.(RegisterHandle).register)
-			}
-
-			# All register which do not hold active variables must be reset since they would disturb the execution of the scope
-			loop register in unit.non_reserved_registers {
-				if denylist.contains(register) continue
-				register.reset()
-			}
+		# Reset all registers
+		loop register in unit.non_reserved_registers {
+			register.reset()
 		}
-		else not settings.is_debugging_enabled {
+
+		# Set the inputs as initial values for the corresponding variables
+		loop input in inputs {
+			variable = input.key
+			result = input.value
+
+			# Reset the input value
+			result.value = Handle()
+			result.format = variable.type.get_register_format()
+
+			variables[variable] = result
+		}
+
+		if id == ENTRY and not settings.is_debugging_enabled {
 			# Move all parameters to their expected registers since this is the first scope
 			decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 			standard_parameter_registers = calls.get_standard_parameter_registers(unit)
@@ -726,7 +686,6 @@ Scope {
 		# Only predictable variables are allowed to be stored
 		if not variable.is_predictable => none as Result
 
-		# First check if the variable handle list already exists
 		if variables.contains_key(variable) {
 			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
 			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to individual local variables
@@ -735,54 +694,14 @@ Scope {
 			=> value
 		}
 
-		if recursive and outer != none {
-			value = outer.get_variable_value(variable, recursive) as Result
-			if value != none { variables.add(variable, value) }
-			=> value
-		}
-
+		abort('Missing value for variable')
 		=> none as Result
 	}
 
 	exit() {
-		if not deactivators {
-			deactivators = true
-			requirements = List<Variable>()
-
-			loop active in actives {
-				if not analysis.is_used_later(active, root) continue
-				requirements.add(active)
-			}
-
-			instruction = RequireVariablesInstruction(unit, requirements)
-			instruction.description = String('Keeps outer scope variables active across the scope')
-			unit.add(instruction)
+		if unit.mode == UNIT_MODE_ADD {
+			unit.add(outputter)
 		}
-
-		if end == none {
-			end = Instruction(unit, INSTRUCTION_NORMAL)
-			end.description = String('Marks the end of a scope')
-			end.is_abstract = true
-			unit.add(end)
-		}
-
-		# Exit to the outer scope
-		unit.scope = outer
-		if outer == none { unit.scope = this }
-
-		# Reset all registers
-		loop register in unit.registers { register.reset() }
-
-		# Attach all the variables before entering back to their registers
-		loop load in loads {
-			result = load.value
-			if not result.is_any_register continue
-			result.value.(RegisterHandle).register.value = result
-		}
-	}
-
-	reset() {
-		variables = Map<Variable, Result>()
 	}
 }
 
@@ -826,6 +745,12 @@ Unit {
 	stack_offset: large = 0
 	builder: StringBuilder
 	mode: large
+
+	# All scopes indexed by their id
+	scopes: Map<String, Scope> = Map<String, Scope>()
+
+	# List of scopes (value) that enter the scope indicated by the id of a scope (key)
+	arrivals: Map<String, List<Scope>> = Map<String, List<Scope>>()
 
 	init(function: FunctionImplementation) {
 		this.function = function
@@ -920,11 +845,129 @@ Unit {
 
 	}
 
+	# Summary:
+	# Requests a value for the specified variable from all scopes that arrive to the specified scope.
+	# Returns the input value for the specified variable.
+	require_variable_from_arrivals(variable: Variable, scope: Scope) {
+		# If we end up here, it means the specified scope does not have a value for the specified variable.
+		# We need to require the variable from all scopes that arrive to specified one:
+		input = scope.add_input(variable)
+
+		if arrivals.contains_key(scope.id) {
+			loop arrival in arrivals[scope.id] {
+				require_variable(variable, arrival)
+			}
+		}
+
+		=> input
+	}
+
+	# Summary:
+	# Requests a value for the specified variable from the specified scope.
+	# If the specified scope does not have a value for the specified variable, it will be required from all scopes that arrive to it.
+	require_variable(variable: Variable, scope: Scope) {
+		# If the variable is already outputted, no need to do anything
+		if scope.outputs.contains_key(variable) return
+
+		# If the scope assigns a value for the specified variable, we can output it from the scope
+		# In other words, no need to require the variable from other scopes entering the specified scope, since it has its own value for the variable
+		if scope.variables.contains_key(variable) {
+			scope.add_output(variable, scope.variables[variable])
+			return
+		}
+
+		input = require_variable_from_arrivals(variable, scope)
+		scope.add_output(variable, input)
+	}
+
+	# Summary: Tries to return the current value of the specified variable
+	get_variable_value(variable: Variable) {
+		if scope === none => none as Result
+
+		# If the current scope has a value for the specified variable, we can return it
+		if scope.variables.contains_key(variable) {
+			=> scope.variables[variable]
+		}
+
+		require(mode !== UNIT_MODE_BUILD, 'Can not require variable from other scopes in build mode')
+
+		=> require_variable_from_arrivals(variable, scope)
+	}
+
+	add_arrival(id: String, scope: Scope) {
+		if arrivals.contains_key(id) {
+			arrivals[id].add(scope)
+		}
+		else {
+			arrivals[id] = [ scope ]
+		}
+	}
+
+	add(instruction: JumpInstruction) {
+		is_conditional = instruction.is_conditional
+		destination_scope_id = instruction.label.name
+		next_scope_id = get_next_scope()
+		current_scope = scope
+
+		# Arrive to the destination scope from the current scope
+		add_arrival(destination_scope_id, current_scope)
+
+		# Merge with the next scope as well, if we can fall through
+		if is_conditional {
+			add(LabelMergeInstruction(this, destination_scope_id, next_scope_id))
+		}
+		else {
+			add(LabelMergeInstruction(this, destination_scope_id))
+		}
+
+		add(instruction, false)
+
+		next_scope = Scope(this, next_scope_id)
+		add(EnterScopeInstruction(this, next_scope_id))
+
+		# If we can fall through the jump instruction, the current scope can arrive to the next scope
+		if is_conditional {
+			add_arrival(next_scope.id, current_scope)
+		}
+	}
+
+	add(instruction: ReturnInstruction) {
+		add(instruction, false)
+
+		next_scope_id = get_next_scope()
+		next_scope = Scope(this, next_scope_id)
+		add(EnterScopeInstruction(this, next_scope_id))
+	}
+
+	add(instruction: LabelInstruction) {
+		next_scope_id = instruction.label.name
+		previous_scope = scope
+
+		# Merge with the next scope, since we are falling through
+		add(LabelMergeInstruction(this, next_scope_id))
+
+		# Create the next scope
+		next_scope = Scope(this, next_scope_id)
+		add(instruction, false)
+		add(EnterScopeInstruction(this, next_scope_id))
+
+		# Arrive to the next scope from the previous scope
+		add_arrival(next_scope_id, previous_scope)
+	}
+
 	add(instruction: Instruction) {
+		if instruction.type === INSTRUCTION_JUMP => add(instruction as JumpInstruction)
+		if instruction.type === INSTRUCTION_LABEL => add(instruction as LabelInstruction)
+		if instruction.type === INSTRUCTION_RETURN => add(instruction as ReturnInstruction)
+
 		=> add(instruction, false)
 	}
 
 	add(instruction: Instruction, after: bool) {
+		if after and (instruction.type === INSTRUCTION_JUMP or instruction.type === INSTRUCTION_LABEL or instruction.type === INSTRUCTION_RETURN) {
+			abort('Can not add the instruction after the current instruction')
+		}
+
 		if mode == UNIT_MODE_ADD {
 			instructions.add(instruction)
 			anchor = instruction
@@ -948,14 +991,12 @@ Unit {
 		anchor = instruction
 
 		instruction.build()
-		instruction.on_simulate()
 
 		# Return to the previous instruction by iterating forward, since it must be ahead
 		loop (anchor != destination) {
 			if anchor.state != INSTRUCTION_STATE_BUILT {
 				iterator = anchor
 				iterator.build()
-				iterator.on_simulate()
 			} 
 
 			anchor = instructions[++position]
@@ -1111,6 +1152,10 @@ Unit {
 		=> function.identity + '.' + to_string(indexer.identity)
 	}
 
+	get_next_scope() {
+		=> to_string(indexer.scope)
+	}
+
 	get_stack_pointer() {
 		loop register in registers { if has_flag(register.flags, REGISTER_STACK_POINTER) => register }
 		abort('Architecture did not have stack pointer register')
@@ -1155,19 +1200,6 @@ Unit {
 	set_variable_value(variable: Variable, value: Result) {
 		if scope == none abort('Unit did not have an active scope')
 		scope.variables[variable] = value
-	}
-
-	# Summary:
-	# Tries to return the current value of the specified variable.
-	# By default, this function goes through all scopes in order to return the value of the variable, but this can be turned off.
-	get_variable_value(variable: Variable) {
-		=> get_variable_value(variable, true)
-	}
-
-	# Summary: Tries to return the current value of the specified variable
-	get_variable_value(variable: Variable, recursive: bool) {
-		if scope == none => none as Result
-		=> scope.get_variable_value(variable, recursive)
 	}
 
 	# Summary: Returns whether any variables owns the specified value
@@ -1595,6 +1627,28 @@ postprocess(instructions: List<Instruction>) {
 	remove_unnecessary_jumps(instructions)
 }
 
+# Summary: Connects the specified scope to the destination scope.
+connect_backwards_jump(unit: Unit, from: Scope, to: Scope) {
+	# Require the input variables of the destination scope in the arrival scope
+	loop iterator in to.inputs {
+		unit.require_variable(iterator.key, from)
+	}
+}
+
+# Summary:
+# Finds all scopes that arrive to scopes before them and connects them.
+connect_backwards_jumps(unit: Unit) {
+	loop i in unit.arrivals {
+		destination = unit.scopes[i.key]
+		arrivals = i.value
+
+		loop arrival in arrivals {
+			if arrival.index < destination.index continue
+			connect_backwards_jump(unit, arrival, destination)
+		}
+	}
+}
+
 get_text_section(implementation: FunctionImplementation) {
 	builder = AssemblyBuilder()
 
@@ -1609,10 +1663,10 @@ get_text_section(implementation: FunctionImplementation) {
 	unit = Unit(implementation)
 	unit.mode = UNIT_MODE_ADD
 
+	scope = Scope(unit, String(Scope.ENTRY))
+
 	# Update the variable usages before we start
 	analysis.load_variable_usages(implementation)
-
-	scope = Scope(unit, implementation.node)
 
 	# Add virtual function header, if the implementation overrides a virtual function
 	if implementation.virtual_function != none {
@@ -1649,15 +1703,14 @@ get_text_section(implementation: FunctionImplementation) {
 		parameters.add_all(common.get_pack_representives(parameter))
 	}
 
-	unit.add(RequireVariablesInstruction(unit, parameters))
-
 	if settings.is_debugging_enabled {
 		calls.move_parameters_to_stack(unit)
 	}
 
 	builders.build(unit, implementation.node)
-	
-	scope.exit()
+
+	# Connect scopes that jump backwards
+	connect_backwards_jumps(unit)
 
 	loop instruction in unit.instructions { instruction.reindex() }
 
@@ -1671,16 +1724,18 @@ get_text_section(implementation: FunctionImplementation) {
 
 	loop (unit.position = 0, unit.position < unit.instructions.size, unit.position++) {
 		instruction = unit.instructions[unit.position]
+
+		# All instructions must have a scope
 		if instruction.scope == none abort('Missing instruction scope')
 
 		unit.anchor = instruction
-		if unit.scope != instruction.scope { instruction.scope.enter() }
+
+		# Switch between scopes
+		if unit.scope != instruction.scope {
+			instruction.scope.enter()
+		}
 
 		instruction.build()
-		instruction.on_simulate()
-
-		# Exit the current scope if its end is reached
-		if instruction == unit.scope.end { unit.scope.exit() }
 	}
 
 	# Reset the state after this simulation
@@ -1760,7 +1815,7 @@ get_text_section(implementation: FunctionImplementation) {
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
 
 	# Postprocess the instructions before giving them to the builder
-	postprocess(instructions)
+	# postprocess(instructions) TODO: Enable back
 
 	file = unit.function.metadata.start.file
 
@@ -2478,6 +2533,8 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	}
 
 	loop file in files {
+		logger.verbose.write_line(String('Building object file for ') + file.fullname)
+
 		builder = create_header(context, file, output_type)
 
 		if text_sections.contains_key(file) {
@@ -2519,14 +2576,18 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		encoder_debug_file = none as String
 		if settings.is_debugging_enabled { encoder_debug_file = file.fullname }
 
+		logger.verbose.write_line(String('- Encoding instructions...'))
 		encoder_output = instruction_encoder.encode(builder.instructions.try_get(file).value_or(List<Instruction>()), encoder_debug_file)
 
+		logger.verbose.write_line(String('- Building data sections...'))
 		sections = List<BinarySection>()
 		sections.add(encoder_output.section) # Add the text section
 		sections.add_all(modules.map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
 
 		if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
 		if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames
+
+		logger.verbose.write_line(String('- Packing the object file...'))
 
 		object_file = none as BinaryObjectFile
 
@@ -2560,6 +2621,8 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	output_filename = output_name + extension
 
 	if settings.is_target_windows {
+		logger.verbose.write_line(String('Linking...'))
+
 		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)
 		io.write_file(output_filename, binary)
 	}

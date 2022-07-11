@@ -35,8 +35,11 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 }
 
 get_variable(unit: Unit, variable: Variable, mode: large) {
-	if not settings.is_debugging_enabled and unit.is_initialized(variable) => unit.get_variable_value(variable)
-	=> GetVariableInstruction(unit, variable, mode).add()
+	if settings.is_debugging_enabled or variable.is_static or variable.is_inlined {
+		=> GetVariableInstruction(unit, variable, mode).add()
+	}
+
+	=> unit.get_variable_value(variable)
 }
 
 get_variable(unit: Unit, node: VariableNode, mode: large) {

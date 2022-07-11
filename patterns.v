@@ -1987,7 +1987,6 @@ Pattern CompilesPattern {
 	}
 }
 
-# TODO: Test
 Pattern IsPattern {
 	constant KEYWORD = 1
 	constant TYPE = 2

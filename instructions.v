@@ -218,18 +218,16 @@ Instruction LabelInstruction {
 # Ensures that the lifetimes of the specified variables begin at least at this instruction
 # This instruction works on all architectures
 Instruction RequireVariablesInstruction {
-	variables: List<Variable>
+	is_inputter: bool
 
-	init(unit: Unit, variables: List<Variable>) {
+	init(unit: Unit, is_inputter: bool) {
 		Instruction.init(unit, INSTRUCTION_REQUIRE_VARIABLES)
-		this.variables = variables
-		this.dependencies = List<Result>(variables.size, false)
-		this.description = String('Activates variables')
+		this.dependencies = List<Result>()
+		this.is_inputter = is_inputter
 		this.is_abstract = true
 
-		loop variable in variables {
-			dependencies.add(references.get_variable(unit, variable, ACCESS_READ))
-		}
+		if is_inputter { this.description = String('Inputs variables to the scope') }
+		else { this.description = String('Outputs variables to the scope') }
 	}
 }
 
@@ -907,62 +905,62 @@ Instruction InitializeInstruction {
 Instruction SetVariableInstruction {
 	variable: Variable
 	value: Result
+	is_copied: bool
 
 	init(unit: Unit, variable: Variable, value: Result) {
 		Instruction.init(unit, INSTRUCTION_SET_VARIABLE)
-
-		if not variable.is_predictable abort('Setting value for unpredictable variables is not allowed')
+		require(variable.is_predictable, 'Setting value for unpredictable variables is not allowed')
 
 		this.variable = variable
 		this.value = value
 		this.dependencies.add(value)
-
-		# If the variable has a previous value, hold it until this instruction is executed
-		previous = unit.get_variable_value(variable, false)
-
-		if previous != none { this.dependencies.add(previous) }
-
 		this.description = String('Updates the value of the variable ') + variable.name
 		this.is_abstract = true
+		this.result.format = variable.type.get_register_format()
 
-		result.format = variable.type.get_register_format()
-		on_simulate()
-	}
+		# If the value represents another variable or is a constant, it must be copied
+		this.is_copied = unit.is_variable_value(value) or value.is_constant
 
-	override on_simulate() {
-		# If the value does not represent another variable, it does not need to be copied
-		if not unit.is_variable_value(value) {
-			unit.set_variable_value(variable, value)
+		if is_copied {
+			unit.set_variable_value(variable, result)
 			return
 		}
 
-		# Since the value represents another variable, the value has been copied to the result of this instruction
-		unit.set_variable_value(variable, result)
+		unit.set_variable_value(variable, value)
 	}
 
-	override on_build() {
-		# Do not copy the value if it does not represent another variable
-		if not unit.is_variable_value(value) return
+	copy_value() {
+		format = variable.type.get_register_format()
+		register = memory.get_next_register_without_releasing(unit, format == FORMAT_DECIMAL, trace.for(unit, result))
 
-		# Try to get the current location of the variable to be updated
-		current = unit.get_variable_value(variable)
+		if register !== none {
+			result.value = RegisterHandle(register)
+			result.format = format
 
-		# Use the location if it is available
-		if current != none {
-			result.value = current.value
-			result.format = current.format
+			# Attach the result to the register
+			register.value = result
 		}
 		else {
-			# Set the default values since the location is not available
-			result.value = Handle()
-			result.format = variable.type.get_register_format()
+			result.value = references.create_variable_handle(unit, variable, ACCESS_WRITE)
+			result.format = variable.type.format
 		}
 
 		# Copy the value to the result of this instruction
-		# NOTE: If the result is empty, the system will reserve a register
 		instruction = MoveInstruction(unit, result, value)
 		instruction.type = MOVE_LOAD
 		unit.add(instruction)
+	}
+
+	override on_build() {
+		# If the value represents another variable or is a constant, it must be copied
+		if is_copied {
+			copy_value()
+
+			unit.set_variable_value(variable, result)
+			return
+		}
+
+		unit.set_variable_value(variable, value)
 	}
 }
 
@@ -1337,9 +1335,7 @@ Instruction LockStateInstruction {
 		
 		if is_locked { description = String('Locks a register') }
 		else { description = String('Unlocks a register') }
-	}
 
-	override on_simulate() {
 		register.is_locked = is_locked
 	}
 
@@ -1618,7 +1614,6 @@ Instruction TemporaryInstruction {
 
 	override on_build() { abort('Tried to build a temporary instruction') }
 	override on_post_build() { abort('Tried to build a temporary instruction') }
-	override on_simulate() { abort('Tried to build a temporary instruction') }
 }
 
 JumpOperatorBinding {
@@ -1703,64 +1698,6 @@ Instruction JumpInstruction {
 		result.format = SYSTEM_FORMAT
 
 		build(instruction, 0, InstructionParameter(result, FLAG_BIT_LIMIT_64 | FLAG_ALLOW_ADDRESS, HANDLE_MEMORY))
-	}
-}
-
-# Summary:
-# Relocates variables so that their locations match the state of the outer scope
-# This instruction works on all architectures
-Instruction MergeScopeInstruction {
-	container: Scope
-
-	init(unit: Unit, container: Scope) {
-		Instruction.init(unit, INSTRUCTION_MERGE_SCOPE)
-		this.container = container
-		this.description = String('Relocates values so that their locations match the state of the outer scope')
-		this.is_abstract = true
-	}
-
-	get_variable_stack_handle(variable: Variable, mode: large) {
-		=> Result(references.create_variable_handle(unit, variable, mode), variable.type.format)
-	}
-
-	get_destination_handle(variable: Variable) {
-		if container.outer == none => get_variable_stack_handle(variable, ACCESS_WRITE)
-		=> container.outer.get_variable_value(variable, true)
-	}
-
-	override on_build() {
-		moves = List<MoveInstruction>()
-
-		loop variable in container.actives {
-			# Packs variables are not merged, their members are instead
-			if variable.type.is_pack continue
-
-			source: Result = unit.get_variable_value(variable, true)
-			if source == none { source = get_variable_stack_handle(variable, ACCESS_READ) }
-
-			# Copy the destination value to prevent any relocation leaks
-			handle = get_destination_handle(variable)
-			destination: Result = Result(handle.value, handle.format)
-
-			if destination.is_constant continue
-
-			# If the only difference between the source and destination, is the size, and the source size is larger than the destination size, no conversion is needed
-			# NOTE: Move instruction should still be created, so that the destination is locked
-			if destination.value.equals(source.value) and to_bytes(destination.format) <= to_bytes(source.format) { source = destination }
-
-			instruction = MoveInstruction(unit, destination, source)
-			instruction.is_destination_protected = true
-			instruction.description = String('Relocates the source value to merge the current scope with the outer scope')
-			instruction.type = MOVE_RELOCATE
-
-			moves.add(instruction)
-		}
-
-		instructions = memory.align(unit, moves)
-
-		loop (i = instructions.size - 1, i >= 0, i--) {
-			unit.add(instructions[i], true)
-		}
 	}
 }
 
@@ -2368,31 +2305,37 @@ Instruction CreatePackInstruction {
 }
 
 Instruction LabelMergeInstruction {
-	label: Label
+	primary: String
+	secondary: String
 
-	init(unit: Unit, label: Label) {
+	init(unit: Unit, primary: String) {
 		Instruction.init(unit, INSTRUCTION_LABEL_MERGE)
-		this.label = label
+		this.primary = primary
+		this.secondary = none as String
 		this.is_abstract = true
 	}
 
-	create_state() {
-		variables = List<Variable>()
+	init(unit: Unit, primary: String, secondary: String) {
+		Instruction.init(unit, INSTRUCTION_LABEL_MERGE)
+		this.primary = primary
+		this.secondary = secondary
+		this.is_abstract = true
+	}
 
-		loop iterator in scope.variables {
-			variable = iterator.key
+	prepare_for(id: String) {
+		if id === none return
 
+		variables = unit.scopes[id].inputs.get_keys()
+
+		loop variable in variables {
 			# Packs variables are not merged, their members are instead
 			if variable.type.is_pack continue
 
 			# Get the current value of the variable
 			result: Result = unit.get_variable_value(variable)
 
-			# Ensure the variable is still active
-			if not result.is_active continue
-
-			# If the result is in a register, ensure it owns the register
-			if result.is_any_register and result.value.(RegisterHandle).register.value !== result continue
+			require(result.is_active, 'Output variable was not active')
+			require(not result.is_any_register or result.value.(RegisterHandle).register.value === result, 'Output variable did not own the register')
 
 			# Load complex values into registers
 			instance = result.value.instance
@@ -2401,9 +2344,13 @@ Instruction LabelMergeInstruction {
 			if (instance & allowed) == 0 {
 				memory.move_to_register(unit, result, SYSTEM_BYTES, result.format == FORMAT_DECIMAL, trace.for(unit, result))
 			}
-
-			variables.add(variable)
 		}
+	}
+
+	register_state(id: String) {
+		if id === none return
+
+		variables = unit.scopes[id].inputs.get_keys()
 
 		# Save the locations of the processed variables as a state
 		state: List<VariableState> = List<VariableState>()
@@ -2412,7 +2359,7 @@ Instruction LabelMergeInstruction {
 			state.add(VariableState.create(variable, unit.get_variable_value(variable)))
 		}
 
-		unit.states[label.name] = state
+		unit.states[id] = state
 	}
 
 	merge_with_state(state: List<VariableState>) {
@@ -2446,11 +2393,37 @@ Instruction LabelMergeInstruction {
 
 	override on_build() {
 		# If the unit does not have a registered state for the label, then we must make one
-		if not unit.states.contains_key(label.name) {
-			create_state()
+		if not unit.states.contains_key(primary) {
+			prepare_for(primary)
+			prepare_for(secondary)
+
+			register_state(primary)
+			register_state(secondary)
 			return
 		}
 
-		merge_with_state(unit.states[label.name])
+		prepare_for(secondary)
+		merge_with_state(unit.states[primary])
+		register_state(secondary)
+	}
+}
+
+Instruction EnterScopeInstruction {
+	id: String
+
+	init(unit: Unit, id: String) {
+		Instruction.init(unit, INSTRUCTION_ENTER_SCOPE)
+		this.id = id
+	}
+
+	override on_build() {
+		if not unit.states.contains_key(id) return
+
+		# Load the state
+		state: List<VariableState> = unit.states[id]
+
+		loop descriptor in state {
+			scope.set_or_create_input(descriptor.variable, descriptor.handle, descriptor.handle.format)
+		}
 	}
 }

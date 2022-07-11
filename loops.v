@@ -7,13 +7,10 @@ build_command(unit: Unit, node: CommandNode) {
 
 	if node.container == none abort('Loop command was not inside a loop')
 
-	scope = node.container.scope
-
 	if node.instruction == Keywords.STOP {
 		# TODO: Support conditions
 		#if node.condition != none arithmetic.build_condition(unit, node.condition)
 
-		unit.add(MergeScopeInstruction(unit, scope))
 		label = node.container.exit_label
 
 		# TODO: Support conditions
@@ -26,7 +23,6 @@ build_command(unit: Unit, node: CommandNode) {
 		start = statement.start_label
 
 		if statement.is_forever_loop {
-			unit.add(MergeScopeInstruction(unit, scope))
 			=> JumpInstruction(unit, start).add()
 		}
 
@@ -41,9 +37,6 @@ build_command(unit: Unit, node: CommandNode) {
 
 		statement.condition.instance = instance
 
-		# Prepare for starting the loop again potentially
-		unit.add(MergeScopeInstruction(unit, scope))
-
 		# Build the actual condition
 		exit = statement.exit_label
 		build_end_condition(unit, statement.condition, start, exit)
@@ -56,48 +49,30 @@ build_command(unit: Unit, node: CommandNode) {
 
 # Summary: Builds the body of the specified loop without any of the steps
 build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
-	active_variables = Scope.get_all_active_variables(unit, statement)
-
-	result = none as Result
-
-	scope = Scope(unit, statement.body, active_variables)
-	statement.scope = scope
-
 	# Append the label where the loop will start
 	unit.add(start)
 
 	# Build the loop body
-	result = builders.build(unit, statement.body)
+	result = builders.build(unit, statement.body) as Result
 
 	unit.add_debug_position(statement.body.end)
-	unit.add(MergeScopeInstruction(unit, scope))
-
-	scope.exit()
 	=> result
 }
 
 # Summary: Builds the body of the specified loop with its steps
-build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction, active_variables: List<Variable>) {
-	result = none as Result
-
-	scope = Scope(unit, statement.body, active_variables)
-
-	statement.scope = scope
-
+build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
 	# Append the label where the loop will start
 	unit.add(start)
 
 	# Build the loop body
-	result = builders.build(unit, statement.body)
-	
+	result = builders.build(unit, statement.body) as Result
+
 	unit.add_debug_position(statement.body.end)
 
 	if not statement.is_forever_loop {
 		# Build the loop action
 		builders.build(unit, statement.action)
 	}
-
-	unit.add(MergeScopeInstruction(unit, scope))
 
 	# Build the nodes around the actual condition by disabling the condition temporarily
 	instance = statement.condition.instance
@@ -111,8 +86,6 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction, active
 	statement.condition.instance = instance
 
 	build_end_condition(unit, statement.condition, start.label)
-
-	scope.exit()
 
 	=> result
 }
@@ -181,13 +154,11 @@ build(unit: Unit, statement: LoopNode) {
 
 	statement.condition.instance = instance
 
-	active_variables = Scope.get_all_active_variables(unit, statement)
-
 	# Jump to the end based on the comparison
-	conditionals.build_condition(unit, statement.condition, end, active_variables)
+	conditionals.build_condition(unit, statement.condition, end)
 
 	# Build the loop body
-	result = build_loop_body(unit, statement, LabelInstruction(unit, start), active_variables)
+	result = build_loop_body(unit, statement, LabelInstruction(unit, start))
 
 	# Append the label where the loop ends
 	unit.add(LabelInstruction(unit, end))
@@ -209,5 +180,5 @@ build_end_condition(unit: Unit, condition: Node, success: Label, failure: Label)
 
 	if failure != none instructions.add(JumpInstruction(unit, failure))
 
-	conditionals.build_condition_instructions(unit, instructions, unit.scope.actives)
+	conditionals.build_condition_instructions(unit, instructions)
 }

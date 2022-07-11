@@ -4,7 +4,7 @@ export internal_init(root: link) {
 	internal.allocator.initialize()
 
 	# Call the actual init function here
-	init()
+	=> init()
 }
 
 namespace io

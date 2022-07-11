@@ -1035,6 +1035,8 @@ namespace pe_format {
 		# Index all the specified object files
 		loop (i = 0, i < objects.size, i++) { objects[i].index = i }
 
+		logger.verbose.write_line('Making local symbols unique...')
+
 		# Make all hidden symbols unique by using their object file indices
 		linker.make_local_symbols_unique(objects)
 
@@ -1050,12 +1052,16 @@ namespace pe_format {
 		if executable { header.characteristics |= PE_IMAGE_CHARACTERISTICS_RELOCATIONS_STRIPPED }
 		else { header.characteristics |= PE_IMAGE_CHARACTERISTICS_DLL }
 
+		logger.verbose.write_line('Resolving symbols...')
+
 		# Resolves are unresolved symbols and returns all symbols as a list
 		symbols = linker.resolve_symbols(objects)
 
 		# Ensure sections are ordered so that sections of same type are next to each other
 		fragment_sections = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections)
 		fragments = fragment_sections.filter((i: BinarySection) -> i.type != BINARY_SECTION_TYPE_NONE and linker.is_loadable_section(i))
+
+		logger.verbose.write_line('Filling empty sections...')
 
 		fill_empty_sections(fragments)
 
@@ -1066,6 +1072,8 @@ namespace pe_format {
 		exporter_section = none as BinarySection
 
 		if not executable {
+			logger.verbose.write_line('Creating exporter section...')
+
 			# Collect all the symbols from the symbol map
 			exporter_section_symbols = List<BinarySymbol>(symbols.size, false)
 			loop iterator in symbols { exporter_section_symbols.add(iterator.value) }
@@ -1073,8 +1081,12 @@ namespace pe_format {
 			exporter_section = create_exporter_section(fragments, relocations, exporter_section_symbols, output_name)
 		}
 
+		logger.verbose.write_line('Creating dynamic linkage...')
+
 		# Create the importer section
 		import_address_section = create_dynamic_linkage(relocations, imports, fragments)
+
+		logger.verbose.write_line('Creating overlays...')
 
 		# Create sections, which cover the fragmented sections
 		overlays = linker.create_loadable_sections(fragments)
@@ -1097,6 +1109,8 @@ namespace pe_format {
 		# Determine the image base
 		header.image_base = SharedLibraryBaseAddress
 		if executable { header.image_base = linker.DefaultBaseAddress }
+
+		logger.verbose.write_line('Creating section tables...')
 
 		# Section tables:
 		# Create initial versions of section tables and finish them later when section offsets are known
@@ -1130,6 +1144,8 @@ namespace pe_format {
 		# Exclude the sections created below and go with the existing ones, since the ones created below are not needed in the section tables
 		header.number_of_sections = overlays.size
 
+		logger.verbose.write_line('Creating symbol related sections...')
+
 		# Add symbols and relocations of each section needing that
 		symbol_table_section = create_symbol_related_sections(symbol_name_table, overlays, fragments, symbols, file_position)
 		file_position = symbol_table_section.offset + symbol_table_section.virtual_size
@@ -1158,6 +1174,8 @@ namespace pe_format {
 			section_table.number_of_relocations = section.relocations.size
 		}
 
+		logger.verbose.write_line('Computing relocations...')
+
 		# Now that sections have their virtual addresses relocations can be computed
 		linker.compute_relocations(relocations, header.image_base)
 
@@ -1174,6 +1192,8 @@ namespace pe_format {
 			header.number_of_symbols = symbols.size
 			header.pointer_to_symbol_table = symbol_table_section.offset
 		}
+
+		logger.verbose.write_line('Packing the binary...')
 
 		# Compute the image size, which is the memory needed to load all the sections in place
 		last_loaded_section = overlays.find_max(i -> i.virtual_address)

@@ -1,11 +1,10 @@
 namespace builders
 
-# Summary: Tries to determine the local variable the specified node and its result represent
-try_get_local_variable(unit: Unit, node: Node, result: Result) {
+# Summary: Tries to determine the local variable the specified result represents
+try_get_local_variable(unit: Unit, result: Result) {
 	local = unit.get_value_owner(result)
 	if local != none => local
 	if result.value.instance == INSTANCE_STACK_VARIABLE => result.value.(StackVariableHandle).variable
-	if node.match(NODE_VARIABLE) and node.(VariableNode).variable.is_predictable => node.(VariableNode).variable
 	=> none as Variable
 }
 
@@ -137,19 +136,25 @@ build_negate(unit: Unit, node: NegateNode) {
 }
 
 build_assign_operator(unit: Unit, node: OperatorNode) {
+	# TODO: Support conditions
+
+	if node.first.instance == NODE_VARIABLE and node.first.(VariableNode).variable.is_predictable {
+		local = node.first.(VariableNode).variable
+		right = references.get(unit, node.last, ACCESS_READ)
+
+		=> SetVariableInstruction(unit, local, right).add()
+	}
+
 	left = references.get(unit, node.first, ACCESS_WRITE)
 	right = references.get(unit, node.last, ACCESS_READ)
 
-	local = try_get_local_variable(unit, node.first, left)
+	local = try_get_local_variable(unit, left)
 
-	# Check if the destination represents a local variable and ensure the assignment is not conditional
-	# TODO: Add node.condition == none
 	if local != none and not settings.is_debugging_enabled {
 		=> SetVariableInstruction(unit, local, right).add()
 	}
 
 	# Externally used variables need an immediate update
-	# TODO: Conditions
 	=> MoveInstruction(unit, left, right).add()
 }
 
@@ -252,9 +257,8 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 # Builds the specified jump node, while merging with its container scope
 build_jump(unit: Unit, node: JumpNode) {
 	# TODO: Support conditional jumps
-	unit.add(LabelMergeInstruction(unit, node.label))
-
-	=> JumpInstruction(unit, node.label).add()
+	unit.add(JumpInstruction(unit, node.label))
+	=> Result()
 }
 
 # Summary:

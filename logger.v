@@ -1,11 +1,9 @@
 namespace logger.verbose {
 	write(string: link) {
-		return
 		if settings.is_verbose_output_enabled { console.write(string) }
 	}
 
 	write_line(string: link) {
-		return
 		if settings.is_verbose_output_enabled { console.write_line(string) }
 	}
 
