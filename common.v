@@ -251,7 +251,6 @@ consume_function_type(state: ParserState) {
 # Summary:
 # Consumes a pack type.
 # Pattern: { $member-1: $type, $member-2: $type, ... }
-# </summary>
 consume_pack_type(state: ParserState) {
 	# Consume curly brackets
 	brackets = state.peek()
@@ -370,8 +369,8 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 				if token.match(TOKEN_TYPE_DYNAMIC) {
 					# Look for the consumption, which is related to the current dynamic token, and increment the consumed tokens by the number of tokens it once consumed
 					loop consumption in consumptions {
-						if consumption.key != token continue
-						area = consumption.value
+						if consumption.first != token continue
+						area = consumption.second
 						stop
 					}
 				}
@@ -399,8 +398,8 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 
 		# Determine how many tokens the next dynamic token consumed
 		loop consumption in consumptions {
-			if consumption.key != next continue
-			consumed = consumption.value
+			if consumption.first != next continue
+			consumed = consumption.second
 			stop
 		}
 

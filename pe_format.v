@@ -206,6 +206,7 @@ namespace pe_format {
 		start = export_data_directory_file_offset + export_directory_table_size + export_address_table_size + name_pointer_table_size + ordinal_table_size
 
 		# Load one string more since the first name is the name of the module and it is not counted
+		# TODO: Load the exported names from the name pointer table, since it is faster and more accurate
 		strings = load_strings_until(module.bytes, start, export_data_directory_file_offset + export_data_directory.physical_size)
 
 		# Skip the name of the module if the load was successful

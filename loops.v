@@ -94,14 +94,6 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
 build_forever_loop(unit: Unit, statement: LoopNode) {
 	start = unit.get_next_label()
 
-	if not settings.is_debugging_enabled {
-		# Try to cache loop variables
-		Scope.cache(unit, statement)
-	}
-
-	# Load constants which might be edited inside the loop
-	Scope.load_constants(unit, statement, [ statement.context, statement.body.context ])
-
 	# Register the start and exit label to the loop for control keywords
 	statement.start_label = unit.get_next_label()
 	statement.exit_label = unit.get_next_label()
@@ -137,14 +129,6 @@ build(unit: Unit, statement: LoopNode) {
 
 	# Initialize the loop
 	builders.build(unit, statement.initialization)
-
-	if not settings.is_debugging_enabled {
-		# Try to cache loop variables
-		Scope.cache(unit, statement)
-	}
-
-	# Load constants which might be edited inside the loop
-	Scope.load_constants(unit, statement, [ statement.body.context ])
 
 	# Build the nodes around the actual condition by disabling the condition temporarily
 	instance = statement.condition.instance

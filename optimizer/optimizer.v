@@ -19,6 +19,9 @@ optimize(context: Context, root: Node) {
 			statement_optimizer.optimize(context, snapshot)
 		}
 
+		# Clean the node tree by removing redundant nodes
+		reconstruction.clean(snapshot)
+
 		# Calculate the complexity of the current snapshot
 		cost = expression_optimizer.get_cost(snapshot)
 

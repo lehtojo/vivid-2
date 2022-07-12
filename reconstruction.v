@@ -5,29 +5,21 @@ constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
 
 # Summary: Removes redundant parentheses in the specified node tree
 # Example: x = x * (((x + 1))) => x = x * (x + 1)
-remove_redundant_parentheses(root: Node) {
-	if root.match(NODE_PARENTHESIS) or root.match(NODE_LIST) {
-		loop child in root {
-			# Require the child to be a parenthesis node with exactly one child node
-			if not child.match(NODE_PARENTHESIS) or child.first == none or child.first != child.last continue
-			child.replace(child.first)
-		}
+remove_redundant_parentheses(node: Node) {
+	# Look for parentheses that have exactly one child
+	if node.instance === NODE_PARENTHESIS and node.first !== none and node.first === node.last {
+		# Do not remove parentheses that are indices of accessor nodes
+		if node.parent !== none and (node.parent.instance !== NODE_ACCESSOR or node.next !== none) {
+			# Replace the parentheses with its child
+			value = node.first
+			node.replace(value)
 
-		# Remove all parentheses, which block logical operators
-		if root.first != none and root.first.match(NODE_OPERATOR) and root.first.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL root.replace(root.first)
-
-		# 1. Ensure the current parenthesis is the only child node of its parent
-		# 2. Ensure the current parenthesis has only one child node
-		# => The current parenthesis is redundant and it can be replaced with its child node
-		if root.parent.first == root.parent.last and root.first == root.last {
-			child = root.first
-			root.replace(child)
-			remove_redundant_parentheses(child)
-			return
+			# Process the child node next
+			node = value
 		}
 	}
 
-	loop child in root { remove_redundant_parentheses(child) }
+	loop child in node { remove_redundant_parentheses(child) }
 }
 
 # Summary: Rewrites increment and decrement operators as action operations if their values are discard.
@@ -169,8 +161,8 @@ get_increment_extractions(increments: List<Node>) {
 
 		# Try to find an extraction with the same extraction position. If one is found, the current increment should be added into it
 		loop extraction in extractions {
-			if extraction.key != extraction_position continue
-			extraction.value.add(increment)
+			if extraction.first != extraction_position continue
+			extraction.second.add(increment)
 			added = true
 			stop
 		}
@@ -179,7 +171,7 @@ get_increment_extractions(increments: List<Node>) {
 
 		# Create a new extraction and add the current increment into it
 		extraction = Pair<Node, List<Node>>(extraction_position, List<Node>())
-		extraction.value.add(increment)
+		extraction.second.add(increment)
 
 		extractions.add(extraction)
 	}
@@ -197,8 +189,8 @@ create_local_increment_extract_groups(locals: List<Node>) {
 
 		# Try to find an extraction with the same local variable. If one is found, the current increment should be added into it
 		loop extraction in extractions {
-			if extraction.key != variable continue
-			extraction.value.add(increment)
+			if extraction.first != variable continue
+			extraction.second.add(increment)
 			added = true
 			stop
 		}
@@ -207,7 +199,7 @@ create_local_increment_extract_groups(locals: List<Node>) {
 
 		# Create a new extraction and add the current increment into it
 		extraction = Pair<Variable, List<Node>>(variable, List<Node>())
-		extraction.value.add(increment)
+		extraction.second.add(increment)
 
 		extractions.add(extraction)
 	}
@@ -220,11 +212,11 @@ extract_local_increments(destination: Node, locals: List<Node>) {
 
 	loop local_extract in local_extract_groups {
 		# Determine the edited local
-		edited = local_extract.key
+		edited = local_extract.first
 		difference = 0
 
-		loop (i = local_extract.value.size - 1, i >= 0, i--) {
-			increment = local_extract.value[i]
+		loop (i = local_extract.second.size - 1, i >= 0, i--) {
+			increment = local_extract.second[i]
 
 			# Determine how much the local is incremented
 			step = 1
@@ -305,14 +297,14 @@ extract_increments(root: Node) {
 		# Create the extract position
 		# NOTE: This uses a temporary node, since sometimes the extract position can be next to an increment node, which is problematic
 		destination = Node()
-		extracts.key.insert(destination)
+		extracts.first.insert(destination)
 
 		# Find all increment nodes, whose destinations are variables
 		locals = List<Node>()
-		loop iterator in extracts.value { if iterator.first.match(NODE_VARIABLE) locals.add(iterator) }
+		loop iterator in extracts.second { if iterator.first.match(NODE_VARIABLE) locals.add(iterator) }
 
 		# Collect all extracts, whose destinations are not variables
-		others = extracts.value
+		others = extracts.second
 		loop (i = others.size - 1, i >= 0, i--) {
 			loop (j = 0, j < locals.size, j++) {
 				if others[i] != locals[j] continue
@@ -496,8 +488,8 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	# Register the runtime configurations
 	loop iterator in descriptors {
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.get_configuration_variable(), position), position),
-			iterator.value
+			LinkNode(VariableNode(container.result, position), VariableNode(iterator.first.get_configuration_variable(), position), position),
+			iterator.second
 		))
 	}
 
@@ -549,8 +541,8 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 	# Register the runtime configurations
 	loop iterator in descriptors {
 		container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-			LinkNode(VariableNode(container.result, position), VariableNode(iterator.key.get_configuration_variable(), position)),
-			iterator.value
+			LinkNode(VariableNode(container.result, position), VariableNode(iterator.first.get_configuration_variable(), position)),
+			iterator.second
 		))
 	}
 
@@ -855,6 +847,8 @@ construct_assignment_operators(root: Node) {
 is_required_pack_cast(from: Type, to: Type) {
 	=> from != to and from.is_pack and to.is_pack
 }
+
+
 
 # Summary:
 # Finds casts which have no effect and removes them
@@ -1391,7 +1385,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 # $c.y = c.y
 # g({ $c.x, $c.y })
 rewrite_pack_usages(environment: Context, root: Node) {
-	placeholders = List<KeyValuePair<Node, Node>>()
+	placeholders = List<Pair<Node, Node>>()
 
 	# Direct assignments are expanded:
 	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
@@ -1426,7 +1420,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 				placeholder = Node()
 				sources.add(placeholder)
 
-				placeholders.add(KeyValuePair<Node, Node>(placeholder, loads[j]))
+				placeholders.add(Pair<Node, Node>(placeholder, loads[j]))
 			}
 		}
 		else {
@@ -1525,23 +1519,51 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 	# Returned packs from function calls are handled last:
 	loop placeholder in placeholders {
-		placeholder.key.replace(placeholder.value)
+		placeholder.first.replace(placeholder.second)
 	}
+}
 
-	# Find all pack casts and apply them
-	casts = root.find_all(NODE_CAST).filter(i -> i.get_type().is_pack) as List<CastNode>
+# Summary:
+# Applies a cast to a pack node by changing the inner type
+apply_pack_cast(cast: Node, from: Type, to: Type) {
+	if not from.is_pack and not to.is_pack => false
+
+	# Verify the casted value is a packer and that the value type and target type are compatible
+	value = cast.first
+	if value.instance != NODE_PACK or not to.match(from) abort('Can not cast the value to a pack')
+
+	# Replace the internal type of the packer with the target type
+	value.(PackNode).type = to
+	=> true
+}
+
+# Summary:
+# Applies a cast to a number node by converting the inner value
+apply_number_cast(cast: Node, from: Type, to: Type) {
+	# Both of the types must be numbers
+	if not from.is_number or not to.is_number => false
+
+	# The casted node must be a number node
+	value = cast.first
+	if value.instance != NODE_NUMBER => false
+
+	# Convert the value to the target type
+	value.(NumberNode).convert(to.(Number).format)
+	=> true
+}
+
+# Summary:
+# Finds casts and tries to apply them by changing the casted value
+apply_casts(root: Node) {
+	casts = root.find_all(NODE_CAST).reverse()
 
 	loop cast in casts {
 		from = cast.first.get_type()
 		to = cast.get_type()
 
-		# Verify the casted value is a packer and that the value type and target type are compatible
-		if cast.first.instance != NODE_PACK or (to != from and not to.match(from)) abort('Can not cast the value to a pack')
-
-		value = cast.first as PackNode
-
-		# Replace the internal type of the packer with the target type
-		value.type = to
+		if from === to continue
+		if apply_pack_cast(cast, from, to) continue
+		if apply_number_cast(cast, from, to) continue
 	}
 }
 
@@ -1650,6 +1672,14 @@ start(implementation: FunctionImplementation, root: Node) {
 	cast_member_calls(root)
 	rewrite_pack_comparisons(root)
 	remove_redundant_inline_nodes(root)
+	apply_casts(root)
+}
+
+clean(root: Node) {
+	remove_redundant_parentheses(root)
+	remove_redundant_casts(root)
+	remove_redundant_inline_nodes(root)
+	apply_casts(root)
 }
 
 end(root: Node) {

@@ -52,21 +52,6 @@ build(unit: Unit, node: Node, end: LabelInstruction) {
 }
 
 start(unit: Unit, node: IfNode) {
-	branches = node.get_branches()
-	contexts = List<Context>()
-
-	loop branch in branches {
-		if branch.match(NODE_ELSE) {
-			contexts.add(branch.(ElseNode).body.context)
-			continue
-		}
-
-		contexts.add(branch.(IfNode).body.context)
-	}
-
-	Scope.cache(unit, branches, contexts, node.get_parent_context())
-	Scope.load_constants(unit, node, [ node.condition_container.(ScopeNode).context ])
-
 	end = LabelInstruction(unit, unit.get_next_label())
 	result = build(unit, node, end)
 	unit.add(end)
@@ -75,9 +60,6 @@ start(unit: Unit, node: IfNode) {
 }
 
 build_condition(unit: Unit, condition: Node, failure: Label) {
-	# Load constants which might be edited inside the condition
-	Scope.load_constants(unit, condition, List<Context>())
-
 	success = unit.get_next_label()
 
 	instructions = build_condition(unit, condition, success, failure) as List<Instruction>
