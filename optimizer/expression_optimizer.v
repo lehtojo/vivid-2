@@ -336,6 +336,18 @@ collect_components(node: OperatorNode) {
 		=> simplify_shift_right(left_components, right_components)
 	}
 
+	if node.operator === Operators.BITWISE_AND {
+		=> simplify_bitwise_and(left_components, right_components)
+	}
+
+	if node.operator === Operators.BITWISE_XOR {
+		=> simplify_bitwise_xor(left_components, right_components)
+	}
+
+	if node.operator === Operators.BITWISE_OR {
+		=> simplify_bitwise_or(left_components, right_components)
+	}
+
 	=> [ ComplexComponent(OperatorNode(node.operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
@@ -478,6 +490,39 @@ simplify_shift_right(left_components: List<Component>, right_components: List<Co
 	}
 
 	=> components
+}
+
+# Summary:
+# Simplifies bitwise and between the specified operands
+simplify_bitwise_and(left_components: List<Component>, right_components: List<Component>) {
+	if left_components.size == 1 and right_components.size == 1 {
+		result = left_components[0].bitwise_and(right_components[0])
+		if result !== none => [ result ]
+	}
+
+	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_AND).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+}
+
+# Summary:
+# Simplifies bitwise xor between the specified operands
+simplify_bitwise_xor(left_components: List<Component>, right_components: List<Component>) {
+	if left_components.size == 1 and right_components.size == 1 {
+		result = left_components[0].bitwise_xor(right_components[0])
+		if result !== none => [ result ]
+	}
+
+	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_XOR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+}
+
+# Summary:
+# Simplifies bitwise or between the specified operands
+simplify_bitwise_or(left_components: List<Component>, right_components: List<Component>) {
+	if left_components.size == 1 and right_components.size == 1 {
+		result = left_components[0].bitwise_or(right_components[0])
+		if result !== none => [ result ]
+	}
+
+	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_OR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:

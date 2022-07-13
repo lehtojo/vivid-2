@@ -120,12 +120,16 @@ evaluate_compiles_nodes(root: Node) {
 	}
 }
 
+evaluate(node: Node) {
+	evaluate_compiles_nodes(node)
+	evaluate_logical_operators(node)
+	evaluate_conditional_statements(node)
+}
+
 evaluate(context: Context) {
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {
-		evaluate_compiles_nodes(implementation.node)
-		evaluate_logical_operators(implementation.node)
-		evaluate_conditional_statements(implementation.node)
+		evaluate(implementation.node)
 	}
 }

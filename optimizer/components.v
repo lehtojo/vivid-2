@@ -35,19 +35,31 @@ Component {
 	virtual negation()
 
 	virtual addition(other: Component): Component {
-		=> Component()
+		=> none as Component
 	}
 
 	virtual subtraction(other: Component): Component {
-		=> Component()
+		=> none as Component
 	}
 
 	virtual multiplication(other: Component): Component {
-		=> Component()
+		=> none as Component
 	}
 
 	virtual division(other: Component): Component {
-		=> Component()
+		=> none as Component
+	}
+
+	virtual bitwise_and(other: Component): Component {
+		=> none as Component
+	}
+
+	virtual bitwise_xor(other: Component): Component {
+		=> none as Component
+	}
+
+	virtual bitwise_or(other: Component): Component {
+		=> none as Component
 	}
 
 	virtual equals(other: Component): bool
@@ -73,6 +85,10 @@ Component {
 pack Number {
 	data: large
 	is_decimal: bool
+
+	is_integer() {
+		=> not is_decimal
+	}
 
 	format() {
 		if is_decimal => FORMAT_DECIMAL
@@ -355,6 +371,30 @@ Component NumberComponent {
 		if other.is_one() => this # clone()
 
 		if other.is_number and not other.is_zero() => NumberComponent(value / other.(NumberComponent).value)
+
+		=> none as Component
+	}
+
+	override bitwise_and(other: Component) {
+		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+			=> NumberComponent(value.data & other.(NumberComponent).value.data)
+		}
+
+		=> none as Component
+	}
+
+	override bitwise_or(other: Component) {
+		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+			=> NumberComponent(value.data | other.(NumberComponent).value.data)
+		}
+
+		=> none as Component
+	}
+
+	override bitwise_xor(other: Component) {
+		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+			=> NumberComponent(value.data ¤ other.(NumberComponent).value.data)
+		}
 
 		=> none as Component
 	}
