@@ -6,11 +6,14 @@ constant COMPONENT_TYPE_NUMBER: tiny = 2
 constant COMPONENT_TYPE_VARIABLE: tiny = 4
 constant COMPONENT_TYPE_VARIABLE_PRODUCT: tiny = 8
 
+constant COMPARISON_UNKNOWN = 2
+
 Component {
 	type: tiny = COMPONENT_TYPE_NONE
 
 	is_complex => type == COMPONENT_TYPE_COMPLEX
 	is_number => type == COMPONENT_TYPE_NUMBER
+	is_integer => type == COMPONENT_TYPE_NUMBER and this.(NumberComponent).value.is_integer
 	is_variable => type == COMPONENT_TYPE_VARIABLE
 	is_variable_product => type == COMPONENT_TYPE_VARIABLE_PRODUCT
 
@@ -60,6 +63,10 @@ Component {
 
 	virtual bitwise_or(other: Component): Component {
 		=> none as Component
+	}
+
+	virtual compare(other: Component): tiny {
+		=> COMPARISON_UNKNOWN
 	}
 
 	virtual equals(other: Component): bool
@@ -251,6 +258,17 @@ pack Number {
 		=> result
 	}
 
+	compare(other: Number) {
+		if is_decimal {
+			if other.is_decimal => sign(bits_to_decimal(data) - bits_to_decimal(other.data))
+			=> sign(bits_to_decimal(data) - other.data)
+		}
+		else {
+			if other.is_decimal => sign(data - bits_to_decimal(other.data))
+			=> sign(data - other.data)
+		}
+	}
+
 	equals(other: Number) {
 		=> data === other.data and is_decimal === other.is_decimal
 	}
@@ -376,7 +394,7 @@ Component NumberComponent {
 	}
 
 	override bitwise_and(other: Component) {
-		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+		if value.is_integer and other.is_integer {
 			=> NumberComponent(value.data & other.(NumberComponent).value.data)
 		}
 
@@ -384,7 +402,7 @@ Component NumberComponent {
 	}
 
 	override bitwise_or(other: Component) {
-		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+		if value.is_integer and other.is_integer {
 			=> NumberComponent(value.data | other.(NumberComponent).value.data)
 		}
 
@@ -392,11 +410,16 @@ Component NumberComponent {
 	}
 
 	override bitwise_xor(other: Component) {
-		if value.is_integer and other.is_number and other.(NumberComponent).value.is_integer {
+		if value.is_integer and other.is_integer {
 			=> NumberComponent(value.data ¤ other.(NumberComponent).value.data)
 		}
 
 		=> none as Component
+	}
+
+	override compare(other: Component) {
+		if other.is_number => value.compare(other.(NumberComponent).value)
+		=> COMPARISON_UNKNOWN
 	}
 
 	override equals(other: Component) {

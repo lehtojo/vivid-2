@@ -806,7 +806,7 @@ Pattern NotPattern {
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		=> NotNode(parser.parse(context, tokens[OBJECT]), tokens[NOT].position)
+		=> NotNode(parser.parse(context, tokens[OBJECT]), tokens[NOT].match(Operators.EXCLAMATION), tokens[NOT].position)
 	}
 }
 
@@ -2035,7 +2035,7 @@ Pattern IsPattern {
 			result = IsNode(source, type, none as Variable, formatted[KEYWORD].position)
 		}
 
-		if negate => NotNode(result, result.start)
+		if negate => NotNode(result, false, result.start)
 		=> result
 	}
 }

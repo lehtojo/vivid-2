@@ -241,12 +241,25 @@ recreate(component: Component) {
 
 # Summary:
 # Negates the all the specified components using their internal negation method
-negate(components: List<Component>) {
+perform_negate(components: List<Component>) {
 	loop component in components {
 		component.negation()
 	}
 
 	=> components
+}
+
+# Summary:
+# Performs not operation when the specified components have exactly one component, otherwise builds a complex component
+perform_not(expression: NotNode, components: List<Component>) {
+	if components.size == 1 and components[0].is_integer {
+		data = components[0].(NumberComponent).value.data
+
+		if expression.is_bitwise => [ NumberComponent(!data) as Component ]
+		else => [ NumberComponent(data ¤ 1) as Component ]
+	}
+
+	=> [ ComplexComponent(NotNode(recreate(components), expression.is_bitwise, expression.start)) as Component ]
 }
 
 # Summary:
@@ -269,7 +282,10 @@ collect_components(expression: Node) {
 		}
 	}
 	else expression.match(NODE_NEGATE) {
-		result.add_all(negate(collect_components(expression.first) as List<Component>))
+		result.add_all(perform_negate(collect_components(expression.first) as List<Component>))
+	}
+	else expression.match(NODE_NOT) {
+		result.add_all(perform_not(expression as NotNode, collect_components(expression.first) as List<Component>))
 	}
 	else expression.match(NODE_CAST) {
 		# Look for number casts, which do not change the format from integer to decimal or vice versa
@@ -348,6 +364,10 @@ collect_components(node: OperatorNode) {
 		=> simplify_bitwise_or(left_components, right_components)
 	}
 
+	if node.operator.type === OPERATOR_TYPE_COMPARISON {
+		=> simplify_comparison(node.operator, left_components, right_components)
+	}
+
 	=> [ ComplexComponent(OperatorNode(node.operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
@@ -407,7 +427,7 @@ simplify_addition(left_components: List<Component>, right_components: List<Compo
 # Summary:
 # Simplifies the subtraction between the specified operands
 simplify_subtraction(left_components: List<Component>, right_components: List<Component>) {
-	negate(right_components)
+	perform_negate(right_components)
 
 	=> simplify_addition(left_components, right_components)
 }
@@ -526,6 +546,32 @@ simplify_bitwise_or(left_components: List<Component>, right_components: List<Com
 }
 
 # Summary:
+# Simplifies comparison operators between the specified operands
+simplify_comparison(operator: Operator, left_components: List<Component>, right_components: List<Component>) {
+	if left_components.size == 1 and right_components.size == 1 {
+		comparison = left_components[0].compare(right_components[0])
+
+		if comparison !== COMPARISON_UNKNOWN {
+			result = when(operator) {
+				Operators.GREATER_THAN => comparison > 0,
+				Operators.GREATER_OR_EQUAL => comparison >= 0,
+				Operators.LESS_THAN => comparison < 0,
+				Operators.LESS_OR_EQUAL => comparison <= 0,
+				Operators.EQUALS => comparison === 0,
+				Operators.NOT_EQUALS => comparison !== 0,
+				Operators.ABSOLUTE_EQUALS => comparison === 0,
+				Operators.ABSOLUTE_NOT_EQUALS => comparison !== 0,
+				else => abort('Unknown comparison operator') as large
+			}
+
+			=> [ NumberComponent(result) as Component ]
+		}
+	}
+
+	=> [ ComplexComponent(OperatorNode(operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+}
+
+# Summary:
 # Tries to simplify the specified node
 get_simplified_value(value: Node) {
 	components = collect_components(value)
@@ -602,7 +648,12 @@ optimize_comparisons(root: Node) {
 }
 
 is_expression_root(root: Node) {
-	=> (root.instance == NODE_OPERATOR and root.(OperatorNode).operator.type == OPERATOR_TYPE_CLASSIC) or root.match(NODE_NEGATE)
+	if root.instance == NODE_OPERATOR {
+		type = root.(OperatorNode).operator.type
+		=> type == OPERATOR_TYPE_CLASSIC or type == OPERATOR_TYPE_COMPARISON
+	}
+
+	=> root.match(NODE_NEGATE | NODE_NOT)
 }
 
 # Summary:

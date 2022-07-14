@@ -107,7 +107,7 @@ Drivable Vehicle Bus {
 }
 
 export can_use(entity: Entity, usable: Usable) {
-	if !usable.likes(entity) {
+	if not usable.likes(entity) {
 		=> false
 	}
 	else usable is Vehicle vehicle and entity is Person person {

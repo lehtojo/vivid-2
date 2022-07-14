@@ -1344,15 +1344,19 @@ Node DecrementNode {
 }
 
 Node NotNode {
-	init(object: Node, position: Position) {
+	is_bitwise: bool
+
+	init(object: Node, is_bitwise: bool, position: Position) {
 		this.start = position
 		this.instance = NODE_NOT
+		this.is_bitwise = is_bitwise
 		add(object)
 	}
 
-	init(position: Position) {
+	init(position: Position, is_bitwise: bool) {
 		this.start = position
 		this.instance = NODE_NOT
+		this.is_bitwise = is_bitwise
 	}
 
 	override try_get_type() {
@@ -1360,7 +1364,7 @@ Node NotNode {
 	}
 
 	override copy() {
-		=> NotNode(start)
+		=> NotNode(start, is_bitwise)
 	}
 
 	override string() {

@@ -110,7 +110,7 @@ build_shift_right(unit: Unit, shift: OperatorNode) {
 build_not(unit: Unit, node: NotNode) {
 	type = node.first.get_type()
 
-	if primitives.is_primitive(type, primitives.BOOL) {
+	if not node.is_bitwise {
 		value = references.get(unit, node.first, ACCESS_READ)
 		=> BitwiseInstruction.create_xor(unit, value, Result(ConstantHandle(1), SYSTEM_FORMAT), value.format, false).add()
 	}

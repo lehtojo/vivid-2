@@ -10,18 +10,53 @@ evaluate_logical_operator(expression: OperatorNode) {
 		evaluate_logical_operator(expression.last as OperatorNode)
 	}
 
-	if expression.first.instance != NODE_NUMBER and expression.last.instance != NODE_NUMBER return
+	if expression.first.instance == NODE_NUMBER {
+		is_left_zero = expression.first.(NumberNode).value == 0
 
-	a = expression.first.instance == NODE_NUMBER and expression.first.(NumberNode).value == 0
-	b = expression.last.instance == NODE_NUMBER and expression.last.(NumberNode).value == 0
-
-	if a and b {
-		expression.replace(NumberNode(SYSTEM_FORMAT, 0, expression.start))
-		return
+		if expression.operator === Operators.LOGICAL_AND {
+			if is_left_zero {
+				# Condition will never pass and right side will never be executed
+				expression.replace(expression.first)
+			}
+			else {
+				# Condition is only dependent on the right side
+				expression.replace(expression.last)
+			}
+		}
+		else {
+			if is_left_zero {
+				# Condition is only dependent on the right side
+				expression.replace(expression.last)
+			}
+			else {
+				# Condition will always pass and right side will never be executed
+				expression.replace(expression.first)
+			}
+		}
 	}
+	else expression.last.instance == NODE_NUMBER {
+		is_right_zero = expression.last.(NumberNode).value == 0
 
-	if a { expression.replace(expression.last) }
-	else { expression.replace(expression.first) }
+		if expression.operator === Operators.LOGICAL_AND {
+			if is_right_zero {
+				# Condition will always fail, but we still must execute the left side.
+				# Leave the right side as it is, because the left side could still pass
+			}
+			else {
+				# Condition is only dependent on the left side
+				expression.replace(expression.first)
+			}
+		}
+		else {
+			if is_right_zero {
+				# Condition is only dependent on the left side
+				expression.replace(expression.first)
+			}
+			else {
+				# Condition will always pass, but we still must execute the left side
+			}
+		}
+	}
 }
 
 # Summary: Evaluates expressions under the specified node
