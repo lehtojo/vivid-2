@@ -39,6 +39,26 @@ ParserState {
 		=> true
 	}
 
+	# Summary: Consumes the next token if it exists and it represents the specified operator
+	consume_operator(operator: Operator) {
+		if end >= all.size => false
+		next = all[end]
+		if not next.match(operator) => false
+		tokens.add(next)
+		end++
+		=> true
+	}
+
+	# Summary: Consumes the next token if it exists and it represents the specified parenthesis
+	consume_parenthesis(type: char) {
+		if end >= all.size => false
+		next = all[end]
+		if not next.match(type) => false
+		tokens.add(next)
+		end++
+		=> true
+	}
+
 	# Summary: Consumes the next token, if its type is contained in the specified types. This function returns true, if the next token is consumed, otherwise an empty token is consumed and false is returned.
 	consume_optional(types: large) {
 		if end >= all.size {

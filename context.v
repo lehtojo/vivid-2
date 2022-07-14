@@ -1350,6 +1350,7 @@ Context Function {
 	blueprint: List<Token>
 	start: Position
 	end: Position
+	return_type: Type
 
 	implementations: List<FunctionImplementation> = List<FunctionImplementation>()
 
@@ -1397,6 +1398,8 @@ Context Function {
 
 		implementation = FunctionImplementation(this, return_type, parent)
 		implementation.set_parameters(parameters)
+		implementation.return_type = return_type # Force the return type, if user added it
+
 		implementations.add(implementation)
 
 		implementation.implement(blueprint)
@@ -1422,6 +1425,7 @@ Context Function {
 		# Create a function implementation
 		implementation = FunctionImplementation(this, none as Type, parent)
 		implementation.set_parameters(implementation_parameters)
+		implementation.return_type = return_type # Force the return type, if user added it
 
 		# Add the created implementation to the list
 		implementations.add(implementation)
@@ -1819,6 +1823,7 @@ Function Lambda {
 		# Create a function implementation
 		implementation = LambdaImplementation(this, none as Type, parent)
 		implementation.set_parameters(parameters)
+		implementation.return_type = return_type # Force the return type, if user added it
 		implementation.is_imported = is_imported
 
 		# Add the created implementation to the implementations list
@@ -2310,8 +2315,6 @@ UnresolvedType FunctionType {
 }
 
 Function VirtualFunction {
-	return_type: Type
-
 	init(type: Type, name: String, return_type: Type, start: Position, end: Position) {
 		Function.init(type, MODIFIER_DEFAULT, name, List<Token>(), start, end)
 		this.return_type = return_type

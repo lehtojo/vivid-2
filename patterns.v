@@ -92,52 +92,55 @@ Pattern AssignPattern {
 
 Pattern FunctionPattern {
 	constant FUNCTION = 0
-	constant BODY = 2
+	constant COLON = 1
 
-	# Pattern: $name (...) [\n] {...} / =>
+	constant RETURN_TYPE_START = 2 # COLON + 1
+
+	# Pattern: $name (...) [: $return-type] [\n] {...}
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
-		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
-		path.add(TOKEN_TYPE_PARENTHESIS | TOKEN_TYPE_OPERATOR)
 
-		priority = 20
+		priority = 22
 		is_consumable = false
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[BODY].match(`{`) or tokens[BODY].match(Operators.HEAVY_ARROW)
+		# Look for a return type
+		if state.consume_operator(Operators.COLON) {
+			# Expected: $name (...) : $return-type [\n] {...}
+			if not common.consume_type(state) => false
+		}
+
+		# Optionally consume a line ending
+		state.consume_optional(TOKEN_TYPE_END)
+
+		# Consume the function body
+		=> state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		descriptor = tokens[FUNCTION] as FunctionToken
-
-		blueprint = none as List<Token>
+		blueprint = tokens[tokens.size - 1] as ParenthesisToken
+		return_type = none as Type
 		start = descriptor.position
-		end = none as Position
-		last = tokens[tokens.size - 1]
+		end = blueprint.end
 
-		# Load the function blueprint
-		if last.match(`{`) {
-			blueprint = last.(ParenthesisToken).tokens
-			end = last.(ParenthesisToken).end
-		}
-		else {
-			blueprint = List<Token>()
-			position = last.position
-			
-			error = common.consume_block(state, blueprint)
+		# Process the return type if such was consumed
+		if tokens[COLON].match(Operators.COLON) {
+			# Collect the return type tokens after the colon and before the line ending
+			return_type_tokens = tokens.slice(RETURN_TYPE_START, tokens.size - 2)
+			return_type = common.read_type(context, return_type_tokens)
 
-			if error != none {
-				state.error = error
+			# Verify the return type could be parsed in some form
+			if return_type == none {
+				state.error = Status(tokens[COLON].position, 'Could not understand the return type')
 				=> none as Node
 			}
-
-			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
-			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
 
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, start, end)
-		
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, start, end)
+		function.return_type = return_type
+
 		result = descriptor.get_parameters(function)
 		if not (result has parameters) {
 			state.error = Status(result.get_error())
@@ -848,7 +851,7 @@ Pattern ImportPattern {
 
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
-		priority = 20
+		priority = 22
 		is_consumable = false
 	}
 
@@ -1004,7 +1007,7 @@ Pattern ConstructorPattern {
 
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
-		priority = 21
+		priority = 23
 		is_consumable = false
 	}
 
@@ -1019,42 +1022,17 @@ Pattern ConstructorPattern {
 		# Optionally consume a line ending
 		state.consume_optional(TOKEN_TYPE_END)
 
-		# Try to consume curly brackets or a heavy arrow operator
-		next = state.peek()
-		if next == none => false
-		
-		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
-			state.consume()
-			=> true
-		}
-
-		=> false
+		# Consume the function body
+		=> state.consume_parenthesis(`{`)
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
 		descriptor = tokens[HEADER] as FunctionToken
 		type = environment as Type
 
+		blueprint = tokens[tokens.size - 1] as ParenthesisToken
 		start = descriptor.position
-		end = none as Position
-
-		blueprint = none as List<Token>
-		last = tokens[tokens.size - 1]
-
-		if last.match(`{`) {
-			blueprint = last.(ParenthesisToken).tokens
-			end = last.(ParenthesisToken).end
-		}
-		else {
-			blueprint = List<Token>()
-			error = common.consume_block(state, blueprint)
-			
-			# Abort, if an error is returned
-			if error != none {
-				state.error = error
-				=> none as Node
-			}
-		}
+		end = blueprint.end
 
 		function = none as Function
 		is_constructor = descriptor.name == Keywords.INIT.identifier
@@ -1070,7 +1048,7 @@ Pattern ConstructorPattern {
 		}
 
 		function.parameters = parameters
-		function.blueprint = blueprint
+		function.blueprint = blueprint.tokens
 
 		if is_constructor type.add_constructor(function as Constructor)
 		else { type.add_destructor(function as Destructor) }
@@ -1453,13 +1431,9 @@ Pattern IterationLoopPattern {
 }
 
 Pattern TemplateFunctionPattern {
-	constant NAME = 0
-	constant PARAMETERS_OFFSET = 1
-
 	constant TEMPLATE_PARAMETERS_START = 2
-	constant TEMPLATE_PARAMETERS_END = 4
 
-	# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
+	# Pattern: $name <$1, $2, ... $n> (...) [: $return-type] [\n] {...}
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 23
@@ -1467,22 +1441,25 @@ Pattern TemplateFunctionPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
-		next = state.peek()
-		if next == none or not next.match(Operators.LESS_THAN) => false
-		state.consume()
+		# Pattern: $name <$1, $2, ... $n> (...) [: $return-type] [\n] {...}
+		if not state.consume_operator(Operators.LESS_THAN) => false
 
 		loop {
+			# Expect template parameter
 			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
 
+			# Expect an operator, either a comma or the end of the template parameters
 			next = state.peek()
-			if next == none => false
 
+			if next === none => false
+
+			# Stop if we reached the end of template parameters
 			if next.match(Operators.GREATER_THAN) {
 				state.consume()
 				stop
 			}
 
+			# If we consumed a comma, expect another template parameter
 			if next.match(Operators.COMMA) {
 				state.consume()
 				continue
@@ -1492,53 +1469,45 @@ Pattern TemplateFunctionPattern {
 		}
 
 		# Now there must be function parameters next
-		next = state.peek()
-		if next == none or not next.match(`(`) => false
-		state.consume()
+		if not state.consume_parenthesis(`(`) => false
 
-		# Optionally consume a line ending
-		state.consume_optional(TOKEN_TYPE_END)
-
-		# Try to consume curly brackets
-		next = state.peek()
-		if next == none => false
-
-		# 1. Support regular function body
-		# 2. Support short template function body
-		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
-			state.consume()
-			=> true
+		# Optionally consume return type
+		if state.consume_operator(Operators.COLON) {
+			# Expect return type
+			if not common.consume_type(state) => false
 		}
 
-		=> false
+		# Optionally consume a line ending
+		state.consume(TOKEN_TYPE_END)
+
+		# Consume the function body
+		=> state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		name = tokens[NAME] as IdentifierToken
-		blueprint = none as ParenthesisToken
+		name = tokens[0] as IdentifierToken
+		blueprint = tokens[tokens.size - 1] as ParenthesisToken
 		start = name.position
-		end = none as Position
+		end = blueprint.end
 
-		if tokens[tokens.size - 1].match(`{`) {
-			blueprint = tokens[tokens.size - 1] as ParenthesisToken
-			end = blueprint.end
+		# Try to find the start of the optional return type
+		parameters_index = 0
+		colon_index = tokens.find_index(i -> i.match(Operators.COLON))
+
+		if colon_index >= 0 {
+			# Parameters are just to the left of the colon
+			parameters_index = colon_index - 1
+		}
+		else {
+			# Index of the parameters can be determined from the end of tokens, because the user did not add the return type
+			# Case 1: $name <$1, $2, ... $n> (...) {...}
+			# Case 2: $name <$1, $2, ... $n> (...) \n {...}
+			parameters_index = tokens.size - 2
+			if tokens[parameters_index].type == TOKEN_TYPE_END { parameters_index-- }
 		}
 
-		# Find the end of the template parameters and collect them
-		template_parameters_end = -1
-
-		loop (i = tokens.size - 1, i >= 0, i--) {
-			if not tokens[i].match(Operators.GREATER_THAN) continue
-			template_parameters_end = i
-			stop
-		}
-
-		if template_parameters_end == -1 {
-			state.error = Status(start, 'Can not find the end of the template parameters')
-			=> none as Node
-		}
-
-		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, template_parameters_end)
+		# Extract the template parameters
+		template_parameter_tokens = tokens.slice(TEMPLATE_PARAMETERS_START, parameters_index - 1)
 		template_parameters = common.get_template_parameters(template_parameter_tokens)
 
 		if template_parameters.size == 0 {
@@ -1546,10 +1515,11 @@ Pattern TemplateFunctionPattern {
 			=> none as Node
 		}
 
-		parenthesis = tokens[template_parameters_end + PARAMETERS_OFFSET] as ParenthesisToken
+		parenthesis = tokens[parameters_index] as ParenthesisToken
 		descriptor = FunctionToken(name, parenthesis)
 		descriptor.position = start
 
+		# Create the template function
 		template_function = TemplateFunction(context, MODIFIER_DEFAULT, name.value, template_parameters, parenthesis.tokens, start, end)
 
 		# Determine the parameters of the template function
@@ -1560,26 +1530,11 @@ Pattern TemplateFunctionPattern {
 
 		template_function.parameters.add_all(parameters)
 
-		if blueprint == none {
-			# Take the heavy arrow token into the blueprint as well
-			result = List<Token>(1, false)
-			result.add(tokens[tokens.size - 1])
-
-			error = common.consume_block(state, result)
-
-			if error != none {
-				state.error = error
-				=> none as Node
-			}
-
-			blueprint = ParenthesisToken(result)
-			blueprint.opening = `{`
-		}
-
 		# Save the created blueprint
 		template_function.blueprint.add(descriptor)
-		template_function.blueprint.add(blueprint)
+		template_function.blueprint.add_all(tokens.slice(parameters_index + 1, tokens.size))
 
+		# Declare the template function
 		context.declare(template_function)
 
 		=> FunctionDefinitionNode(template_function, start)
@@ -1678,7 +1633,7 @@ Pattern VirtualFunctionPattern {
 	constant COLON = 2
 	constant RETURN_TYPE = 3
 
-	# Pattern: virtual $function [: $type] [\n] [{...}]
+	# Pattern: virtual $function [: $return-type] [\n] [{...}]
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_FUNCTION)
@@ -1695,13 +1650,8 @@ Pattern VirtualFunctionPattern {
 		# If the colon token is not none, it must represent colon operator and the return type must be consumed successfully
 		if colon.type != TOKEN_TYPE_NONE and (not colon.match(Operators.COLON) or not common.consume_type(state)) => false
 
-		state.consume(TOKEN_TYPE_END)
-
-		# Try to consume a function body, which would be the default implementation of the virtual function
-		next = state.peek()
-		if next == none => true
-
-		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) state.consume()
+		state.consume(TOKEN_TYPE_END) # Optionally consume a line ending
+		state.consume_parenthesis(`{`) # Optionally consume a function body
 		=> true
 	}
 
@@ -1771,32 +1721,10 @@ Pattern VirtualFunctionPattern {
 			}
 		}
 
-		# Get the default implementation of this virtual function
-		blueprint = none as List<Token>
-		end = none as Position
-		last = tokens[tokens.size - 1]
-
-		if last.match(Operators.HEAVY_ARROW) {
-			blueprint = List<Token>()
-			position = last.position
-			error = common.consume_block(state, blueprint)
-
-			# If the result is not none, something went wrong
-			if error != none {
-				state.error = error
-				=> none as VirtualFunction
-			}
-
-			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
-			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
-		}
-		else {
-			blueprint = last.(ParenthesisToken).tokens
-			end = last.(ParenthesisToken).end
-		}
-
 		descriptor = tokens[FUNCTION] as FunctionToken
+		blueprint = tokens[tokens.size - 1] as ParenthesisToken
 		start = tokens[0].position
+		end = blueprint.end
 
 		# Ensure there is no other virtual function with the same name as this virtual function
 		type = context.find_type_parent()
@@ -1828,7 +1756,7 @@ Pattern VirtualFunctionPattern {
 		virtual_function.parameters.add_all(parameters)
 
 		# Create the default implementation of the virtual function
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, descriptor.position, end)
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, descriptor.position, end)
 
 		# Define the parameters of the default implementation
 		if not (descriptor.get_parameters(function) has implementation_parameters) {
@@ -1848,7 +1776,7 @@ Pattern VirtualFunctionPattern {
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		function = none as Function
 
-		if tokens[tokens.size - 1].match(`{`) or tokens[tokens.size - 1].match(Operators.HEAVY_ARROW) {
+		if tokens[tokens.size - 1].match(`{`) {
 			function = create_virtual_function_with_implementation(context, state, tokens)
 		}
 		else {
@@ -2045,7 +1973,6 @@ Pattern OverrideFunctionPattern {
 	constant FUNCTION = 1
 
 	# Pattern 1: override $name (...) [\n] {...}
-	# Pattern 2: override $name (...) [\n] => ...
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_FUNCTION)
@@ -2057,50 +1984,23 @@ Pattern OverrideFunctionPattern {
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		if not context.is_type or not tokens[OVERRIDE].match(Keywords.OVERRIDE) => false # Override functions must be inside types
 
-		next = state.peek()
-		if next == none => false
-
-		if next.match(`{`) or next.match(Operators.HEAVY_ARROW) {
-			state.consume()
-			=> true
-		}
-
-		=> false
+		# Consume the function body
+		=> state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		blueprint = none as List<Token>
-		end = none as Position
-		last = tokens[tokens.size - 1]
-
-		# Load the function blueprint
-		if last.match(Operators.HEAVY_ARROW) {
-			blueprint = List<Token>()
-			position = last.position
-
-			error = common.consume_block(state, blueprint)
-
-			if error != none {
-				state.error = error
-				=> none as Node
-			}
-
-			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
-			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
-		}
-		else {
-			blueprint = last.(ParenthesisToken).tokens
-			end = last.(ParenthesisToken).end
-		}
-
 		descriptor = tokens[FUNCTION] as FunctionToken
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint, descriptor.position, end)
-		
+		blueprint = tokens[tokens.size - 1] as ParenthesisToken
+		start = descriptor.position
+		end = blueprint.end
+
+		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, start, end)
+
 		# Parse the function parameters
 		result = descriptor.get_parameters(function)
 
 		if not (result has parameters) {
-			state.error = Status(descriptor.position, 'Could not resolve the parameters')
+			state.error = Status(start, 'Could not resolve the parameters')
 			=> none as Node
 		}
 
@@ -2108,7 +2008,7 @@ Pattern OverrideFunctionPattern {
 
 		# Declare the override function and return a function definition node
 		context.(Type).declare_override(function)
-		=> FunctionDefinitionNode(function, descriptor.position)
+		=> FunctionDefinitionNode(function, start)
 	}
 }
 
@@ -2250,6 +2150,7 @@ Pattern RangePattern {
 	}
 }
 
+# TODO: Add support for 'has not'
 Pattern HasPattern {
 	constant HAS = 1
 	constant NAME = 2
