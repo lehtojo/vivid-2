@@ -264,7 +264,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 		unit.add(instruction)
 
 		# Windows: Even though the first parameters are passed in registers, they still require their own stack memory (shadow space)
-		if register !== none and not settings.is_target_windows return
+		if register !== none and not settings.is_target_windows continue
 
 		# Normal parameters consume one stack unit
 		stack_position.offset += SYSTEM_BYTES
