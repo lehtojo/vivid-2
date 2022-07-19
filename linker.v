@@ -1,6 +1,6 @@
 namespace linker {
-	constant DefaultBaseAddress = 0x400000
-	constant SegmentAlignment = 0x1000
+	constant DEFAULT_BASE_ADDRESS = 0x400000
+	constant SEGMENT_ALIGNMENT = 0x1000
 
 	# Summary:
 	# Goes through all the symbols in the specified object files and makes their hidden symbols unique by adding their object file indices to their names.
@@ -87,7 +87,7 @@ namespace linker {
 			if inner_fragment.type == BINARY_SECTION_TYPE_NONE or has_flag(inner_fragment.flags, BINARY_SECTION_FLAGS_ALLOCATE) { allocated_fragments++ }
 		}
 
-		file_position = SegmentAlignment
+		file_position = SEGMENT_ALIGNMENT
 		i = 0
 
 		loop iterator in section_fragments {
@@ -99,7 +99,7 @@ namespace linker {
 			name = inner_fragments[0].name
 
 			# Compute the margin needed to align the overlay section, this is different from the inner alignments
-			alignment = SegmentAlignment
+			alignment = SEGMENT_ALIGNMENT
 			if not is_allocated_section { alignment = inner_fragments[0].alignment }
 
 			overlay_margin = alignment - file_position % alignment

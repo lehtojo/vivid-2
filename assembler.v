@@ -1705,6 +1705,7 @@ add_linux_x64_header(entry_function_call: String) {
 	builder = StringBuilder()
 	builder.append_line('.export _start')
 	builder.append_line('_start:')
+	builder.append_line('mov rdi, rsp')
 	builder.append_line(entry_function_call)
 	builder.append_line('mov rdi, rax')
 	builder.append_line('mov rax, 60')
@@ -1726,6 +1727,7 @@ add_linux_arm64_header(entry_function_call: String) {
 	builder = StringBuilder()
 	builder.append_line('.export _start')
 	builder.append_line('_start:')
+	builder.append_line('mov x0, sp')
 	builder.append_line(entry_function_call)
 	builder.append_line('mov x8, #93')
 	builder.append_line('svc #0')
@@ -2365,7 +2367,8 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 			object_files.add(file, object_file)
 		}
 		else {
-			# TODO: Import linux support
+			if not (elf_format.import_object_file(object_filename) has object_file) abort(String('Could not import object file ') + object_filename)
+			object_files.add(file, object_file)
 		}
 	}
 
@@ -2432,7 +2435,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 			object_file = pe_format.create_object_file(file.fullname, sections, builder.exports)
 		}
 		else {
-			# TODO: Import linux support
+			object_file = elf_format.create_object_file(file.fullname, sections, builder.exports)
 		}
 
 		object_files.add(file, object_file)
@@ -2456,17 +2459,18 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	}
 
 	output_filename = output_name + extension
+	binary = none as Array<byte>
+
+	logger.verbose.write_line(String('Linking...'))
 
 	if settings.is_target_windows {
-		logger.verbose.write_line(String('Linking...'))
-
 		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)
-		io.write_file(output_filename, binary)
 	}
 	else {
-		# TODO: Import linux support
+		binary = elf_format.link(object_files.get_values(), get_default_entry_point(), output_type == BINARY_TYPE_EXECUTABLE)
 	}
 
+	io.write_file(output_filename, binary)
 	=> assemblies
 }
 

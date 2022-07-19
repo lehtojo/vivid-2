@@ -1290,13 +1290,8 @@ Instruction ReorderInstruction {
 			instructions.add(instruction)
 		}
 
-		instructions = memory.align(unit, instructions)
-
+		memory.align(unit, instructions)
 		extracted = true
-
-		loop (i = instructions.size - 1, i >= 0, i--) {
-			unit.add(instructions[i], true)
-		}
 	}
 
 	override get_dependencies() {

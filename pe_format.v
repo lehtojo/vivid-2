@@ -650,8 +650,8 @@ namespace pe_format {
 		# Add the string table inside the exporter section
 		string_table_data = string_table.build()
 		exporter_section.data = Array<byte>(exporter_section_data.size + string_table_data.size)
-		copy(exporter_section_data.data, exporter_section_data.size, exporter_section.data.data)
-		copy(string_table_data.data, string_table_data.size, exporter_section.data.data + exporter_section_data.size)
+		binary_utility.write_bytes(exporter_section_data, exporter_section.data)
+		binary_utility.write_bytes(string_table_data, exporter_section.data, exporter_section_data.size, string_table_data.size)
 
 		# Update the exporter section size
 		exporter_section.virtual_size = exporter_section.data.size
@@ -954,8 +954,8 @@ namespace pe_format {
 		string_table_data = string_table.build().data
 
 		new_importer_section_data = Array<byte>(importer_section.data.size + string_table_data.size)
-		copy(importer_section.data.data, importer_section.data.size, new_importer_section_data.data)
-		copy(string_table_data.data, string_table_data.size, new_importer_section_data.data + importer_section.data.size)
+		binary_utility.write_bytes(importer_section.data, new_importer_section_data)
+		binary_utility.write_bytes(string_table_data, new_importer_section_data, importer_section.data.size, string_table_data.size)
 
 		importer_section.data = new_importer_section_data
 
@@ -1109,7 +1109,7 @@ namespace pe_format {
 
 		# Determine the image base
 		header.image_base = SharedLibraryBaseAddress
-		if executable { header.image_base = linker.DefaultBaseAddress }
+		if executable { header.image_base = linker.DEFAULT_BASE_ADDRESS }
 
 		logger.verbose.write_line('Creating section tables...')
 
@@ -1240,12 +1240,12 @@ namespace pe_format {
 			# Loadable sections are handled with the fragments
 			if linker.is_loadable_section(section) continue
 
-			copy(section.data.data, section.data.size, binary.data + section.offset)
+			binary_utility.write_bytes(section.data, binary.data, section.offset, section.data.size)
 		}
 
 		# Write the loadable sections
 		loop fragment in fragments {
-			copy(fragment.data.data, fragment.data.size, binary.data + fragment.offset)
+			binary_utility.write_bytes(fragment.data, binary.data, fragment.offset, fragment.data.size)
 		}
 
 		=> binary

@@ -5,7 +5,7 @@ BINARY_SECTION_TYPE_STRING_TABLE = 3
 BINARY_SECTION_TYPE_SYMBOL_TABLE = 4
 BINARY_SECTION_TYPE_RELOCATION_TABLE = 5
 BINARY_SECTION_TYPE_DYNAMIC = 6
-BINARY_SECTION_TYPE_HAS = 7
+BINARY_SECTION_TYPE_HASH = 7
 
 BINARY_SECTION_FLAGS_WRITE = 1
 BINARY_SECTION_FLAGS_EXECUTE = 2
@@ -212,10 +212,17 @@ BinaryStringTable {
 			result.data.(link<normal>)[0] = bytes
 
 			# Copy the payload
-			copy(payload.data, payload.length, result.data + sizeof(normal))
+			if payload.length > 0 {
+				copy(payload.data, payload.length, result.data + sizeof(normal))
+			}
 		}
 		else {
-			result = Array<byte>(payload.data, payload.length)
+			result = Array<byte>(payload.length + 1)
+
+			# Copy the payload
+			if payload.length > 0 {
+				copy(payload.data, payload.length, result.data)
+			}
 		}
 
 		=> result
@@ -439,4 +446,40 @@ swap_endianness_int32(value: normal) {
 	d = (value |> 24) & 0xFF
 
 	=> (a <| 24) | (b <| 16) | (c <| 8) | d
+}
+
+# Summary:
+# Copies the specified number of bytes from the source array to the destination address at the specified offset
+write_bytes(source: Array<byte>, destination: link, offset: large, bytes: large) {
+	require(source.size >= bytes, 'Source array is not large enough')
+
+	if source.size == 0 return
+	copy(source.data, bytes, destination + offset)
+}
+
+# Summary:
+# Copies the specified number of bytes from the source array to the destination address
+write_bytes(source: Array<byte>, destination: link, bytes: large) {
+	write_bytes(source, destination, 0, bytes)
+}
+
+# Summary:
+# Copies all the bytes from the source array to the destination address
+write_bytes(source: Array<byte>, destination: link) {
+	write_bytes(source, destination, 0, source.size)
+}
+
+# Summary:
+# Copies the specified number of bytes from the source array to the destination array at the specified offset
+write_bytes(source: Array<byte>, destination: Array<byte>, offset: large, bytes: large) {
+	require(destination.size - offset >= bytes, 'Destination array can not contain the copy')
+	write_bytes(source, destination.data, offset, bytes)
+}
+
+
+# Summary:
+# Copies all the bytes from the source array to the destination array
+write_bytes(source: Array<byte>, destination: Array<byte>) {
+	require(destination.size >= source.size, 'Destination array can not contain the copy')
+	write_bytes(source, destination.data, 0, source.size)
 }

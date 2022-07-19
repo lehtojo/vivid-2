@@ -52,41 +52,27 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 
 # Summary: Aligns the specified moves so that intersections are minimized
 align(unit: Unit, moves: List<MoveInstruction>) {
-	result = List<Instruction>()
+	complex = List<Instruction>()
+
+	# Execute complex moves before anything else, because they might require multiple steps
+	loop (i = moves.size - 1, i >= 0, i--) {
+		move = moves[i]
+
+		if not move.first.is_any_register or move.second.is_empty {
+			complex.add(move)
+			moves.remove_at(i)
+		}
+	}
+
 	locks = List<Instruction>()
 	unlocks = List<Instruction>()
-	registers = List<Register>()
 
 	loop move in moves {
 		if move.is_redundant and move.first.is_standard_register {
 			register = move.first.value.(RegisterHandle).register
 			locks.add(LockStateInstruction(unit, register, true))
 			unlocks.add(LockStateInstruction(unit, register, false))
-			registers.add(register)
 		}
-	}
-
-	# Now remove all redundant moves
-	loop (i = moves.size - 1, i >= 0, i--) {
-		if not moves[i].is_redundant continue
-		moves.remove_at(i)
-	}
-
-	# Execute complex moves before anything else, because they might require multiple steps
-	loop (i = moves.size - 1, i >= 0, i--) {
-		move = moves[i]
-
-		# Skip non-complex moves
-		if move.first.is_empty or move.second.is_empty {
-			result.add(move)
-			moves.remove_at(i)
-			continue
-		}
-
-		if (move.first.is_any_register or move.first.is_constant) or (move.second.is_any_register or move.second.is_constant) continue
-
-		result.add(move)
-		moves.remove_at(i)
 	}
 
 	aligned = minimize_intersections(unit, moves as List<DualParameterInstruction>) as List<Instruction>
@@ -105,9 +91,6 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 
 			unlocks.add(LockStateInstruction(unit, first, false))
 			unlocks.add(LockStateInstruction(unit, second, false))
-
-			registers.add(first)
-			registers.add(second)
 		}
 		else instruction.type == INSTRUCTION_MOVE {
 			move = instruction as MoveInstruction
@@ -117,8 +100,6 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 
 				aligned.insert(i + 1, LockStateInstruction(unit, register, true))
 				unlocks.add(LockStateInstruction(unit, register, false))
-
-				registers.add(register)
 			}
 		}
 		else {
@@ -126,10 +107,15 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 		}
 	}
 
+	result = List<Instruction>()
+	result.add_all(complex)
 	result.add_all(locks)
 	result.add_all(aligned)
 	result.add_all(unlocks)
-	=> result
+
+	loop (i = result.size - 1, i >= 0, i--) {
+		unit.add(result[i], true)
+	}
 }
 
 # Summary: Loads the operand so that it is ready based on the specified settings

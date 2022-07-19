@@ -1233,8 +1233,8 @@ hexadecimal_to_integer(text: String) {
 		value = 0
 
 		if digit >= `0` and digit <= `9` { value = digit - `0` }
-		else digit >= `A` or digit <= `F` { value = digit - `A` + 10 }
-		else digit >= `a` or digit <= `f` { value = digit - `a` + 10 }
+		else digit >= `A` and digit <= `F` { value = digit - `A` + 10 }
+		else digit >= `a` and digit <= `f` { value = digit - `a` + 10 }
 		else => Optional<large>()
 
 		result = result * 16 + value

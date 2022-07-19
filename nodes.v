@@ -173,12 +173,26 @@ Node OperatorNode {
 		=> create_operator_overload_function_call(first, overload, arguments)
 	}
 
+	# Summary:
+	# Returns whether the user is attempting to modify a memory address
+	private is_address_modification(left_type: Type, right_type: Type) {
+		if left_type === none or right_type === none => false
+
+		# Allow plus, minus, and multiply operations on memory addresses
+		if operator !== Operators.ADD and operator !== Operators.SUBTRACT and operator !== Operators.MULTIPLY => false
+
+		# The right operand must be an integer type
+		if not right_type.is_number or right_type.format === FORMAT_DECIMAL => false
+
+		# Allow links and array types as left operands
+		=> primitives.is_primitive(left_type, primitives.LINK) or left_type.is_array_type
+	}
+
 	private get_classic_type() {
 		left_type = first.try_get_type()
 		right_type = last.try_get_type()
 
-		# Return the left type only if it represents a link, which is modified with an integer type
-		if primitives.is_primitive(left_type, primitives.LINK) and right_type != none and right_type.is_number and right_type.format != FORMAT_DECIMAL and (operator == Operators.ADD or operator == Operators.SUBTRACT or operator == Operators.MULTIPLY) => left_type
+		if is_address_modification(left_type, right_type) => left_type
 
 		=> resolver.get_shared_type(left_type, right_type)
 	}

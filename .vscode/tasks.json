@@ -48,6 +48,51 @@
 			}
 		},
 		{
+			"label": "Build (Linux)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}/build/"
+			},
+			"command": "Vivid",
+			// "args": [
+			// 	"${workspaceFolder}",
+			// 	"${workspaceFolder}/entries/vivid.v",
+			// 	"-a",
+			// 	"-f",
+			// 	"-o",
+			// 	"vc",
+			// 	"-l",
+			// 	"kernel32",
+			// 	"-l",
+			// 	"v",
+			// 	"-d",
+			// 	"-verbose"
+			// ],
+			"args": [
+				"${workspaceFolder}",
+				"${workspaceFolder}/entries/vivid.v",
+				"${workspaceFolder}/tests/assert.v",
+				"${workspaceFolder}/optimizer/",
+				"${workspaceFolder}/libv/",
+				"${workspaceFolder}/libv/linux-x64/",
+				"${workspaceFolder}/libv/allocator/allocator.v",
+				"${workspaceFolder}/min.math.o",
+				"${workspaceFolder}/min.memory.o",
+				"${workspaceFolder}/min.system.o",
+				"${workspaceFolder}/min.tests.o",
+				"-a",
+				"-f",
+				"-o",
+				"vc",
+				"-d",
+				"-verbose"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
 			"label": "Tests",
 			"type": "shell",
 			"options": {
