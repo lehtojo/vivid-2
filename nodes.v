@@ -2030,8 +2030,11 @@ Node HasNode {
 		if type === none or type.is_unresolved => none as Node
 
 		# Continue if the source object has the required getter function
-		get_value_function = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
-		if get_value_function == none or get_value_function.return_type == none or get_value_function.return_type.is_unresolved => none as Node
+		get_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER))
+		if get_value_function_overloads === none => none as Node
+
+		get_value_function = get_value_function_overloads.get_implementation(List<Type>())
+		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved => none as Node
 
 		# Set the type of the output variable to the return type of the getter function
 		output.variable.type = get_value_function.return_type
@@ -2047,11 +2050,17 @@ Node HasNode {
 		type = source.try_get_type()
 		if type == none or type.is_unresolved => Status(source.start, 'Can not resolve the type of the inspected object')
 
-		has_value_function = type.get_function(String(reconstruction.RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
-		if has_value_function == none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
+		has_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER))
+		if has_value_function_overloads === none => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
 
-		get_value_function = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER)).get_implementation(List<Type>())
-		if get_value_function == none or get_value_function.return_type == none or get_value_function.return_type.is_unresolved => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
+		has_value_function = has_value_function_overloads.get_implementation(List<Type>())
+		if has_value_function === none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
+
+		get_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER))
+		if get_value_function_overloads === none => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
+
+		get_value_function = get_value_function_overloads.get_implementation(List<Type>())
+		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
 
 		=> none as Status
 	}

@@ -358,6 +358,7 @@ namespace Keywords {
 	readonly ELSE: Keyword
 	readonly EXPORT: Keyword
 	readonly HAS: Keyword
+	readonly HAS_NOT: Keyword
 	readonly IF: Keyword
 	readonly IN: Keyword
 	readonly INLINE: Keyword
@@ -396,16 +397,17 @@ namespace Keywords {
 		DEINIT = Keyword(String('deinit'), KEYWORD_TYPE_NORMAL)
 		ELSE = Keyword(String('else'), KEYWORD_TYPE_FLOW)
 		EXPORT = ModifierKeyword(String('export'), MODIFIER_EXPORTED)
-		HAS = ModifierKeyword(String('has'), MODIFIER_CONSTANT)
+		HAS = Keyword(String('has'), KEYWORD_TYPE_NORMAL)
+		HAS_NOT = Keyword(String('has not'), KEYWORD_TYPE_NORMAL)
 		IF = Keyword(String('if'), KEYWORD_TYPE_FLOW)
-		IN = ModifierKeyword(String('in'), MODIFIER_CONSTANT)
+		IN = Keyword(String('in'), KEYWORD_TYPE_NORMAL)
 		INLINE = ModifierKeyword(String('inline'), MODIFIER_INLINE)
 		IS = Keyword(String('is'), KEYWORD_TYPE_NORMAL)
 		IS_NOT = Keyword(String('is not'), KEYWORD_TYPE_NORMAL)
 		INIT = Keyword(String('init'), KEYWORD_TYPE_NORMAL)
 		IMPORT = ModifierKeyword(String('import'), MODIFIER_IMPORTED)
 		LOOP = Keyword(String('loop'), KEYWORD_TYPE_FLOW)
-		NAMESPACE = ModifierKeyword(String('namespace'), MODIFIER_CONSTANT)
+		NAMESPACE = Keyword(String('namespace'), KEYWORD_TYPE_NORMAL)
 		NOT = Keyword(String('not'), KEYWORD_TYPE_NORMAL)
 		OUTLINE = ModifierKeyword(String('outline'), MODIFIER_OUTLINE)
 		PACK = ModifierKeyword(String('pack'), MODIFIER_PACK)
@@ -430,6 +432,7 @@ namespace Keywords {
 		add(ELSE)
 		add(EXPORT)
 		add(HAS)
+		add(HAS_NOT)
 		add(IF)
 		add(IN)
 		add(INLINE)
@@ -1425,7 +1428,7 @@ parse_token(area: TextArea) {
 }
 
 # Summary: Join all sequential modifier keywords into one token
-join(tokens: List<Token>) {
+join_sequential_modifiers(tokens: List<Token>) {
 	loop (i = tokens.size - 2, i >= 0, i--) {
 		# Require both the current and the next tokens to be modifier keywords
 		a = tokens[i]
@@ -1443,6 +1446,35 @@ join(tokens: List<Token>) {
 		a.(KeywordToken).keyword = ModifierKeyword(String.empty, modifiers)
 		tokens.remove_at(i + 1)
 	}
+}
+
+# Summary: Finds not-keywords and negates adjacent keywords when possible
+negate_keywords(tokens: List<Token>) {
+	loop (i = tokens.size - 2, i >= 0, i--) {
+		# Require the current token to be a keyword
+		token = tokens[i]
+		if token.type != TOKEN_TYPE_KEYWORD continue
+
+		# Require the next token to be a not-keyword
+		if not tokens[i + 1].match(Keywords.NOT) continue
+
+		negated = when(token.(KeywordToken).keyword) {
+			Keywords.IS => Keywords.IS_NOT,
+			Keywords.HAS => Keywords.HAS_NOT,
+			else => none as Keyword
+		}
+
+		if negated !== none {
+			token.(KeywordToken).keyword = negated
+			tokens.remove_at(i + 1)
+		}
+	}
+}
+
+# Summary: Postprocesses the specified tokens
+postprocess(tokens: List<Token>) {
+	join_sequential_modifiers(tokens)
+	negate_keywords(tokens)
 }
 
 # Summary: Preprocesses the specified text, meaning that a more suitable version of the text is returned for tokenization
@@ -1485,12 +1517,12 @@ preprocess(text: String) {
 }
 
 # Summary: Returns a list of tokens which represents the specified text
-get_tokens(text: String, join: bool) {
-	=> get_tokens(text, Position(), join)
+get_tokens(text: String, postprocess: bool) {
+	=> get_tokens(text, Position(), postprocess)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
-get_tokens(text: String, anchor: Position, join: bool) {
+get_tokens(text: String, anchor: Position, postprocess: bool) {
 	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
 	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
 
@@ -1512,9 +1544,8 @@ get_tokens(text: String, anchor: Position, join: bool) {
 		position = area.end
 	}
 
-	if not join => Ok<List<Token>, String>(tokens)
+	if postprocess postprocess(tokens)
 
-	join(tokens)
 	=> Ok<List<Token>, String>(tokens)
 }
 

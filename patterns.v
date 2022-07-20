@@ -1,7 +1,7 @@
 namespace parser
 
 Pattern CommandPattern {
-	constant INSTRUCTION = 0
+	constant KEYWORD = 0
 
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
@@ -9,14 +9,12 @@ Pattern CommandPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		instruction = tokens[INSTRUCTION].(KeywordToken).keyword
-		=> instruction == Keywords.STOP or instruction == Keywords.CONTINUE or instruction == Keywords.RETURN
+		keyword = tokens[KEYWORD].(KeywordToken).keyword
+		=> keyword === Keywords.STOP or keyword === Keywords.CONTINUE
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		instruction = tokens[INSTRUCTION].(KeywordToken).keyword
-		if instruction == Keywords.RETURN => ReturnNode(none as Node, tokens[INSTRUCTION].position)
-		=> CommandNode(instruction, tokens[INSTRUCTION].position)
+		=> CommandNode(tokens[KEYWORD].(KeywordToken).keyword, tokens[KEYWORD].position)
 	}
 }
 
@@ -215,22 +213,26 @@ Pattern TypePattern {
 }
 
 Pattern ReturnPattern {
-	constant RETURN = 0
-	constant VALUE = 1
-
 	init() {
-		path.add(TOKEN_TYPE_OPERATOR)
-		path.add(TOKEN_TYPE_OBJECT)
-
+		path.add(TOKEN_TYPE_KEYWORD | TOKEN_TYPE_OPERATOR)
 		priority = 0
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[RETURN].match(Operators.HEAVY_ARROW)
+		if not tokens[0].match(Keywords.RETURN) and not tokens[0].match(Operators.HEAVY_ARROW) => false
+
+		state.consume(TOKEN_TYPE_OBJECT) # Optionally consume a return value
+		=> true
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		=> ReturnNode(parser.parse(context, tokens[VALUE]), tokens[RETURN].position)
+		return_value = none as Node
+
+		if tokens.size > 1 {
+			return_value = parser.parse(context, tokens[1])
+		}
+
+		=> ReturnNode(return_value, tokens[0].position)
 	}
 }
 
@@ -2164,10 +2166,12 @@ Pattern HasPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[HAS].match(Keywords.HAS)
+		=> tokens[HAS].match(Keywords.HAS) or tokens[HAS].match(Keywords.HAS_NOT)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		negate = tokens[HAS].match(Keywords.HAS_NOT)
+
 		source = parser.parse(context, tokens[0])
 		name = tokens[NAME] as IdentifierToken
 		position = name.position
@@ -2181,9 +2185,10 @@ Pattern HasPattern {
 		variable.position = position
 		context.declare(variable)
 
-		result = VariableNode(variable, position)
+		result = HasNode(source, VariableNode(variable, position), tokens[HAS].position)
 
-		=> HasNode(source, result, tokens[HAS].position)
+		if negate => NotNode(result, false, result.start)
+		=> result
 	}
 }
 
