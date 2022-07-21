@@ -19,11 +19,11 @@ complain(status: Status) {
 }
 
 project_file(folder: link, name: link) {
-	=> io.get_process_working_folder() + `/` + folder + `/` + name
+	return io.get_process_working_folder() + `/` + folder + `/` + name
 }
 
 relative_file(name: link) {
-	=> io.get_process_working_folder() + `/` + name
+	return io.get_process_working_folder() + `/` + name
 }
 
 compile(output: link, source_files: List<String>, optimization: large, prebuilt: bool) {
@@ -103,9 +103,9 @@ execute(name: link) {
 	exit_code = io.wait_for_exit(pid)
 	if exit_code != 0 abort('Executed process exited with an error code')
 
-	if not (io.read_file(executable_name + '.out') has log) => String.empty
+	if not (io.read_file(executable_name + '.out') has log) return String.empty
 
-	=> String(log.data, log.size)
+	return String(log.data, log.size)
 }
 
 # Summary: Loads the specified assembly output file and returns the section which represents the specified function
@@ -122,13 +122,13 @@ load_assembly_function(output: link, function: link) {
 		abort("Could not load assembly function " + function + ' from file ' + UNIT_TEST_PREFIX + output + '.asm')
 	}
 
-	=> assembly.slice(start, end)
+	return assembly.slice(start, end)
 }
 
 # Summary: Loads the specified assembly output file
 load_assembly_output(project: link) {
-	if io.read_file(String(UNIT_TEST_PREFIX) + project + `.` + project + '.asm') has content => String(content.data)
-	=> String.empty
+	if io.read_file(String(UNIT_TEST_PREFIX) + project + `.` + project + '.asm') has content return String(content.data)
+	return String.empty
 }
 
 # Summary: Returns the number of the specified instructions, which contain the specified content
@@ -141,7 +141,7 @@ count_of(assembly: String, instruction: link, content: link) {
 		count++
 	}
 
-	=> count
+	return count
 }
 
 # Summary: Returns number of memory addresses in the specified assembly
@@ -162,7 +162,7 @@ get_memory_address_count(assembly: String) {
 		count++
 	}
 
-	=> count
+	return count
 }
 
 # Summary: Returns the section which represents the specified function
@@ -172,7 +172,7 @@ get_function_from_assembly(assembly: String, function: link) {
 
 	if start == -1 or end == -1 abort('Could not load the specified function from assembly')
 
-	=> assembly.slice(start, end)
+	return assembly.slice(start, end)
 }
 
 get_standard_library_utility() {
@@ -195,7 +195,7 @@ get_standard_library_utility() {
 	files.add(relative_file('minimum.math.obj'))
 	files.add(relative_file('minimum.memory.obj'))
 	files.add(relative_file('minimum.tests.obj'))
-	=> files
+	return files
 }
 
 arithmetic(optimization: large) {
@@ -604,7 +604,7 @@ unnamed_packs(optimization: large) {
 }
 
 init() {
-	optimization = 2
+	optimization = 1
 	console.write_line('Arithmetic')
 	arithmetic(optimization)
 	console.write_line('Assignment')
@@ -673,5 +673,5 @@ init() {
 	packs(optimization)
 	console.write_line('Unnamed packs')
 	unnamed_packs(optimization)
-	=> 0
+	return 0
 }

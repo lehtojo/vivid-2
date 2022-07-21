@@ -129,7 +129,7 @@ Operator ComparisonOperator {
 
 	set_counterpart(counterpart: ComparisonOperator) {
 		this.counterpart = counterpart
-		=> this
+		return this
 	}
 }
 
@@ -202,8 +202,8 @@ namespace Operators {
 	}
 
 	get_assignment_operator(operator: Operator) {
-		if assignment_operators.contains_key(operator.identifier) => assignment_operators[operator.identifier]
-		=> none as Operator
+		if assignment_operators.contains_key(operator.identifier) return assignment_operators[operator.identifier]
+		return none as Operator
 	}
 
 	initialize() {
@@ -310,11 +310,11 @@ namespace Operators {
 	}
 
 	exists(identifier: String) {
-		=> all.contains_key(identifier)
+		return all.contains_key(identifier)
 	}
 
 	get(identifier: String) {
-		=> all[identifier]
+		return all[identifier]
 	}
 }
 
@@ -339,15 +339,15 @@ Keyword ModifierKeyword {
 
 # Summary: Returns a bit mask, which is used to determine, which modifiers should be excluded when combining modifiers
 get_modifier_excluder(modifiers: large) {
-	if (modifiers & MODIFIER_PRIVATE) != 0 => MODIFIER_PUBLIC | MODIFIER_PROTECTED
-	if (modifiers & MODIFIER_PROTECTED) != 0 => MODIFIER_PUBLIC | MODIFIER_PRIVATE
-	if (modifiers & MODIFIER_PUBLIC) != 0 => MODIFIER_PRIVATE | MODIFIER_PROTECTED
-	=> 0
+	if (modifiers & MODIFIER_PRIVATE) != 0 return MODIFIER_PUBLIC | MODIFIER_PROTECTED
+	if (modifiers & MODIFIER_PROTECTED) != 0 return MODIFIER_PUBLIC | MODIFIER_PRIVATE
+	if (modifiers & MODIFIER_PUBLIC) != 0 return MODIFIER_PRIVATE | MODIFIER_PROTECTED
+	return 0
 }
 
 # Summary: Adds the specified modifier to the specified modifiers
 combine_modifiers(modifiers: large, modifier: large) {
-	=> (modifiers | modifier) & (!get_modifier_excluder(modifier))
+	return (modifiers | modifier) & (!get_modifier_excluder(modifier))
 }
 
 namespace Keywords {
@@ -459,11 +459,11 @@ namespace Keywords {
 	}
 
 	exists(identifier: String) {
-		=> all.contains_key(identifier)
+		return all.contains_key(identifier)
 	}
 
 	get(identifier: String) {
-		=> all[identifier]
+		return all[identifier]
 	}
 }
 
@@ -505,31 +505,31 @@ Position {
 		character = 0
 		local++
 		absolute++
-		=> this
+		return this
 	}
 
 	next_character() {
 		character++
 		local++
 		absolute++
-		=> this
+		return this
 	}
 
 	translate(characters: normal) {
-		=> Position(line, character + characters, local + characters, absolute + characters)
+		return Position(line, character + characters, local + characters, absolute + characters)
 	}
 
 	clone() {
-		=> Position(line, character, local, absolute)
+		return Position(line, character, local, absolute)
 	}
 
 	equals(other: Position) {
-		=> absolute == other.absolute and file == other.file
+		return absolute == other.absolute and file == other.file
 	}
 
 	string() {
-		if file === none => "<unknown>" + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
-		=> file.fullname + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
+		if file === none return "<unknown>" + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
+		return file.fullname + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
 	}
 }
 
@@ -542,18 +542,18 @@ Token {
 	}
 
 	match(types: large) {
-		=> (this.type & types) != 0
+		return (this.type & types) != 0
 	}
 
 	string() {
-		if type == TOKEN_TYPE_END => "\n"
-		=> String.empty
+		if type == TOKEN_TYPE_END return "\n"
+		return String.empty
 	}
 
 	virtual clone() {
 		token = Token(type)
 		token.position = position
-		=> token
+		return token
 	}
 }
 
@@ -573,11 +573,11 @@ Token IdentifierToken {
 	}
 
 	string() {
-		=> value
+		return value
 	}
 
 	override clone() {
-		=> IdentifierToken(value, position)
+		return IdentifierToken(value, position)
 	}
 }
 
@@ -597,11 +597,11 @@ Token OperatorToken {
 	}
 
 	string() {
-		=> operator.identifier
+		return operator.identifier
 	}
 
 	override clone() {
-		=> OperatorToken(operator, position)
+		return OperatorToken(operator, position)
 	}
 }
 
@@ -621,11 +621,11 @@ Token KeywordToken {
 	}
 
 	string() {
-		=> keyword.identifier
+		return keyword.identifier
 	}
 
 	override clone() {
-		=> KeywordToken(keyword, position)
+		return KeywordToken(keyword, position)
 	}
 }
 
@@ -663,16 +663,16 @@ Token NumberToken {
 	}
 
 	decimal_value() {
-		=> bits_to_decimal(data)
+		return bits_to_decimal(data)
 	}
 
 	string() {
-		if format == FORMAT_DECIMAL => to_string(decimal_value())
-		=> to_string(data)
+		if format == FORMAT_DECIMAL return to_string(decimal_value())
+		return to_string(data)
 	}
 
 	override clone() {
-		=> NumberToken(data, format, position, end)
+		return NumberToken(data, format, position, end)
 	}
 }
 
@@ -695,11 +695,11 @@ Token StringToken {
 	}
 
 	string() {
-		=> String(opening) + text + opening
+		return String(opening) + text + opening
 	}
 
 	override clone() {
-		=> StringToken(text, opening, position)
+		return StringToken(text, opening, position)
 	}
 }
 
@@ -726,7 +726,7 @@ Token ParenthesisToken {
 
 	get_sections() {
 		sections = List<List<Token>>()
-		if tokens.size == 0 => sections
+		if tokens.size == 0 return sections
 
 		section = List<Token>()
 
@@ -741,14 +741,14 @@ Token ParenthesisToken {
 		}
 
 		sections.add(section)
-		=> sections
+		return sections
 	}
 
 	string() {
 		values = List<String>(tokens.size, false)
 		loop token in tokens { values.add(to_string(token)) }
 
-		=> String(opening) + String.join(` `, values) + String(get_closing(opening))
+		return String(opening) + String.join(` `, values) + String(get_closing(opening))
 	}
 
 	override clone() {
@@ -758,7 +758,7 @@ Token ParenthesisToken {
 			clone[i] = tokens[i].clone()
 		}
 
-		=> ParenthesisToken(opening, position, end, clone)
+		return ParenthesisToken(opening, position, end, clone)
 	}
 }
 
@@ -793,7 +793,7 @@ Token FunctionToken {
 			# Ensure the name is valid
 			name = tokens.pop_or(none as Token)
 			if name == none or not name.match(TOKEN_TYPE_IDENTIFIER) {
-				=> Error<List<Parameter>, String>("Can not understand the parameters")
+				return Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 			
 			next = tokens.pop_or(none as Token)
@@ -805,20 +805,20 @@ Token FunctionToken {
 
 			# If there are tokens left and the next token is not a comma, it must represent a parameter type
 			if not next.match(Operators.COLON) {
-				=> Error<List<Parameter>, String>("Can not understand the parameters")
+				return Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 
 			parameter_type = common.read_type(context, tokens)
 
 			if parameter_type == none {
-				=> Error<List<Parameter>, String>("Can not understand the parameter type")
+				return Error<List<Parameter>, String>("Can not understand the parameter type")
 			}
 
 			result.add(Parameter(name.(IdentifierToken).value, name.position, parameter_type))
 
 			# If there are tokens left, the next token must be a comma and it must be removed before starting over
 			if tokens.size > 0 and not tokens.pop_or(none as Token).match(Operators.COMMA) {
-				=> Error<List<Parameter>, String>("Can not understand the parameters")
+				return Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 		}
 
@@ -826,26 +826,26 @@ Token FunctionToken {
 			context.declare(parameter.type, VARIABLE_CATEGORY_PARAMETER, parameter.name).position = parameter.position
 		}
 
-		=> Ok<List<Parameter>, String>(result)
+		return Ok<List<Parameter>, String>(result)
 	}
 
 	parse(context: Context) {
-		if node != none and node.first != none => node
+		if node != none and node.first != none return node
 
 		result = parser.parse(context, List<Token>(parameters.tokens), parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
 		if result.first != none and result.first.match(NODE_LIST) { node = result.first }
 		else { node = result }
 
-		=> node
+		return node
 	}
 	
 	string() {
-		=> name + parameters.string()
+		return name + parameters.string()
 	}
 
 	override clone() {
-		=> FunctionToken(identifier.clone() as IdentifierToken, parameters.clone() as ParenthesisToken, position)
+		return FunctionToken(identifier.clone() as IdentifierToken, parameters.clone() as ParenthesisToken, position)
 	}
 }
 
@@ -863,67 +863,67 @@ TextArea {
 
 # Summary: Converts the specified token to string based on its type
 to_string(token: Token) {
-	if token.type == TOKEN_TYPE_IDENTIFIER => token.(IdentifierToken).string()
-	else token.type == TOKEN_TYPE_NUMBER => token.(NumberToken).string()
-	else token.type == TOKEN_TYPE_PARENTHESIS => token.(ParenthesisToken).string()
-	else token.type == TOKEN_TYPE_KEYWORD => token.(KeywordToken).string()
-	else token.type == TOKEN_TYPE_OPERATOR => token.(OperatorToken).string()
-	else token.type == TOKEN_TYPE_FUNCTION => token.(FunctionToken).string()
-	else token.type == TOKEN_TYPE_STRING => token.(StringToken).string()
-	=> token.string()
+	if token.type == TOKEN_TYPE_IDENTIFIER return token.(IdentifierToken).string()
+	else token.type == TOKEN_TYPE_NUMBER return token.(NumberToken).string()
+	else token.type == TOKEN_TYPE_PARENTHESIS return token.(ParenthesisToken).string()
+	else token.type == TOKEN_TYPE_KEYWORD return token.(KeywordToken).string()
+	else token.type == TOKEN_TYPE_OPERATOR return token.(OperatorToken).string()
+	else token.type == TOKEN_TYPE_FUNCTION return token.(FunctionToken).string()
+	else token.type == TOKEN_TYPE_STRING return token.(StringToken).string()
+	return token.string()
 }
 
 # Summary: Returns a string, which represents the specified tokens
 to_string(tokens: List<Token>) {
 	values = List<String>(tokens.size, false)
 	loop token in tokens { values.add(to_string(token)) }
-	=> String.join(` `, values)
+	return String.join(` `, values)
 }
 
 # Summary: Returns whether the format is an unsigned format
 is_unsigned(format: large) {
-	=> (format & 1) != 0
+	return (format & 1) != 0
 }
 
 # Summary: Returns whether the format is an unsigned format
 is_signed(format: large) {
-	=> (format & 1) == 0
+	return (format & 1) == 0
 }
 
 to_format(bytes: large) {
-	=> (bytes <| 1) | 1
+	return (bytes <| 1) | 1
 }
 
 to_format(bytes: large, unsigned: bool) {
-	=> (bytes <| 1) | unsigned
+	return (bytes <| 1) | unsigned
 }
 
 to_bytes(format: large) {
-	=> (format |> 1) & FORMAT_SIZE_MASK
+	return (format |> 1) & FORMAT_SIZE_MASK
 }
 
 to_bits(format: large) {
-	=> ((format |> 1) & FORMAT_SIZE_MASK) * 8
+	return ((format |> 1) & FORMAT_SIZE_MASK) * 8
 }
 
 # Summary: Returns whether the specified flags contains the specified flag
 has_flag(flags: large, flag: large) {
-	=> (flags & flag) == flag
+	return (flags & flag) == flag
 }
 
 # Summary: Removes the exponent or the number type from the specified string
 private get_number_part(text: String) {
 	i = 0
 	loop (i < text.length and (is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR), i++) {}
-	=> text.slice(0, i)
+	return text.slice(0, i)
 }
 
 # Summary: Returns the value of the exponent which is contained in the specified number string
 private get_exponent(text: String) {
 	i = text.index_of(EXPONENT_SEPARATOR)
-	if i == -1 => Ok<large, String>(0)
+	if i == -1 return Ok<large, String>(0)
 
-	if text.length == ++i => Error<large, String>("Invalid exponent")
+	if text.length == ++i return Error<large, String>("Invalid exponent")
 
 	sign = 1
 
@@ -940,9 +940,9 @@ private get_exponent(text: String) {
 	exponent = text.slice(i, j)
 
 	# Try to convert the exponent string to an integer
-	if as_integer(exponent) has result => Ok<large, String>(sign * result)
+	if as_integer(exponent) has result return Ok<large, String>(sign * result)
 
-	=> Error<large, String>("Invalid exponent")
+	return Error<large, String>("Invalid exponent")
 }
 
 # Summary: Returns the format which has the same properties as specified
@@ -958,8 +958,8 @@ private get_format(bits: large, unsigned: bool) {
 		else => FORMAT_INT64
 	}
 
-	if unsigned => format | 1
-	=> format
+	if unsigned return format | 1
+	return format
 }
 
 # Summary: Returns the format which is expressed in the specified number string
@@ -973,7 +973,7 @@ private get_number_format(text: String) {
 		if i != -1 {
 			unsigned = true
 		}
-		else => FORMAT_INT64
+		else return FORMAT_INT64
 	}
 
 	# Take all the digits, which represent the bit size
@@ -981,18 +981,18 @@ private get_number_format(text: String) {
 	loop (j < text.length and is_digit(text[j++])) {}
 
 	# If digits were captured and the number can be parsed, return a format, which matches it
-	if j > i and as_integer(text.slice(i, j)) has bits => get_format(bits, unsigned)
+	if j > i and as_integer(text.slice(i, j)) has bits return get_format(bits, unsigned)
 
 	# Return the default format
-	=> get_format(SYSTEM_BITS, unsigned)
+	return get_format(SYSTEM_BITS, unsigned)
 }
 
 # Summary: Tries to convert the specified string to a number token
 try_create_number_token(text: String, position: Position) {
-	if not (get_exponent(text) has exponent) => Error<NumberToken, String>("Invalid exponent")
+	if not (get_exponent(text) has exponent) return Error<NumberToken, String>("Invalid exponent")
 
 	if text.index_of(DECIMAL_SEPARATOR) != -1 {
-		if not (as_decimal(get_number_part(text)) has value) => Error<NumberToken, String>("Can not resolve the number")
+		if not (as_decimal(get_number_part(text)) has value) return Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1.0
@@ -1001,10 +1001,10 @@ try_create_number_token(text: String, position: Position) {
 		if exponent >= 0 { value *= scale }
 		else { value /= scale }
 
-		=> Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
+		return Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
 	}
 	else {
-		if not (as_integer(get_number_part(text)) has value) => Error<NumberToken, String>("Can not resolve the number")
+		if not (as_integer(get_number_part(text)) has value) return Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1
@@ -1016,26 +1016,26 @@ try_create_number_token(text: String, position: Position) {
 		# Determine the number format
 		format = get_number_format(text)
 		
-		=> Ok<NumberToken, String>(NumberToken(value, format, text.length, position))
+		return Ok<NumberToken, String>(NumberToken(value, format, text.length, position))
 	}
 }
 
 # Summary: Returns the closing parenthesis of the specified opening parenthesis
 get_closing(opening: char) {
-	if opening == `(` => `)`
-	=> opening + 2
+	if opening == `(` return `)`
+	return opening + 2
 }
 
 # Returns whether the specified character is an operator
 is_operator(i: char) {
-	=> (i >= `*` and i <= `/`) or (i >= `:` and i <= `?`) or i == `&` or i == `%` or i == `!` or i == `^` or i == `|` or i == -92 # 0xA4 = 164 => -92 as char
+	return (i >= `*` and i <= `/`) or (i >= `:` and i <= `?`) or i == `&` or i == `%` or i == `!` or i == `^` or i == `|` or i == -92 # 0xA4 = 164 => -92 as char
 }
 
 # Summary:
 # Returns all the characters which can mix with the specified character.
 # If this function returns null, it means the specified character can mix with any character.
 get_mixing_characters(i: char) {
-	=> when(i) {
+	return when(i) {
 		`.` => '.0123456789',
 		`,` => '',
 		`<` => '|=',
@@ -1047,77 +1047,77 @@ get_mixing_characters(i: char) {
 # Summary: Returns whether the two specified characters can mix
 mixes(a: char, b: char) {
 	allowed = get_mixing_characters(a)
-	if allowed != none => index_of(allowed, b) != -1
+	if allowed != none return index_of(allowed, b) != -1
 
 	allowed = get_mixing_characters(b)
-	if allowed != none => index_of(allowed, a) != -1
+	if allowed != none return index_of(allowed, a) != -1
 
-	=> true
+	return true
 }
 
 # Summary: Returns whether the characters represent a start of a hexadecimal number
 is_start_of_hexadecimal(current: char, next: char) {
-	=> current == `0` and next == `x`
+	return current == `0` and next == `x`
 }
 
 # Summary: Returns whether the character is a text
 is_text(i: char) {
-	=> (i >= `a` and i <= `z`) or (i >= `A` and i <= `Z`) or (i == `_`)
+	return (i >= `a` and i <= `z`) or (i >= `A` and i <= `Z`) or (i == `_`)
 }
 
 # Summary: Returns whether the character is start of a parenthesis
 is_parenthesis(i: char) {
-	=> i == `(` or i == `[` or i == `{`
+	return i == `(` or i == `[` or i == `{`
 }
 
 # Summary: Returns whether the character is start of a comment
 is_comment(i: char) {
-	=> i == COMMENT
+	return i == COMMENT
 }
 
 # Summary: Returns whether the character start of a string
 is_string(i: char) {
-	=> i == STRING or i == STRING_OBJECT
+	return i == STRING or i == STRING_OBJECT
 }
 
 # Summary: Returns whether the character start of a character value
 is_character_value(i: char) {
-	=> i == CHARACTER
+	return i == CHARACTER
 }
 
 # Summary: Returns the type of the specified character
 get_text_type(current: char, next: char) {
-	if is_text(current) => TEXT_TYPE_TEXT
-	if is_start_of_hexadecimal(current, next) => TEXT_TYPE_HEXADECIMAL
-	if is_digit(current) => TEXT_TYPE_NUMBER
-	if is_parenthesis(current) => TEXT_TYPE_PARENTHESIS
-	if is_operator(current) => TEXT_TYPE_OPERATOR
-	if is_comment(current) => TEXT_TYPE_COMMENT
-	if is_string(current) => TEXT_TYPE_STRING
-	if is_character_value(current) => TEXT_TYPE_CHARACTER
-	if current == LINE_ENDING => TEXT_TYPE_END
-	=> TEXT_TYPE_UNSPECIFIED
+	if is_text(current) return TEXT_TYPE_TEXT
+	if is_start_of_hexadecimal(current, next) return TEXT_TYPE_HEXADECIMAL
+	if is_digit(current) return TEXT_TYPE_NUMBER
+	if is_parenthesis(current) return TEXT_TYPE_PARENTHESIS
+	if is_operator(current) return TEXT_TYPE_OPERATOR
+	if is_comment(current) return TEXT_TYPE_COMMENT
+	if is_string(current) return TEXT_TYPE_STRING
+	if is_character_value(current) return TEXT_TYPE_CHARACTER
+	if current == LINE_ENDING return TEXT_TYPE_END
+	return TEXT_TYPE_UNSPECIFIED
 }
 
 # Summary: Returns whether the character is part of the progressing token
 is_part_of(previous_type: large, current_type: large, previous: char, current: char, next: char) {
-	if not mixes(previous, current) => false
+	if not mixes(previous, current) return false
 
-	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED => true
+	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED return true
 
-	if previous_type == TEXT_TYPE_TEXT => current_type == TEXT_TYPE_NUMBER or current_type == TEXT_TYPE_HEXADECIMAL
+	if previous_type == TEXT_TYPE_TEXT return current_type == TEXT_TYPE_NUMBER or current_type == TEXT_TYPE_HEXADECIMAL
 
-	if previous_type == TEXT_TYPE_HEXADECIMAL => current_type == TEXT_TYPE_NUMBER or
+	if previous_type == TEXT_TYPE_HEXADECIMAL return current_type == TEXT_TYPE_NUMBER or
 		(previous == `0` and current == `x`) or
 		(current >= `a` and current <= `f`) or (current >= `A` and current <= `F`)
 
-	if previous_type == TEXT_TYPE_NUMBER => (current == DECIMAL_SEPARATOR and is_digit(next)) or
+	if previous_type == TEXT_TYPE_NUMBER return (current == DECIMAL_SEPARATOR and is_digit(next)) or
 		current == EXPONENT_SEPARATOR or
 		current == SIGNED_TYPE_SEPARATOR or
 		current == UNSIGNED_TYPE_SEPARATOR or
 		(previous == EXPONENT_SEPARATOR and (current == `+` or current == `-`))
 	
-	=> false
+	return false
 }
 
 # Summary: Skips all the spaces starting from the specified position
@@ -1127,7 +1127,7 @@ skip_spaces(text: String, position: Position) {
 		position.next_character()
 	}
 
-	=> position
+	return position
 }
 
 # Summary: Finds the corresponding end parenthesis and returns its position
@@ -1162,15 +1162,15 @@ skip_parenthesis(text: String, start: Position) {
 			position.next_character()
 		}
 
-		if count == 0 => position
+		if count == 0 return position
 	}
 
-	=> none as Position
+	return none as Position
 }
 
 # Summary: Returns whether a multiline comment begins at the specified position
 is_multiline_comment(text: String, start: Position) {
-	=> start.local + MULTILINE_COMMENT_LENGTH * 2 <= text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
+	return start.local + MULTILINE_COMMENT_LENGTH * 2 <= text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
 }
 
 # Summary: Skips the current comment and returns the position
@@ -1194,22 +1194,22 @@ skip_comment(text: String, start: Position) {
 		last_line_ending = comment.last_index_of(`\n`)
 
 		# If the 'multiline comment' is actually expressed in a single line, handle it separately
-		if last_line_ending == -1 => Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
+		if last_line_ending == -1 return Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
 
 		last_line_ending += start.local # The index must be relative to the whole text
 		last_line_ending++ # Skip the line ending
-		=> Position(start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
+		return Position(start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
 	}
 
 	i = text.index_of(LINE_ENDING, start.local)
 
 	if i != -1 {
 		length = i - start.local
-		=> Position(start.line, start.character + length, start.local + length, start.absolute + length)
+		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
 	else {
 		length = text.length - start.local
-		=> Position(start.line, start.character + length, start.local + length, start.absolute + length)
+		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
 }
 
@@ -1218,15 +1218,15 @@ skip_closures(closure: char, text: String, start: Position) {
 	i = text.index_of(closure, start.local + 1)
 	j = text.index_of(LINE_ENDING, start.local + 1)
 
-	if i == -1 or j != -1 and j < i => none as Position
+	if i == -1 or j != -1 and j < i return none as Position
 
 	length = i + 1 - start.local
-	=> Position(start.line, start.character + length, start.local + length, start.absolute + length)
+	return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 }
 
 # Summary: Skips the current character value and returns the position
 skip_character_value(text: String, start: Position) {
-	=> skip_closures(CHARACTER, text, start)
+	return skip_closures(CHARACTER, text, start)
 }
 
 # Summary: Converts the specified hexadecimal string into an integer value
@@ -1240,12 +1240,12 @@ hexadecimal_to_integer(text: String) {
 		if digit >= `0` and digit <= `9` { value = digit - `0` }
 		else digit >= `A` and digit <= `F` { value = digit - `A` + 10 }
 		else digit >= `a` and digit <= `f` { value = digit - `a` + 10 }
-		else => Optional<large>()
+		else return Optional<large>()
 
 		result = result * 16 + value
 	}
 
-	=> Optional<large>(result)
+	return Optional<large>(result)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
@@ -1267,37 +1267,37 @@ get_special_character_value(text: String) {
 		error = 'Can not understand unicode character'
 	}
 	else {
-		=> Error<large, String>("Can not understand string command")
+		return Error<large, String>("Can not understand string command")
 	}
 
 	hexadecimal = text.slice(2, text.length)
 	
 	if hexadecimal.length != length {
-		=> Error<large, String>("Invalid character")
+		return Error<large, String>("Invalid character")
 	}
 
-	if hexadecimal_to_integer(hexadecimal) has value => Ok<large, String>(value)
+	if hexadecimal_to_integer(hexadecimal) has value return Ok<large, String>(value)
 
-	=> Error<large, String>(String(error))
+	return Error<large, String>(String(error))
 }
 
 # Summary: Returns the integer value of the character value
 get_character_value(text: String) {
 	text = text.slice(1, text.length - 1) # Remove the closures
 
-	if text.length == 0 => Error<large, String>("Character value is empty")
+	if text.length == 0 return Error<large, String>("Character value is empty")
 
 	if text[0] != `\\` {
-		if text.length != 1 => Error<large, String>("Character value allows only one character")
-		=> Ok<large, String>(text[0])
+		if text.length != 1 return Error<large, String>("Character value allows only one character")
+		return Ok<large, String>(text[0])
 	}
 
-	if text.length == 2 and text[1] == `\\` => Ok<large, String>(`\\`)
+	if text.length == 2 and text[1] == `\\` return Ok<large, String>(`\\`)
 	if text.length <= 2 {
-		=> Error<large, String>("Invalid character")
+		return Error<large, String>("Invalid character")
 	}
 
-	=> get_special_character_value(text)
+	return get_special_character_value(text)
 }
 
 get_next_token(text: String, start: Position) {
@@ -1305,7 +1305,7 @@ get_next_token(text: String, start: Position) {
 	position = skip_spaces(text, start)
 
 	# Verify there is text to iterate
-	if position.local == text.length => Ok<TextArea, String>(none as TextArea)
+	if position.local == text.length return Ok<TextArea, String>(none as TextArea)
 
 	current = text[position.local]
 	next = 0 as char
@@ -1317,42 +1317,42 @@ get_next_token(text: String, start: Position) {
 	if type == TEXT_TYPE_COMMENT {
 		area.end = skip_comment(text, area.start)
 		area.text = text.slice(area.start.local, area.end.local)
-		=> Ok<TextArea, String>(area)
+		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
-		if end === none => Error<TextArea, String>("Can not find the closing parenthesis")
+		if end === none return Error<TextArea, String>("Can not find the closing parenthesis")
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
-		=> Ok<TextArea, String>(area)
+		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_END {
 		area.end = position.clone().next_line()
 		area.text = "\n"
-		=> Ok<TextArea, String>(area)
+		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_STRING {
 		end = skip_closures(current, text, area.start)
 		if end === none {
-			=> Error<TextArea, String>("Can not find the end of the string")
+			return Error<TextArea, String>("Can not find the end of the string")
 		}
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
-		=> Ok<TextArea, String>(area)
+		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_CHARACTER {
 		area.end = skip_character_value(text, area.start)
 
 		result = get_character_value(text.slice(area.start.local, area.end.local))
-		if not (result has value) => Error<TextArea, String>(result.get_error())
+		if not (result has value) return Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
 
 		area.text = to_string(result.get_value()) + SIGNED_TYPE_SEPARATOR + to_string(bits)
 		area.type = TEXT_TYPE_NUMBER
-		=> Ok<TextArea, String>(area)
+		return Ok<TextArea, String>(area)
 	}
 
 	position.next_character()
@@ -1375,42 +1375,42 @@ get_next_token(text: String, start: Position) {
 
 	area.end = position
 	area.text = text.slice(area.start.local, area.end.local)
-	=> Ok<TextArea, String>(area)
+	return Ok<TextArea, String>(area)
 }
 
 # Summary: Parses a token from the specified text
 parse_text_token(text: String) {
-	if Operators.exists(text) => OperatorToken(text)
-	if Keywords.exists(text) => KeywordToken(text)
-	=> IdentifierToken(text)
+	if Operators.exists(text) return OperatorToken(text)
+	if Keywords.exists(text) return KeywordToken(text)
+	return IdentifierToken(text)
 }
 
 # Summary: Parses the specified hexadecimal text to an integer
 parse_hexadecimal(area: TextArea) {
 	# Extract the integer value from the hexadecimal by skipping the 0x prefix
-	if hexadecimal_to_integer(area.text.slice(2)) has value => Ok<large, String>(value)
-	=> Error<large, String>("Can not understand the hexadecimal " + area.text)
+	if hexadecimal_to_integer(area.text.slice(2)) has value return Ok<large, String>(value)
+	return Error<large, String>("Can not understand the hexadecimal " + area.text)
 }
 
 # Summary: Parses a token from a text area
 parse_token(area: TextArea) {
 	if area.type == TEXT_TYPE_OPERATOR {
-		if not Operators.exists(area.text) => Error<Token, String>("Unknown operator")
-		=> Ok<Token, String>(OperatorToken(area.text))
+		if not Operators.exists(area.text) return Error<Token, String>("Unknown operator")
+		return Ok<Token, String>(OperatorToken(area.text))
 	}
 	else area.type == TEXT_TYPE_NUMBER {
 		result = try_create_number_token(area.text, area.start)
-		if not (result has number) => Error<Token, String>(result.get_error())
-		=> Ok<Token, String>(number)
+		if not (result has number) return Error<Token, String>(result.get_error())
+		return Ok<Token, String>(number)
 	}
 	else area.type == TEXT_TYPE_PARENTHESIS {
 		text = area.text
-		if text.length == 2 => Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
+		if text.length == 2 return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
 
 		result: Outcome<List<Token>, String> = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
-		if not (result has tokens) => Error<Token, String>(result.get_error())
+		if not (result has tokens) return Error<Token, String>(result.get_error())
 
-		=> Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))
+		return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))
 	}
 
 	token = none as Token
@@ -1420,13 +1420,13 @@ parse_token(area: TextArea) {
 	else area.type == TEXT_TYPE_STRING { token = StringToken(area.text) }
 	else area.type == TEXT_TYPE_HEXADECIMAL {
 		result = parse_hexadecimal(area)
-		if not (result has value) => Error<Token, String>(result.get_error())
+		if not (result has value) return Error<Token, String>(result.get_error())
 
 		token = NumberToken(value, SYSTEM_FORMAT, area.start, area.end)
 	}
 	
-	if token != none => Ok<Token, String>(token)
-	=> Error<Token, String>("Unknown token " + area.text)
+	if token != none return Ok<Token, String>(token)
+	return Error<Token, String>("Unknown token " + area.text)
 }
 
 # Summary: Join all sequential modifier keywords into one token
@@ -1515,12 +1515,12 @@ preprocess(text: String) {
 		builder.insert(i, value)
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, postprocess: bool) {
-	=> get_tokens(text, Position(), postprocess)
+	return get_tokens(text, Position(), postprocess)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
@@ -1532,12 +1532,12 @@ get_tokens(text: String, anchor: Position, postprocess: bool) {
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())
-		if not (area_result has area) => Error<List<Token>, String>(area_result.get_error())
+		if not (area_result has area) return Error<List<Token>, String>(area_result.get_error())
 		if area == none stop
 
 		if area.type != TEXT_TYPE_COMMENT {
 			token_result = parse_token(area)
-			if not (token_result has token) => Error<List<Token>, String>(token_result.get_error())
+			if not (token_result has token) return Error<List<Token>, String>(token_result.get_error())
 
 			token.position = area.start
 			tokens.add(token)
@@ -1548,7 +1548,7 @@ get_tokens(text: String, anchor: Position, postprocess: bool) {
 
 	if postprocess postprocess(tokens)
 
-	=> Ok<List<Token>, String>(tokens)
+	return Ok<List<Token>, String>(tokens)
 }
 
 # Summary: Ensures all the tokens have a reference to the specified file
@@ -1577,13 +1577,13 @@ tokenize() {
 		file = files[i]
 
 		result = get_tokens(file.content, true)
-		if not (result has tokens) => Status(result.get_error())
+		if not (result has tokens) return Status(result.get_error())
 
 		register_file(tokens, file)
 		file.tokens = tokens
 	}
 
-	=> Status()
+	return Status()
 }
 
 # Summary: Creates an identical list of tokens compared to the specified list
@@ -1594,5 +1594,5 @@ clone(tokens: List<Token>) {
 		clone[i] = tokens[i].clone()
 	}
 
-	=> clone
+	return clone
 }

@@ -88,7 +88,7 @@ get_expression_extract_position(expression: Node) {
 		iterator = iterator.parent
 	}
 
-	=> position
+	return position
 }
 
 # Summary: Returns the root of the expression which contains the specified node
@@ -110,7 +110,7 @@ get_expression_root(node: Node) {
 		}
 	}
 
-	=> iterator
+	return iterator
 }
 
 extract_calls(root: Node) {
@@ -176,7 +176,7 @@ get_increment_extractions(increments: List<Node>) {
 		extractions.add(extraction)
 	}
 
-	=> extractions
+	return extractions
 }
 
 create_local_increment_extract_groups(locals: List<Node>) {
@@ -204,7 +204,7 @@ create_local_increment_extract_groups(locals: List<Node>) {
 		extractions.add(extraction)
 	}
 
-	=> extractions
+	return extractions
 }
 
 extract_local_increments(destination: Node, locals: List<Node>) {
@@ -284,7 +284,7 @@ find_increments(root: Node) {
 		if node.instance == NODE_INCREMENT or node.instance == NODE_DECREMENT { result.add(node) }
 	}
 
-	=> result
+	return result
 }
 
 extract_increments(root: Node) {
@@ -345,7 +345,7 @@ create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 		edited = common.get_edited(editor)
 
 		if edited.match(NODE_VARIABLE) and edited.(VariableNode).variable.is_predictable {
-			=> InlineContainer(editor, InlineNode(node.start), edited.(VariableNode).variable)
+			return InlineContainer(editor, InlineNode(node.start), edited.(VariableNode).variable)
 		}
 	}
 
@@ -353,7 +353,7 @@ create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 	container = ScopeNode(Context(environment, NORMAL_CONTEXT), node.start, none as Position, is_value_returned)
 	instance = container.context.declare_hidden(type)
 
-	=> InlineContainer(node, container, instance)
+	return InlineContainer(node, container, instance)
 }
 
 # Summary:
@@ -362,7 +362,7 @@ create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 try_register_virtual_function_implementation(type: Type, virtual_function: VirtualFunction, configuration: RuntimeConfiguration, offset: large) {
 	# Find all possible implementations of the virtual function inside the specified type
 	result = type.get_override(virtual_function.name)
-	if result == none => offset
+	if result == none return offset
 
 	overloads = result.overloads
 
@@ -385,7 +385,7 @@ try_register_virtual_function_implementation(type: Type, virtual_function: Virtu
 
 	if implementation == none {
 		# It seems there is no implementation for this virtual function
-		=> offset
+		return offset
 	}
 
 	# Append configuration information only if it is not generated
@@ -393,11 +393,11 @@ try_register_virtual_function_implementation(type: Type, virtual_function: Virtu
 		configuration.entry.add(Label(implementation.get_fullname() + '_v'))
 	}
 
-	=> offset + SYSTEM_BYTES
+	return offset + SYSTEM_BYTES
 }
 
 copy_type_descriptors(type: Type, supertypes: List<Type>) {
-	if type.configuration == none => List<Pair<Type, DataPointerNode>>()
+	if type.configuration == none return List<Pair<Type, DataPointerNode>>()
 
 	configuration = type.configuration
 	descriptor_count = 0
@@ -458,7 +458,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 	}
 
 	configuration.is_completed = true
-	=> descriptors
+	return descriptors
 }
 
 # Summary: Constructs an object using stack memory
@@ -501,7 +501,7 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	# The inline node must return the value of the constructed object
 	container.node.add(VariableNode(container.result, position))
 
-	=> container
+	return container
 }
 
 # Summary: Constructs an object using heap memory
@@ -554,12 +554,12 @@ create_heap_construction(type: Type, construction: Node, constructor: FunctionNo
 	# The inline node must return the value of the constructed object
 	container.node.add(VariableNode(container.result, position))
 
-	=> container
+	return container
 }
 
 # Summary: Returns if stack construction should be used
 is_stack_construction_preferred(root: Node, value: Node) {
-	=> false
+	return false
 }
 
 # Summary: Rewrites construction expressions so that they use nodes which can be compiled
@@ -679,7 +679,7 @@ find_bool_values(root: Node) {
 		result.add(candidate)
 	}
 
-	=> result
+	return result
 }
 
 extract_bool_values(root: Node) {
@@ -728,10 +728,10 @@ extract_bool_values(root: Node) {
 # a *= 2 => a = a * 2
 # b[i] /= 10 => b[i] = b[i] / 10
 try_rewrite_as_assignment_operator(edit: Node) {
-	if common.is_value_used(edit) => none as Node
+	if common.is_value_used(edit) return none as Node
 	position = edit.start
 
-	=> when(edit.instance) {
+	return when(edit.instance) {
 		NODE_INCREMENT => {
 			destination = edit.(IncrementNode).first.clone()
 
@@ -755,13 +755,13 @@ try_rewrite_as_assignment_operator(edit: Node) {
 			)
 		}
 		NODE_OPERATOR => {
-			if edit.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT => none as Node
-			if edit.(OperatorNode).operator == Operators.ASSIGN => edit
+			if edit.(OperatorNode).operator.type != OPERATOR_TYPE_ASSIGNMENT return none as Node
+			if edit.(OperatorNode).operator == Operators.ASSIGN return edit
 
 			destination = edit.(OperatorNode).first.clone()
 			type = edit.(OperatorNode).operator.(AssignmentOperator).operator
 
-			if type == none => none as Node
+			if type == none return none as Node
 
 			OperatorNode(Operators.ASSIGN, position).set_operands(
 				destination,
@@ -845,7 +845,7 @@ construct_assignment_operators(root: Node) {
 # Summary:
 # Returns whether the cast converts a pack to another pack and whether it needs to be processed later
 is_required_pack_cast(from: Type, to: Type) {
-	=> from != to and from.is_pack and to.is_pack
+	return from != to and from.is_pack and to.is_pack
 }
 
 
@@ -948,7 +948,7 @@ is_using_local_self_pointer(node: Node) {
 	#     Inheritant.member = 0
 	#   }
 	# }
-	if link.first.instance == NODE_TYPE => true
+	if link.first.instance == NODE_TYPE return true
 
 	# Take into account the following situation:
 	# Namespace.Inheritant Inheritor {
@@ -957,7 +957,7 @@ is_using_local_self_pointer(node: Node) {
 	#     Namespace.Inheritant.member = 0
 	#   }
 	# }
-	=> link.first.instance == NODE_LINK and link.first.last == NODE_TYPE
+	return link.first.instance == NODE_LINK and link.first.last == NODE_TYPE
 }
 
 # Summary: Adds default constructors to all supertypes, if the specified function implementation represents a constructor
@@ -1044,7 +1044,7 @@ get_insert_position(from: Node) {
 	if position.instance == NODE_ELSE_IF { position = position.(ElseIfNode).get_root() }
 	else position.instance == NODE_ELSE { position = position.(ElseNode).get_root() }
 
-	=> position
+	return position
 }
 
 # Summary: Creates a condition which passes if the source has the same type as the specified type in runtime
@@ -1054,7 +1054,7 @@ create_type_condition(source: Node, expected: Type, position: Position) {
 	if type.configuration == none or expected.configuration == none {
 		# If the configuration of the type is not present, it means that the type can not be inherited
 		# Since the type can not be inherited, this means the result of the condition can be determined
-		=> NumberNode(SYSTEM_FORMAT, (type == expected) as large, position)
+		return NumberNode(SYSTEM_FORMAT, (type == expected) as large, position)
 	}
 
 	configuration = type.get_configuration_variable()
@@ -1065,7 +1065,7 @@ create_type_condition(source: Node, expected: Type, position: Position) {
 	arguments.add(TableDataPointerNode(expected.configuration.descriptor, 0, position))
 
 	condition = FunctionNode(settings.inheritance_function, position).set_arguments(arguments)
-	=> condition
+	return condition
 }
 
 # Summary: Rewrites is-expressions so that they use nodes which can be compiled
@@ -1347,7 +1347,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 		result.add(accessor)
 	}
 
-	=> result
+	return result
 }
 
 # <summary>
@@ -1441,7 +1441,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 	# Find all the usages of the collected local packs
 	local_pack_usages = root.find_all(NODE_VARIABLE).filter(i -> {
 		variable: Variable = i.(VariableNode).variable
-		=> variable.type.is_pack and variable.is_predictable
+		return variable.type.is_pack and variable.is_predictable
 	})
 
 	local_packs = local_pack_usages.map<Variable>((i: Node) -> i.(VariableNode).variable).distinct()
@@ -1526,7 +1526,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 # Summary:
 # Applies a cast to a pack node by changing the inner type
 apply_pack_cast(cast: Node, from: Type, to: Type) {
-	if not from.is_pack and not to.is_pack => false
+	if not from.is_pack and not to.is_pack return false
 
 	# Verify the casted value is a packer and that the value type and target type are compatible
 	value = cast.first
@@ -1534,22 +1534,22 @@ apply_pack_cast(cast: Node, from: Type, to: Type) {
 
 	# Replace the internal type of the packer with the target type
 	value.(PackNode).type = to
-	=> true
+	return true
 }
 
 # Summary:
 # Applies a cast to a number node by converting the inner value
 apply_number_cast(cast: Node, from: Type, to: Type) {
 	# Both of the types must be numbers
-	if not from.is_number or not to.is_number => false
+	if not from.is_number or not to.is_number return false
 
 	# The casted node must be a number node
 	value = cast.first
-	if value.instance != NODE_NUMBER => false
+	if value.instance != NODE_NUMBER return false
 
 	# Convert the value to the target type
 	value.(NumberNode).convert(to.(Number).format)
-	=> true
+	return true
 }
 
 # Summary:

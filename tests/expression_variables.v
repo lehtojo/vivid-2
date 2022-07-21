@@ -24,7 +24,7 @@ Base Inheritor {
 			r *= x
 		}
 
-		=> r
+		return r
 	}
 }
 
@@ -47,7 +47,7 @@ Animal {
 	}
 
 	react() {
-		=> console.write_line(reaction)
+		return console.write_line(reaction)
 	}
 }
 
@@ -77,5 +77,5 @@ init() {
 	Animals.dog.react()
 	Animals.cat.react()
 
-	=> 0
+	return 0
 }

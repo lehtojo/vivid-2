@@ -49,5 +49,5 @@ optimize(context: Context, root: Node) {
 		}
 	}
 
-	=> result
+	return result
 }

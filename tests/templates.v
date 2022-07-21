@@ -18,16 +18,16 @@ Bundle<A, B> {
 
 	get(i: large) {
 		if i == 0 {
-			=> first
+			return first
 		}
 		else i == 1 {
-			=> second
+			return second
 		}
 		else i == 2 {
-			=> third
+			return third
 		}
 		else {
-			=> 0 as Pair<A, B>
+			return 0 as Pair<A, B>
 		}
 	}
 
@@ -50,7 +50,7 @@ Product {
 	get_name_length() {
 		length = 0
 		loop (name[length] != 0, length++) {}
-		=> length
+		return length
 	}
 
 	enchant() {
@@ -66,10 +66,10 @@ Product {
 
 	is_enchanted() {
 		if name[0] == 105 {
-			=> true
+			return true
 		}
 
-		=> false
+		return false
 	}
 }
 
@@ -79,20 +79,20 @@ Price {
 
 	convert(c: tiny) {
 		if currency == c {
-			=> value
+			return value
 		}
 
 		if c == CURRENCY_EUROS {
-			=> value * 0.8
+			return value * 0.8
 		}
 		else {
-			=> value * 1.25
+			return value * 1.25
 		}
 	}
 }
 
 export create_bundle() {
-	=> Bundle<Product, Price>()
+	return Bundle<Product, Price>()
 }
 
 export set_product(bundle: Bundle<Product, Price>, i: large, name: link, value: large, currency: tiny) {
@@ -107,7 +107,7 @@ export set_product(bundle: Bundle<Product, Price>, i: large, name: link, value: 
 }
 
 export get_product_name(bundle: Bundle<Product, Price>, i: large) {
-	=> bundle[i].first.name
+	return bundle[i].first.name
 }
 
 export enchant_product(bundle: Bundle<Product, Price>, i: large) {
@@ -115,11 +115,11 @@ export enchant_product(bundle: Bundle<Product, Price>, i: large) {
 }
 
 export is_product_enchanted(bundle: Bundle<Product, Price>, i: large) {
-	=> bundle[i].first.is_enchanted()
+	return bundle[i].first.is_enchanted()
 }
 
 export get_product_price(bundle: Bundle<Product, Price>, i: large, currency: tiny) {
-	=> bundle[i].second.convert(currency)
+	return bundle[i].second.convert(currency)
 }
 
 init() {
@@ -150,5 +150,5 @@ init() {
 	are_equal(875000.0, get_product_price(bundle, 0, 1))
 	are_equal(100.0, get_product_price(bundle, 1, 1))
 	are_equal(40000.0, get_product_price(bundle, 2, 1))
-	=> 0
+	return 0
 }

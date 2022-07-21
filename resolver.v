@@ -1,14 +1,14 @@
 namespace resolver
 
 get_shared_type(expected: Type, actual: Type) {
-	if expected == none or actual == none => none as Type
-	if expected == actual or expected.match(actual) => expected
+	if expected == none or actual == none return none as Type
+	if expected == actual or expected.match(actual) return expected
 
 	if expected.is_number and actual.is_number {
 		bits = max(expected.reference_size * 8, actual.reference_size * 8)
 		signed = not expected.(Number).unsigned or not actual.(Number).unsigned
 		is_decimal = expected.format == FORMAT_DECIMAL or actual.format == FORMAT_DECIMAL
-		=> primitives.create_number(bits, signed, is_decimal)
+		return primitives.create_number(bits, signed, is_decimal)
 	}
 
 	expected_all_types = expected.get_all_supertypes()
@@ -18,23 +18,23 @@ get_shared_type(expected: Type, actual: Type) {
 	actual_all_types.insert(0, actual)
 
 	loop type in expected_all_types {
-		if actual_all_types.contains(type) => type
+		if actual_all_types.contains(type) return type
 	}
 
-	=> none as Type
+	return none as Type
 }
 
 # Summary: Returns the shared type between all the specified types
 outline get_shared_type(types: List<Type>) {
-	if types.size == 0 => none as Type
+	if types.size == 0 return none as Type
 	shared = types[0]
 
 	loop (i = 1, i < types.size, i++) {
 		shared = get_shared_type(shared, types[i])
-		if shared == none => none as Type
+		if shared == none return none as Type
 	}
 
-	=> shared
+	return shared
 }
 
 # Summary: Returns the types of the child nodes, only if all have types
@@ -43,28 +43,28 @@ get_types(node: Node) {
 
 	loop iterator in node {
 		type = iterator.try_get_type()
-		if type == none => none as List<Type>
+		if type == none return none as List<Type>
 		result.add(type)
 	}
 
-	=> result
+	return result
 }
 
 # Summary: Tries to resolve the specified array type
 resolve_array_type(environment: Context, type: ArrayType) {
 	type.resolve(environment)
-	if type.is_resolved => type
-	=> none as Type
+	if type.is_resolved return type
+	return none as Type
 }
 
 # Summary: Tries to resolve the specified type if it is unresolved
 resolve(context: Context, type: Type) {
-	if type.is_resolved => none as Type
+	if type.is_resolved return none as Type
 
 	# Resolve array types, because their sizes need to be determined at compile time and they can be dependent on expressions
-	if type.is_array_type => resolve_array_type(type.parent, type as ArrayType)
+	if type.is_array_type return resolve_array_type(type.parent, type as ArrayType)
 
-	=> type.(UnresolvedType).try_resolve_type(context)
+	return type.(UnresolvedType).try_resolve_type(context)
 }
 
 # Summary: Tries to resolve the specified node tree
@@ -77,13 +77,13 @@ resolve(context: Context, node: Node) {
 # Summary: Tries to resolve problems in the node tree
 resolve_tree(context: Context, node: Node) {
 	# If the node is unresolved, try to resolve it
-	if node.is_resolvable => node.resolve(context)
+	if node.is_resolvable return node.resolve(context)
 
 	loop child in node {
 		resolve(context, child)
 	}
 
-	=> none as Node
+	return none as Node
 }
 
 # Summary: Tries to resolve the type of the specified variable
@@ -319,19 +319,19 @@ get_tree_statuses(root: Node) {
 		result.add(status)
 	}
 
-	=> result
+	return result
 }
 
 get_tree_report(root: Node) {
 	errors = List<Status>()
-	if root == none => errors
+	if root == none return errors
 
 	loop status in get_tree_statuses(root) {
 		if status === none or not status.problematic continue
 		errors.add(status)
 	}
 
-	=> errors
+	return errors
 }
 
 get_type_report(type: Type) {
@@ -352,7 +352,7 @@ get_type_report(type: Type) {
 		errors.add(Status(type.position, 'Can not inherit the supertype'))
 	}
 
-	=> errors
+	return errors
 }
 
 get_function_report(implementation: FunctionImplementation) {
@@ -368,7 +368,7 @@ get_function_report(implementation: FunctionImplementation) {
 	}
 
 	errors.add_all(get_tree_report(implementation.node))
-	=> errors
+	return errors
 }
 
 get_report(context: Context, root: Node) {
@@ -387,20 +387,20 @@ get_report(context: Context, root: Node) {
 	}
 
 	errors.add_all(get_tree_report(root))
-	=> errors
+	return errors
 }
 
 are_reports_equal(a: List<Status>, b: List<Status>) {
-	if a.size != b.size => false
+	if a.size != b.size return false
 
 	loop (i = 0, i < a.size, i++) {
 		x = a[i]
 		y = b[i]
 
-		if not (x == y) => false
+		if not (x == y) return false
 	}
 
-	=> true
+	return true
 }
 
 register_default_functions(context: Context) {
@@ -515,10 +515,10 @@ resolve() {
 	# The compiler must not continue if there are errors in the report
 	if current.size > 0 {
 		complain(current)
-		=> Status('Compilation error')
+		return Status('Compilation error')
 	}
 
 	if settings.is_verbose_output_enabled console.write_line('Resolved')
 
-	=> Status()
+	return Status()
 }

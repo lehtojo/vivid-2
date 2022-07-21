@@ -1,37 +1,37 @@
 export decimal_addition(a: decimal, b: decimal) {
-   => a + b
+   return a + b
 }
 
 export decimal_subtraction(a: decimal, b: decimal) {
-   => a - b
+   return a - b
 }
 
 export decimal_multiplication(a: decimal, b: decimal) {
-   => a * b
+   return a * b
 }
 
 export decimal_division(a: decimal, b: decimal) {
-   => a / b
+   return a / b
 }
 
 export decimal_operator_order(a: decimal, b: decimal) {
-	=> a + b * a - b / a
+	return a + b * a - b / a
 }
 
 export decimal_addition_with_constant(a: decimal) {
-	=> 1.414 + a + 1.414
+	return 1.414 + a + 1.414
 }
 
 export decimal_subtraction_with_constant(a: decimal) {
-	=> -1.414 + a - 1.414
+	return -1.414 + a - 1.414
 }
 
 export decimal_multiplication_with_constant(a: decimal) {
-	=> 1.414 * a * 1.414
+	return 1.414 * a * 1.414
 }
 
 export decimal_division_with_constant(a: decimal) {
-	=> 2.0 / a / 1.414
+	return 2.0 / a / 1.414
 }
 
 init() {
@@ -46,5 +46,5 @@ init() {
 	are_equal(1.0003020912315519, decimal_division_with_constant(1.414))
 
 	are_equal(82.050797781155012, decimal_operator_order(9.870, 7.389))
-	=> 0
+	return 0
 }

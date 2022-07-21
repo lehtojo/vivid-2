@@ -11,7 +11,7 @@ Type Number {
 	}
 
 	override match(other: Type) {
-		=> other.is_number and other.is_primitive and this.identifier == other.(Number).identifier and this.bytes == other.(Number).bytes and this.format == other.(Number).format
+		return other.is_number and other.is_primitive and this.identifier == other.(Number).identifier and this.bytes == other.(Number).bytes and this.format == other.(Number).format
 	}
 }
 
@@ -19,14 +19,14 @@ Number Link {
 	# Summary: Creates a link type which has the specified offset type
 	static get_variant(argument: Type) {
 		link = Link(argument)
-		=> link
+		return link
 	}
 
 	# Summary: Creates a link type which has the specified offset type and the specified name
 	static get_variant(argument: Type, name: String) {
 		link = Link(argument)
 		link.name = name
-		=> link
+		return link
 	}
 
 	init(accessor_type: Type) {
@@ -45,16 +45,16 @@ Number Link {
 	}
 
 	override match(other: Type) {
-		=> this.name == other.name and this.identifier == other.identifier and get_accessor_type().match(other.(Link).get_accessor_type())
+		return this.name == other.name and this.identifier == other.identifier and get_accessor_type().match(other.(Link).get_accessor_type())
 	}
 
 	override clone() {
-		=> get_variant(get_accessor_type(), name)
+		return get_variant(get_accessor_type(), name)
 	}
 
 	override get_accessor_type() {
-		if template_arguments.size > 0 => template_arguments[0]
-		=> primitives.create_number(primitives.U8, FORMAT_UINT8)
+		if template_arguments.size > 0 return template_arguments[0]
+		return primitives.create_number(primitives.U8, FORMAT_UINT8)
 	}
 }
 
@@ -101,7 +101,7 @@ namespace primitives {
 	constant CHAR_IDENTIFIER = 'c'
 
 	create_number(primitive: link, format: large) {
-		=> create_number(String(primitive), format)
+		return create_number(String(primitive), format)
 	}
 
 	create_number(primitive: String, format: large) {
@@ -127,7 +127,7 @@ namespace primitives {
 			else => number.name.data
 		})
 
-		=> number
+		return number
 	}
 
 	# Summary:
@@ -170,25 +170,25 @@ namespace primitives {
 			else => number.name.data
 		})
 
-		=> number
+		return number
 	}
 
 	create_unit() {
-		=> Type(String(UNIT), MODIFIER_PRIMITIVE)
+		return Type(String(UNIT), MODIFIER_PRIMITIVE)
 	}
 
 	create_bool() {
-		=> create_number(BOOL, FORMAT_UINT8)
+		return create_number(BOOL, FORMAT_UINT8)
 	}
 
 	# Summary: Returns whether the specified type is primitive type and whether its name matches the specified name
 	is_primitive(type: Type, expected: String) {
-		=> type != none and type.is_primitive and type.name == expected
+		return type != none and type.is_primitive and type.name == expected
 	}
 
 	# Summary: Returns whether the specified type is primitive type and whether its name matches the specified name
 	is_primitive(type: Type, expected: link) {
-		=> type != none and type.is_primitive and type.name == expected
+		return type != none and type.is_primitive and type.name == expected
 	}
 
 	inject(context: Context) {
@@ -255,7 +255,7 @@ namespace numbers {
 	}
 
 	get(format: large) {
-		=> when(format) {
+		return when(format) {
 			FORMAT_INT8 => INT8
 			FORMAT_INT16 => INT16
 			FORMAT_INT32 => INT32

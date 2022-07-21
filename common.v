@@ -24,16 +24,16 @@ namespace common
 
 get_self_pointer(context: Context, position: Position) {
 	self = context.get_self_pointer()
-	if self != none => VariableNode(self, position) as Node
+	if self != none return VariableNode(self, position) as Node
 
-	if context.is_inside_lambda => UnresolvedIdentifier(String(LAMBDA_SELF_POINTER_IDENTIFIER), position) as Node
-	=> UnresolvedIdentifier(String(SELF_POINTER_IDENTIFIER), position) as Node
+	if context.is_inside_lambda return UnresolvedIdentifier(String(LAMBDA_SELF_POINTER_IDENTIFIER), position) as Node
+	return UnresolvedIdentifier(String(SELF_POINTER_IDENTIFIER), position) as Node
 }
 
 # Summary: Reads template parameters from the next tokens inside the specified queue
 # Pattern: <$1, $2, ... $n>
 read_template_arguments(context: Context, tokens: List<Token>, offset: large) {
-	=> read_template_arguments(context, tokens.slice(offset, tokens.size))
+	return read_template_arguments(context, tokens.slice(offset, tokens.size))
 }
 
 # Summary: Reads template parameters from the next tokens inside the specified queue
@@ -57,7 +57,7 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 	next = tokens.pop_or(none as Token)
 	if not next.match(Operators.GREATER_THAN) abort('Can not understand the template arguments')
 
-	=> parameters
+	return parameters
 }
 
 # Summary: Reads a type component from the tokens and returns it
@@ -66,10 +66,10 @@ read_type_component(context: Context, tokens: List<Token>) {
 
 	if tokens.size > 0 and tokens[0].match(Operators.LESS_THAN) {
 		template_arguments = read_template_arguments(context, tokens)
-		=> UnresolvedTypeComponent(name, template_arguments)
+		return UnresolvedTypeComponent(name, template_arguments)
 	}
 
-	=> UnresolvedTypeComponent(name)
+	return UnresolvedTypeComponent(name)
 }
 
 # Summary: Reads a type which represents a function from the specified tokens
@@ -84,7 +84,7 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 	return_type = read_type(context, tokens) as Type
 
 	# The return type must exist
-	if return_type == none => none as FunctionType
+	if return_type == none return none as FunctionType
 
 	# Read all the parameter types
 	parameter_types = List<Type>()
@@ -92,12 +92,12 @@ read_function_type(context: Context, tokens: List<Token>, position: Position) {
 
 	loop (parameter_tokens.size > 0) {
 		parameter_type = read_type(context, parameter_tokens) as Type
-		if parameter_type == none => none as FunctionType
+		if parameter_type == none return none as FunctionType
 		parameter_types.add(parameter_type)
 		parameter_tokens.pop_or(none as Token) # Consume the comma, if there are tokens left
 	}
 
-	=> FunctionType(parameter_types, return_type, position)
+	return FunctionType(parameter_types, return_type, position)
 }
 
 # Summary:
@@ -113,28 +113,28 @@ read_pack_type(context: Context, tokens: List<Token>, position: Position) {
 		member = section[0].(IdentifierToken).value
 
 		type = read_type(context, section.slice(2))
-		if type == none => none as Type
+		if type == none return none as Type
 
 		# Create the member using the determined properties
 		pack_type.(Context).declare(type, VARIABLE_CATEGORY_MEMBER, member)
 	}
 
-	=> pack_type
+	return pack_type
 }
 
 # Summary: Reads a type from the next tokens inside the specified tokens
 # Pattern: $name [<$1, $2, ... $n>]
 read_type(context: Context, tokens: List<Token>) {
-	if tokens.size == 0 => none as Type
+	if tokens.size == 0 return none as Type
 
 	next = tokens[0]
 	if next.match(TOKEN_TYPE_PARENTHESIS) {
-		if next.match(`(`) => read_function_type(context, tokens, next.position)
-		if next.match(`{`) => read_pack_type(context, tokens, next.position)
-		=> none as Type
+		if next.match(`(`) return read_function_type(context, tokens, next.position)
+		if next.match(`{`) return read_pack_type(context, tokens, next.position)
+		return none as Type
 	}
 
-	if not next.match(TOKEN_TYPE_IDENTIFIER) => none as Type
+	if not next.match(TOKEN_TYPE_IDENTIFIER) return none as Type
 
 	components = List<UnresolvedTypeComponent>()
 
@@ -159,35 +159,35 @@ read_type(context: Context, tokens: List<Token>) {
 	}
 
 	resolved = type.try_resolve_type(context)
-	if resolved != none => resolved
+	if resolved != none return resolved
 
-	=> type
+	return type
 }
 
 # Summary: Reads a type from the next tokens inside the specified tokens
 # Pattern: $name [<$1, $2, ... $n>]
 read_type(context: Context, tokens: List<Token>, start: large) {
-	=> read_type(context, tokens.slice(start, tokens.size))
+	return read_type(context, tokens.slice(start, tokens.size))
 }
 
 # Summary: Returns whether the specified node is a function call
 is_function_call(node: Node) {
 	if node.instance == NODE_LINK { node = node.last }
-	=> node.instance == NODE_CALL or node.instance == NODE_FUNCTION
+	return node.instance == NODE_CALL or node.instance == NODE_FUNCTION
 }
 
 # Summary: Returns whether the specified node accesses any member of the specified type and the access requires self pointer
 is_self_pointer_required(node: Node) {
-	if node.instance != NODE_FUNCTION and node.instance != NODE_VARIABLE => false
-	if node.parent.match(NODE_CONSTRUCTION | NODE_LINK) => false
+	if node.instance != NODE_FUNCTION and node.instance != NODE_VARIABLE return false
+	if node.parent.match(NODE_CONSTRUCTION | NODE_LINK) return false
 
 	if node.instance == NODE_FUNCTION {
 		function = node.(FunctionNode).function
-		=> function.is_member and not function.is_static
+		return function.is_member and not function.is_static
 	}
 
 	variable = node.(VariableNode).variable
-	=> variable.is_member and not variable.is_static
+	return variable.is_member and not variable.is_static
 }
 
 # Summary:
@@ -195,7 +195,7 @@ is_self_pointer_required(node: Node) {
 consume_template_arguments(state: ParserState) {
 	# Next there must be the opening of the template parameters
 	next = state.peek()
-	if next == none or not next.match(Operators.LESS_THAN) => false
+	if next == none or not next.match(Operators.LESS_THAN) return false
 	state.consume()
 
 	loop {
@@ -203,16 +203,16 @@ consume_template_arguments(state: ParserState) {
 		if not consume_type(state) state.restore(backup)
 
 		next = state.peek()
-		if not state.consume(TOKEN_TYPE_OPERATOR) => false
+		if not state.consume(TOKEN_TYPE_OPERATOR) return false
 
 		# If the consumed operator is a greater than operator, it means the template arguments have ended
-		if next.match(Operators.GREATER_THAN) => true
+		if next.match(Operators.GREATER_THAN) return true
 
 		# If the operator is a comma, it means the template arguments have not ended
 		if next.match(Operators.COMMA) continue
 
 		# The template arguments must be invalid
-		=> false
+		return false
 	}
 }
 
@@ -221,14 +221,14 @@ consume_template_arguments(state: ParserState) {
 # Pattern: <$1, $2, ... $n> (...)
 consume_template_function_call(state: ParserState) {
 	# Consume pattern: <$1, $2, ... $n>
-	if not consume_template_arguments(state) => false
+	if not consume_template_arguments(state) return false
 
 	# Now there must be function parameters next
 	next = state.peek()
-	if next == none or not next.match(`(`) => false
+	if next == none or not next.match(`(`) return false
 
 	state.consume()
-	=> true
+	return true
 }
 
 # Summary: Consumes a function type
@@ -236,16 +236,16 @@ consume_template_function_call(state: ParserState) {
 consume_function_type(state: ParserState) {
 	# Consume a normal parenthesis
 	next = state.peek()
-	if next == none or not next.match(`(`) => false
+	if next == none or not next.match(`(`) return false
 	state.consume()
 
 	# Consume an arrow operator
 	next = state.peek()
-	if next == none or not next.match(Operators.ARROW) => false
+	if next == none or not next.match(Operators.ARROW) return false
 	state.consume()
 
 	# Consume the return type
-	=> consume_type(state)
+	return consume_type(state)
 }
 
 # Summary:
@@ -254,24 +254,24 @@ consume_function_type(state: ParserState) {
 consume_pack_type(state: ParserState) {
 	# Consume curly brackets
 	brackets = state.peek()
-	if brackets == none or not brackets.match(`{`) => false
+	if brackets == none or not brackets.match(`{`) return false
 
 	# Verify the curly brackets contain pack members using sections
 	# Pattern: { $member-1: $type, $member-2: $type, ... }
 	sections = brackets.(ParenthesisToken).get_sections()
-	if sections.size == 0 => false
+	if sections.size == 0 return false
 
 	loop section in sections {
-		if section.size < 3 => false
+		if section.size < 3 return false
 
 		# Verify the first token is a member name
-		if section[0].type != TOKEN_TYPE_IDENTIFIER => false
+		if section[0].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Verify the second token is a colon
-		if not section[1].match(Operators.COLON) => false
+		if not section[1].match(Operators.COLON) return false
 	}
 
-	=> true
+	return true
 }
 
 consume_type(state: ParserState) {
@@ -279,34 +279,34 @@ consume_type(state: ParserState) {
 
 	if not is_normal_type {
 		next = state.peek()
-		if next == none or not (next.match(`{`) or next.match(`(`)) => false
+		if next == none or not (next.match(`{`) or next.match(`(`)) return false
 	}
 
 	loop {
 		next = state.peek()
-		if next == none => true
+		if next == none return true
 
 		if next.match(Operators.DOT) {
 			state.consume()
-			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) return false
 		}
 		else next.match(Operators.LESS_THAN) {
-			if not consume_template_arguments(state) => false
+			if not consume_template_arguments(state) return false
 		}
 		else next.match(`[`) {
 			state.consume()
-			=> true
+			return true
 		}
 		else is_normal_type {
-			=> true
+			return true
 		}
 		else next.match(`(`) {
-			if not consume_function_type(state) => false
+			if not consume_function_type(state) return false
 		}
 		else next.match(`{`) {
-			if not consume_pack_type(state) => false
+			if not consume_pack_type(state) return false
 		}
-		else => true
+		else return true
 	}
 }
 
@@ -316,11 +316,11 @@ get_types(node: Node) {
 
 	loop iterator in node {
 		type = iterator.try_get_type()
-		if type == none or type.is_unresolved => none
+		if type == none or type.is_unresolved return none
 		types.add(type)
 	}
 
-	=> types
+	return types
 }
 
 find_condition(start) {
@@ -328,7 +328,7 @@ find_condition(start) {
 
 	loop (iterator != none) {
 		instance = iterator.instance
-		if instance != NODE_SCOPE and instance != NODE_INLINE and instance != NODE_NORMAL and instance != NODE_PARENTHESIS => iterator
+		if instance != NODE_SCOPE and instance != NODE_INLINE and instance != NODE_NORMAL and instance != NODE_PARENTHESIS return iterator
 		iterator = iterator.last
 	}
 
@@ -336,12 +336,12 @@ find_condition(start) {
 }
 
 consume_block(from: ParserState, destination: List<Token>) {
-	=> consume_block(from, destination, 0)
+	return consume_block(from, destination, 0)
 }
 
 consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 	# Return an empty list, if there is nothing to be consumed
-	if from.end >= from.all.size => none as Status
+	if from.end >= from.all.size return none as Status
 
 	# Clone the tokens from the specified state
 	tokens = clone(from.all.slice(from.end, from.all.size))
@@ -382,7 +382,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 			if node == none {
 				error = state.error
 				if error === none { error = Status('Block consumption does not accept patterns returning nothing') }
-				=> error
+				return error
 			}
 
 			result = parser.DynamicToken(node)
@@ -412,13 +412,13 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 		}
 
 		from.end += consumed
-		=> none as Status
+		return none as Status
 	}
 
 	# Just consume the first token
 	from.end++
 	destination.add(next)
-	=> none as Status
+	return none as Status
 }
 
 get_template_parameters(template_parameter_tokens: List<Token>) {
@@ -431,26 +431,26 @@ get_template_parameters(template_parameter_tokens: List<Token>) {
 		template_parameters.add(template_parameter_tokens[i].(IdentifierToken).value)
 	}
 
-	=> template_parameters
+	return template_parameters
 }
 
 # Summary: Returns whether the two specified types are compatible
 compatible(expected: Type, actual: Type) {
-	if expected == none or actual == none or expected.is_unresolved or actual.is_unresolved => false
+	if expected == none or actual == none or expected.is_unresolved or actual.is_unresolved return false
 
-	if expected.match(actual) => true
+	if expected.match(actual) return true
 
 	if not expected.is_primitive or not actual.is_primitive {
-		if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
+		if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) return false
 	} 
-	else resolver.get_shared_type(expected, actual) == none => false
+	else resolver.get_shared_type(expected, actual) == none return false
 
-	=> true
+	return true
 }
 
 # Summary:  Returns whether the specified actual types are compatible with the specified expected types, that is whether the actual types can be casted to match the expected types. This function also requires that the actual parameters are all resolved, otherwise this function returns false.
 compatible(expected_types: List<Type>, actual_types: List<Type>) {
-	if expected_types.size != actual_types.size => false
+	if expected_types.size != actual_types.size return false
 
 	loop (i = 0, i < expected_types.size, i++) {
 		expected = expected_types[i]
@@ -460,32 +460,32 @@ compatible(expected_types: List<Type>, actual_types: List<Type>) {
 		if expected.match(actual) continue
 
 		if not expected.is_primitive or not actual.is_primitive {
-			if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) => false
+			if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) return false
 		} 
-		else resolver.get_shared_type(expected, actual) == none => false
+		else resolver.get_shared_type(expected, actual) == none return false
 	}
 
-	=> true
+	return true
 }
 
 # Summary: Tries to build a virtual function call which has a specified owner
 try_get_virtual_function_call(self: Node, self_type: Type, name: String, arguments: Node, argument_types: List<Type>, position: Position) {
-	if not self_type.is_virtual_function_declared(name) => none as CallNode
+	if not self_type.is_virtual_function_declared(name) return none as CallNode
 
 	# Ensure all the parameters are resolved
 	loop argument_type in argument_types {
-		if argument_type == none or argument_type.is_unresolved => none as CallNode
+		if argument_type == none or argument_type.is_unresolved return none as CallNode
 	}
 
 	# Try to find a virtual function with the parameter types
 	overload = self_type.get_virtual_function(name).get_overload(argument_types) as VirtualFunction
-	if overload == none or overload.return_type == none => none as CallNode
+	if overload == none or overload.return_type == none return none as CallNode
 
 	required_self_type = overload.find_type_parent()
 	if required_self_type == none abort('Could not retrieve virtual function parent type')
 
 	# Require that the self type has runtime configuration
-	if required_self_type.configuration == none => none as CallNode
+	if required_self_type.configuration == none return none as CallNode
 
 	configuration = required_self_type.get_configuration_variable()
 	alignment = required_self_type.get_all_virtual_functions().index_of(overload)
@@ -503,7 +503,7 @@ try_get_virtual_function_call(self: Node, self_type: Type, name: String, argumen
 	parameter_types = List<Type>(argument_types.size, false)
 	loop parameter in overload.parameters { parameter_types.add(parameter.type) }
 
-	=> CallNode(self, function_pointer, arguments, FunctionType(required_self_type, parameter_types, overload.return_type, position), position)
+	return CallNode(self, function_pointer, arguments, FunctionType(required_self_type, parameter_types, overload.return_type, position), position)
 }
 
 # Summary: Tries to build a virtual function call which has a specified owner
@@ -512,43 +512,43 @@ try_get_virtual_function_call(environment: Context, self: Node, self_type: Type,
 	argument_types = List<Type>()
 	loop argument in arguments { argument_types.add(argument.try_get_type()) }
 
-	=> try_get_virtual_function_call(self, self_type, descriptor.name, arguments, argument_types, descriptor.position)
+	return try_get_virtual_function_call(self, self_type, descriptor.name, arguments, argument_types, descriptor.position)
 }
 
 # Summary: Tries to build a virtual function call which has a specified owner
 try_get_virtual_function_call(environment: Context, name: String, arguments: Node, argument_types: List<Type>, position: Position) {
-	if not environment.is_inside_function => none as CallNode
+	if not environment.is_inside_function return none as CallNode
 
 	type = environment.find_type_parent()
-	if type == none => none as CallNode
+	if type == none return none as CallNode
 
 	self = get_self_pointer(environment, position)
-	=> try_get_virtual_function_call(self, type, name, arguments, argument_types, position)
+	return try_get_virtual_function_call(self, type, name, arguments, argument_types, position)
 }
 
 # Summary: Tries to build a virtual function call which uses the current self pointer
 try_get_virtual_function_call(environment: Context, descriptor: FunctionToken) {
-	if not environment.is_inside_function => none as CallNode
+	if not environment.is_inside_function return none as CallNode
 
 	type = environment.find_type_parent()
-	if type == none => none as CallNode
+	if type == none return none as CallNode
 
 	self = get_self_pointer(environment, descriptor.position)
-	=> try_get_virtual_function_call(environment, self, type, descriptor)
+	return try_get_virtual_function_call(environment, self, type, descriptor)
 }
 
 # Summary: Tries to build a lambda call which is stored inside a specified owner
 try_get_lambda_call(primary: Context, left: Node, name: String, arguments: Node, argument_types: List<Type>) {
-	if not primary.is_variable_declared(name) => none as CallNode
+	if not primary.is_variable_declared(name) return none as CallNode
 
 	variable = primary.get_variable(name)
 
 	# Require the variable to represent a function
-	if variable.type == none or not variable.type.is_function_type => none as CallNode
+	if variable.type == none or not variable.type.is_function_type return none as CallNode
 	properties = variable.type as FunctionType
 
 	# Require that the specified argument types pass the required parameter types
-	if not compatible(properties.parameters, argument_types) => none as CallNode
+	if not compatible(properties.parameters, argument_types) return none as CallNode
 	
 	position = left.start
 	self = LinkNode(left, VariableNode(variable), position)
@@ -559,21 +559,21 @@ try_get_lambda_call(primary: Context, left: Node, name: String, arguments: Node,
 
 	# Load the function pointer using the offset
 	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
-	=> CallNode(self, function_pointer, arguments, properties, position)
+	return CallNode(self, function_pointer, arguments, properties, position)
 }
 
 # Summary: Tries to build a lambda call which is stored inside the current scope or in the self pointer
 try_get_lambda_call(environment: Context, name: String, arguments: Node, argument_types: List<Type>) {
-	if not environment.is_variable_declared(name) => none as CallNode
+	if not environment.is_variable_declared(name) return none as CallNode
 
 	variable = environment.get_variable(name)
 
 	# Require the variable to represent a function
-	if variable.type == none or not variable.type.is_function_type => none as CallNode
+	if variable.type == none or not variable.type.is_function_type return none as CallNode
 	properties = variable.type as FunctionType
 
 	# Require that the specified argument types pass the required parameter types
-	if not compatible(properties.parameters, argument_types) => none as CallNode
+	if not compatible(properties.parameters, argument_types) return none as CallNode
 
 	self = none as Node
 	position = arguments.start
@@ -591,7 +591,7 @@ try_get_lambda_call(environment: Context, name: String, arguments: Node, argumen
 	if settings.is_garbage_collector_enabled { offset = 2 }
 
 	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
-	=> CallNode(self, function_pointer, arguments, properties, position)
+	return CallNode(self, function_pointer, arguments, properties, position)
 }
 
 # Summary: Tries to build a lambda call which is stored inside the current scope or in the self pointer
@@ -600,12 +600,12 @@ try_get_lambda_call(environment: Context, descriptor: FunctionToken) {
 	argument_types = List<Type>()
 	loop argument in arguments { argument_types.add(argument.try_get_type()) }
 
-	=> try_get_lambda_call(environment, descriptor.name, arguments, argument_types)
+	return try_get_lambda_call(environment, descriptor.name, arguments, argument_types)
 }
 
 # Summary: Collects all types and subtypes from the specified context
 get_all_types(context: Context) {
-	=> get_all_types(context, true)
+	return get_all_types(context, true)
 }
 
 # Summary: Collects all types and subtypes from the specified context
@@ -618,7 +618,7 @@ get_all_types(context: Context, include_imported: bool) {
 		result.add_all(get_all_types(type))
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -641,12 +641,12 @@ get_all_visible_functions(context: Context) {
 		functions.add_all(function.value.overloads)
 	}
 	
-	=> functions.distinct()
+	return functions.distinct()
 }
 
 # Summary: Collects all function implementations from the specified context
 get_all_function_implementations(context: Context) {
-	=> get_all_function_implementations(context, true)
+	return get_all_function_implementations(context, true)
 }
 
 # Summary: Collects all function implementations from the specified context
@@ -677,7 +677,7 @@ get_all_function_implementations(context: Context, include_imported: bool) {
 		}
 	}
 
-	=> implementations.distinct()
+	return implementations.distinct()
 }
 
 # Summary: Try to determine the type of access related to the specified node
@@ -691,12 +691,12 @@ try_get_access_type(node: Node) {
 	}
 
 	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT {
-		if parent.first == node or node.is_under(parent.first) => ACCESS_TYPE_WRITE
-		=> ACCESS_TYPE_READ
+		if parent.first == node or node.is_under(parent.first) return ACCESS_TYPE_WRITE
+		return ACCESS_TYPE_READ
 	}
 
-	if parent.match(NODE_INCREMENT | NODE_DECREMENT) => ACCESS_TYPE_WRITE
-	=> ACCESS_TYPE_READ
+	if parent.match(NODE_INCREMENT | NODE_DECREMENT) return ACCESS_TYPE_WRITE
+	return ACCESS_TYPE_READ
 }
 
 # Summary: Returns whether the specified is edited
@@ -709,8 +709,8 @@ is_edited(node: Node) {
 		stop
 	}
 
-	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT => parent.first == node or node.is_under(parent.first)
-	=> parent.match(NODE_INCREMENT | NODE_DECREMENT)
+	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT return parent.first == node or node.is_under(parent.first)
+	return parent.match(NODE_INCREMENT | NODE_DECREMENT)
 }
 
 # Summary: Returns the node which is the destination of the specified edit
@@ -718,7 +718,7 @@ get_edited(editor: Node) {
 	iterator = editor.first
 
 	loop (iterator != none) {
-		if not iterator.match(NODE_CAST) => iterator
+		if not iterator.match(NODE_CAST) return iterator
 		iterator = iterator.first
 	}
 
@@ -745,7 +745,7 @@ get_source(node: Node) {
 		stop
 	}
 
-	=> node
+	return node
 }
 
 # Summary:
@@ -760,18 +760,18 @@ try_get_editor(node: Node) {
 		stop
 	}
 
-	if editor == none => none as Node
+	if editor == none return none as Node
 
-	if editor.instance == NODE_OPERATOR and editor.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT => editor
-	if editor.instance == NODE_INCREMENT or editor.instance == NODE_DECREMENT => editor
+	if editor.instance == NODE_OPERATOR and editor.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT return editor
+	if editor.instance == NODE_INCREMENT or editor.instance == NODE_DECREMENT return editor
 
-	=> none as Node
+	return none as Node
 }
 
 # Summary: Returns the node which edits the specified node
 get_editor(edited: Node) {
 	editor = try_get_editor(edited)
-	if editor != none => editor
+	if editor != none return editor
 
 	abort('Could not find the editor node')
 }
@@ -779,23 +779,23 @@ get_editor(edited: Node) {
 # Summary: Returns whether the specified node represents a statement
 is_statement(node: Node) {
 	type = node.instance
-	=> type == NODE_ELSE or type == NODE_ELSE_IF or type == NODE_IF or type == NODE_LOOP or type == NODE_SCOPE
+	return type == NODE_ELSE or type == NODE_ELSE_IF or type == NODE_IF or type == NODE_LOOP or type == NODE_SCOPE
 }
 
 # Summary: Returns whether the specified node represents a constant
 is_constant(node: Node) {
 	source = common.get_source(node)
 
-	if source.instance == NODE_VARIABLE => source.(VariableNode).variable.is_constant
-	=> source.match(NODE_NUMBER | NODE_STRING | NODE_DATA_POINTER)
+	if source.instance == NODE_VARIABLE return source.(VariableNode).variable.is_constant
+	return source.match(NODE_NUMBER | NODE_STRING | NODE_DATA_POINTER)
 }
 
 # Summary: Returns whether the specified node represents a statement condition
 is_condition(node: Node) {
 	statement = node.find(NODE_ELSE_IF | NODE_IF | NODE_LOOP)
-	if statement == none => false
+	if statement == none return false
 	
-	=> when(statement.instance) {
+	return when(statement.instance) {
 		NODE_IF => statement.(IfNode).condition == node
 		NODE_ELSE_IF => statement.(ElseIfNode).condition == node
 		NODE_LOOP => statement.(LoopNode).condition == node
@@ -805,37 +805,37 @@ is_condition(node: Node) {
 
 # Summary: Returns whether a value is expected to return from the specified node
 is_value_used(value: Node) {
-	=> value.parent.match(NODE_CALL | NODE_CAST | NODE_PARENTHESIS | NODE_CONSTRUCTION | NODE_DECREMENT | NODE_FUNCTION | NODE_INCREMENT | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_OPERATOR | NODE_RETURN)
+	return value.parent.match(NODE_CALL | NODE_CAST | NODE_PARENTHESIS | NODE_CONSTRUCTION | NODE_DECREMENT | NODE_FUNCTION | NODE_INCREMENT | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_OPERATOR | NODE_RETURN)
 }
 
 # Summary: Returns how many bits the value requires
 get_bits(value: large, is_decimal: bool) {
-	if is_decimal => SYSTEM_BITS
+	if is_decimal return SYSTEM_BITS
 
 	if value < 0 {
-		if value < -2147483648 => 64
-		if value < -32768 => 32
-		if value < -128 => 16
+		if value < -2147483648 return 64
+		if value < -32768 return 32
+		if value < -128 return 16
 	}
 	else {
-		if value > 2147483647 => 64
-		if value > 32767 => 32
-		if value > 127 => 16
+		if value > 2147483647 return 64
+		if value > 32767 return 32
+		if value > 127 return 16
 	}
 
-	=> 8
+	return 8
 }
 
 # Summary: Returns whether the specified integer fulfills the following equation:
 # x = 2^y where y is an integer constant
 is_power_of_two(value: large) {
-	=> (value & (value - 1)) == 0
+	return (value & (value - 1)) == 0
 }
 
 # Summary:
 # Returns whether the node represents a number that is power of two
 is_power_of_two(node: Node) {
-	=> node.instance == NODE_NUMBER and node.(NumberNode).format != FORMAT_DECIMAL and is_power_of_two(node.(NumberNode).value)
+	return node.instance == NODE_NUMBER and node.(NumberNode).format != FORMAT_DECIMAL and is_power_of_two(node.(NumberNode).value)
 }
 
 integer_log2(value: large) {
@@ -843,7 +843,7 @@ integer_log2(value: large) {
 
 	loop {
 		value = value |> 1
-		if value == 0 => i
+		if value == 0 return i
 		i++
 	}
 }
@@ -851,7 +851,7 @@ integer_log2(value: large) {
 # Summary: Joins the specified token lists with the specified separator
 join(separator: Token, parts: List<List<Token>>) {
 	result = List<Token>()
-	if parts.size == 0 => result
+	if parts.size == 0 return result
 
 	loop tokens in parts {
 		result.add_all(tokens)
@@ -859,7 +859,7 @@ join(separator: Token, parts: List<List<Token>>) {
 	}
 
 	result.remove_at(result.size - 1)
-	=> result
+	return result
 }
 
 # Summary: Converts the specified type into tokens
@@ -884,7 +884,7 @@ get_tokens(type: Type, position: Position) {
 		# Now, join the token arrays with commas and put them inside curly brackets: { $member-1: $type-1, $member-2: $type-2, ... }
 		result.add(ParenthesisToken(`{`, position, position, join(OperatorToken(Operators.COMMA, position), members)))
 
-		=> result
+		return result
 	}
 
 	if type.is_function_type {
@@ -897,13 +897,13 @@ get_tokens(type: Type, position: Position) {
 		result.add(OperatorToken(Operators.ARROW, position))
 		result.add_all(get_tokens(function.return_type, position))
 
-		=> result
+		return result
 	}
 
 	if type.is_array_type {
 		result.add_all(get_tokens(type.(ArrayType).element, position))
 		result.add(ParenthesisToken(`[`, position, position, [ NumberToken(type.(ArrayType).size, SYSTEM_FORMAT, position, position) as Token ]))
-		=> result
+		return result
 	}
 
 	if type.parent != none and type.parent.is_type {
@@ -929,7 +929,7 @@ get_tokens(type: Type, position: Position) {
 		result.add(OperatorToken(Operators.GREATER_THAN, position))
 	}
 
-	=> result
+	return result
 }
 
 # Summary: Returns the position which represents the end of the specified token
@@ -945,9 +945,9 @@ get_end_of_token(token: Token) {
 		else => none as Position
 	}
 
-	if end != none => end
+	if end != none return end
 
-	=> token.position.translate(1)
+	return token.position.translate(1)
 }
 
 # Summary: Creates a function header without return type from the specified values
@@ -975,9 +975,9 @@ to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
 		}
 	}
 
-	if template_argument_strings.size > 0 => name + `<` + String.join(", ", template_argument_strings) + '>(' + String.join(", ", argument_strings) + `)`
+	if template_argument_strings.size > 0 return name + `<` + String.join(", ", template_argument_strings) + '>(' + String.join(", ", argument_strings) + `)`
 	
-	=> name + `(` + String.join(", ", argument_strings) + `)`
+	return name + `(` + String.join(", ", argument_strings) + `)`
 }
 
 # Summary: Aligns the member variables of the specified type
@@ -1015,20 +1015,20 @@ get_pack_representives(context: Context, prefix: String, type: Type, category: l
 		}
 	}
 
-	=> representives
+	return representives
 }
 
 # Summary:
 # Returns all local variables, which represent the specified pack variable
 get_pack_representives(variable: Variable) {
 	# If we are accessing a pack representive, no need to add dot to the name
-	if variable.name.starts_with(`.`) => get_pack_representives(variable.parent, variable.name, variable.type, variable.category)
+	if variable.name.starts_with(`.`) return get_pack_representives(variable.parent, variable.name, variable.type, variable.category)
 
-	=> get_pack_representives(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
+	return get_pack_representives(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
 }
 
 # Summary:
 # Returns true if the specified node represents integer zero
 is_zero(node: Node) {
-	=> node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
+	return node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
 }

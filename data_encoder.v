@@ -100,7 +100,7 @@ DataEncoderModule {
 			if value == 0 stop
 		}
 
-		=> bytes
+		return bytes
 	}
 
 	# Summary:
@@ -131,7 +131,7 @@ DataEncoderModule {
 			bytes.add(x)
 		}
 
-		=> bytes
+		return bytes
 	}
 
 	# Summary:
@@ -180,7 +180,7 @@ DataEncoderModule {
 	# Summary:
 	# Writes the specified into: String this module
 	string(text: String) {
-		=> string(text, true)
+		return string(text, true)
 	}
 
 	# Summary:
@@ -251,12 +251,12 @@ DataEncoderModule {
 	# Summary:
 	# Returns a local symbol with the specified name if such symbol exists, otherwise an external symbol with the specified name is created.
 	get_local_or_create_external_symbol(name: String) {
-		if symbols.contains_key(name) => symbols[name]
+		if symbols.contains_key(name) return symbols[name]
 
 		# Create an external version of the specified symbol
 		symbol = BinarySymbol(name, 0, true)
 		symbols.add(name, symbol)
-		=> symbol
+		return symbol
 	}
 
 	# Summary:
@@ -280,7 +280,7 @@ DataEncoderModule {
 			symbol.exported = false
 		}
 
-		=> symbol
+		return symbol
 	}
 
 	# Summary:
@@ -304,7 +304,7 @@ DataEncoderModule {
 			symbol.exported = exported
 		}
 
-		=> symbol
+		return symbol
 	}
 
 	build() {
@@ -334,7 +334,7 @@ DataEncoderModule {
 		loop symbol in symbols { symbol.value.section = section }
 		loop relocation in relocations { relocation.section = section }
 
-		=> section
+		return section
 	}
 
 	reset() {

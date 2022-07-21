@@ -5,7 +5,7 @@ export conditionally_changing_constant_with_if_statement(a: large, b: large) {
 		c = a
 	}
 
-	=> a + c
+	return a + c
 }
 
 export conditionally_changing_constant_with_loop_statement(a: large, b: large) {
@@ -15,7 +15,7 @@ export conditionally_changing_constant_with_loop_statement(a: large, b: large) {
 		c += 1
 	}
 
-	=> b * c
+	return b * c
 }
 
 init() {
@@ -25,5 +25,5 @@ init() {
 	are_equal(200, conditionally_changing_constant_with_loop_statement(3, 2))
 	are_equal(515, conditionally_changing_constant_with_loop_statement(2, 5))
 
-	=> 0
+	return 0
 }

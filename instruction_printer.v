@@ -93,8 +93,8 @@ InstructionPrinter {
 	verbose: bool = true
 
 	name_of(result: Result) {
-		if result.is_constant => String(`#`) + to_string(result.value.(ConstantHandle).value)
-		if result.is_any_register => result.value.(RegisterHandle).register.partitions[0]
+		if result.is_constant return String(`#`) + to_string(result.value.(ConstantHandle).value)
+		if result.is_any_register return result.value.(RegisterHandle).register.partitions[0]
 
 		index = 0
 
@@ -106,15 +106,15 @@ InstructionPrinter {
 			results[result] = index
 		}
 
-		=> String(`%`) + to_string(index)
+		return String(`%`) + to_string(index)
 	}
 
 	name_of(variable: Variable) {
-		=> String(`<`) + variable.name + `>`
+		return String(`<`) + variable.name + `>`
 	}
 
 	name_of(instruction: DualParameterInstruction) {
-		=> when(instruction.type) {
+		return when(instruction.type) {
 			INSTRUCTION_ADDITION => 'add',
 			INSTRUCTION_SUBTRACT => 'subtract',
 			INSTRUCTION_MULTIPLICATION => 'multiply',
@@ -125,7 +125,7 @@ InstructionPrinter {
 	}
 
 	name_of(handle: Handle){
-		=> handle.string()
+		return handle.string()
 	}
 
 	print_result_assignment(builder: InstructionPrinterBuilder, instruction: Instruction) {

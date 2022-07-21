@@ -43,15 +43,15 @@ Animal Fish Salmon {
 }
 
 export get_animal() {
-	=> Animal()
+	return Animal()
 }
 
 export get_fish() {
-	=> Fish()
+	return Fish()
 }
 
 export get_salmon() {
-	=> Salmon()
+	return Salmon()
 }
 
 export animal_moves(animal: Animal) {
@@ -145,5 +145,5 @@ init() {
 	are_equal(94, salmon.energy)
 	are_equal(6, salmon.hunger)
 	are_equal(false, salmon.is_hiding)
-	=> 0
+	return 0
 }

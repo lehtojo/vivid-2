@@ -1,58 +1,58 @@
 export conditionals(a, b) {
 	if a >= b {
-		=> a
+		return a
 	}
 	else {
-		=> b
+		return b
 	}
 }
 
 export if_statement_greater_than(a, b) {
 	if a > b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 export if_statement_greater_than_or_equal(a, b) {
 	if a >= b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 export if_statement_less_than(a, b) {
 	if a < b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 export if_statement_less_than_or_equal(a, b) {
 	if a <= b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 export if_statement_equals(a, b) {
 	if a == b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 export if_statement_not_equals(a, b) {
 	if a != b {
-		=> true
+		return true
 	}
 
-	=> false
+	return false
 }
 
 init() {
@@ -84,5 +84,5 @@ init() {
 	are_equal(true, if_statement_not_equals(100, 999))
 	are_equal(true, if_statement_not_equals(999, 100))
 	are_equal(false, if_statement_not_equals(100, 100))
-	=> 0
+	return 0
 }

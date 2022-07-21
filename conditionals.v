@@ -7,7 +7,7 @@ build_body(unit: Unit, body: ScopeNode) {
 
 	# Restore the state after the body
 	unit.add_debug_position(body.end)
-	=> result
+	return result
 }
 
 # Summary: Builds an if-statement or an else-if-statement
@@ -31,24 +31,24 @@ build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction) {
 	result = build_body(unit, statement.body)
 
 	# If the body of the if-statement is executed it must skip the potential successors
-	if statement.successor == none => result
+	if statement.successor == none return result
 
 	# Skip the next successor from this if-statement's body and add the interphase label
 	unit.add(JumpInstruction(unit, end.label))
 	unit.add(LabelInstruction(unit, interphase))
 
 	# Build the successor
-	=> build(unit, statement.successor, end) as Result
+	return build(unit, statement.successor, end) as Result
 }
 
 build(unit: Unit, node: Node, end: LabelInstruction) {
 	unit.add_debug_position(node)
 
-	if node.match(NODE_IF | NODE_ELSE_IF) => build(unit, node as IfNode, node.(IfNode).condition, end)
+	if node.match(NODE_IF | NODE_ELSE_IF) return build(unit, node as IfNode, node.(IfNode).condition, end)
 
 	result = build_body(unit, node.(ElseNode).body)
 
-	=> result
+	return result
 }
 
 start(unit: Unit, node: IfNode) {
@@ -56,7 +56,7 @@ start(unit: Unit, node: IfNode) {
 	result = build(unit, node, end)
 	unit.add(end)
 
-	=> result
+	return result
 }
 
 build_condition(unit: Unit, condition: Node, failure: Label) {
@@ -184,11 +184,11 @@ build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
 		operation = condition as OperatorNode
 		type = operation.operator.type
 
-		if type == OPERATOR_TYPE_LOGICAL => build_logical_condition(unit, operation, success, failure) as List<Instruction>
-		if type == OPERATOR_TYPE_COMPARISON => build_comparison(unit, operation, success, failure) as List<Instruction>
+		if type == OPERATOR_TYPE_LOGICAL return build_logical_condition(unit, operation, success, failure) as List<Instruction>
+		if type == OPERATOR_TYPE_COMPARISON return build_comparison(unit, operation, success, failure) as List<Instruction>
 	}
 
-	if condition.instance == NODE_PARENTHESIS => build_condition(unit, condition.last, success, failure) as List<Instruction>
+	if condition.instance == NODE_PARENTHESIS return build_condition(unit, condition.last, success, failure) as List<Instruction>
 
 	if condition.instance == NODE_INLINE {
 		comparison = common.get_source(condition)
@@ -203,7 +203,7 @@ build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
 			instructions.add(JumpInstruction(unit, comparison.(OperatorNode).operator as ComparisonOperator, false, not unsigned, success))
 			instructions.add(JumpInstruction(unit, failure))
 
-			=> instructions
+			return instructions
 		}
 	}
 
@@ -212,7 +212,7 @@ build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
 
 	replacement.set_operands(condition, NumberNode(SYSTEM_FORMAT, 0, replacement.start))
 
-	=> build_condition(unit, replacement, success, failure) as List<Instruction>
+	return build_condition(unit, replacement, success, failure) as List<Instruction>
 }
 
 build_comparison(unit: Unit, condition: OperatorNode, success: Label, failure: Label) {
@@ -225,7 +225,7 @@ build_comparison(unit: Unit, condition: OperatorNode, success: Label, failure: L
 	instructions.add(JumpInstruction(unit, condition.operator as ComparisonOperator, false, not unsigned, success))
 	instructions.add(JumpInstruction(unit, failure))
 
-	=> instructions
+	return instructions
 }
 
 build_logical_condition(unit: Unit, condition: OperatorNode, success: Label, failure: Label) {
@@ -246,5 +246,5 @@ build_logical_condition(unit: Unit, condition: OperatorNode, success: Label, fai
 		abort('Unsupported logical operator encountered while building a conditional statement')
 	}
 
-	=> instructions
+	return instructions
 }

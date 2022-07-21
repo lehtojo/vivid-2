@@ -14,7 +14,7 @@ SourceFile {
 
 	filename() {
 		i = fullname.last_index_of(`/`)
-		=> fullname.slice(i + 1, fullname.length)
+		return fullname.slice(i + 1, fullname.length)
 	}
 
 	filename_without_extension() {
@@ -23,14 +23,14 @@ SourceFile {
 		end = fullname.last_index_of(`.`)
 		if end <= start { end = fullname.length }
 
-		=> fullname.slice(start, end)
+		return fullname.slice(start, end)
 	}
 }
 
 # Summary: Loads the source files specified by the user
 load() {
 	filenames = settings.filenames
-	if filenames.size == 0 => Status('Please enter input files')
+	if filenames.size == 0 return Status('Please enter input files')
 
 	files = List<SourceFile>(filenames.size, true)
 
@@ -38,12 +38,12 @@ load() {
 		filename = filenames[i]
 
 		bytes = io.read_file(filename)
-		if bytes.empty => Status("Could not load file " + filename)
+		if bytes.empty return Status("Could not load file " + filename)
 
 		content = String(bytes.value.data, bytes.value.size).replace(`\r`, ` `).replace(`\t`, ` `)
 		files[i] = SourceFile(filename, content, i)
 	}
 
 	settings.source_files = files
-	=> Status()
+	return Status()
 }

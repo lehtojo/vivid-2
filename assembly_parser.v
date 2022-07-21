@@ -59,7 +59,7 @@ AssemblyParser {
 	# Handles offset directives: . $allocator $to - $from
 	private execute_offset_allocator(tokens: List<Token>) {
 		# Pattern: . $allocator $to - $from
-		if tokens.size < 5 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER or not tokens[3].match(Operators.SUBTRACT) or tokens[4].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens.size < 5 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER or not tokens[3].match(Operators.SUBTRACT) or tokens[4].type != TOKEN_TYPE_IDENTIFIER return false
 
 		to = tokens[2].(IdentifierToken).value
 		from = tokens[4].(IdentifierToken).value
@@ -78,14 +78,14 @@ AssemblyParser {
 
 		data.offsets.add(BinaryOffset(data.position, offset, bytes))
 		data.zero(bytes)
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Handles symbol reference allocators: . $allocator $symbol
 	private execute_symbol_reference_allocator(tokens: List<Token>) {
 		# Pattern: . $allocator $symbol
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 		symbol = tokens[2].(IdentifierToken).value
 		allocator = tokens[1].(IdentifierToken).value
@@ -109,17 +109,17 @@ AssemblyParser {
 
 		data.relocations.add(BinaryRelocation(data.get_local_or_create_external_symbol(symbol), data.position, 0, relocation_type, bytes))
 		data.zero(bytes)
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Executes the specified directive, if it represents a section directive.
 	# Section directive switches the active section.
 	private execute_section_directive(tokens: List<Token>) {
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Pattern: .section $section
-		if not (tokens[1].(IdentifierToken).value == SECTION_DIRECTIVE) => false
+		if not (tokens[1].(IdentifierToken).value == SECTION_DIRECTIVE) return false
 
 		# Switch the active section
 		section: String = "." + tokens[2].(IdentifierToken).value
@@ -132,7 +132,7 @@ AssemblyParser {
 
 			data = none
 			section = section
-			=> true
+			return true
 		}
 
 		this.section = section
@@ -140,57 +140,57 @@ AssemblyParser {
 		# All non-text sections are data sections, create a data section if no previous data section has the specified name
 		if sections.contains_key(section) {
 			data = sections[section]
-			=> true
+			return true
 		}
 
 		data = DataEncoderModule()
 		data.name = section
 		sections[section] = data
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Executes the specified directive, if it exports a symbol.
 	private export_export_directive(tokens: List<Token>) {
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Pattern: .export $symbol
-		if not (tokens[1].(IdentifierToken).value == EXPORT_DIRECTIVE) => false
+		if not (tokens[1].(IdentifierToken).value == EXPORT_DIRECTIVE) return false
 
 		exports.add(tokens[2].(IdentifierToken).value)
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Executes the specified directive, if it controls debug information.
 	private execute_debug_directive(tokens: List<Token>) {
-		if tokens.size < 2 or tokens[1].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens.size < 2 or tokens[1].type != TOKEN_TYPE_IDENTIFIER return false
 
 		directive = tokens[1].(IdentifierToken).value
 
 		if directive == LINE_DIRECTIVE {
 			# Pattern: .line $file $line $character
-			if tokens.size < 5 or tokens[2].type != TOKEN_TYPE_NUMBER or tokens[3].type != TOKEN_TYPE_NUMBER or tokens[4].type != TOKEN_TYPE_NUMBER => false
+			if tokens.size < 5 or tokens[2].type != TOKEN_TYPE_NUMBER or tokens[3].type != TOKEN_TYPE_NUMBER or tokens[4].type != TOKEN_TYPE_NUMBER return false
 
 			file = tokens[2].(NumberToken).data
 			line = tokens[3].(NumberToken).data - 1
 			character = tokens[4].(NumberToken).data - 1
 
 			instructions.add(DebugBreakInstruction(unit, Position(none as SourceFile, line, character)))
-			=> true
+			return true
 		}
 
 		if directive == DEBUG_FILE_DIRECTIVE {
 			# Pattern: .debug_file $file
-			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_STRING => false
+			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_STRING return false
 
 			debug_file = tokens[2].(StringToken).text
-			=> true
+			return true
 		}
 
 		if directive == DEBUG_START_DIRECTIVE {
 			# Pattern: .debug_start $symbol
-			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_IDENTIFIER => false
+			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 			symbol = tokens[2].(IdentifierToken).value
 
@@ -198,12 +198,12 @@ AssemblyParser {
 			handle = DataSectionHandle(symbol, false) as Handle
 			instruction.parameters.add(InstructionParameter(handle, FLAG_NONE))
 			instructions.add(instruction)
-			=> true
+			return true
 		}
 
 		if directive == DEBUG_FRAME_OFFSET_DIRECTIVE {
 			# Pattern: .debug_start $symbol
-			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_NUMBER => false
+			if tokens.size < 3 or tokens[2].type != TOKEN_TYPE_NUMBER return false
 
 			offset = tokens[2].(NumberToken).data
 
@@ -211,22 +211,22 @@ AssemblyParser {
 			handle = ConstantHandle(offset)
 			instruction.parameters.add(InstructionParameter(handle, FLAG_NONE))
 			instructions.add(instruction)
-			=> true
+			return true
 		}
 
 		if directive == DEBUG_END_DIRECTIVE {
 			# Pattern: .debug_end
 			instructions.add(Instruction(unit, INSTRUCTION_DEBUG_END))
-			=> true
+			return true
 		}
 
-		=> false
+		return false
 	}
 
 	# Summary:
 	# Executes the specified directive, if it allocates some primitive type such as byte or word.
 	private execute_constant_allocator(tokens: List<Token>) {
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER return false
 
 		directive = tokens[1].(IdentifierToken).value
 		value = tokens[2].(NumberToken).data
@@ -237,16 +237,16 @@ AssemblyParser {
 		else directive == QWORD_SPECIFIER data.write_int64(value) # Pattern: .qword $value
 		else directive == XWORD_SPECIFIER or directive == OWORD_SPECIFIER abort('Please use smaller allocators')
 		else {
-			=> false
+			return false
 		}
 
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Allocates a string, if the specified tokens represent a allocator
 	private execute_string_allocator(tokens: List<Token>) {
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_STRING => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_STRING return false
 
 		allocator = tokens[1].(IdentifierToken).value
 
@@ -259,22 +259,22 @@ AssemblyParser {
 			data.string(tokens[2].(StringToken).text, false)
 		}
 		else {
-			=> false
+			return false
 		}
 
-		=> true
+		return true
 	}
 
 	# Summary:
 	# Align the current data section, if the specified tokens represent an alignment directive
 	private execute_alignment(tokens: List<Token>) {
 		# Pattern: .align $alignment
-		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER => false
-		if not (tokens[1].(IdentifierToken).value == ALIGN_DIRECTIVE) => false
+		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER return false
+		if not (tokens[1].(IdentifierToken).value == ALIGN_DIRECTIVE) return false
 
 		alignment = tokens[2].(NumberToken).data
 		data_encoder.align(data, pow(2, alignment))
-		=> true
+		return true
 	}
 
 	# Summary:
@@ -282,25 +282,25 @@ AssemblyParser {
 	# Pattern: . $directive $1 $2 ... $n
 	private parse_directive(tokens: List<Token>) {
 		# Directives start with a dot
-		if not tokens[0].match(Operators.DOT) => false
+		if not tokens[0].match(Operators.DOT) return false
 
 		# The second token must be the identifier of the directive
-		if tokens.size == 1 or not tokens[1].match(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_KEYWORD) => false
+		if tokens.size == 1 or not tokens[1].match(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_KEYWORD) return false
 
-		if execute_section_directive(tokens) => true
-		if export_export_directive(tokens) => true
-		if execute_debug_directive(tokens) => true
+		if execute_section_directive(tokens) return true
+		if export_export_directive(tokens) return true
+		if execute_debug_directive(tokens) return true
 
 		# The executors below are only executed if we are in the data section
-		if data == none => false
+		if data == none return false
 
-		if execute_offset_allocator(tokens) => true
-		if execute_symbol_reference_allocator(tokens) => true
-		if execute_constant_allocator(tokens) => true
-		if execute_string_allocator(tokens) => true
-		if execute_alignment(tokens) => true
+		if execute_offset_allocator(tokens) return true
+		if execute_symbol_reference_allocator(tokens) return true
+		if execute_constant_allocator(tokens) return true
+		if execute_string_allocator(tokens) return true
+		if execute_alignment(tokens) return true
 
-		=> false
+		return false
 	}
 
 	# Summary:
@@ -308,10 +308,10 @@ AssemblyParser {
 	# Pattern: $name :
 	private parse_label(tokens: List<Token>) {
 		# Labels must begin with an identifier
-		if not tokens[0].match(TOKEN_TYPE_IDENTIFIER) => false
+		if not tokens[0].match(TOKEN_TYPE_IDENTIFIER) return false
 
 		# Labels must end with a colon
-		if tokens.size == 1 or not tokens[1].match(Operators.COLON) => false
+		if tokens.size == 1 or not tokens[1].match(Operators.COLON) return false
 
 		name = tokens[0].(IdentifierToken).value
 
@@ -322,7 +322,7 @@ AssemblyParser {
 			data.create_local_symbol(name, data.position)
 		}
 
-		=> true
+		return true
 	}
 
 	# Summary:
@@ -335,7 +335,7 @@ AssemblyParser {
 			value = parameter.(IdentifierToken).value
 
 			# Return a register handle, if the token represents one
-			if registers.contains_key(value) => registers[value]
+			if registers.contains_key(value) return registers[value]
 
 			# If the identifier represents a size specifier, determine how many bytes it represents
 			bytes = when(value) {
@@ -356,16 +356,16 @@ AssemblyParser {
 				memory_address = parse_instruction_parameter(all, i) as Handle
 				memory_address.format = to_format(bytes)
 
-				=> memory_address
+				return memory_address
 			}
 
 			# Since the identifier is not a register or a size specifier, it must be a symbol
-			=> DataSectionHandle(value, true)
+			return DataSectionHandle(value, true)
 		}
 
 		if parameter.type == TOKEN_TYPE_NUMBER {
 			number = parameter.(NumberToken)
-			=> ConstantHandle(number.data, number.format)
+			return ConstantHandle(number.data, number.format)
 		}
 
 		if parameter.type == TOKEN_TYPE_PARENTHESIS {
@@ -377,10 +377,10 @@ AssemblyParser {
 				
 				if start.instance == INSTANCE_DATA_SECTION {
 					start.(DataSectionHandle).address = false
-					=> start
+					return start
 				}
 
-				=> MemoryHandle(unit, Result(start, SYSTEM_SIGNED), 0)
+				return MemoryHandle(unit, Result(start, SYSTEM_SIGNED), 0)
 			}
 			else tokens.size == 2 {
 				# Patterns: - $number
@@ -398,7 +398,7 @@ AssemblyParser {
 					abort('Expected the first token to be a plus or minus operator')
 				}
 
-				=> MemoryHandle(unit, Result(ConstantHandle(offset), SYSTEM_SIGNED), 0)
+				return MemoryHandle(unit, Result(ConstantHandle(offset), SYSTEM_SIGNED), 0)
 			}
 			else tokens.size == 3 {
 				# Patterns: $register + $register / $register + $number / $symbol + $number
@@ -413,10 +413,10 @@ AssemblyParser {
 						start.(DataSectionHandle).offset += offset.(ConstantHandle).value
 						start.(DataSectionHandle).address = false
 
-						=> start
+						return start
 					}
 
-					=> ComplexMemoryHandle(Result(start, SYSTEM_SIGNED), Result(offset, SYSTEM_SIGNED), 1, 0)
+					return ComplexMemoryHandle(Result(start, SYSTEM_SIGNED), Result(offset, SYSTEM_SIGNED), 1, 0)
 				}
 
 				# Patterns: $register - $number / $symbol - $number
@@ -429,10 +429,10 @@ AssemblyParser {
 						start.(DataSectionHandle).offset += offset
 						start.(DataSectionHandle).address = false
 
-						=> start
+						return start
 					}
 
-					=> MemoryHandle(none as Unit, Result(start, SYSTEM_FORMAT), offset)
+					return MemoryHandle(none as Unit, Result(start, SYSTEM_FORMAT), offset)
 				}
 
 				# Pattern: $register * $number
@@ -441,7 +441,7 @@ AssemblyParser {
 					second = Result(parse_instruction_parameter(tokens, 0) as Handle, SYSTEM_SIGNED)
 					stride = tokens[2].(NumberToken).data
 
-					=> ComplexMemoryHandle(first, second, stride, 0)
+					return ComplexMemoryHandle(first, second, stride, 0)
 				}
 			}
 			else tokens.size == 5 {
@@ -467,7 +467,7 @@ AssemblyParser {
 
 					second = Result(parse_instruction_parameter(tokens, 2) as Handle, SYSTEM_SIGNED)
 
-					=> ComplexMemoryHandle(first, second, 1, offset)
+					return ComplexMemoryHandle(first, second, 1, offset)
 				}
 
 				# Patterns: $register * $number + $register / $register * $number + $number / $register * $number - $number
@@ -479,18 +479,18 @@ AssemblyParser {
 						offset = parse_instruction_parameter(tokens, 3).(ConstantHandle).value
 
 						# NOTE: This is redundant, but the external assembler encodes differently if this code is not present
-						if stride == 1 => MemoryHandle(none as Unit, first, offset)
+						if stride == 1 return MemoryHandle(none as Unit, first, offset)
 
-						=> ComplexMemoryHandle(Result(), first, stride, offset)
+						return ComplexMemoryHandle(Result(), first, stride, offset)
 					}
 					else {
 						# Pattern: $register * $number + $register
 						offset = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_SIGNED)
 
 						# NOTE: This is redundant, but the external assembler encodes differently if this code is not present
-						if stride == 1 => ComplexMemoryHandle(first, offset, 1, 0)
+						if stride == 1 return ComplexMemoryHandle(first, offset, 1, 0)
 
-						=> ComplexMemoryHandle(offset, first, stride, 0)
+						return ComplexMemoryHandle(offset, first, stride, 0)
 					}
 				}
 			}
@@ -520,9 +520,9 @@ AssemblyParser {
 				second = Result(parse_instruction_parameter(tokens, 4) as Handle, SYSTEM_SIGNED)
 
 				# NOTE: This is redundant, but the external assembler encodes differently if this code is not present
-				if stride == 1 => ComplexMemoryHandle(first, second, 1, offset)
+				if stride == 1 return ComplexMemoryHandle(first, second, 1, offset)
 
-				=> ComplexMemoryHandle(second, first, stride, offset)
+				return ComplexMemoryHandle(second, first, stride, offset)
 			}
 		}
 
@@ -534,7 +534,7 @@ AssemblyParser {
 			number = parse_instruction_parameter(all, i + 1) as Handle
 			number.(ConstantHandle).value = -number.(ConstantHandle).value
 
-			=> number
+			return number
 		}
 
 		# Pattern: + $number
@@ -545,7 +545,7 @@ AssemblyParser {
 			number = parse_instruction_parameter(all, i + 1) as Handle
 			number.(ConstantHandle).value = number.(ConstantHandle).value
 
-			=> number
+			return number
 		}
 
 		abort("Can not understand: " + to_string(all))
@@ -554,7 +554,7 @@ AssemblyParser {
 	# Summary:
 	# Returns whether the specified operation represents a jump instruction
 	static is_jump(operation) {
-		=> operation == platform.x64.JUMP or
+		return operation == platform.x64.JUMP or
 			operation == platform.x64.JUMP_ABOVE or
 			operation == platform.x64.JUMP_ABOVE_OR_EQUALS or
 			operation == platform.x64.JUMP_BELOW or
@@ -572,7 +572,7 @@ AssemblyParser {
 	# Summary:
 	# Tries to create an instruction from the specified tokens
 	parse_instruction(tokens: List<Token>) {
-		if tokens[0].type != TOKEN_TYPE_IDENTIFIER => false
+		if tokens[0].type != TOKEN_TYPE_IDENTIFIER return false
 		operation = tokens[0].(IdentifierToken).value
 
 		parameters = List<InstructionParameter>()
@@ -599,7 +599,7 @@ AssemblyParser {
 		instruction.operation = operation
 
 		instructions.add(instruction)
-		=> true
+		return true
 	}
 
 	# Summary: Finds instruction prefixes and merges them into the instruction

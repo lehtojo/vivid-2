@@ -102,7 +102,7 @@ get_cost(node: Node) {
 		iterator = iterator.next
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -168,13 +168,13 @@ recreate(components: List<Component>) {
 		}
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
 # Builds a node tree representing a variable with an order
 create_variable_with_order(variable: Variable, order: normal) {
-	if order == 0 => NumberNode(SYSTEM_SIGNED, 1, none as Position)
+	if order == 0 return NumberNode(SYSTEM_SIGNED, 1, none as Position)
 
 	result = VariableNode(variable) as Node
 
@@ -186,7 +186,7 @@ create_variable_with_order(variable: Variable, order: normal) {
 		result = OperatorNode(Operators.DIVIDE).set_operands(NumberNode(SYSTEM_SIGNED, 1, none as Position), result)
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -194,7 +194,7 @@ create_variable_with_order(variable: Variable, order: normal) {
 recreate(component: Component) {
 	if component.is_number {
 		number_component = component as NumberComponent
-		=> NumberNode(number_component.value.format, number_component.value.data, none as Position)
+		return NumberNode(number_component.value.format, number_component.value.data, none as Position)
 	}
 
 	if component.is_variable {
@@ -202,21 +202,21 @@ recreate(component: Component) {
 		coefficient = variable_component.coefficient
 
 		if coefficient.is_zero {
-			=> NumberNode(coefficient.format, coefficient.data, none as Position)
+			return NumberNode(coefficient.format, coefficient.data, none as Position)
 		}
 
 		result = create_variable_with_order(variable_component.variable, variable_component.order)
-		if coefficient.is_one() => result
+		if coefficient.is_one() return result
 
-		=> OperatorNode(Operators.MULTIPLY).set_operands(result, NumberNode(coefficient.format, coefficient.data, none as Position))
+		return OperatorNode(Operators.MULTIPLY).set_operands(result, NumberNode(coefficient.format, coefficient.data, none as Position))
 	}
 
 	if component.is_complex {
 		complex_component = component as ComplexComponent
 		complex_node = complex_component.node.clone()
 
-		if complex_component.is_negative => NegateNode(complex_node, none as Position)
-		=> complex_node
+		if complex_component.is_negative return NegateNode(complex_node, none as Position)
+		return complex_node
 	}
 
 	if component.is_variable_product {
@@ -231,9 +231,9 @@ recreate(component: Component) {
 			result = OperatorNode(Operators.MULTIPLY).set_operands(result, create_variable_with_order(variable.variable, variable.order))
 		}
 
-		if coefficient.is_one() => result
+		if coefficient.is_one() return result
 
-		=> OperatorNode(Operators.MULTIPLY).set_operands(result, NumberNode(coefficient.format, coefficient.data, none as Position))
+		return OperatorNode(Operators.MULTIPLY).set_operands(result, NumberNode(coefficient.format, coefficient.data, none as Position))
 	}
 
 	abort('Unsupported component encountered while recreating')
@@ -246,7 +246,7 @@ perform_negate(components: List<Component>) {
 		component.negation()
 	}
 
-	=> components
+	return components
 }
 
 # Summary:
@@ -255,11 +255,11 @@ perform_not(expression: NotNode, components: List<Component>) {
 	if components.size == 1 and components[0].is_integer {
 		data = components[0].(NumberComponent).value.data
 
-		if expression.is_bitwise => [ NumberComponent(!data) as Component ]
-		else => [ NumberComponent(data ¤ 1) as Component ]
+		if expression.is_bitwise return [ NumberComponent(!data) as Component ]
+		else return [ NumberComponent(data ¤ 1) as Component ]
 	}
 
-	=> [ ComplexComponent(NotNode(recreate(components), expression.is_bitwise, expression.start)) as Component ]
+	return [ ComplexComponent(NotNode(recreate(components), expression.is_bitwise, expression.start)) as Component ]
 }
 
 # Summary:
@@ -293,7 +293,7 @@ collect_components(expression: Node) {
 
 		if casted.instance != NODE_NUMBER {
 			result.add(ComplexComponent(expression))
-			=> result
+			return result
 		}
 
 		from = casted.get_type()
@@ -302,7 +302,7 @@ collect_components(expression: Node) {
 		# If this is not a number cast, conversion just return a complex component
 		if not from.is_number or not to.is_number {
 			result.add(ComplexComponent(expression))
-			=> result
+			return result
 		}
 
 		# If an integer is converted to a decimal or vice versa, just return a complex component
@@ -310,7 +310,7 @@ collect_components(expression: Node) {
 		
 		if is_decimal_conversion {
 			result.add(ComplexComponent(expression))
-			=> result
+			return result
 		}
 
 		result.add_all(collect_components(expression.first) as List<Component>)
@@ -319,7 +319,7 @@ collect_components(expression: Node) {
 		result.add(ComplexComponent(expression))
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -329,52 +329,52 @@ collect_components(node: OperatorNode) {
 	right_components = collect_components(node.last)
 
 	if node.operator === Operators.ADD {
-		=> simplify_addition(left_components, right_components)
+		return simplify_addition(left_components, right_components)
 	}
 
 	if node.operator === Operators.SUBTRACT {
-		=> simplify_subtraction(left_components, right_components)
+		return simplify_subtraction(left_components, right_components)
 	}
 
 	if node.operator === Operators.MULTIPLY {
-		=> simplify_multiplication(left_components, right_components)
+		return simplify_multiplication(left_components, right_components)
 	}
 
 	if node.operator === Operators.DIVIDE {
-		=> simplify_division(left_components, right_components)
+		return simplify_division(left_components, right_components)
 	}
 
 	if node.operator === Operators.SHIFT_LEFT {
-		=> simplify_shift_left(left_components, right_components)
+		return simplify_shift_left(left_components, right_components)
 	}
 
 	if node.operator === Operators.SHIFT_RIGHT {
-		=> simplify_shift_right(left_components, right_components)
+		return simplify_shift_right(left_components, right_components)
 	}
 
 	if node.operator === Operators.BITWISE_AND {
-		=> simplify_bitwise_and(left_components, right_components)
+		return simplify_bitwise_and(left_components, right_components)
 	}
 
 	if node.operator === Operators.BITWISE_XOR {
-		=> simplify_bitwise_xor(left_components, right_components)
+		return simplify_bitwise_xor(left_components, right_components)
 	}
 
 	if node.operator === Operators.BITWISE_OR {
-		=> simplify_bitwise_or(left_components, right_components)
+		return simplify_bitwise_or(left_components, right_components)
 	}
 
 	if node.operator.type === OPERATOR_TYPE_COMPARISON {
-		=> simplify_comparison(node.operator, left_components, right_components)
+		return simplify_comparison(node.operator, left_components, right_components)
 	}
 
-	=> [ ComplexComponent(OperatorNode(node.operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(node.operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
 # Tries to simplify the specified components
 simplify(components: List<Component>) {
-	if components.size <= 1 => components
+	if components.size <= 1 return components
 
 	loop (i = 0, i < components.size, i++) {
 		current = components[i]
@@ -412,7 +412,7 @@ simplify(components: List<Component>) {
 		}
 	}
 
-	=> components
+	return components
 }
 
 # Summary:
@@ -421,7 +421,7 @@ simplify_addition(left_components: List<Component>, right_components: List<Compo
 	components = List<Component>()
 	components.add_all(left_components)
 	components.add_all(right_components)
-	=> simplify(components)
+	return simplify(components)
 }
 
 # Summary:
@@ -429,7 +429,7 @@ simplify_addition(left_components: List<Component>, right_components: List<Compo
 simplify_subtraction(left_components: List<Component>, right_components: List<Component>) {
 	perform_negate(right_components)
 
-	=> simplify_addition(left_components, right_components)
+	return simplify_addition(left_components, right_components)
 }
 
 # Summary:
@@ -449,7 +449,7 @@ simplify_multiplication(left_components: List<Component>, right_components: List
 		}
 	}
 
-	=> simplify(components)
+	return simplify(components)
 }
 
 # Summary:
@@ -458,17 +458,17 @@ simplify_division(left_components: List<Component>, right_components: List<Compo
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[0] / right_components[0]
 
-		if result !== none => [ result ]
+		if result !== none return [ result ]
 	}
 
-	=> [ ComplexComponent(OperatorNode(Operators.DIVIDE).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(Operators.DIVIDE).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
 # Simplifies left shift between the specified operands
 simplify_shift_left(left_components: List<Component>, right_components: List<Component>) {
 	if right_components.size != 1 or not right_components[0].is_number or right_components[0].(NumberComponent).value.is_decimal {
-		=> [ ComplexComponent(OperatorNode(Operators.SHIFT_LEFT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+		return [ ComplexComponent(OperatorNode(Operators.SHIFT_LEFT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
 
 	components = List<Component>()
@@ -485,14 +485,14 @@ simplify_shift_left(left_components: List<Component>, right_components: List<Com
 		components.add(result)
 	}
 
-	=> components
+	return components
 }
 
 # Summary:
 # Simplifies right shift between the specified operands
 simplify_shift_right(left_components: List<Component>, right_components: List<Component>) {
 	if right_components.size != 1 or not right_components[0].is_number or right_components[0].(NumberComponent).value.is_decimal {
-		=> [ ComplexComponent(OperatorNode(Operators.SHIFT_RIGHT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+		return [ ComplexComponent(OperatorNode(Operators.SHIFT_RIGHT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
 
 	components = List<Component>()
@@ -509,7 +509,7 @@ simplify_shift_right(left_components: List<Component>, right_components: List<Co
 		components.add(result)
 	}
 
-	=> components
+	return components
 }
 
 # Summary:
@@ -517,10 +517,10 @@ simplify_shift_right(left_components: List<Component>, right_components: List<Co
 simplify_bitwise_and(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[0].bitwise_and(right_components[0])
-		if result !== none => [ result ]
+		if result !== none return [ result ]
 	}
 
-	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_AND).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(Operators.BITWISE_AND).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
@@ -528,10 +528,10 @@ simplify_bitwise_and(left_components: List<Component>, right_components: List<Co
 simplify_bitwise_xor(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[0].bitwise_xor(right_components[0])
-		if result !== none => [ result ]
+		if result !== none return [ result ]
 	}
 
-	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_XOR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(Operators.BITWISE_XOR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
@@ -539,10 +539,10 @@ simplify_bitwise_xor(left_components: List<Component>, right_components: List<Co
 simplify_bitwise_or(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[0].bitwise_or(right_components[0])
-		if result !== none => [ result ]
+		if result !== none return [ result ]
 	}
 
-	=> [ ComplexComponent(OperatorNode(Operators.BITWISE_OR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(Operators.BITWISE_OR).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
@@ -564,11 +564,11 @@ simplify_comparison(operator: Operator, left_components: List<Component>, right_
 				else => abort('Unknown comparison operator') as large
 			}
 
-			=> [ NumberComponent(result) as Component ]
+			return [ NumberComponent(result) as Component ]
 		}
 	}
 
-	=> [ ComplexComponent(OperatorNode(operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
+	return [ ComplexComponent(OperatorNode(operator).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 }
 
 # Summary:
@@ -577,7 +577,7 @@ get_simplified_value(value: Node) {
 	components = collect_components(value)
 	simplified = recreate(components)
 
-	=> simplified
+	return simplified
 }
 
 # Summary:
@@ -644,16 +644,16 @@ optimize_comparisons(root: Node) {
 		comparison.last.replace(recreate(right))
 	}
 
-	=> false
+	return false
 }
 
 is_expression_root(root: Node) {
 	if root.instance == NODE_OPERATOR {
 		type = root.(OperatorNode).operator.type
-		=> type == OPERATOR_TYPE_CLASSIC or type == OPERATOR_TYPE_COMPARISON
+		return type == OPERATOR_TYPE_CLASSIC or type == OPERATOR_TYPE_COMPARISON
 	}
 
-	=> root.match(NODE_NEGATE | NODE_NOT)
+	return root.match(NODE_NEGATE | NODE_NOT)
 }
 
 # Summary:
@@ -662,7 +662,7 @@ optimize_all_expressions(root: Node) {
 	if is_expression_root(root) {
 		result = get_simplified_value(root)
 		root.replace(result)
-		=> result
+		return result
 	}
 
 	# Find all top level operators
@@ -673,5 +673,5 @@ optimize_all_expressions(root: Node) {
 		expression.replace(get_simplified_value(expression))
 	}
 
-	=> root
+	return root
 }

@@ -25,7 +25,7 @@ INSTANCE_DISPOSABLE_PACK = 16384
 
 # Summary: Converts the specified size to corresponding size modifier
 to_size_modifier(bytes: large) {
-	=> when(bytes) {
+	return when(bytes) {
 		1 => 'byte'
 		2 => 'word'
 		4 => 'dword'
@@ -48,7 +48,7 @@ YWORD_ALLOCATOR = '.yword'
 
 # Summary: Converts the specified size to corresponding data section allocator
 to_data_section_allocator(bytes: large) {
-	=> when(bytes) {
+	return when(bytes) {
 		1 => '.byte'
 		2 => '.word'
 		4 => '.dword'
@@ -81,26 +81,26 @@ Handle {
 
 	# Summary: Returns all results which the handle requires to be in registers
 	virtual get_register_dependent_results() {
-		=> List<Result>()
+		return List<Result>()
 	}
 
 	# Summary: Returns all results used in the handle
 	virtual get_inner_results() {
-		=> List<Result>()
+		return List<Result>()
 	}
 
 	virtual use(instruction: Instruction) {}
 
 	virtual equals(other: Handle) {
-		=> this.instance == other.instance and this.format == other.format
+		return this.instance == other.instance and this.format == other.format
 	}
 
 	virtual finalize() {
-		=> Handle()
+		return Handle()
 	}
 
 	virtual string() {
-		=> "?"
+		return "?"
 	}
 }
 
@@ -108,7 +108,7 @@ Handle ConstantHandle {
 	value: large
 	
 	bits() {
-		=> common.get_bits(value, format == FORMAT_DECIMAL)
+		return common.get_bits(value, format == FORMAT_DECIMAL)
 	}
 	
 	init(value: large) {
@@ -139,21 +139,21 @@ Handle ConstantHandle {
 	}
 
 	string_shared() {
-		if format == FORMAT_DECIMAL => to_string(bits_to_decimal(value)).replace(`,`, `.`)
-		=> to_string(value).replace(`,`, `.`)
+		if format == FORMAT_DECIMAL return to_string(bits_to_decimal(value)).replace(`,`, `.`)
+		return to_string(value).replace(`,`, `.`)
 	}
 
 	override string() {
-		if settings.is_x64 => string_shared()
-		=> "#" + string_shared()
+		if settings.is_x64 return string_shared()
+		return "#" + string_shared()
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.format == other.format and this.value == other.(ConstantHandle).value
+		return this.instance == other.instance and this.format == other.format and this.value == other.(ConstantHandle).value
 	}
 
 	override finalize() {
-		=> ConstantHandle(value, format, size)
+		return ConstantHandle(value, format, size)
 	}
 }
 
@@ -177,16 +177,16 @@ Handle RegisterHandle {
 	}
 
 	override string() {
-		if size == 0 => register[SYSTEM_BYTES]
-		=> register[size]
+		if size == 0 return register[SYSTEM_BYTES]
+		return register[size]
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.register == other.(RegisterHandle).register
+		return this.instance == other.instance and this.register == other.(RegisterHandle).register
 	}
 
 	override finalize() {
-		=> RegisterHandle(register, format, size)
+		return RegisterHandle(register, format, size)
 	}
 }
 
@@ -203,7 +203,7 @@ Handle MemoryHandle {
 	}
 
 	virtual get_absolute_offset() {
-		=> offset
+		return offset
 	}
 
 	override use(instruction: Instruction) {
@@ -211,7 +211,7 @@ Handle MemoryHandle {
 	}
 
 	get_start() {
-		=> when(start.value.instance) {
+		return when(start.value.instance) {
 			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
 			INSTANCE_STACK_ALLOCATION => unit.get_stack_pointer(),
 			else => none as Register
@@ -219,7 +219,7 @@ Handle MemoryHandle {
 	}
 
 	get_offset() {
-		=> when(start.value.instance) {
+		return when(start.value.instance) {
 			INSTANCE_CONSTANT => start.value.(ConstantHandle).value + get_absolute_offset(),
 			INSTANCE_STACK_ALLOCATION => start.value.(StackAllocationHandle).get_absolute_offset() + get_absolute_offset(),
 			else => get_absolute_offset()
@@ -231,8 +231,8 @@ Handle MemoryHandle {
 		offset: large = get_offset()
 
 		if start == none {
-			if settings.is_x64 => String(to_size_modifier(size)) + ' [' + to_string(offset) + `]`
-			else => "[xzr, #" + to_string(offset) + `]`
+			if settings.is_x64 return String(to_size_modifier(size)) + ' [' + to_string(offset) + `]`
+			else return "[xzr, #" + to_string(offset) + `]`
 		}
 		else {
 			if settings.is_x64 {
@@ -241,44 +241,44 @@ Handle MemoryHandle {
 				if offset > 0 { offset_text = String(`+`) + to_string(offset) }
 				else offset < 0 { offset_text = to_string(offset) }
 
-				=> String(to_size_modifier(size)) + ' [' + start.string() + offset_text + `]`
+				return String(to_size_modifier(size)) + ' [' + start.string() + offset_text + `]`
 			}
 			else {
-				=> "[" + start.string() + ", #" + to_string(offset) + `]`
+				return "[" + start.string() + ", #" + to_string(offset) + `]`
 			}
 		}
 	}
 
 	override string() {
-		=> default_string()
+		return default_string()
 	}
 
 	override get_register_dependent_results() {
-		if start.is_stack_allocation => List<Result>()
+		if start.is_stack_allocation return List<Result>()
 
 		all = List<Result>()
 		all.add(start)
-		=> all
+		return all
 	}
 
 	override get_inner_results() {
 		all = List<Result>()
 		all.add(start)
-		=> all
+		return all
 	}
 
 	override finalize() {
 		if start.is_standard_register or start.is_constant or start.is_stack_allocation {
 			handle = MemoryHandle(unit, Result(start.value, start.format), offset)
 			handle.format = format
-			=> handle
+			return handle
 		}
 
 		abort('Start of the memory handle was in invalid format during finalization')
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.start.value.equals(other.(MemoryHandle).start.value) and offset == other.(MemoryHandle).offset
+		return this.instance == other.instance and this.start.value.equals(other.(MemoryHandle).start.value) and offset == other.(MemoryHandle).offset
 	}
 }
 
@@ -294,22 +294,22 @@ MemoryHandle StackMemoryHandle {
 	}
 
 	override get_absolute_offset() {
-		if is_absolute => unit.stack_offset + offset
-		=> offset
+		if is_absolute return unit.stack_offset + offset
+		return offset
 	}
 
 	override finalize() {
 		if start.value.(RegisterHandle).register == unit.get_stack_pointer() {
 			handle = StackMemoryHandle(unit, offset, is_absolute)
 			handle.format = format
-			=> handle
+			return handle
 		}
 
 		abort('Stack memory handle did not use the stack pointer register')
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.offset == other.(StackMemoryHandle).offset and this.is_absolute == other.(StackMemoryHandle).is_absolute
+		return this.instance == other.instance and this.offset == other.(StackMemoryHandle).offset and this.is_absolute == other.(StackMemoryHandle).is_absolute
 	}
 }
 
@@ -328,23 +328,23 @@ StackMemoryHandle StackVariableHandle {
 	override get_absolute_offset() {
 		offset = variable.alignment
 
-		if is_absolute => unit.stack_offset + offset
-		=> offset
+		if is_absolute return unit.stack_offset + offset
+		return offset
 	}
 
 	override string() {
 		offset = variable.alignment
-		=> default_string()
+		return default_string()
 	}
 
 	override finalize() {
 		handle = StackVariableHandle(unit, variable)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.variable == other.(StackVariableHandle).variable
+		return this.instance == other.instance and this.variable == other.(StackVariableHandle).variable
 	}
 }
 
@@ -366,11 +366,11 @@ StackMemoryHandle TemporaryMemoryHandle {
 	override finalize() {
 		handle = TemporaryMemoryHandle(unit, identity)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identity == other.(TemporaryMemoryHandle).identity
+		return this.instance == other.instance and this.identity == other.(TemporaryMemoryHandle).identity
 	}
 }
 
@@ -409,30 +409,30 @@ Handle DataSectionHandle {
 		# If the value of the address is only required, return it
 		if address {
 			if settings.is_x64 {
-				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String.empty
-				if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE => identifier + X64_PROCEDURE_LINKAGE_TABLE
+				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE return String.empty
+				if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE return identifier + X64_PROCEDURE_LINKAGE_TABLE
 			}
 			else {
-				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => String(ARM64_GLOBAL_OFFSET_TABLE_PREFIX) + identifier
+				if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE return String(ARM64_GLOBAL_OFFSET_TABLE_PREFIX) + identifier
 			}
 
-			=> identifier
+			return identifier
 		}
 
 		# When building for Arm64, the code below should not execute
-		if not settings.is_x64 => String.empty
+		if not settings.is_x64 return String.empty
 
 		# If a modifier is attached, the offset is taken into account elsewhere
 		if modifier != DATA_SECTION_MODIFIER_NONE {
 			if modifier == DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE {
-				=> String(to_size_modifier(size)) + ' [' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
+				return String(to_size_modifier(size)) + ' [' + identifier + X64_GLOBAL_OFFSET_TABLE + ']'
 			}
 
 			if modifier == DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE {
-				=> String(to_size_modifier(size)) + ' [' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
+				return String(to_size_modifier(size)) + ' [' + identifier + X64_PROCEDURE_LINKAGE_TABLE + ']'
 			}
 
-			=> String.empty
+			return String.empty
 		}
 
 		# Apply the offset if it is not zero
@@ -440,20 +440,20 @@ Handle DataSectionHandle {
 			postfix = to_string(offset)
 			if offset > 0 { postfix = "+" + postfix }
 
-			=> String(to_size_modifier(size)) + ' [' + identifier + postfix + ']'
+			return String(to_size_modifier(size)) + ' [' + identifier + postfix + ']'
 		}
 
-		=> String(to_size_modifier(size)) + ' [' + identifier + ']'
+		return String(to_size_modifier(size)) + ' [' + identifier + ']'
 	}
 
 	override finalize() {
 		handle = DataSectionHandle(identifier, offset, address, modifier)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.modifier == other.(DataSectionHandle).modifier
+		return this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.offset == other.(DataSectionHandle).offset and this.address == other.(DataSectionHandle).address and this.modifier == other.(DataSectionHandle).modifier
 	}
 }
 
@@ -490,11 +490,11 @@ ConstantDataSectionHandle NumberDataSectionHandle {
 	override finalize() {
 		handle = NumberDataSectionHandle(identifier, value, value_type)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
+		return this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
 	}
 }
 
@@ -518,11 +518,11 @@ ConstantDataSectionHandle ByteArrayDataSectionHandle {
 	override finalize() {
 		handle = ByteArrayDataSectionHandle(identifier, value)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
+		return this.instance == other.instance and this.identifier == other.(DataSectionHandle).identifier and this.value_type == other.(ConstantDataSectionHandle).value_type
 	}
 }
 
@@ -548,14 +548,14 @@ Handle ComplexMemoryHandle {
 	}
 
 	get_start() {
-		=> when(start.value.instance) {
+		return when(start.value.instance) {
 			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
 			else => none as Register
 		}
 	}
 
 	get_index() {
-		=> when(index.value.instance) {
+		return when(index.value.instance) {
 			INSTANCE_REGISTER => index.value.(RegisterHandle).register,
 			else => none as Register
 		}
@@ -574,7 +574,7 @@ Handle ComplexMemoryHandle {
 			else => 0
 		}
 
-		=> offset
+		return offset
 	}
 
 	override string() {
@@ -605,7 +605,7 @@ Handle ComplexMemoryHandle {
 			result = result + to_string(offset)
 		}
 
-		=> String(to_size_modifier(size)) + result + ']'
+		return String(to_size_modifier(size)) + result + ']'
 	}
 
 	override get_register_dependent_results() {
@@ -614,14 +614,14 @@ Handle ComplexMemoryHandle {
 
 		if not index.is_constant and not index.is_modifier all.add(index)
 
-		=> all
+		return all
 	}
 
 	override get_inner_results() {
 		all = List<Result>()
 		all.add(start)
 		all.add(index)
-		=> all
+		return all
 	}
 
 	override finalize() {
@@ -633,11 +633,11 @@ Handle ComplexMemoryHandle {
 		)
 
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		=> this.instance == other.instance and start.value.equals(other.(ComplexMemoryHandle).start.value) and index.value.equals(other.(ComplexMemoryHandle).index.value) and stride == other.(ComplexMemoryHandle).stride and offset == other.(ComplexMemoryHandle).offset
+		return this.instance == other.instance and start.value.equals(other.(ComplexMemoryHandle).start.value) and index.value.equals(other.(ComplexMemoryHandle).index.value) and stride == other.(ComplexMemoryHandle).stride and offset == other.(ComplexMemoryHandle).offset
 	}
 }
 
@@ -648,21 +648,21 @@ Handle ExpressionHandle {
 	number: large
 
 	static create_addition(left: Result, right: Result) {
-		=> ExpressionHandle(left, 1, right, 0)
+		return ExpressionHandle(left, 1, right, 0)
 	}
 
 	static create_addition(left: Handle, right: Handle) {
-		=> ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
+		return ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
 	}
 
 	static create_memory_address(start: Result, offset: large) {
-		if settings.is_x64 => ExpressionHandle(start, 1, none as Result, offset)
+		if settings.is_x64 return ExpressionHandle(start, 1, none as Result, offset)
 
-		=> ExpressionHandle(start, 1, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
+		return ExpressionHandle(start, 1, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
 	}
 
 	static create_memory_address(start: Result, offset: Result, stride: large) {
-		=> ExpressionHandle(offset, stride, start, 0)
+		return ExpressionHandle(offset, stride, start, 0)
 	}
 
 	init(multiplicand: Result, multiplier: large, addition: Result, number: large) {
@@ -684,16 +684,16 @@ Handle ExpressionHandle {
 	}
 
 	get_start() {
-		if addition == none => none as Register
+		if addition == none return none as Register
 
-		=> when(addition.value.instance) {
+		return when(addition.value.instance) {
 			INSTANCE_REGISTER => addition.value.(RegisterHandle).register,
 			else => none as Register
 		}
 	}
 
 	get_index() {
-		=> when(multiplicand.value.instance) {
+		return when(multiplicand.value.instance) {
 			INSTANCE_REGISTER => multiplicand.value.(RegisterHandle).register,
 			else => none as Register
 		}
@@ -714,7 +714,7 @@ Handle ExpressionHandle {
 			else => 0
 		}
 
-		=> offset
+		return offset
 	}
 
 	string_x64() {
@@ -748,17 +748,17 @@ Handle ExpressionHandle {
 			else { expression = expression + to_string(postfix) }
 		}
 
-		=> "[" + expression + ']'
+		return "[" + expression + ']'
 	}
 
 	string_arm64() {
-		=> none as String
+		return none as String
 	}
 
 	override string() {
 		validate()
-		if settings.is_x64 => string_x64()
-		=> string_arm64()
+		if settings.is_x64 return string_x64()
+		return string_arm64()
 	}
 
 	override get_register_dependent_results() {
@@ -767,7 +767,7 @@ Handle ExpressionHandle {
 		if not multiplicand.is_constant all.add(multiplicand)
 		if addition != none and not (settings.is_x64 and addition.is_constant) all.add(addition)
 
-		=> all
+		return all
 	}
 
 	override get_inner_results() {
@@ -776,7 +776,7 @@ Handle ExpressionHandle {
 
 		if addition != none all.add(addition)
 
-		=> all
+		return all
 	}
 
 	override finalize() {
@@ -785,20 +785,20 @@ Handle ExpressionHandle {
 		if addition == none {
 			handle = ExpressionHandle(Result(multiplicand.value, multiplicand.format), multiplier, none as Result, number)
 			handle.format = format
-			=> handle
+			return handle
 		}
 
 		handle = ExpressionHandle(Result(multiplicand.value, multiplicand.format), multiplier, Result(addition.value, addition.format), number)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override equals(other: Handle) {
-		if this.instance != other.instance => false
-		if not this.multiplicand.value.equals(other.(ExpressionHandle).multiplicand.value) => false
-		if this.multiplier != other.(ExpressionHandle).multiplier => false
-		if not this.addition.value.equals(other.(ExpressionHandle).addition.value) => false
-		=> this.number == other.(ExpressionHandle).number
+		if this.instance != other.instance return false
+		if not this.multiplicand.value.equals(other.(ExpressionHandle).multiplicand.value) return false
+		if this.multiplier != other.(ExpressionHandle).multiplier return false
+		if not this.addition.value.equals(other.(ExpressionHandle).addition.value) return false
+		return this.number == other.(ExpressionHandle).number
 	}
 }
 
@@ -809,7 +809,7 @@ Handle StackAllocationHandle {
 	identity: String
 
 	get_absolute_offset() {
-		=> unit.stack_offset + offset
+		return unit.stack_offset + offset
 	}
 
 	init(unit: Unit, bytes: large, identity: String) {
@@ -833,24 +833,24 @@ Handle StackAllocationHandle {
 	override finalize() {
 		handle = StackAllocationHandle(unit, offset, bytes, identity)
 		handle.format = format
-		=> handle
+		return handle
 	}
 
 	override string() {
 		stack_pointer = unit.get_stack_pointer()
 		offset: large = get_absolute_offset()
 
-		if not settings.is_x64 => stack_pointer[SYSTEM_BYTES] + ', #' + to_string(offset)
+		if not settings.is_x64 return stack_pointer[SYSTEM_BYTES] + ', #' + to_string(offset)
 
-		if offset > 0 => "[" + stack_pointer[SYSTEM_BYTES] + '+' + to_string(offset) + ']'
-		else offset < 0 => "[" + stack_pointer[SYSTEM_BYTES] + to_string(offset) + ']'
+		if offset > 0 return "[" + stack_pointer[SYSTEM_BYTES] + '+' + to_string(offset) + ']'
+		else offset < 0 return "[" + stack_pointer[SYSTEM_BYTES] + to_string(offset) + ']'
 
-		=> "[" + stack_pointer[SYSTEM_BYTES] + ']'
+		return "[" + stack_pointer[SYSTEM_BYTES] + ']'
 	}
 
 	override equals(other: Handle) {
-		if this.instance != other.instance => false
-		=> this.format == other.format and this.offset == other.(StackAllocationHandle).offset and this.bytes == other.(StackAllocationHandle).bytes and this.identity == other.(StackAllocationHandle).identity
+		if this.instance != other.instance return false
+		return this.format == other.format and this.offset == other.(StackAllocationHandle).offset and this.bytes == other.(StackAllocationHandle).bytes and this.identity == other.(StackAllocationHandle).identity
 	}
 }
 
@@ -894,6 +894,6 @@ Handle DisposablePackHandle {
 			all.add(member)
 		}
 
-		=> all
+		return all
 	}
 }

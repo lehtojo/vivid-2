@@ -30,7 +30,7 @@ namespace pe_format {
 			bytes[i] = name[i]
 		}
 
-		=> bytes.(link<large>)[0]
+		return bytes.(link<large>)[0]
 	}
 
 	# Summary: Converts the encoded 64-bit integer name into a string
@@ -39,13 +39,13 @@ namespace pe_format {
 		zero(name as link, 9)
 		binary_utility.write_int64(name as link, 0, encoded)
 
-		=> String(name as link)
+		return String(name as link)
 	}
 	
 	# Summary:
 	# Loads the offset of the PE header in the image file
 	get_header_offset(bytes: Array<byte>) {
-		=> (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(link<normal>)[0]
+		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(link<normal>)[0]
 	}
 
 	# Summary:
@@ -60,16 +60,16 @@ namespace pe_format {
 			offset = relative_virtual_address - section.virtual_address
 
 			# Calculate the file offset
-			=> section.pointer_to_raw_data + offset
+			return section.pointer_to_raw_data + offset
 		}
 
-		=> -1
+		return -1
 	}
 
 	# Summary:
 	# Loads all the data directories from the specified image file bytes starting from the specified offset
 	load_data_directories(bytes: Array<byte>, start: large, count: large) {
-		if count == 0 => List<PeDataDirectory>()
+		if count == 0 return List<PeDataDirectory>()
 
 		directories = List<PeDataDirectory>()
 		length = PeDataDirectory.Size
@@ -85,14 +85,14 @@ namespace pe_format {
 			start += length
 		}
 
-		if end => directories
-		=> none as List<PeDataDirectory>
+		if end return directories
+		return none as List<PeDataDirectory>
 	}
 
 	# Summary:
 	# Loads the specified number of section tables from the specified image file bytes starting from the specified offset
 	load_section_tables(bytes: Array<byte>, start: large, count: large) {
-		if count == 0 => List<PeSectionTable>()
+		if count == 0 return List<PeSectionTable>()
 
 		directories = List<PeSectionTable>()
 		length = PeSectionTable.Size
@@ -108,18 +108,18 @@ namespace pe_format {
 			start += length
 		}
 
-		if end => directories
-		=> none as List<PeSectionTable>
+		if end return directories
+		return none as List<PeSectionTable>
 	}
 
 	# Summary:
 	# Loads library metadata including the PE-header, data directories and section tables
 	load_library_metadata(file: String) {
 		# Load the image file and determine the PE header offset
-		if not (io.read_file(file) has bytes) => none as PeMetadata
+		if not (io.read_file(file) has bytes) return none as PeMetadata
 		header_offset = get_header_offset(bytes)
 
-		if header_offset < 0 or header_offset + PeHeader.Size > bytes.size => none as PeMetadata
+		if header_offset < 0 or header_offset + PeHeader.Size > bytes.size return none as PeMetadata
 
 		# Read the PE-header
 		header = binary_utility.read_object<PeHeader>(bytes, header_offset)
@@ -128,15 +128,15 @@ namespace pe_format {
 		data_directories_offset = header_offset + PeHeader.Size
 		data_directories = load_data_directories(bytes, data_directories_offset, header.data_directories)
 
-		if data_directories == none or header.number_of_sections < 0 => none as PeMetadata
+		if data_directories == none or header.number_of_sections < 0 return none as PeMetadata
 
 		# Load the section tables, which come after the data directories
 		section_table_offset = header_offset + PeHeader.OptionalHeaderOffset + header.size_of_optional_headers
 
 		sections = load_section_tables(bytes, section_table_offset, header.number_of_sections)
-		if sections == none => none as PeMetadata
+		if sections == none return none as PeMetadata
 
-		=> PeMetadata(bytes, header, data_directories, sections)
+		return PeMetadata(bytes, header, data_directories, sections)
 	}
 
 	# Summary:
@@ -144,13 +144,13 @@ namespace pe_format {
 	# Ensure the specified name is exactly eight characters long, padded with none characters if necessary.
 	find_section(module: PeMetadata, name: String) {
 		encoded_name = encode_integer_name(name)
-		=> module.sections.find_or(i -> i.name == encoded_name, none)
+		return module.sections.find_or(i -> i.name == encoded_name, none)
 	}
 
 	# Summary:
 	# Loads strings the specified amount starting from the specified position.
 	load_number_of_strings(bytes: Array<byte>, position: large, count: large) {
-		if position < 0 => none as List<String>
+		if position < 0 return none as List<String>
 
 		strings = List<String>(count, true)
 
@@ -163,13 +163,13 @@ namespace pe_format {
 			position = end + 1
 		}
 
-		=> strings
+		return strings
 	}
 
 	# Summary:
 	# Loads strings starting from the specified position until the limit is reached.
 	load_strings_until(bytes: Array<byte>, position: large, limit: large) {
-		if position < 0 => none as List<String>
+		if position < 0 return none as List<String>
 
 		strings = List<String>()
 
@@ -182,7 +182,7 @@ namespace pe_format {
 			position = end + 1
 		}
 
-		=> strings
+		return strings
 	}
 
 	# Summary:
@@ -190,10 +190,10 @@ namespace pe_format {
 	load_exported_symbols(module: PeMetadata) {
 		# Check if the library has an export table
 		export_data_directory = module.data_directories[ExporterSectionIndex]
-		if export_data_directory.relative_virtual_address == 0 => none as List<String>
+		if export_data_directory.relative_virtual_address == 0 return none as List<String>
 
 		export_data_directory_file_offset = relative_virtual_address_to_file_offset(module, export_data_directory.relative_virtual_address)
-		if export_data_directory_file_offset < 0 => none as List<String>
+		if export_data_directory_file_offset < 0 return none as List<String>
 
 		export_directory_table = binary_utility.read_object<PeExportDirectoryTable>(module.bytes, export_data_directory_file_offset)
 
@@ -210,22 +210,22 @@ namespace pe_format {
 		strings = load_strings_until(module.bytes, start, export_data_directory_file_offset + export_data_directory.physical_size)
 
 		# Skip the name of the module if the load was successful
-		=> strings.slice(1)
+		return strings.slice(1)
 	}
 
 	# Summary:
 	# Loads the exported symbols from the specified library.
 	load_exported_symbols(library: String) {
 		metadata = load_library_metadata(library)
-		if metadata == none => none as List<String>
+		if metadata == none return none as List<String>
 
-		=> load_exported_symbols(metadata)
+		return load_exported_symbols(metadata)
 	}
 
 	# Summary:
 	# Converts the relocation type to corresponding PE relocation type
 	get_relocation_type(type: large) {
-		=> when(type) {
+		return when(type) {
 			BINARY_RELOCATION_TYPE_PROCEDURE_LINKAGE_TABLE => PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32,
 			BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE => PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32,
 			BINARY_RELOCATION_TYPE_ABSOLUTE64 => PE_RELOCATION_TYPE_ABSOLUTE64,
@@ -258,7 +258,7 @@ namespace pe_format {
 		# 8192-byte alignment: 0x00E00000
 		characteristics |= (PE_SECTION_CHARACTERISTICS_ALIGN_1 + common.integer_log2(section.alignment)) <| 20
 
-		=> characteristics
+		return characteristics
 	}
 
 	# Summary:
@@ -376,7 +376,7 @@ namespace pe_format {
 
 		sections.add(symbol_table_section) # Add the symbol table section to the list of sections
 
-		=> symbol_table_section
+		return symbol_table_section
 	}
 
 	# Summary:
@@ -410,7 +410,7 @@ namespace pe_format {
 		# Now that section positions are set, compute offsets
 		binary_utility.compute_offsets(sections, symbols)
 
-		=> BinaryObjectFile(name, sections, symbols.get_values().filter(i -> i.exported).map<String>((i: BinarySymbol) -> i.name))
+		return BinaryObjectFile(name, sections, symbols.get_values().filter(i -> i.exported).map<String>((i: BinarySymbol) -> i.name))
 	}
 
 	# Summary:
@@ -532,7 +532,7 @@ namespace pe_format {
 			copy(section_data.data, section_data.size, binary.data + section.offset)
 		}
 
-		=> binary
+		return binary
 	}
 
 	align_sections(section: BinarySection, file_position: large) {
@@ -550,7 +550,7 @@ namespace pe_format {
 		section.virtual_size = section.data.size
 		section.load_size = section.data.size
 
-		=> file_position + section.data.size
+		return file_position + section.data.size
 	}
 
 	align_sections(overlays: List<BinarySection>, fragments: List<BinarySection>, file_position: large) {
@@ -584,7 +584,7 @@ namespace pe_format {
 			section.load_size = section.virtual_size
 		}
 
-		=> file_position
+		return file_position
 	}
 
 	create_exporter_section(sections: List<BinarySection>, relocations: List<BinaryRelocation>, symbols: List<BinarySymbol>, output_name: String) {
@@ -600,11 +600,11 @@ namespace pe_format {
 				x = n[i]
 				y = m[i]
 
-				if x < y => -1
-				if x > y => 1
+				if x < y return -1
+				if x > y return 1
 			}
 
-			=> n.length - m.length
+			return n.length - m.length
 		})
 
 		# Compute the number of bytes needed loop the export section excluding the string table
@@ -681,7 +681,7 @@ namespace pe_format {
 		sections.add(exporter_section)
 		relocations.add_all(exporter_section.relocations)
 
-		=> exporter_section
+		return exporter_section
 	}
 
 	# Summary:
@@ -964,7 +964,7 @@ namespace pe_format {
 		fragments.add(import_section)
 		fragments.add(import_address_section)
 
-		=> import_address_section
+		return import_address_section
 	}
 
 	constant RelocationSectionAlignment = 4
@@ -1027,7 +1027,7 @@ namespace pe_format {
 
 		# Add the relocation section to the list of sections
 		sections.add(relocation_section)
-		=> file_position
+		return file_position
 	}
 
 	# Summary:
@@ -1248,7 +1248,7 @@ namespace pe_format {
 			binary_utility.write_bytes(fragment.data, binary.data, fragment.offset, fragment.data.size)
 		}
 
-		=> binary
+		return binary
 	}
 
 	# Summary:
@@ -1262,7 +1262,7 @@ namespace pe_format {
 		if has_flag(characteristics, PE_SECTION_CHARACTERISTICS_CODE) { flags |= BINARY_SECTION_FLAGS_ALLOCATE }
 		else has_flag(characteristics, PE_SECTION_CHARACTERISTICS_INITIALIZED_DATA) { flags |= BINARY_SECTION_FLAGS_ALLOCATE }
 
-		=> flags
+		return flags
 	}
 
 	# Summary:
@@ -1276,15 +1276,15 @@ namespace pe_format {
 		#                          .
 		# 8192-byte alignment: 0x00E00000
 		exponent = (characteristics |> 20) & 15 # Take out the first four bits: 15 = 0b1111
-		if exponent == 0 => 1
+		if exponent == 0 return 1
 
-		=> 2 <| (exponent - 1) # 2^(exponent - 1)
+		return 2 <| (exponent - 1) # 2^(exponent - 1)
 	}
 
 	# Summary:
 	# Converts the PE-format relocation type to shared relocation type
 	get_shared_relocation_type(type: large) {
-		=> when(type) {
+		return when(type) {
 			PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32 => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
 			PE_RELOCATION_TYPE_ABSOLUTE64 => BINARY_RELOCATION_TYPE_ABSOLUTE64,
 			PE_RELOCATION_TYPE_ABSOLUTE32 => BINARY_RELOCATION_TYPE_ABSOLUTE32,
@@ -1373,7 +1373,7 @@ namespace pe_format {
 			section.name = String(symbol_name_table_start + section_name_offset)
 		}
 
-		=> symbols
+		return symbols
 	}
 
 	# Summary:
@@ -1445,14 +1445,14 @@ namespace pe_format {
 			exports.add(symbol.name)
 		}
 
-		=> BinaryObjectFile(name, sections, exports)
+		return BinaryObjectFile(name, sections, exports)
 	}
 
 	# Summary:
 	# Load the specified object file and constructs a object structure that represents it
 	import_object_file(path: String) {
-		if not (io.read_file(path) has bytes) => Optional<BinaryObjectFile>()
-		=> Optional<BinaryObjectFile>(import_object_file(path, bytes))
+		if not (io.read_file(path) has bytes) return Optional<BinaryObjectFile>()
+		return Optional<BinaryObjectFile>(import_object_file(path, bytes))
 	}
 }
 

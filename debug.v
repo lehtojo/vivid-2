@@ -86,7 +86,7 @@ DataEncoderModule DebugFrameEncoderModule {
 		section.flags = BINARY_SECTION_FLAGS_ALLOCATE
 		section.alignment = 1
 
-		=> section
+		return section
 	}
 }
 
@@ -241,7 +241,7 @@ DataEncoderModule DebugLineEncoderModule {
 		name = String(`.`) + SECTION_NAME
 		alignment = 1
 
-		=> DataEncoderModule.build()
+		return DataEncoderModule.build()
 	}
 }
 
@@ -357,15 +357,15 @@ Debug {
 	inheritance_abbrevation: byte = 0
 
 	static get_debug_file_start_label(file_index: large) {
-		=> "debug_file_" + to_string(file_index) + '_start'
+		return "debug_file_" + to_string(file_index) + '_start'
 	}
 
 	static get_debug_file_end_label(file_index: large) {
-		=> "debug_file_" + to_string(file_index) + '_end'
+		return "debug_file_" + to_string(file_index) + '_end'
 	}
 
 	static get_offset(from: TableLabel, to: TableLabel) {
-		=> LabelOffset(from, to)
+		return LabelOffset(from, to)
 	}
 
 	begin_file(file: SourceFile) {
@@ -396,60 +396,60 @@ Debug {
 	}
 
 	static get_end(implementation: FunctionImplementation) {
-		=> TableLabel(implementation.get_fullname() + '_end', 8, false)
+		return TableLabel(implementation.get_fullname() + '_end', 8, false)
 	}
 
 	static get_file(implementation: FunctionImplementation) {
-		=> implementation.metadata.start.file.index as normal
+		return implementation.metadata.start.file.index as normal
 	}
 
 	static get_line(implementation: FunctionImplementation) {
-		=> implementation.metadata.start.friendly_line as normal
+		return implementation.metadata.start.friendly_line as normal
 	}
 
 	static get_file(type: Type) {
-		=> type.position.file.index as normal
+		return type.position.file.index as normal
 	}
 
 	static get_line(type: Type) {
-		=> type.position.friendly_line as normal
+		return type.position.friendly_line as normal
 	}
 
 	static get_file(variable: Variable) {
-		=> variable.position.file.index as normal
+		return variable.position.file.index as normal
 	}
 
 	static get_line(variable: Variable) {
-		=> variable.position.friendly_line as normal
+		return variable.position.friendly_line as normal
 	}
 
 	static get_type_label_name(type: Type) {
-		=> get_type_label_name(type, false)
+		return get_type_label_name(type, false)
 	}
 
 	static get_type_label_name(type: Type, pointer: bool) {
-		if primitives.is_primitive(type, primitives.LINK) => type.get_fullname()
+		if primitives.is_primitive(type, primitives.LINK) return type.get_fullname()
 
 		if type.is_primitive {
 			if pointer abort('Pointer of a primitive type required, but it was not requested using a link type')
 
-			=> String(Mangle.VIVID_LANGUAGE_TAG) + type.identifier
+			return String(Mangle.VIVID_LANGUAGE_TAG) + type.identifier
 		}
 
 		# NOTE: Since the type is a user defined type, it must have a pointer symbol in its fullname. It must be removed, if the pointer flag is set to true.
 		fullname = type.get_fullname()
 
-		if pointer => fullname.insert(length_of(Mangle.VIVID_LANGUAGE_TAG), Mangle.POINTER_COMMAND)
-		=> fullname
+		if pointer return fullname.insert(length_of(Mangle.VIVID_LANGUAGE_TAG), Mangle.POINTER_COMMAND)
+		return fullname
 	}
 
 	static get_type_label(type: Type, types: Map<String, Type>) {
-		=> get_type_label(type, types, false)
+		return get_type_label(type, types, false)
 	}
 
 	static get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
 		types[type.identity] = type
-		=> TableLabel(get_type_label_name(type, pointer), 8, false)
+		return TableLabel(get_type_label_name(type, pointer), 8, false)
 	}
 
 	add_operation(command: byte) {
@@ -825,7 +825,7 @@ Debug {
 	}
 
 	static is_pointer_type(type: Type) {
-		=> not type.is_primitive and not type.is_pack
+		return not type.is_primitive and not type.is_pack
 	}
 
 	add_member_variable(variable: Variable, types: Map<String, Type>) {
@@ -998,7 +998,7 @@ Debug {
 			if value == 0 stop
 		}
 
-		=> bytes
+		return bytes
 	}
 
 	static to_sleb128(value: large) {
@@ -1022,13 +1022,13 @@ Debug {
 			bytes.add(x)
 		}
 
-		=> bytes
+		return bytes
 	}
 
 	# Summary:
 	# Returns whether specified variable is a string
 	is_string_type(variable: Variable) {
-		=> variable.type != none and variable.type.name == STRING_TYPE_IDENTIFIER and variable.type.parent.is_global
+		return variable.type != none and variable.type.name == STRING_TYPE_IDENTIFIER and variable.type.parent.is_global
 	}
 
 	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
@@ -1175,6 +1175,6 @@ Debug {
 			data_encoder.add_table(builder, information_section, information, TABLE_MARKER_DATA_ENCODER)
 		}
 
-		=> builder
+		return builder
 	}
 }

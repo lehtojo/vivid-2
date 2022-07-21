@@ -10,11 +10,11 @@ Pattern CommandPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		keyword = tokens[KEYWORD].(KeywordToken).keyword
-		=> keyword === Keywords.STOP or keyword === Keywords.CONTINUE
+		return keyword === Keywords.STOP or keyword === Keywords.CONTINUE
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		=> CommandNode(tokens[KEYWORD].(KeywordToken).keyword, tokens[KEYWORD].position)
+		return CommandNode(tokens[KEYWORD].(KeywordToken).keyword, tokens[KEYWORD].position)
 	}
 }
 
@@ -32,7 +32,7 @@ Pattern AssignPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[OPERATOR].match(Operators.ASSIGN)
+		return tokens[OPERATOR].match(Operators.ASSIGN)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -46,7 +46,7 @@ Pattern AssignPattern {
 			# Ensure the name is not reserved
 			if name == SELF_POINTER_IDENTIFIER or name == LAMBDA_SELF_POINTER_IDENTIFIER {
 				state.error = Status(destination.position, "Can not declare variable with name " + name)
-				=> none as Node
+				return none as Node
 			}
 
 			# Determine the category and the modifiers of the variable
@@ -71,20 +71,20 @@ Pattern AssignPattern {
 
 			context.declare(variable)
 
-			=> VariableNode(variable, destination.position)
+			return VariableNode(variable, destination.position)
 		}
 
 		variable = context.get_variable(name)
 		
 		# Static variables must be accessed using their parent types
-		if variable.is_static => LinkNode(TypeNode(variable.parent as Type), VariableNode(variable, destination.position), destination.position)
+		if variable.is_static return LinkNode(TypeNode(variable.parent as Type), VariableNode(variable, destination.position), destination.position)
 
 		if variable.is_member {
 			self = common.get_self_pointer(context, destination.position)
-			=> LinkNode(self, VariableNode(variable, destination.position), destination.position)
+			return LinkNode(self, VariableNode(variable, destination.position), destination.position)
 		}
 
-		=> VariableNode(variable, destination.position)
+		return VariableNode(variable, destination.position)
 	}
 }
 
@@ -106,14 +106,14 @@ Pattern FunctionPattern {
 		# Look for a return type
 		if state.consume_operator(Operators.COLON) {
 			# Expected: $name (...) : $return-type [\n] {...}
-			if not common.consume_type(state) => false
+			if not common.consume_type(state) return false
 		}
 
 		# Optionally consume a line ending
 		state.consume_optional(TOKEN_TYPE_END)
 
 		# Consume the function body
-		=> state.consume_parenthesis(`{`)
+		return state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -132,7 +132,7 @@ Pattern FunctionPattern {
 			# Verify the return type could be parsed in some form
 			if return_type == none {
 				state.error = Status(tokens[COLON].position, 'Could not understand the return type')
-				=> none as Node
+				return none as Node
 			}
 		}
 
@@ -142,7 +142,7 @@ Pattern FunctionPattern {
 		result = descriptor.get_parameters(function)
 		if not (result has parameters) {
 			state.error = Status(result.get_error())
-			=> none as Node
+			return none as Node
 		}
 
 		function.parameters.add_all(parameters)
@@ -150,10 +150,10 @@ Pattern FunctionPattern {
 		conflict = context.declare(function)
 		if conflict != none {
 			state.error = Status(start, 'Function conflicts with another function')
-			=> none as Node
+			return none as Node
 		}
 
-		=> FunctionDefinitionNode(function, start)
+		return FunctionDefinitionNode(function, start)
 	}
 }
 
@@ -174,13 +174,13 @@ Pattern OperatorPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[OPERATOR].(OperatorToken).operator.priority == priority
+		return tokens[OPERATOR].(OperatorToken).operator.priority == priority
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		token = tokens[OPERATOR]
 
-		=> OperatorNode(token.(OperatorToken).operator, token.position).set_operands(parse(context, tokens[LEFT]), parse(context, tokens[RIGHT]))
+		return OperatorNode(token.(OperatorToken).operator, token.position).set_operands(parse(context, tokens[LEFT]), parse(context, tokens[RIGHT]))
 	}
 }
 
@@ -199,7 +199,7 @@ Pattern TypePattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[BODY].match(`{`)
+		return tokens[BODY].match(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -208,21 +208,21 @@ Pattern TypePattern {
 
 		type = Type(context, name.value, MODIFIER_DEFAULT, name.position)
 
-		=> TypeDefinitionNode(type, body.tokens, name.position)
+		return TypeDefinitionNode(type, body.tokens, name.position)
 	}
 }
 
 Pattern ReturnPattern {
 	init() {
-		path.add(TOKEN_TYPE_KEYWORD | TOKEN_TYPE_OPERATOR)
+		path.add(TOKEN_TYPE_KEYWORD)
 		priority = 0
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if not tokens[0].match(Keywords.RETURN) and not tokens[0].match(Operators.HEAVY_ARROW) => false
+		if not tokens[0].match(Keywords.RETURN) return false
 
 		state.consume(TOKEN_TYPE_OBJECT) # Optionally consume a return value
-		=> true
+		return true
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -232,7 +232,7 @@ Pattern ReturnPattern {
 			return_value = parser.parse(context, tokens[1])
 		}
 
-		=> ReturnNode(return_value, tokens[0].position)
+		return ReturnNode(return_value, tokens[0].position)
 	}
 }
 
@@ -249,7 +249,7 @@ Pattern VariableDeclarationPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[COLON].match(Operators.COLON) and common.consume_type(state)
+		return tokens[COLON].match(Operators.COLON) and common.consume_type(state)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -257,12 +257,12 @@ Pattern VariableDeclarationPattern {
 
 		if context.is_local_variable_declared(name.value) {
 			state.error = Status(name.position, 'Variable already exists')
-			=> none as Node
+			return none as Node
 		}
 
 		if name.value == SELF_POINTER_IDENTIFIER or name.value == LAMBDA_SELF_POINTER_IDENTIFIER {
 			state.error = Status(name.position, 'Can not declare variable, since the name is reserved')
-			=> none as Node
+			return none as Node
 		}
 
 		type = common.read_type(context, tokens, COLON + 1)
@@ -287,7 +287,7 @@ Pattern VariableDeclarationPattern {
 
 		context.declare(variable)
 
-		=> VariableNode(variable, name.position)
+		return VariableNode(variable, name.position)
 	}
 }
 
@@ -307,17 +307,17 @@ Pattern IfPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		keyword = tokens[KEYWORD].(KeywordToken).keyword
-		if keyword != Keywords.IF and keyword != Keywords.ELSE => false
+		if keyword != Keywords.IF and keyword != Keywords.ELSE return false
 
 		# Prevents else-if from thinking that a body is a condition
-		if tokens[CONDITION].match(`{`) => false
+		if tokens[CONDITION].match(`{`) return false
 
 		# Try to consume curly brackets
 		next = state.peek()
-		if next == none => false
+		if next == none return false
 		if next.match(`{`) state.consume()
 
-		=> true
+		return true
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -341,14 +341,14 @@ Pattern IfPattern {
 			# Abort, if an error is returned
 			if error != none {
 				state.error = error
-				=> none as Node
+				return none as Node
 			}
 		}
 
 		node = parser.parse(context, body, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 		
-		if tokens[KEYWORD].(KeywordToken).keyword == Keywords.IF => IfNode(context, condition, node, start, end)
-		=> ElseIfNode(context, condition, node, start, end)
+		if tokens[KEYWORD].(KeywordToken).keyword == Keywords.IF return IfNode(context, condition, node, start, end)
+		return ElseIfNode(context, condition, node, start, end)
 	}
 }
 
@@ -363,26 +363,26 @@ Pattern ElsePattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Ensure there is an (else) if-statement before this else-statement
-		if state.start == 0 => false
+		if state.start == 0 return false
 		token = state.all[state.start - 1]
 
 		# If the previous token represents an (else) if-statement, just continue
 		if token.type != TOKEN_TYPE_DYNAMIC or not token.(DynamicToken).node.match(NODE_IF | NODE_ELSE_IF) {
 			# The previous token must be a line ending in order for this pass function to succeed
-			if token.type != TOKEN_TYPE_END or state.start == 1 => false
+			if token.type != TOKEN_TYPE_END or state.start == 1 return false
 
 			# Now, the token before the line ending must be an (else) if-statement in order for this pass function to succeed
 			token = state.all[state.start - 2]
-			if token.type != TOKEN_TYPE_DYNAMIC or not token.(DynamicToken).node.match(NODE_IF | NODE_ELSE_IF) => false
+			if token.type != TOKEN_TYPE_DYNAMIC or not token.(DynamicToken).node.match(NODE_IF | NODE_ELSE_IF) return false
 		}
 
 		# Ensure the keyword is the else-keyword
-		if tokens[0].(KeywordToken).keyword != Keywords.ELSE => false
+		if tokens[0].(KeywordToken).keyword != Keywords.ELSE return false
 
 		next = state.peek()
-		if next == none => false
+		if next == none return false
 		if next.match(`{`) state.consume()
-		=> true
+		return true
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -405,13 +405,13 @@ Pattern ElsePattern {
 			# Abort, if an error is returned
 			if error != none {
 				state.error = error
-				=> none as Node
+				return none as Node
 			}
 		}
 
 		node = parser.parse(context, body, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 		
-		=> ElseNode(context, node, start, end)
+		return ElseNode(context, node, start, end)
 	}
 }
 
@@ -435,14 +435,14 @@ Pattern LinkPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Ensure the operator is the dot operator
-		if not tokens[OPERATOR].match(Operators.DOT) => false
+		if not tokens[OPERATOR].match(Operators.DOT) return false
 		# Try to consume template arguments
 		if tokens[RIGHT].match(TOKEN_TYPE_IDENTIFIER) {
 			backup = state.save()
 			if not common.consume_template_function_call(state) state.restore(backup)
 		}
 
-		=> true
+		return true
 	}
 
 	private build_template_function_call(context: Context, tokens: List<Token>, left: Node) {
@@ -456,19 +456,19 @@ Pattern LinkPattern {
 
 		if primary != none {
 			right = parser.parse_function(context, primary, descriptor, template_arguments, true)
-			=> LinkNode(left, right, tokens[OPERATOR].position)
+			return LinkNode(left, right, tokens[OPERATOR].position)
 		}
 
 		right = UnresolvedFunction(name.value, template_arguments, descriptor.position)
 		right.(UnresolvedFunction).set_arguments(descriptor.parse(context))
-		=> LinkNode(left, right, tokens[OPERATOR].position)
+		return LinkNode(left, right, tokens[OPERATOR].position)
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
 		left = parser.parse(environment, tokens[LEFT])
 
 		# When there are more tokens than the standard count, it means a template function has been consumed
-		if tokens.size != STANDARD_TOKEN_COUNT => build_template_function_call(environment, tokens, left)
+		if tokens.size != STANDARD_TOKEN_COUNT return build_template_function_call(environment, tokens, left)
 
 		# If the right operand is a parenthesis token, this is a cast expression
 		if tokens[RIGHT].match(TOKEN_TYPE_PARENTHESIS) {
@@ -477,10 +477,10 @@ Pattern LinkPattern {
 
 			if type == none {
 				state.error = Status(tokens[RIGHT].position, 'Can not understand the cast')
-				=> none as Node
+				return none as Node
 			}
 
-			=> CastNode(left, TypeNode(type, tokens[RIGHT].position), tokens[OPERATOR].position)
+			return CastNode(left, TypeNode(type, tokens[RIGHT].position), tokens[OPERATOR].position)
 		}
 
 		# Try to retrieve the primary context from the left token
@@ -500,7 +500,7 @@ Pattern LinkPattern {
 				abort('Could not create unresolved node')
 			}
 
-			=> LinkNode(left, right, tokens[OPERATOR].position)
+			return LinkNode(left, right, tokens[OPERATOR].position)
 		}
 
 		right = parser.parse(environment, primary, token)
@@ -515,18 +515,18 @@ Pattern LinkPattern {
 			position = tokens[OPERATOR].position
 			result = common.try_get_virtual_function_call(left, primary, function.name, function, types, position)
 
-			if result != none => result
+			if result != none return result
 
 			# Try to form a lambda function call
 			result = common.try_get_lambda_call(primary, left, function.name, function, types)
 
 			if result != none {
 				result.start = position
-				=> result
+				return result
 			}
 		}
 
-		=> LinkNode(left, right, tokens[OPERATOR].position)
+		return LinkNode(left, right, tokens[OPERATOR].position)
 	}
 }
 
@@ -551,7 +551,7 @@ Pattern ListPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[COMMA].(OperatorToken).operator == Operators.COMMA
+		return tokens[COMMA].(OperatorToken).operator == Operators.COMMA
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -564,11 +564,11 @@ Pattern ListPattern {
 			
 			if node.match(NODE_LIST) {
 				node.add(parser.parse(context, right))
-				=> node
+				return node
 			}
 		}
 
-		=> ListNode(tokens[COMMA].position, parser.parse(context, left), parser.parse(context, right))
+		return ListNode(tokens[COMMA].position, parser.parse(context, left), parser.parse(context, right))
 	}
 }
 
@@ -580,11 +580,11 @@ Pattern SingletonPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> true
+		return true
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		=> parser.parse(context, tokens[0])
+		return parser.parse(context, tokens[0])
 	}
 }
 
@@ -609,11 +609,11 @@ Pattern LoopPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
+		return tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
 	}
 
 	private static get_steps(context: Context, state: ParserState, parenthesis: ParenthesisToken) {
-		if parenthesis.tokens.size == 0 => none as Node
+		if parenthesis.tokens.size == 0 return none as Node
 
 		steps = none as Node
 		sections = parenthesis.get_sections()
@@ -638,10 +638,10 @@ Pattern LoopPattern {
 		}
 		else {
 			state.error = Status(parenthesis.position, 'Too many sections')
-			=> none as Node
+			return none as Node
 		}
 
-		=> steps
+		return steps
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -650,14 +650,14 @@ Pattern LoopPattern {
 
 		steps_token = tokens[STEPS]
 		steps = get_steps(steps_context, state, steps_token as ParenthesisToken)
-		if steps == none => none as Node
+		if steps == none return none as Node
 
 		body_token = tokens[BODY] as ParenthesisToken
 		body = ScopeNode(body_context, body_token.position, body_token.end, false)
 
 		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
-		=> LoopNode(steps_context, steps, body, tokens[KEYWORD].position)
+		return LoopNode(steps_context, steps, body, tokens[KEYWORD].position)
 	}
 }
 
@@ -676,7 +676,7 @@ Pattern ForeverLoopPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
+		return tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -688,7 +688,7 @@ Pattern ForeverLoopPattern {
 
 		parser.parse(body, body_context, body_token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 
-		=> LoopNode(steps_context, none as Node, body, tokens[KEYWORD].position)
+		return LoopNode(steps_context, none as Node, body, tokens[KEYWORD].position)
 	}
 }
 
@@ -705,7 +705,7 @@ Pattern CastPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[CAST].(KeywordToken).keyword == Keywords.AS and common.consume_type(state)
+		return tokens[CAST].(KeywordToken).keyword == Keywords.AS and common.consume_type(state)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -714,7 +714,7 @@ Pattern CastPattern {
 
 		if type == none abort('Can not resolve the cast type')
 
-		=> CastNode(object, TypeNode(type, tokens[TYPE].position), tokens[CAST].position)
+		return CastNode(object, TypeNode(type, tokens[TYPE].position), tokens[CAST].position)
 	}
 }
 
@@ -731,10 +731,10 @@ Pattern UnarySignPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		sign = tokens[SIGN].(OperatorToken).operator
-		if sign != Operators.ADD and sign != Operators.SUBTRACT => false
-		if state.start == 0 => true
+		if sign != Operators.ADD and sign != Operators.SUBTRACT return false
+		if state.start == 0 return true
 		previous = state.all[state.start - 1]
-		=> previous.type == TOKEN_TYPE_OPERATOR or previous.type == TOKEN_TYPE_KEYWORD
+		return previous.type == TOKEN_TYPE_OPERATOR or previous.type == TOKEN_TYPE_KEYWORD
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -742,12 +742,12 @@ Pattern UnarySignPattern {
 		sign = tokens[SIGN].(OperatorToken).operator
 
 		if object.match(NODE_NUMBER) {
-			if sign == Operators.SUBTRACT => object.(NumberNode).negate()
-			=> object
+			if sign == Operators.SUBTRACT return object.(NumberNode).negate()
+			return object
 		}
 
-		if sign == Operators.SUBTRACT => NegateNode(object, tokens[SIGN].position)
-		=> object
+		if sign == Operators.SUBTRACT return NegateNode(object, tokens[SIGN].position)
+		return object
 	}
 }
 
@@ -764,12 +764,12 @@ Pattern PostIncrementPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		operator = tokens[OPERATOR].(OperatorToken).operator
-		=> operator == Operators.INCREMENT or operator == Operators.DECREMENT
+		return operator == Operators.INCREMENT or operator == Operators.DECREMENT
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		if tokens[OPERATOR].match(Operators.INCREMENT) => IncrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, true)
-		=> DecrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, true)
+		if tokens[OPERATOR].match(Operators.INCREMENT) return IncrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, true)
+		return DecrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, true)
 	}
 }
 
@@ -786,12 +786,12 @@ Pattern PreIncrementPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		operator = tokens[OPERATOR].(OperatorToken).operator
-		=> operator == Operators.INCREMENT or operator == Operators.DECREMENT
+		return operator == Operators.INCREMENT or operator == Operators.DECREMENT
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		if tokens[OPERATOR].match(Operators.INCREMENT) => IncrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, false)
-		=> DecrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, false)
+		if tokens[OPERATOR].match(Operators.INCREMENT) return IncrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, false)
+		return DecrementNode(parser.parse(context, tokens[OBJECT]), tokens[OPERATOR].position, false)
 	}
 }
 
@@ -807,11 +807,11 @@ Pattern NotPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[NOT].match(Operators.EXCLAMATION) or tokens[NOT].match(Keywords.NOT)
+		return tokens[NOT].match(Operators.EXCLAMATION) or tokens[NOT].match(Keywords.NOT)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		=> NotNode(parser.parse(context, tokens[OBJECT]), tokens[NOT].match(Operators.EXCLAMATION), tokens[NOT].position)
+		return NotNode(parser.parse(context, tokens[OBJECT]), tokens[NOT].match(Operators.EXCLAMATION), tokens[NOT].position)
 	}
 }
 
@@ -828,14 +828,14 @@ Pattern AccessorPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		parenthesis = tokens[ARGUMENTS] as ParenthesisToken
-		=> parenthesis.opening == `[` and not parenthesis.empty
+		return parenthesis.opening == `[` and not parenthesis.empty
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		object = parser.parse(context, tokens[OBJECT])
 		arguments = parser.parse(context, tokens[ARGUMENTS])
 
-		=> AccessorNode(object, arguments, tokens[ARGUMENTS].position)
+		return AccessorNode(object, arguments, tokens[ARGUMENTS].position)
 	}
 }
 
@@ -861,38 +861,38 @@ Pattern ImportPattern {
 		# Ensure the first token contains the import modifier
 		# NOTE: Multiple modifiers are packed into a single token
 		modifier_keyword = tokens[IMPORT].(KeywordToken)
-		if modifier_keyword.keyword.type != KEYWORD_TYPE_MODIFIER => false
+		if modifier_keyword.keyword.type != KEYWORD_TYPE_MODIFIER return false
 
 		modifiers = modifier_keyword.keyword.(ModifierKeyword).modifier
-		if not has_flag(modifiers, MODIFIER_IMPORTED) => false
+		if not has_flag(modifiers, MODIFIER_IMPORTED) return false
 
 		next = state.peek()
 		
 		# Pattern: import $1.$2. ... .$n
-		if next != none and next.match(TOKEN_TYPE_IDENTIFIER) => common.consume_type(state)
+		if next != none and next.match(TOKEN_TYPE_IDENTIFIER) return common.consume_type(state)
 
 		# Pattern: import ['$language'] $name (...) [: $type]
 		# Optionally consume a language identifier
 		state.consume_optional(TOKEN_TYPE_STRING)
 
-		if not state.consume(TOKEN_TYPE_FUNCTION) => false
+		if not state.consume(TOKEN_TYPE_FUNCTION) return false
 
 		next = state.peek()
 
 		# Try to consume a return type
 		if next != none and next.match(Operators.COLON) {
 			state.consume()
-			=> common.consume_type(state)
+			return common.consume_type(state)
 		}
 
 		# There is no return type, so add an empty token
 		state.tokens.add(Token(TOKEN_TYPE_NONE))
-		=> true
+		return true
 	}
 
 	# Summary: Return whether the captured tokens represent a function import instead of namespace import
 	private static is_function_import(tokens: List<Token>) {
-		=> not tokens[TYPE_START].match(TOKEN_TYPE_IDENTIFIER)
+		return not tokens[TYPE_START].match(TOKEN_TYPE_IDENTIFIER)
 	}
 
 	# Summary: Imports the function contained in the specified tokens
@@ -918,7 +918,7 @@ Pattern ImportPattern {
 			# Ensure the return type was read successfully
 			if return_type == none {
 				state.error = Status(descriptor.position, 'Can not resolve the return type')
-				=> none as Node
+				return none as Node
 			}
 		}
 
@@ -931,7 +931,7 @@ Pattern ImportPattern {
 
 			if not environment.is_type {
 				state.error = Status(descriptor.position, 'Constructor can only be imported inside a type')
-				=> none as Node
+				return none as Node
 			}
 		}
 		else descriptor.name == Keywords.DEINIT.identifier and environment.is_type {
@@ -939,7 +939,7 @@ Pattern ImportPattern {
 
 			if not environment.is_type {
 				state.error = Status(descriptor.position, 'Destructor can only be imported inside a type')
-				=> none as Node
+				return none as Node
 			}
 		}
 		else {
@@ -952,7 +952,7 @@ Pattern ImportPattern {
 		
 		if not (result has parameters) {
 			state.error = Status(descriptor.position, result.get_error())
-			=> none as Node
+			return none as Node
 		}
 
 		function.parameters = parameters
@@ -965,7 +965,7 @@ Pattern ImportPattern {
 
 		if status.problematic {
 			state.error = status
-			=> none as Node
+			return none as Node
 		}
 		
 		function.implementations.add(implementation)
@@ -982,7 +982,7 @@ Pattern ImportPattern {
 			environment.declare(function)
 		}
 
-		=> FunctionDefinitionNode(function, descriptor.position)
+		return FunctionDefinitionNode(function, descriptor.position)
 	}
 
 	# Summary: Imports the namespace contained in the specified tokens
@@ -991,16 +991,16 @@ Pattern ImportPattern {
 		
 		if imported_namespace == none {
 			state.error = Status('Can not resolve the import')
-			=> none as Node
+			return none as Node
 		}
 
 		environment.imports.add(imported_namespace)
-		=> none as Node
+		return none as Node
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
-		if is_function_import(tokens) => import_function(environment, state, tokens)
-		=> import_namespace(environment, state, tokens)
+		if is_function_import(tokens) return import_function(environment, state, tokens)
+		return import_namespace(environment, state, tokens)
 	}
 }
 
@@ -1015,17 +1015,17 @@ Pattern ConstructorPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Constructors and destructors must be inside a type
-		if not context.is_type => false
+		if not context.is_type return false
 
 		# Ensure the function matches either a constructor or a destructor
 		descriptor = tokens[HEADER] as FunctionToken
-		if not (descriptor.name == Keywords.INIT.identifier) and not (descriptor.name == Keywords.DEINIT.identifier) => false
+		if not (descriptor.name == Keywords.INIT.identifier) and not (descriptor.name == Keywords.DEINIT.identifier) return false
 
 		# Optionally consume a line ending
 		state.consume_optional(TOKEN_TYPE_END)
 
 		# Consume the function body
-		=> state.consume_parenthesis(`{`)
+		return state.consume_parenthesis(`{`)
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -1046,7 +1046,7 @@ Pattern ConstructorPattern {
 		
 		if not (result has parameters) {
 			state.error = Status(descriptor.position, result.get_error())
-			=> none as Node
+			return none as Node
 		}
 
 		function.parameters = parameters
@@ -1055,7 +1055,7 @@ Pattern ConstructorPattern {
 		if is_constructor type.add_constructor(function as Constructor)
 		else { type.add_destructor(function as Destructor) }
 
-		=> FunctionDefinitionNode(function, descriptor.position)
+		return FunctionDefinitionNode(function, descriptor.position)
 	}
 }
 
@@ -1071,7 +1071,7 @@ Pattern ExpressionVariablePattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> (context.is_type or context.is_namespace) and tokens[ARROW].match(Operators.HEAVY_ARROW)
+		return (context.is_type or context.is_namespace) and tokens[ARROW].match(Operators.HEAVY_ARROW)
 	}
 
 	override build(type: Context, state: ParserState, tokens: List<Token>) {
@@ -1082,13 +1082,13 @@ Pattern ExpressionVariablePattern {
 
 		# Add the heavy arrow operator token to the start of the blueprint to represent a return statement
 		blueprint = List<Token>()
-		blueprint.add(tokens[ARROW])
+		blueprint.add(KeywordToken(Keywords.RETURN, tokens[ARROW].position))
 
 		error = common.consume_block(state, blueprint)
 
 		if error != none {
 			state.error = error
-			=> none as Node
+			return none as Node
 		}
 
 		# Save the blueprint
@@ -1097,7 +1097,7 @@ Pattern ExpressionVariablePattern {
 		# Finally, declare the function
 		type.declare(function)
 
-		=> FunctionDefinitionNode(function, name.position)
+		return FunctionDefinitionNode(function, name.position)
 	}
 }
 
@@ -1120,17 +1120,17 @@ Pattern InheritancePattern {
 		state.end--
 		state.tokens.remove_at(0)
 
-		if not common.consume_type(state) => false
+		if not common.consume_type(state) return false
 
 		# Require the next token to represent a type definition
 		next = state.peek()
-		if next == none or next.type != TOKEN_TYPE_DYNAMIC => false
+		if next == none or next.type != TOKEN_TYPE_DYNAMIC return false
 
 		node = next.(DynamicToken).node
-		if node.instance != NODE_TYPE_DEFINITION => false
+		if node.instance != NODE_TYPE_DEFINITION return false
 
 		state.consume()
-		=> true
+		return true
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1158,7 +1158,7 @@ Pattern InheritancePattern {
 					if not (template_parameter == token.(IdentifierToken).value) continue
 
 					template_type.inherited.insert_all(0, inheritant_tokens)
-					=> inheritor_node
+					return inheritor_node
 				}
 			}
 		}
@@ -1168,17 +1168,17 @@ Pattern InheritancePattern {
 		if inheritant == none {
 			position = inheritant_tokens[0].position
 			state.error = Status(position, 'Can not resolve the inherited type')
-			=> none as Node
+			return none as Node
 		}
 
 		if not inheritor.is_inheriting_allowed(inheritant) {
 			position = inheritant_tokens[0].position
 			state.error = Status(position, 'Can not inherit the type since it would have caused a cyclic inheritance')
-			=> none as Node
+			return none as Node
 		}
 
 		inheritor.supertypes.insert(0, inheritant)
-		=> inheritor_node
+		return inheritor_node
 	}
 }
 
@@ -1195,13 +1195,13 @@ Pattern ModifierSectionPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if tokens[MODIFIERS].(KeywordToken).keyword.type != KEYWORD_TYPE_MODIFIER => false
-		=> tokens[COLON].match(Operators.COLON)
+		if tokens[MODIFIERS].(KeywordToken).keyword.type != KEYWORD_TYPE_MODIFIER return false
+		return tokens[COLON].match(Operators.COLON)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		modifiers = tokens[MODIFIERS].(KeywordToken).keyword.(ModifierKeyword).modifier
-		=> SectionNode(modifiers, tokens[MODIFIERS].position)
+		return SectionNode(modifiers, tokens[MODIFIERS].position)
 	}
 }
 
@@ -1220,19 +1220,19 @@ Pattern SectionModificationPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Require the first consumed token to represent a modifier section
-		if tokens[SECTION].(DynamicToken).node.instance != NODE_SECTION => false
+		if tokens[SECTION].(DynamicToken).node.instance != NODE_SECTION return false
 
 		# Require the next token to represent a variable, function definition, or type definition
 		target = tokens[OBJECT].(DynamicToken).node
 		type = target.instance
 
-		if type == NODE_TYPE_DEFINITION or type == NODE_FUNCTION_DEFINITION or type == NODE_VARIABLE => true
+		if type == NODE_TYPE_DEFINITION or type == NODE_FUNCTION_DEFINITION or type == NODE_VARIABLE return true
 
 		# Allow member variable assignments as well
-		if not target.match(Operators.ASSIGN) => false
+		if not target.match(Operators.ASSIGN) return false
 
 		# Require the destination operand to be a member variable
-		=> target.first.instance == NODE_VARIABLE and target.first.(VariableNode).variable.is_member
+		return target.first.instance == NODE_VARIABLE and target.first.(VariableNode).variable.is_member
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1268,7 +1268,7 @@ Pattern SectionModificationPattern {
 			section.add(target)
 		}
 
-		=> section
+		return section
 	}
 }
 
@@ -1283,7 +1283,7 @@ Pattern NamespacePattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Require the first token to be a namespace keyword
-		if tokens[0].(KeywordToken).keyword != Keywords.NAMESPACE => false
+		if tokens[0].(KeywordToken).keyword != Keywords.NAMESPACE return false
 
 		loop {
 			# Continue if the next operator is a dot
@@ -1294,7 +1294,7 @@ Pattern NamespacePattern {
 			state.consume()
 
 			# The next token must be an identifier
-			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) return false
 		}
 
 		# Optionally consume a line ending
@@ -1305,7 +1305,7 @@ Pattern NamespacePattern {
 
 		tokens = state.tokens
 		last = tokens[tokens.size - 1]
-		=> last.type == TOKEN_TYPE_NONE or last.match(`{`)
+		return last.type == TOKEN_TYPE_NONE or last.match(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1318,7 +1318,7 @@ Pattern NamespacePattern {
 		loop type in types {
 			if type.is_static continue
 			state.error = Status(tokens[0].position, 'Can not create a namespace inside a normal type')
-			=> none as Node
+			return none as Node
 		}
 
 		blueprint = none as List<Token>
@@ -1341,7 +1341,7 @@ Pattern NamespacePattern {
 
 		# Create the namespace node
 		name = tokens.slice(1, end)
-		=> NamespaceNode(name, blueprint)
+		return NamespaceNode(name, blueprint)
 	}
 }
 
@@ -1369,14 +1369,14 @@ Pattern IterationLoopPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[LOOP].match(Keywords.LOOP) and tokens[IN].match(Keywords.IN) and tokens[BODY].match(`{`)
+		return tokens[LOOP].match(Keywords.LOOP) and tokens[IN].match(Keywords.IN) and tokens[BODY].match(`{`)
 	}
 
 	get_iterator(context: Context, tokens: List<Token>) {
 		identifier = tokens[ITERATOR].(IdentifierToken).value
 		iterator = context.declare(none as Type, VARIABLE_CATEGORY_LOCAL, identifier)
 		iterator.position = tokens[ITERATOR].position
-		=> iterator
+		return iterator
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -1428,7 +1428,7 @@ Pattern IterationLoopPattern {
 		result = parser.parse(body_context, token.tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 		loop child in result { body.add(child) }
 
-		=> LoopNode(steps_context, steps, body, tokens[LOOP].position)
+		return LoopNode(steps_context, steps, body, tokens[LOOP].position)
 	}
 }
 
@@ -1444,16 +1444,16 @@ Pattern TemplateFunctionPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Pattern: $name <$1, $2, ... $n> (...) [: $return-type] [\n] {...}
-		if not state.consume_operator(Operators.LESS_THAN) => false
+		if not state.consume_operator(Operators.LESS_THAN) return false
 
 		loop {
 			# Expect template parameter
-			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) return false
 
 			# Expect an operator, either a comma or the end of the template parameters
 			next = state.peek()
 
-			if next === none => false
+			if next === none return false
 
 			# Stop if we reached the end of template parameters
 			if next.match(Operators.GREATER_THAN) {
@@ -1467,23 +1467,23 @@ Pattern TemplateFunctionPattern {
 				continue
 			}
 
-			=> false
+			return false
 		}
 
 		# Now there must be function parameters next
-		if not state.consume_parenthesis(`(`) => false
+		if not state.consume_parenthesis(`(`) return false
 
 		# Optionally consume return type
 		if state.consume_operator(Operators.COLON) {
 			# Expect return type
-			if not common.consume_type(state) => false
+			if not common.consume_type(state) return false
 		}
 
 		# Optionally consume a line ending
 		state.consume(TOKEN_TYPE_END)
 
 		# Consume the function body
-		=> state.consume_parenthesis(`{`)
+		return state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1514,7 +1514,7 @@ Pattern TemplateFunctionPattern {
 
 		if template_parameters.size == 0 {
 			state.error = Status(start, 'Expected at least one template parameter')
-			=> none as Node
+			return none as Node
 		}
 
 		parenthesis = tokens[parameters_index] as ParenthesisToken
@@ -1527,7 +1527,7 @@ Pattern TemplateFunctionPattern {
 		# Determine the parameters of the template function
 		if not (descriptor.clone().(FunctionToken).get_parameters(template_function) has parameters) {
 			state.error = Status(start, 'Can not determine the parameters of the template function')
-			=> none as Node
+			return none as Node
 		}
 
 		template_function.parameters.add_all(parameters)
@@ -1539,7 +1539,7 @@ Pattern TemplateFunctionPattern {
 		# Declare the template function
 		context.declare(template_function)
 
-		=> FunctionDefinitionNode(template_function, start)
+		return FunctionDefinitionNode(template_function, start)
 	}
 }
 
@@ -1551,7 +1551,7 @@ Pattern TemplateFunctionCallPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> common.consume_template_function_call(state)
+		return common.consume_template_function_call(state)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1559,7 +1559,7 @@ Pattern TemplateFunctionCallPattern {
 		descriptor = FunctionToken(name, tokens[tokens.size - 1] as ParenthesisToken)
 		descriptor.position = name.position
 		template_arguments = common.read_template_arguments(context, tokens, 1)
-		=> parser.parse_function(context, context, descriptor, template_arguments, false)
+		return parser.parse_function(context, context, descriptor, template_arguments, false)
 	}
 }
 
@@ -1582,14 +1582,14 @@ Pattern TemplateTypePattern {
 		# TODO: Remove the following duplication with the template function pattern
 		# Pattern: $name <$1, $2, ... $n> (...) [\n] {...}
 		next = state.peek()
-		if next == none or not next.match(Operators.LESS_THAN) => false
+		if next == none or not next.match(Operators.LESS_THAN) return false
 		state.consume()
 
 		loop {
-			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) return false
 
 			next = state.peek()
-			if next == none => false
+			if next == none return false
 
 			if next.match(Operators.GREATER_THAN) {
 				state.consume()
@@ -1601,7 +1601,7 @@ Pattern TemplateTypePattern {
 				continue
 			}
 
-			=> false
+			return false
 		}
 
 		# Optionally, consume a line ending
@@ -1609,7 +1609,7 @@ Pattern TemplateTypePattern {
 
 		# Consume the body of the template type
 		next = state.peek()
-		=> state.consume(TOKEN_TYPE_PARENTHESIS) and next.(ParenthesisToken).match(`{`)
+		return state.consume(TOKEN_TYPE_PARENTHESIS) and next.(ParenthesisToken).match(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1625,7 +1625,7 @@ Pattern TemplateTypePattern {
 
 		# Create the template type
 		template_type = TemplateType(context, name.value, MODIFIER_DEFAULT, blueprint, template_parameters, name.position)
-		=> TypeDefinitionNode(template_type, List<Token>(), name.position)
+		return TypeDefinitionNode(template_type, List<Token>(), name.position)
 	}
 }
 
@@ -1645,16 +1645,16 @@ Pattern VirtualFunctionPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if not tokens[VIRTUAL].match(Keywords.VIRTUAL) or not context.is_type => false
+		if not tokens[VIRTUAL].match(Keywords.VIRTUAL) or not context.is_type return false
 
 		colon = tokens[COLON]
 
 		# If the colon token is not none, it must represent colon operator and the return type must be consumed successfully
-		if colon.type != TOKEN_TYPE_NONE and (not colon.match(Operators.COLON) or not common.consume_type(state)) => false
+		if colon.type != TOKEN_TYPE_NONE and (not colon.match(Operators.COLON) or not common.consume_type(state)) return false
 
 		state.consume(TOKEN_TYPE_END) # Optionally consume a line ending
 		state.consume_parenthesis(`{`) # Optionally consume a function body
-		=> true
+		return true
 	}
 
 	# Summary:
@@ -1669,7 +1669,7 @@ Pattern VirtualFunctionPattern {
 
 			if return_type == none {
 				state.error = Status(colon.position, 'Can not resolve return type of the virtual function')
-				=> none as VirtualFunction
+				return none as VirtualFunction
 			}
 		}
 
@@ -1681,31 +1681,31 @@ Pattern VirtualFunctionPattern {
 
 		if type == none {
 			state.error = Status(start, 'Missing virtual function type parent')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		if type.is_virtual_function_declared(descriptor.name) {
 			state.error = Status(start, 'Virtual function with same name is already declared in one of the inherited types')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		function = VirtualFunction(type, descriptor.name, return_type, start, none as Position)
 
 		if not (descriptor.get_parameters(function) has parameters) {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		loop parameter in parameters {
 			if parameter.type != none continue
 			state.error = Status(start, 'All parameters of a virtual function must have a type')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		function.parameters.add_all(parameters)
 
 		type.declare(function)
-		=> function
+		return function
 	}
 
 	# Summary: Creates a virtual function which does have a default implementation
@@ -1719,7 +1719,7 @@ Pattern VirtualFunctionPattern {
 
 			if return_type == none {
 				state.error = Status(colon.position, 'Can not resolve return type of the virtual function')
-				=> none as VirtualFunction
+				return none as VirtualFunction
 			}
 		}
 
@@ -1733,12 +1733,12 @@ Pattern VirtualFunctionPattern {
 
 		if type == none {
 			state.error = Status(start, 'Missing virtual function type parent')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		if type.is_virtual_function_declared(descriptor.name) {
 			state.error = Status(start, 'Virtual function with same name is already declared in one of the inherited types')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		# Create the virtual function declaration
@@ -1746,13 +1746,13 @@ Pattern VirtualFunctionPattern {
 
 		if not (descriptor.get_parameters(virtual_function) has parameters) {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		loop parameter in parameters {
 			if parameter.type != none continue
 			state.error = Status(start, 'All parameters of a virtual function must have a type')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		virtual_function.parameters.add_all(parameters)
@@ -1763,7 +1763,7 @@ Pattern VirtualFunctionPattern {
 		# Define the parameters of the default implementation
 		if not (descriptor.get_parameters(function) has implementation_parameters) {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
-			=> none as VirtualFunction
+			return none as VirtualFunction
 		}
 
 		function.parameters.add_all(implementation_parameters)
@@ -1772,7 +1772,7 @@ Pattern VirtualFunctionPattern {
 		type.declare(virtual_function)
 		context.(Type).declare_override(function)
 
-		=> virtual_function
+		return virtual_function
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1785,9 +1785,9 @@ Pattern VirtualFunctionPattern {
 			function = create_virtual_function_without_implementation(context, state, tokens)
 		}
 
-		if function == none => none as Node
+		if function == none return none as Node
 
-		=> FunctionDefinitionNode(function, tokens[0].position)
+		return FunctionDefinitionNode(function, tokens[0].position)
 	}
 }
 
@@ -1805,10 +1805,10 @@ Pattern SpecificModificationPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		modifier = tokens[MODIFIER] as KeywordToken
-		if modifier.keyword.type != KEYWORD_TYPE_MODIFIER => false
+		if modifier.keyword.type != KEYWORD_TYPE_MODIFIER return false
 
 		node = tokens[OBJECT].(DynamicToken).node
-		=> node.match(NODE_CONSTRUCTION | NODE_VARIABLE | NODE_FUNCTION_DEFINITION | NODE_TYPE_DEFINITION) or (node.instance == NODE_LINK and node.last.instance == NODE_CONSTRUCTION)
+		return node.match(NODE_CONSTRUCTION | NODE_VARIABLE | NODE_FUNCTION_DEFINITION | NODE_TYPE_DEFINITION) or (node.instance == NODE_LINK and node.last.instance == NODE_CONSTRUCTION)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1825,7 +1825,7 @@ Pattern SpecificModificationPattern {
 		else destination.instance == NODE_FUNCTION_DEFINITION {
 			if has_flag(modifiers, MODIFIER_IMPORTED) {
 				state.error = Status(tokens[MODIFIER].position, 'Can not add modifier import to a function definition')
-				=> none as Node
+				return none as Node
 			}
 
 			function = destination.(FunctionDefinitionNode).function
@@ -1844,7 +1844,7 @@ Pattern SpecificModificationPattern {
 			construction.is_stack_allocated = has_flag(modifiers, MODIFIER_INLINE)
 		}
 
-		=> destination
+		return destination
 	}
 }
 
@@ -1861,13 +1861,13 @@ Pattern TypeInspectionPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		descriptor = tokens[0] as FunctionToken
-		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == CAPACITY_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) => false
+		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == CAPACITY_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) return false
 
 		# Create a temporary state which in order to check whether the parameters contains a type
 		state = ParserState()
 		state.all = descriptor.parameters.tokens
 		state.tokens = List<Token>()
-		=> common.consume_type(state) and state.end == state.all.size
+		return common.consume_type(state) and state.end == state.all.size
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1876,21 +1876,21 @@ Pattern TypeInspectionPattern {
 
 		if type == none {
 			state.error = Status(descriptor.position, 'Can not resolve the inspected type')
-			=> none as Node
+			return none as Node
 		}
 
 		position = descriptor.position
 
 		if descriptor.name == NAME_INSPECTION_IDENTIFIER {
-			if type.is_resolved => StringNode(type.string(), position)
-			=> InspectionNode(INSPECTION_TYPE_NAME, TypeNode(type), position)
+			if type.is_resolved return StringNode(type.string(), position)
+			return InspectionNode(INSPECTION_TYPE_NAME, TypeNode(type), position)
 		}
 
 		if descriptor.name == CAPACITY_INSPECTION_IDENTIFIER {
-			=> InspectionNode(INSPECTION_TYPE_CAPACITY, TypeNode(type), position)
+			return InspectionNode(INSPECTION_TYPE_CAPACITY, TypeNode(type), position)
 		}
 
-		=> InspectionNode(INSPECTION_TYPE_SIZE, TypeNode(type), position)
+		return InspectionNode(INSPECTION_TYPE_SIZE, TypeNode(type), position)
 	}
 }
 
@@ -1906,14 +1906,14 @@ Pattern CompilesPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[COMPILES].match(Keywords.COMPILES) and tokens[CONDITIONS].match(`{`)
+		return tokens[COMPILES].match(Keywords.COMPILES) and tokens[CONDITIONS].match(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		conditions = parser.parse(context, tokens[CONDITIONS].(ParenthesisToken))
 		result = CompilesNode(tokens[COMPILES].position)
 		loop condition in conditions { result.add(condition) }
-		=> result
+		return result
 	}
 }
 
@@ -1929,14 +1929,14 @@ Pattern IsPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if not tokens[KEYWORD].match(Keywords.IS) and not tokens[KEYWORD].match(Keywords.IS_NOT) => false
+		if not tokens[KEYWORD].match(Keywords.IS) and not tokens[KEYWORD].match(Keywords.IS_NOT) return false
 
 		# Consume the type
-		if not common.consume_type(state) => false
+		if not common.consume_type(state) return false
 
 		# Try consuming the result variable
 		state.consume(TOKEN_TYPE_IDENTIFIER)
-		=> true
+		return true
 	}
 
 	override build(context: Context, state: ParserState, formatted: List<Token>) {
@@ -1948,7 +1948,7 @@ Pattern IsPattern {
 
 		if type == none {
 			state.error = Status(formatted[TYPE].position, 'Can not understand the type')
-			=> none as Node
+			return none as Node
 		}
 
 		result = none as Node
@@ -1965,8 +1965,8 @@ Pattern IsPattern {
 			result = IsNode(source, type, none as Variable, formatted[KEYWORD].position)
 		}
 
-		if negate => NotNode(result, false, result.start)
-		=> result
+		if negate return NotNode(result, false, result.start)
+		return result
 	}
 }
 
@@ -1984,10 +1984,10 @@ Pattern OverrideFunctionPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		if not context.is_type or not tokens[OVERRIDE].match(Keywords.OVERRIDE) => false # Override functions must be inside types
+		if not context.is_type or not tokens[OVERRIDE].match(Keywords.OVERRIDE) return false # Override functions must be inside types
 
 		# Consume the function body
-		=> state.consume_parenthesis(`{`)
+		return state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2003,14 +2003,14 @@ Pattern OverrideFunctionPattern {
 
 		if not (result has parameters) {
 			state.error = Status(start, 'Could not resolve the parameters')
-			=> none as Node
+			return none as Node
 		}
 
 		function.parameters.add_all(parameters)
 
 		# Declare the override function and return a function definition node
 		context.(Type).declare_override(function)
-		=> FunctionDefinitionNode(function, start)
+		return FunctionDefinitionNode(function, start)
 	}
 }
 
@@ -2031,23 +2031,23 @@ Pattern LambdaPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# If the parameters are added inside parenthesis, it must be a normal parenthesis
-		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS and not tokens[PARAMETERS].match(`(`) => false
-		if not tokens[OPERATOR].match(Operators.ARROW) => false
+		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS and not tokens[PARAMETERS].match(`(`) return false
+		if not tokens[OPERATOR].match(Operators.ARROW) return false
 
 		# Try to consume normal curly parenthesis as the body blueprint
 		next = state.peek()
 		if next.match(`{`) state.consume()
 
-		=> true
+		return true
 	}
 
 	private static get_parameter_tokens(tokens: List<Token>) {
-		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS => tokens[PARAMETERS] as ParenthesisToken
+		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS return tokens[PARAMETERS] as ParenthesisToken
 
 		parameter = tokens[PARAMETERS]
 		parameter_tokens = List<Token>(1, false)
 		parameter_tokens.add(parameter)
-		=> ParenthesisToken(`(`, parameter.position, common.get_end_of_token(parameter), parameter_tokens)
+		return ParenthesisToken(`(`, parameter.position, common.get_end_of_token(parameter), parameter_tokens)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2069,17 +2069,17 @@ Pattern LambdaPattern {
 
 			if error != none {
 				state.error = error
-				=> none as Node
+				return none as Node
 			}
 
-			blueprint.insert(0, OperatorToken(Operators.HEAVY_ARROW, position))
+			blueprint.insert(0, KeywordToken(Keywords.RETURN, position))
 			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
 
 		environment = context.find_implementation_parent()
 		if environment == none {
 			state.error = Status(start, 'Lambdas must be created inside functions')
-			=> none as Node
+			return none as Node
 		}
 
 		name = to_string(environment.create_lambda())
@@ -2093,7 +2093,7 @@ Pattern LambdaPattern {
 		result = header.get_parameters(function)
 		if not (result has parameters) {
 			state.error = Status(start, 'Could not resolve the parameters')
-			=> none as Node
+			return none as Node
 		}
 
 		function.parameters.add_all(parameters)
@@ -2112,10 +2112,10 @@ Pattern LambdaPattern {
 			loop parameter in parameters { types.add(parameter.type) }
 
 			implementation = function.implement(types)
-			=> LambdaNode(implementation, start)
+			return LambdaNode(implementation, start)
 		}
 
-		=> LambdaNode(function, start)
+		return LambdaNode(function, start)
 	}
 }
 
@@ -2137,7 +2137,7 @@ Pattern RangePattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[OPERATOR].match(Operators.RANGE)
+		return tokens[OPERATOR].match(Operators.RANGE)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2148,16 +2148,15 @@ Pattern RangePattern {
 		arguments.add(left)
 		arguments.add(right)
 
-		=> UnresolvedFunction(String(RANGE_TYPE_NAME), tokens[OPERATOR].position).set_arguments(arguments)
+		return UnresolvedFunction(String(RANGE_TYPE_NAME), tokens[OPERATOR].position).set_arguments(arguments)
 	}
 }
 
-# TODO: Add support for 'has not'
 Pattern HasPattern {
 	constant HAS = 1
 	constant NAME = 2
 
-	# Pattern: $object has $name
+	# Pattern: $object has [not] $name
 	init() {
 		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_KEYWORD)
@@ -2166,7 +2165,7 @@ Pattern HasPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[HAS].match(Keywords.HAS) or tokens[HAS].match(Keywords.HAS_NOT)
+		return tokens[HAS].match(Keywords.HAS) or tokens[HAS].match(Keywords.HAS_NOT)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2178,7 +2177,7 @@ Pattern HasPattern {
 
 		if context.is_local_variable_declared(name.value) {
 			state.error = Status(position, 'Variable already exists')
-			=> none as Node
+			return none as Node
 		}
 
 		variable = Variable(context, none as Type, VARIABLE_CATEGORY_LOCAL, name.value, MODIFIER_DEFAULT)
@@ -2187,8 +2186,8 @@ Pattern HasPattern {
 
 		result = HasNode(source, VariableNode(variable, position), tokens[HAS].position)
 
-		if negate => NotNode(result, false, result.start)
-		=> result
+		if negate return NotNode(result, false, result.start)
+		return result
 	}
 }
 
@@ -2213,7 +2212,7 @@ Pattern ExtensionFunctionPattern {
 
 		# Ensure the first operator is a dot operator
 		next = state.peek()
-		if next == none or not next.match(Operators.DOT) => false
+		if next == none or not next.match(Operators.DOT) return false
 		state.consume()
 
 		loop {
@@ -2221,7 +2220,7 @@ Pattern ExtensionFunctionPattern {
 			if state.consume(TOKEN_TYPE_FUNCTION) stop
 
 			# Consume a normal type or a template type
-			if not state.consume(TOKEN_TYPE_IDENTIFIER) => false
+			if not state.consume(TOKEN_TYPE_IDENTIFIER) return false
 
 			# Optionally consume template arguments
 			backup = state.save()
@@ -2231,7 +2230,7 @@ Pattern ExtensionFunctionPattern {
 
 			if state.consume(TOKEN_TYPE_OPERATOR) {
 				# If an operator was consumed, it must be a dot operator
-				if not consumed.match(Operators.DOT) => false
+				if not consumed.match(Operators.DOT) return false
 				continue
 			}
 
@@ -2239,12 +2238,12 @@ Pattern ExtensionFunctionPattern {
 
 			if state.consume(TOKEN_TYPE_PARENTHESIS) {
 				# If parenthesis were consumed, it must be standard parenthesis
-				if not consumed.match(`(`) => false
+				if not consumed.match(`(`) return false
 				stop
 			}
 
 			# There is an unexpected token
-			=> false
+			return false
 		}
 
 		# Optionally consume a line ending
@@ -2252,14 +2251,14 @@ Pattern ExtensionFunctionPattern {
 
 		# The last token must be the body of the function
 		next = state.peek()
-		if next == none or not next.match(`{`) => false
+		if next == none or not next.match(`{`) return false
 		
 		state.consume()
-		=> true
+		return true
 	}
 
 	private static is_template_function(tokens: List<Token>) {
-		=> tokens[tokens.size - 1 - PARAMETERS_OFFSET].type != TOKEN_TYPE_FUNCTION
+		return tokens[tokens.size - 1 - PARAMETERS_OFFSET].type != TOKEN_TYPE_FUNCTION
 	}
 
 	private static find_template_arguments_start(tokens: List<Token>) {
@@ -2277,7 +2276,7 @@ Pattern ExtensionFunctionPattern {
 			i--
 		}
 
-		=> i
+		return i
 	}
 
 	private static create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -2285,7 +2284,7 @@ Pattern ExtensionFunctionPattern {
 		i = find_template_arguments_start(tokens)
 		if i < 0 {
 			state.error = Status(tokens[0].position, 'Invalid template function extension')
-			=> none as Node
+			return none as Node
 		}
 
 		# Collect all the tokens before the name of the extension function
@@ -2294,7 +2293,7 @@ Pattern ExtensionFunctionPattern {
 
 		if destination == none {
 			state.error = Status(tokens[0].position, 'Invalid template function extension')
-			=> none as Node
+			return none as Node
 		}
 
 		template_parameters_start = i + 1
@@ -2308,7 +2307,7 @@ Pattern ExtensionFunctionPattern {
 		descriptor = FunctionToken(name, parameters)
 		descriptor.position = name.position
 
-		=> ExtensionFunctionNode(destination, descriptor, template_parameters, body.tokens, descriptor.position, body.end)
+		return ExtensionFunctionNode(destination, descriptor, template_parameters, body.tokens, descriptor.position, body.end)
 	}
 
 	private static create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
@@ -2316,18 +2315,18 @@ Pattern ExtensionFunctionPattern {
 
 		if destination == none {
 			state.error = Status(tokens[0].position, 'Invalid template function extension')
-			=> none as Node
+			return none as Node
 		}
 
 		descriptor = tokens[tokens.size - 1 - PARAMETERS_OFFSET] as FunctionToken
 		body = tokens[tokens.size - 1 - BODY_OFFSET] as ParenthesisToken
 
-		=> ExtensionFunctionNode(destination, descriptor, body.tokens, descriptor.position, body.end)
+		return ExtensionFunctionNode(destination, descriptor, body.tokens, descriptor.position, body.end)
 	}
 
 	override build(environment: Context, state: ParserState, tokens: List<Token>) {
-		if is_template_function(tokens) => create_template_function_extension(environment, state, tokens)
-		=> create_standard_function_extension(environment, state, tokens)
+		if is_template_function(tokens) return create_template_function_extension(environment, state, tokens)
+		return create_standard_function_extension(environment, state, tokens)
 	}
 }
 
@@ -2351,10 +2350,10 @@ Pattern WhenPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Ensure the keyword is the when keyword
-		if not tokens[0].match(Keywords.WHEN) => false
-		if not tokens[VALUE].match(`(`) => false
+		if not tokens[0].match(Keywords.WHEN) return false
+		if not tokens[VALUE].match(`(`) return false
 
-		=> tokens[BODY].match(`{`)
+		return tokens[BODY].match(`{`)
 	}
 
 	override build(environment: Context, state: ParserState, all: List<Token>) {
@@ -2369,7 +2368,7 @@ Pattern WhenPattern {
 
 		if tokens.size == 0 {
 			state.error = Status(position, 'When-statement can not be empty')
-			=> none as Node
+			return none as Node
 		}
 
 		sections = List<Node>()
@@ -2396,12 +2395,12 @@ Pattern WhenPattern {
 
 			if index < 0 {
 				state.error = Status(tokens[0].position, 'All sections in when-statements must have a heavy arrow operator')
-				=> none as Node
+				return none as Node
 			}
 
 			if index == 0 {
 				state.error = Status(tokens[0].position, 'Section condition can not be empty')
-				=> none as Node
+				return none as Node
 			}
 
 			arrow = tokens[index]
@@ -2427,7 +2426,7 @@ Pattern WhenPattern {
 
 			if tokens.size == 0 {
 				state.error = Status(position, 'Missing section body')
-				=> none as Node
+				return none as Node
 			}
 
 			context = Context(environment, NORMAL_CONTEXT)
@@ -2447,7 +2446,7 @@ Pattern WhenPattern {
 
 				if error != none {
 					state.error = error
-					=> none as Node
+					return none as Node
 				}
 
 				body = parser.parse(context, result, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
@@ -2465,7 +2464,7 @@ Pattern WhenPattern {
 			# If the section is not an else-section, the condition must be present
 			if condition == none {
 				state.error = Status(arrow.position, 'Missing section condition')
-				=> none as Node
+				return none as Node
 			}
 			
 			# Add the conditional section
@@ -2478,7 +2477,7 @@ Pattern WhenPattern {
 			}
 		}
 
-		=> WhenNode(inspected_value, VariableNode(inspected_value_variable, position), sections, position)
+		return WhenNode(inspected_value, VariableNode(inspected_value_variable, position), sections, position)
 	}
 }
 
@@ -2492,14 +2491,14 @@ Pattern ListConstructionPattern {
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
-		=> tokens[LIST].match(`[`)
+		return tokens[LIST].match(`[`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		elements = parser.parse(context, tokens[LIST])
 		position = tokens[LIST].position
 
-		=> ListConstructionNode(elements, position)
+		return ListConstructionNode(elements, position)
 	}
 }
 
@@ -2514,12 +2513,12 @@ Pattern PackConstructionPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		# Ensure the keyword is 'pack'
-		if not tokens[0].match(Keywords.PACK) => false
+		if not tokens[0].match(Keywords.PACK) return false
 
-		if not tokens[PARENTHESIS].match(`{`) => false
+		if not tokens[PARENTHESIS].match(`{`) return false
 
 		# The pack must have members
-		if tokens[PARENTHESIS].(ParenthesisToken).tokens.size == 0 => false
+		if tokens[PARENTHESIS].(ParenthesisToken).tokens.size == 0 return false
 
 		# Now, we must ensure this really is a pack construction.
 		# The tokens must be in the form of: { $member-1 : $value-1, $member-2 : $value-2, ... }
@@ -2533,16 +2532,16 @@ Pattern PackConstructionPattern {
 			if section.size == 0 continue
 
 			# Verify the section begins with a member name, a colon and some token.
-			if section.size < 3 => false
+			if section.size < 3 return false
 
 			# The first token must be an identifier.
-			if section[0].type != TOKEN_TYPE_IDENTIFIER => false
+			if section[0].type != TOKEN_TYPE_IDENTIFIER return false
 
 			# The second token must be a colon.
-			if not section[1].match(Operators.COLON) => false
+			if not section[1].match(Operators.COLON) return false
 		}
 
-		=> true
+		return true
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2567,13 +2566,13 @@ Pattern PackConstructionPattern {
 			# Ensure the member has a value
 			if value == none {
 				state.error = Status(section[0].position, 'Missing value for member')
-				=> none as Node
+				return none as Node
 			}
 
 			members.add(member)
 			arguments.add(value)
 		}
 
-		=> PackConstructionNode(members, arguments, tokens[0].position)
+		return PackConstructionNode(members, arguments, tokens[0].position)
 	}
 }

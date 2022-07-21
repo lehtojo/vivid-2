@@ -43,14 +43,14 @@ classify_variable_usages(variable: Variable) {
 		if access == ACCESS_TYPE_UNKNOWN {
 			variable.writes.clear()
 			variable.reads.clear()
-			=> false
+			return false
 		}
 
 		if access == ACCESS_TYPE_WRITE { variable.writes.add(usage) }
 		else { variable.reads.add(usage) }
 	}
 
-	=> true
+	return true
 }
 
 # Summary: Inserts the values of the constants in the specified into their usages
@@ -93,7 +93,7 @@ apply_constants(context: Context) {
 			# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
 			# Example:
 			# namespace A { C = 0 }
-			# print(A.C) => print(0)
+			# print(A.C) --> print(0)
 			if usage.parent != none and usage.parent.match(NODE_LINK) { destination = usage.parent }
 			destination.replace(value.clone())
 		}
@@ -131,7 +131,7 @@ apply_constants(root: Node) {
 		# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
 		# Example:
 		# namespace A { C = 0 }
-		# print(A.C) => print(0)
+		# print(A.C) --> print(0)
 		if usage.parent != none and usage.parent.instance == NODE_LINK { destination = usage.parent }
 
 		destination.replace(write.last.clone())

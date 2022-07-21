@@ -14,16 +14,16 @@ build_command(unit: Unit, node: CommandNode) {
 		label = node.container.exit_label
 
 		# TODO: Support conditions
-		#if node.condition != none => JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
+		#if node.condition != none return JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
 
-		=> JumpInstruction(unit, label).add()
+		return JumpInstruction(unit, label).add()
 	}
 	else node.instruction == Keywords.CONTINUE {
 		statement = node.container
 		start = statement.start_label
 
 		if statement.is_forever_loop {
-			=> JumpInstruction(unit, start).add()
+			return JumpInstruction(unit, start).add()
 		}
 
 		# Build the nodes around the actual condition by disabling the condition temporarily
@@ -41,7 +41,7 @@ build_command(unit: Unit, node: CommandNode) {
 		exit = statement.exit_label
 		build_end_condition(unit, statement.condition, start, exit)
 
-		=> Result()
+		return Result()
 	}
 
 	abort('Unknown loop command')
@@ -56,7 +56,7 @@ build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction
 	result = builders.build(unit, statement.body) as Result
 
 	unit.add_debug_position(statement.body.end)
-	=> result
+	return result
 }
 
 # Summary: Builds the body of the specified loop with its steps
@@ -87,7 +87,7 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
 
 	build_end_condition(unit, statement.condition, start.label)
 
-	=> result
+	return result
 }
 
 # Summary: Builds the specified forever-loop
@@ -110,14 +110,14 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 	# Append the exit label
 	unit.add(LabelInstruction(unit, statement.exit_label))
 
-	=> result
+	return result
 }
 
 # Summary: Builds the specified loop
 build(unit: Unit, statement: LoopNode) {
 	unit.add_debug_position(statement)
 
-	if statement.is_forever_loop => build_forever_loop(unit, statement)
+	if statement.is_forever_loop return build_forever_loop(unit, statement)
 
 	# Create the start and end label of the loop
 	start = unit.get_next_label()
@@ -147,12 +147,12 @@ build(unit: Unit, statement: LoopNode) {
 	# Append the label where the loop ends
 	unit.add(LabelInstruction(unit, end))
 
-	=> result
+	return result
 }
 
 # Summary: Builds the the specified condition which should be placed at the end of a loop
 build_end_condition(unit: Unit, condition: Node, success: Label) {
-	=> build_end_condition(unit, condition, success, none as Label)
+	return build_end_condition(unit, condition, success, none as Label)
 }
 
 # Summary: Builds the the specified condition which should be placed at the end of a loop

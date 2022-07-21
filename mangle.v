@@ -32,7 +32,7 @@ MangleDefinition {
 
 		result = String(`S`)
 		if index != 0 { result = result + hexadecimal }
-		=> result + `_`
+		return result + `_`
 	}
 }
 
@@ -262,6 +262,6 @@ Mangle {
 	}
 
 	clone() {
-		=> Mangle(this)
+		return Mangle(this)
 	}
 }

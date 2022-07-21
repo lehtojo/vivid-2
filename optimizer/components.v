@@ -18,74 +18,74 @@ Component {
 	is_variable_product => type == COMPONENT_TYPE_VARIABLE_PRODUCT
 
 	is_one() {
-		=> is_number and this.(NumberComponent).value.is_one()
+		return is_number and this.(NumberComponent).value.is_one()
 	}
 
 	is_zero() {
-		=> is_number and this.(NumberComponent).value.data == 0
+		return is_number and this.(NumberComponent).value.data == 0
 	}
 
 	static add_numbers(c1: large, c2: large, is_c1_decimal: bool, is_c2_decimal: bool) {
 		if is_c1_decimal {
-			if is_c2_decimal => pack { data: decimal_to_bits(bits_to_decimal(c1) + bits_to_decimal(c2)), is_decimal: true }
-			=> pack { data: decimal_to_bits(bits_to_decimal(c1) + c2), is_decimal: true }
+			if is_c2_decimal return pack { data: decimal_to_bits(bits_to_decimal(c1) + bits_to_decimal(c2)), is_decimal: true }
+			return pack { data: decimal_to_bits(bits_to_decimal(c1) + c2), is_decimal: true }
 		}
 
-		if is_c2_decimal => pack { data: decimal_to_bits(c1 + bits_to_decimal(c2)), is_decimal: true }
-		=> pack { data: c1 + c2, is_decimal: false }
+		if is_c2_decimal return pack { data: decimal_to_bits(c1 + bits_to_decimal(c2)), is_decimal: true }
+		return pack { data: c1 + c2, is_decimal: false }
 	}
 
 	virtual negation()
 
 	virtual addition(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual subtraction(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual multiplication(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual division(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual bitwise_and(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual bitwise_xor(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual bitwise_or(other: Component): Component {
-		=> none as Component
+		return none as Component
 	}
 
 	virtual compare(other: Component): tiny {
-		=> COMPARISON_UNKNOWN
+		return COMPARISON_UNKNOWN
 	}
 
 	virtual equals(other: Component): bool
 	virtual clone(): Component
 
 	plus(other: Component) {
-		=> addition(other)
+		return addition(other)
 	}
 
 	minus(other: Component) {
-		=> subtraction(other)
+		return subtraction(other)
 	}
 
 	times(other: Component) {
-		=> multiplication(other)
+		return multiplication(other)
 	}
 
 	divide(other: Component) {
-		=> division(other)
+		return division(other)
 	}
 }
 
@@ -94,31 +94,31 @@ pack Number {
 	is_decimal: bool
 
 	is_integer() {
-		=> not is_decimal
+		return not is_decimal
 	}
 
 	format() {
-		if is_decimal => FORMAT_DECIMAL
-		=> SYSTEM_FORMAT
+		if is_decimal return FORMAT_DECIMAL
+		return SYSTEM_FORMAT
 	}
 
 	is_zero() {
-		=> data == 0
+		return data == 0
 	}
 
 	is_one() {
-		if is_decimal => bits_to_decimal(data) == 1.0
-		=> data == 1
+		if is_decimal return bits_to_decimal(data) == 1.0
+		return data == 1
 	}
 
 	is_negative() {
-		if is_decimal => bits_to_decimal(data) < 0.0
-		=> data < 0
+		if is_decimal return bits_to_decimal(data) < 0.0
+		return data < 0
 	}
 
 	absolute() {
-		if is_decimal => data & 0x7FFFFFFFFFFFFFFF # Set the last bit to zero
-		=> abs(data)
+		if is_decimal return data & 0x7FFFFFFFFFFFFFFF # Set the last bit to zero
+		return abs(data)
 	}
 
 	plus(other: Number) {
@@ -146,7 +146,7 @@ pack Number {
 			}
 		}
 
-		=> result
+		return result
 	}
 
 	minus(other: Number) {
@@ -174,7 +174,7 @@ pack Number {
 			}
 		}
 
-		=> result
+		return result
 	}
 
 	times(other: Number) {
@@ -202,7 +202,7 @@ pack Number {
 			}
 		}
 
-		=> result
+		return result
 	}
 
 	divide(other: Number) {
@@ -230,7 +230,7 @@ pack Number {
 			}
 		}
 
-		=> result
+		return result
 	}
 
 	remainder(other: Number) {
@@ -240,7 +240,7 @@ pack Number {
 
 		if not is_decimal and not other.is_decimal { result.data = data % other.data }
 
-		=> result
+		return result
 	}
 
 	negation() {
@@ -255,22 +255,22 @@ pack Number {
 			result.data = -data
 		}
 
-		=> result
+		return result
 	}
 
 	compare(other: Number) {
 		if is_decimal {
-			if other.is_decimal => sign(bits_to_decimal(data) - bits_to_decimal(other.data))
-			=> sign(bits_to_decimal(data) - other.data)
+			if other.is_decimal return sign(bits_to_decimal(data) - bits_to_decimal(other.data))
+			return sign(bits_to_decimal(data) - other.data)
 		}
 		else {
-			if other.is_decimal => sign(data - bits_to_decimal(other.data))
-			=> sign(data - other.data)
+			if other.is_decimal return sign(data - bits_to_decimal(other.data))
+			return sign(data - other.data)
 		}
 	}
 
 	equals(other: Number) {
-		=> data === other.data and is_decimal === other.is_decimal
+		return data === other.data and is_decimal === other.is_decimal
 	}
 }
 
@@ -295,34 +295,34 @@ Component ComplexComponent {
 	}
 
 	override addition(other: Component) {
-		if other.is_zero() => this # clone()
-		=> none as Component
+		if other.is_zero() return this # clone()
+		return none as Component
 	}
 
 	override subtraction(other: Component) {
-		if other.is_zero() => this # clone()
-		=> none as Component
+		if other.is_zero() return this # clone()
+		return none as Component
 	}
 
 	override multiplication(other: Component) {
-		if other.is_one() => this # clone()
+		if other.is_one() return this # clone()
 
-		if other.is_zero() => other # NumberComponent(0)
-		=> none as Component
+		if other.is_zero() return other # NumberComponent(0)
+		return none as Component
 	}
 
 	override division(other: Component) {
-		if other.is_one() => this # clone()
+		if other.is_one() return this # clone()
 
-		=> none as Component
+		return none as Component
 	}
 
 	override equals(other: Component) {
-		=> false
+		return false
 	}
 
 	override clone() {
-		=> ComplexComponent(node.clone(), is_negative)
+		return ComplexComponent(node.clone(), is_negative)
 	}
 }
 
@@ -354,80 +354,80 @@ Component NumberComponent {
 	}
 
 	override addition(other: Component) {
-		if is_zero() => other # other.clone()
-		if other.is_zero() => this # clone()
+		if is_zero() return other # other.clone()
+		if other.is_zero() return this # clone()
 
-		if other.is_number => NumberComponent(value + other.(NumberComponent).value)
+		if other.is_number return NumberComponent(value + other.(NumberComponent).value)
 
-		=> none as NumberComponent
+		return none as NumberComponent
 	}
 
 	override subtraction(other: Component) {
 		if is_zero() {
 			clone = other.clone()
 			clone.negation()
-			=> clone
+			return clone
 		}
-		if other.is_zero() => this # clone()
+		if other.is_zero() return this # clone()
 
-		if other.is_number => NumberComponent(value - other.(NumberComponent).value)
+		if other.is_number return NumberComponent(value - other.(NumberComponent).value)
 
-		=> none as NumberComponent
+		return none as NumberComponent
 	}
 
 	override multiplication(other: Component) {
-		if is_zero() or other.is_one() => this # clone()
-		if is_one() or other.is_zero() => other # other.clone()
+		if is_zero() or other.is_one() return this # clone()
+		if is_one() or other.is_zero() return other # other.clone()
 
-		if other.is_number => NumberComponent(value * other.(NumberComponent).value)
-		if other.is_variable => VariableComponent(other.(VariableComponent).variable, value * other.(VariableComponent).coefficient, 1)
-		if other.is_variable_product => (other as VariableProductComponent) * this
-		=> none as Component
+		if other.is_number return NumberComponent(value * other.(NumberComponent).value)
+		if other.is_variable return VariableComponent(other.(VariableComponent).variable, value * other.(VariableComponent).coefficient, 1)
+		if other.is_variable_product return (other as VariableProductComponent) * this
+		return none as Component
 	}
 
 	override division(other: Component) {
-		if other.is_one() => this # clone()
+		if other.is_one() return this # clone()
 
-		if other.is_number and not other.is_zero() => NumberComponent(value / other.(NumberComponent).value)
+		if other.is_number and not other.is_zero() return NumberComponent(value / other.(NumberComponent).value)
 
-		=> none as Component
+		return none as Component
 	}
 
 	override bitwise_and(other: Component) {
 		if value.is_integer and other.is_integer {
-			=> NumberComponent(value.data & other.(NumberComponent).value.data)
+			return NumberComponent(value.data & other.(NumberComponent).value.data)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override bitwise_or(other: Component) {
 		if value.is_integer and other.is_integer {
-			=> NumberComponent(value.data | other.(NumberComponent).value.data)
+			return NumberComponent(value.data | other.(NumberComponent).value.data)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override bitwise_xor(other: Component) {
 		if value.is_integer and other.is_integer {
-			=> NumberComponent(value.data ¤ other.(NumberComponent).value.data)
+			return NumberComponent(value.data ¤ other.(NumberComponent).value.data)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override compare(other: Component) {
-		if other.is_number => value.compare(other.(NumberComponent).value)
-		=> COMPARISON_UNKNOWN
+		if other.is_number return value.compare(other.(NumberComponent).value)
+		return COMPARISON_UNKNOWN
 	}
 
 	override equals(other: Component) {
-		=> other.is_number and value == other.(NumberComponent).value
+		return other.is_number and value == other.(NumberComponent).value
 	}
 
 	override clone() {
-		=> NumberComponent(value)
+		return NumberComponent(value)
 	}
 }
 
@@ -464,73 +464,73 @@ Component VariableComponent {
 	}
 
 	override addition(other: Component) {
-		if other.is_zero() => this # clone()
+		if other.is_zero() return this # clone()
 
 		if other.is_variable and variable === other.(VariableComponent).variable and order == other.(VariableComponent).order {
 			result_coefficient = coefficient + other.(VariableComponent).coefficient
-			if result_coefficient.is_zero() => NumberComponent(0)
+			if result_coefficient.is_zero() return NumberComponent(0)
 
-			=> VariableComponent(variable, result_coefficient, order)
+			return VariableComponent(variable, result_coefficient, order)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override subtraction(other: Component) {
-		if other.is_zero() => this # clone()
+		if other.is_zero() return this # clone()
 
 		if other.is_variable and variable === other.(VariableComponent).variable and order == other.(VariableComponent).order {
 			result_coefficient = coefficient - other.(VariableComponent).coefficient
-			if result_coefficient.is_zero() => NumberComponent(0)
+			if result_coefficient.is_zero() return NumberComponent(0)
 
-			=> VariableComponent(variable, result_coefficient, order)
+			return VariableComponent(variable, result_coefficient, order)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override multiplication(other: Component) {
-		if other.is_one() => this # clone()
-		if other.is_zero() => other # NumberComponent(0)
+		if other.is_one() return this # clone()
+		if other.is_zero() return other # NumberComponent(0)
 
 		if other.is_variable {
 			result_coefficient = coefficient * other.(VariableComponent).coefficient
 
 			if variable === other.(VariableComponent).variable {
-				=> VariableComponent(variable, result_coefficient, order + other.(VariableComponent).order)
+				return VariableComponent(variable, result_coefficient, order + other.(VariableComponent).order)
 			}
 
 			left = VariableComponent(variable, 1, order)
 			right = VariableComponent(other.(VariableComponent).variable, 1, other.(VariableComponent).order)
 
-			=> VariableProductComponent(result_coefficient, [ left, right ])
+			return VariableProductComponent(result_coefficient, [ left, right ])
 		}
 
 		if other.is_number {
-			=> VariableComponent(variable, coefficient * other.(NumberComponent).value, order)
+			return VariableComponent(variable, coefficient * other.(NumberComponent).value, order)
 		}
 
 		if other.is_variable_product {
-			=> (other as VariableProductComponent) * this
+			return (other as VariableProductComponent) * this
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override division(other: Component) {
-		if other.is_one => this # clone()
+		if other.is_one return this # clone()
 
 		if other.is_variable and variable === other.(VariableComponent).variable {
-			if other.(VariableComponent).coefficient.is_zero() => none as Component
+			if other.(VariableComponent).coefficient.is_zero() return none as Component
 
 			result_order = order - other.(VariableComponent).order
 			result_coefficient = coefficient / other.(VariableComponent).coefficient
 
-			if result_order == 0 => NumberComponent(result_coefficient)
+			if result_order == 0 return NumberComponent(result_coefficient)
 
 			# Ensure that the coefficient supports fractions
 			if result_coefficient.is_decimal or (coefficient % other.(VariableComponent).coefficient).is_zero() {
-				=> VariableComponent(variable, result_coefficient, result_order)
+				return VariableComponent(variable, result_coefficient, result_order)
 			}
 		}
 
@@ -539,21 +539,21 @@ Component VariableComponent {
 
 			# If neither one of the two coefficients is a decimal number, the dividend must be divisible by the divisor
 			if not coefficient.is_decimal and not other_value.is_decimal and not (coefficient % other_value).is_zero() {
-				=> none as Component
+				return none as Component
 			}
 
-			=> VariableComponent(variable, coefficient / other_value, order)
+			return VariableComponent(variable, coefficient / other_value, order)
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override equals(other: Component) {
-		=> other.is_variable and coefficient == other.(VariableComponent).coefficient and variable === other.(VariableComponent).variable
+		return other.is_variable and coefficient == other.(VariableComponent).coefficient and variable === other.(VariableComponent).variable
 	}
 
 	override clone() {
-		=> VariableComponent(variable, coefficient, order)
+		return VariableComponent(variable, coefficient, order)
 	}
 }
 
@@ -572,35 +572,35 @@ Component VariableProductComponent {
 	}
 
 	override addition(other: Component) {
-		if other.is_zero() => this # clone()
-		if not (this == other) => none as Component
+		if other.is_zero() return this # clone()
+		if not (this == other) return none as Component
 
 		result = clone() as VariableProductComponent
 		result.coefficient = coefficient + other.(VariableProductComponent).coefficient
-		=> result
+		return result
 	}
 
 	override subtraction(other: Component) {
-		if other.is_zero() => this # clone()
-		if not (this == other) => none as Component
+		if other.is_zero() return this # clone()
+		if not (this == other) return none as Component
 
 		result = clone() as VariableProductComponent
 		result.coefficient = coefficient - other.(VariableProductComponent).coefficient
-		=> result
+		return result
 	}
 
 	override multiplication(other: Component) {
-		if other.is_one() => this # clone()
-		if other.is_zero() => other # NumberComponent(0)
+		if other.is_one() return this # clone()
+		if other.is_zero() return other # NumberComponent(0)
 
 		if other.is_number {
 			result_coefficient = coefficient * other.(VariableComponent).coefficient
-			if result_coefficient.is_zero() => NumberComponent(0)
+			if result_coefficient.is_zero() return NumberComponent(0)
 
 			result = clone() as VariableProductComponent
 			result.coefficient = result_coefficient
 
-			=> result
+			return result
 		}
 
 		if other.is_variable {
@@ -627,7 +627,7 @@ Component VariableProductComponent {
 				result.variables.add(other_clone)
 			}
 
-			=> result
+			return result
 		}
 
 		if other.is_variable_product {
@@ -640,44 +640,44 @@ Component VariableProductComponent {
 				result = (result * variable) as VariableProductComponent
 			}
 
-			=> result
+			return result
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override division(other: Component) {
-		if other.is_one() => this # clone()
+		if other.is_one() return this # clone()
 
 		if other.is_number and not other.(NumberComponent).value.is_zero() {
 			other_value = other.(NumberComponent).value
 
 			# If neither one of the two coefficients is a decimal number, the dividend must be divisible by the divisor
 			if not coefficient.is_decimal and not other_value.is_decimal and not (coefficient % other_value).is_zero() {
-				=> none as Component
+				return none as Component
 			}
 
 			result_coefficient = coefficient / other_value
 
 			result = clone() as VariableProductComponent
 			result.coefficient = result_coefficient
-			=> result
+			return result
 		}
 
-		=> none as Component
+		return none as Component
 	}
 
 	override equals(other: Component) {
-		if other.is_variable_product or variables.size != other.(VariableProductComponent).variables.size => false
+		if other.is_variable_product or variables.size != other.(VariableProductComponent).variables.size return false
 
 		loop variable in variables {
-			if not other.(VariableProductComponent).variables.contains(variable) => false
+			if not other.(VariableProductComponent).variables.contains(variable) return false
 		}
 
-		=> true
+		return true
 	}
 
 	override clone() {
-		=> VariableProductComponent(coefficient, variables.map<VariableComponent>((i: VariableComponent) -> i.clone() as VariableComponent))
+		return VariableProductComponent(coefficient, variables.map<VariableComponent>((i: VariableComponent) -> i.clone() as VariableComponent))
 	}
 }

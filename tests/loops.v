@@ -9,7 +9,7 @@ export loops(start: large, count: large) {
 		j += 3
 	}
 
-	=> result
+	return result
 }
 
 export forever_loop() {
@@ -19,7 +19,7 @@ export forever_loop() {
 		++result
 	}
 
-	=> result
+	return result
 }
 
 export conditional_loop(i: large) {
@@ -27,12 +27,12 @@ export conditional_loop(i: large) {
 		++i
 	}
 
-	=> i
+	return i
 }
 
 export conditional_action_loop(i: large) {
 	loop (i < 1000, i *= 2) {}
-	=> i
+	return i
 }
 
 export normal_for_loop(start: large, count: large) {
@@ -42,7 +42,7 @@ export normal_for_loop(start: large, count: large) {
 		result += i
 	}
 
-	=> result
+	return result
 }
 
 export normal_for_loop_with_stop(start: large, count: large) {
@@ -58,7 +58,7 @@ export normal_for_loop_with_stop(start: large, count: large) {
 		result += i
 	}
 
-	=> result
+	return result
 }
 
 export normal_for_loop_with_continue(start: large, count: large) {
@@ -74,7 +74,7 @@ export normal_for_loop_with_continue(start: large, count: large) {
 		result += i
 	}
 
-	=> result
+	return result
 }
 
 export nested_for_loops(memory: link, width: large) {
@@ -105,7 +105,7 @@ export nested_for_loops(memory: link, width: large) {
 		}
 	}
 
-	=> w
+	return w
 }
 
 init() {
@@ -158,5 +158,5 @@ init() {
 
 	are_equal(expected, actual, 0, 27)
 	are_equal(13, result)
-	=> 0
+	return 0
 }

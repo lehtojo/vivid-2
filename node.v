@@ -10,15 +10,15 @@ NodeIterator {
 	}
 
 	value() {
-		=> current
+		return current
 	}
 
 	next() {
 		current = next
-		if current == none => false
+		if current == none return false
 
 		next = current.next
-		=> true
+		return true
 	}
 
 	reset() {
@@ -41,33 +41,33 @@ Node {
 	}
 
 	match(instances: large) {
-		=> (instances & this.instance) != 0
+		return (instances & this.instance) != 0
 	}
 
 	match(operator: Operator) {
-		=> instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
+		return instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
 	}
 
 	match(variable: Variable) {
-		=> instance == NODE_VARIABLE and this.(VariableNode).variable === variable
+		return instance == NODE_VARIABLE and this.(VariableNode).variable === variable
 	}
 
 	match(implementation: FunctionImplementation) {
-		=> instance == NODE_FUNCTION and this.(FunctionNode).function === implementation
+		return instance == NODE_FUNCTION and this.(FunctionNode).function === implementation
 	}
 
 	# Summary: Finds the first parent, which passes the specified filter
 	find_parent(filter: (Node) -> bool) {
-		if parent == none => none as Node
-		if filter(parent) => parent
-		=> parent.find_parent(filter) as Node
+		if parent == none return none as Node
+		if filter(parent) return parent
+		return parent.find_parent(filter) as Node
 	}
 
 	# Summary: Finds the first parent, whose type is the specified type
 	find_parent(types: large) {
-		if parent == none => none as Node
-		if (parent.instance & types) != 0 => parent
-		=> parent.find_parent(types) as Node
+		if parent == none return none as Node
+		if (parent.instance & types) != 0 return parent
+		return parent.find_parent(types) as Node
 	}
 
 	# Summary: Returns all nodes, which pass the specified filter
@@ -79,7 +79,7 @@ Node {
 			result.add_all(iterator.find_all(filter))
 		}
 
-		=> result
+		return result
 	}
 
 	# Summary: Finds all nodes, whose type matches the specified type
@@ -91,7 +91,7 @@ Node {
 			result.add_all(iterator.find_all(types))
 		}
 
-		=> result
+		return result
 	}
 
 	# Summary: Finds all nodes, whose type is one of the specified types
@@ -103,31 +103,31 @@ Node {
 			result.add_all(iterator.find_every(types))
 		}
 
-		=> result
+		return result
 	}
 
 	# Summary: Returns the first child node, which pass the specified filter. None is returned, if no child node passes the filter.
 	find(filter: (Node) -> bool) {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
-			if filter(iterator) => iterator
+			if filter(iterator) return iterator
 
 			result = iterator.find(filter) as Node
-			if result != none => result
+			if result != none return result
 		}
 
-		=> none as Node
+		return none as Node
 	}
 
 	# Summary: Returns the first node, whose type matches the specified type
 	find(types: large) {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
-			if (iterator.instance & types) != none => iterator
+			if (iterator.instance & types) != none return iterator
 			
 			result = iterator.find(types) as Node
-			if result != none => result
+			if result != none return result
 		}
 
-		=> none as Node
+		return none as Node
 	}
 
 	# Summary: Returns a list of nodes, which pass the specified filter. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
@@ -139,7 +139,7 @@ Node {
 			else { result.add_all(iterator.find_top(filter)) }
 		}
 
-		=> result
+		return result
 	}
 
 	# Summary: Returns a list of nodes, whose type is the specified node type. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
@@ -151,13 +151,13 @@ Node {
 			else { result.add_all(iterator.find_top(types)) }
 		}
 
-		=> result
+		return result
 	}
 
 	find_context() {
-		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_TYPE, instance) => this
-		if parent == none => none as Node
-		=> parent.find_context() as Node
+		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_TYPE, instance) return this
+		if parent == none return none as Node
+		return parent.find_context() as Node
 	}
 
 	# Summary: Returns whether this node is under the specified node
@@ -168,14 +168,14 @@ Node {
 			iterator = iterator.parent
 		}
 
-		=> iterator == node
+		return iterator == node
 	}
 
 	try_get_parent_context() {
 		node = find_context()
-		if node == none => none as Context
+		if node == none return none as Context
 
-		=> when(node.instance) {
+		return when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context
 			NODE_LOOP => node.(LoopNode).context
 			NODE_TYPE => node.(TypeNode).type
@@ -186,7 +186,7 @@ Node {
 	get_parent_context() {
 		node = find_context()
 
-		=> when(node.instance) {
+		return when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context
 			NODE_LOOP => node.(LoopNode).context
 			NODE_TYPE => node.(TypeNode).type
@@ -291,15 +291,15 @@ Node {
 			iterator = next
 		}
 
-		=> remove()
+		return remove()
 	}
 
 	remove() {
-		=> parent != none and parent.remove(this)
+		return parent != none and parent.remove(this)
 	}
 
 	remove(child: Node) {
-		if child.parent != this => false
+		if child.parent != this return false
 
 		left = child.previous
 		right = child.next
@@ -310,7 +310,7 @@ Node {
 		if first == child { first = right }
 		if last == child { last = left }
 
-		=> true
+		return true
 	}
 
 	# Summary: Removes all references from this node to other nodes
@@ -340,87 +340,87 @@ Node {
 		}
 
 		# The following situation means that the nodes do not have a shared parent
-		if i == 0 => none as Pair<Node, Node>
+		if i == 0 return none as Pair<Node, Node>
 
 		# The following situation means that one of the nodes is parent of the other
-		if i == count => Pair<Node, Node>(none as Node, none as Node)
+		if i == count return Pair<Node, Node>(none as Node, none as Node)
 
-		=> Pair<Node, Node>(path_a[i], path_b[i])
+		return Pair<Node, Node>(path_a[i], path_b[i])
 	}
 
 	# Summary: Returns whether this node is placed before the specified node
 	is_before(other: Node) {
 		positions = get_nodes_under_shared_parent(other, this)
 		if positions == none abort('Nodes did not have a shared parent')
-		if positions.key == none => false
+		if positions.key == none return false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
 		iterator = positions.value
 		target = positions.key
 
-		if target == iterator => false
+		if target == iterator return false
 
 		# Iterate backwards and try to find the target node
 		loop (iterator != none) {
-			if iterator == target => false
+			if iterator == target return false
 			iterator = iterator.previous
 		}
 
-		=> true
+		return true
 	}
 	
 	# Summary: Returns whether this node is placed after the specified node
 	is_after(other: Node) {
 		positions = get_nodes_under_shared_parent(other, this)
 		if positions == none abort('Nodes did not have a shared parent')
-		if positions.key == none => false
+		if positions.key == none return false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
 		iterator = positions.value
 		target = positions.key
 
-		if target == iterator => false
+		if target == iterator return false
 
 		# Iterate backwards and try to find the target node
 		loop (iterator != none) {
-			if iterator == target => true
+			if iterator == target return true
 			iterator = iterator.previous
 		}
 
-		=> false
+		return false
 	}
 
 	iterator() {
-		=> NodeIterator(this)
+		return NodeIterator(this)
 	}
 
 	get_type() {
 		type = try_get_type()
 		if type === none { abort('Could not get node type') }
-		=> type
+		return type
 	}
 
 	clone() {
 		result = copy()
 		loop child in this { result.add(child.clone()) }
-		=> result
+		return result
 	}
 
 	protected is_tree_equal(other: Node) {
-		if this === none or other === none or this.instance != other.instance => false
+		if this === none or other === none or this.instance != other.instance return false
 
 		expected = first
 		actual = other.first
 
 		loop {
 			# If either one is none, return true only if both are none
-			if expected === none or actual === none => expected === actual
+			if expected === none or actual === none return expected === actual
 
 			# Compare the node instances
-			if expected.instance != actual.instance => false
+			if expected.instance != actual.instance return false
 
 			# Compare the addresses of both nodes and use the internal comparison function
-			if expected !== actual and not expected.is_equal(actual) => false
+			if expected !== actual and not expected.is_equal(actual) return false
 
 			expected = expected.next
 			actual = actual.next
@@ -428,27 +428,27 @@ Node {
 	}
 
 	virtual is_equal(other: Node) {
-		=> is_tree_equal(other)
+		return is_tree_equal(other)
 	}
 
 	# Summary: Tries to resolve the potential error state of the node
 	virtual resolve(context: Context) {
-		=> none as Node
+		return none as Node
 	}
 
 	virtual get_status() {
-		=> none as Status
+		return none as Status
 	}
 
 	virtual try_get_type() {
-		=> none as Type
+		return none as Type
 	}
 
 	virtual copy() {
-		=> Node()
+		return Node()
 	}
 
 	virtual string() {
-		=> "Node"
+		return "Node"
 	}
 }

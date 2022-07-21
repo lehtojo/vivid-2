@@ -3,9 +3,9 @@ namespace builders
 # Summary: Tries to determine the local variable the specified result represents
 try_get_local_variable(unit: Unit, result: Result) {
 	local = unit.get_value_owner(result)
-	if local != none => local
-	if result.value.instance == INSTANCE_STACK_VARIABLE => result.value.(StackVariableHandle).variable
-	=> none as Variable
+	if local != none return local
+	if result.value.instance == INSTANCE_STACK_VARIABLE return result.value.(StackVariableHandle).variable
+	return none as Variable
 }
 
 build_addition_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
@@ -16,7 +16,7 @@ build_addition_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
 	right = references.get(unit, operator.last, ACCESS_READ)
 	type = operator.get_type().(Number).type
 
-	=> AdditionInstruction(unit, left, right, type, assigns).add()
+	return AdditionInstruction(unit, left, right, type, assigns).add()
 }
 
 build_subtraction_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
@@ -27,7 +27,7 @@ build_subtraction_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
 	right = references.get(unit, operator.last, ACCESS_READ)
 	type = operator.get_type().(Number).type
 
-	=> SubtractionInstruction(unit, left, right, type, assigns).add()
+	return SubtractionInstruction(unit, left, right, type, assigns).add()
 }
 
 build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
@@ -38,7 +38,7 @@ build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool)
 	right = references.get(unit, operator.last, ACCESS_READ)
 	type = operator.get_type().(Number).type
 
-	=> MultiplicationInstruction(unit, left, right, type, assigns).add()
+	return MultiplicationInstruction(unit, left, right, type, assigns).add()
 }
 
 compute_reciprocal(divider: large) {
@@ -58,7 +58,7 @@ compute_reciprocal(divider: large) {
 		a *= 2
 	}
 
-	=> result
+	return result
 }
 
 build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assigns: bool) {
@@ -71,7 +71,7 @@ build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assig
 	right = references.get(unit, operator.last, ACCESS_READ)
 	unsigned = is_unsigned(operator.first.get_type().format)
 
-	=> DivisionInstruction(unit, modulus, left, right, type, assigns, unsigned).add()
+	return DivisionInstruction(unit, modulus, left, right, type, assigns, unsigned).add()
 }
 
 # Summary:  Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
@@ -85,9 +85,9 @@ build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 
 	operator = node.operator
 
-	if operator == Operators.BITWISE_AND or operator == Operators.ASSIGN_BITWISE_AND => BitwiseInstruction.create_and(unit, left, right, type, assigns).add()
-	if operator == Operators.BITWISE_XOR or operator == Operators.ASSIGN_BITWISE_XOR => BitwiseInstruction.create_xor(unit, left, right, type, assigns).add()
-	if operator == Operators.BITWISE_OR or operator == Operators.ASSIGN_BITWISE_OR => BitwiseInstruction.create_or(unit, left, right, type, assigns).add()
+	if operator == Operators.BITWISE_AND or operator == Operators.ASSIGN_BITWISE_AND return BitwiseInstruction.create_and(unit, left, right, type, assigns).add()
+	if operator == Operators.BITWISE_XOR or operator == Operators.ASSIGN_BITWISE_XOR return BitwiseInstruction.create_xor(unit, left, right, type, assigns).add()
+	if operator == Operators.BITWISE_OR or operator == Operators.ASSIGN_BITWISE_OR return BitwiseInstruction.create_or(unit, left, right, type, assigns).add()
 
 	abort('Unsupported bitwise operation')
 }
@@ -96,14 +96,14 @@ build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 build_shift_left(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
-	=> BitwiseInstruction.create_shift_left(unit, left, right, shift.get_type().format).add()
+	return BitwiseInstruction.create_shift_left(unit, left, right, shift.get_type().format).add()
 }
 
 # Summary: Builds a right shift operation which can not assign
 build_shift_right(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
-	=> BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format).add()
+	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format).add()
 }
 
 # Summary: Builds a not operation which can not assign and work with booleans as well
@@ -112,10 +112,10 @@ build_not(unit: Unit, node: NotNode) {
 
 	if not node.is_bitwise {
 		value = references.get(unit, node.first, ACCESS_READ)
-		=> BitwiseInstruction.create_xor(unit, value, Result(ConstantHandle(1), SYSTEM_FORMAT), value.format, false).add()
+		return BitwiseInstruction.create_xor(unit, value, Result(ConstantHandle(1), SYSTEM_FORMAT), value.format, false).add()
 	}
 
-	=> SingleParameterInstruction.create_not(unit, references.get(unit, node.first, SYSTEM_FORMAT)).add()
+	return SingleParameterInstruction.create_not(unit, references.get(unit, node.first, SYSTEM_FORMAT)).add()
 }
 
 # Summary: Builds a negation operation which can not assign
@@ -129,10 +129,10 @@ build_negate(unit: Unit, node: NegateNode) {
 		bytes[15] = 0x80
 
 		negator = Result(ByteArrayDataSectionHandle(bytes), FORMAT_INT128)
-		=> BitwiseInstruction.create_xor(unit, references.get(unit, node.first, ACCESS_READ), negator, FORMAT_DECIMAL, false).add()
+		return BitwiseInstruction.create_xor(unit, references.get(unit, node.first, ACCESS_READ), negator, FORMAT_DECIMAL, false).add()
 	}
 
-	=> SingleParameterInstruction.create_negate(unit, references.get(unit, node.first, ACCESS_READ), is_decimal).add()
+	return SingleParameterInstruction.create_negate(unit, references.get(unit, node.first, ACCESS_READ), is_decimal).add()
 }
 
 build_assign_operator(unit: Unit, node: OperatorNode) {
@@ -142,7 +142,7 @@ build_assign_operator(unit: Unit, node: OperatorNode) {
 		local = node.first.(VariableNode).variable
 		right = references.get(unit, node.last, ACCESS_READ)
 
-		=> SetVariableInstruction(unit, local, right).add()
+		return SetVariableInstruction(unit, local, right).add()
 	}
 
 	left = references.get(unit, node.first, ACCESS_WRITE)
@@ -151,11 +151,11 @@ build_assign_operator(unit: Unit, node: OperatorNode) {
 	local = try_get_local_variable(unit, left)
 
 	if local != none and not settings.is_debugging_enabled {
-		=> SetVariableInstruction(unit, local, right).add()
+		return SetVariableInstruction(unit, local, right).add()
 	}
 
 	# Externally used variables need an immediate update
-	=> MoveInstruction(unit, left, right).add()
+	return MoveInstruction(unit, left, right).add()
 }
 
 build_arithmetic(unit: Unit, node: OperatorNode) {
@@ -163,25 +163,25 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 
 	if operator == Operators.ASSIGN {
 		unit.add_debug_position(node)
-		=> build_assign_operator(unit, node)
+		return build_assign_operator(unit, node)
 	}
 
-	if operator == Operators.ADD => build_addition_operator(unit, node, false)
-	if operator == Operators.SUBTRACT => build_subtraction_operator(unit, node, false)
-	if operator == Operators.MULTIPLY => build_multiplication_operator(unit, node, false)
-	if operator == Operators.DIVIDE => build_division_operator(unit, false, node, false)
-	if operator == Operators.MODULUS => build_division_operator(unit, true, node, false)
-	if operator == Operators.BITWISE_AND or operator == Operators.BITWISE_XOR or operator == Operators.BITWISE_OR => build_bitwise_operator(unit, node, false)
-	if operator == Operators.SHIFT_LEFT => build_shift_left(unit, node)
-	if operator == Operators.SHIFT_RIGHT => build_shift_right(unit, node)
+	if operator == Operators.ADD return build_addition_operator(unit, node, false)
+	if operator == Operators.SUBTRACT return build_subtraction_operator(unit, node, false)
+	if operator == Operators.MULTIPLY return build_multiplication_operator(unit, node, false)
+	if operator == Operators.DIVIDE return build_division_operator(unit, false, node, false)
+	if operator == Operators.MODULUS return build_division_operator(unit, true, node, false)
+	if operator == Operators.BITWISE_AND or operator == Operators.BITWISE_XOR or operator == Operators.BITWISE_OR return build_bitwise_operator(unit, node, false)
+	if operator == Operators.SHIFT_LEFT return build_shift_left(unit, node)
+	if operator == Operators.SHIFT_RIGHT return build_shift_right(unit, node)
 
 	unit.add_debug_position(node)
-	if operator == Operators.ASSIGN_ADD => build_addition_operator(unit, node, true)
-	if operator == Operators.ASSIGN_SUBTRACT => build_subtraction_operator(unit, node, true)
-	if operator == Operators.ASSIGN_MULTIPLY => build_multiplication_operator(unit, node, true)
-	if operator == Operators.ASSIGN_DIVIDE => build_division_operator(unit, false, node, true)
-	if operator == Operators.ASSIGN_MODULUS => build_division_operator(unit, true, node, true)
-	if operator == Operators.ASSIGN_BITWISE_AND or operator == Operators.ASSIGN_BITWISE_XOR or operator == Operators.ASSIGN_BITWISE_OR => build_bitwise_operator(unit, node, true)
+	if operator == Operators.ASSIGN_ADD return build_addition_operator(unit, node, true)
+	if operator == Operators.ASSIGN_SUBTRACT return build_subtraction_operator(unit, node, true)
+	if operator == Operators.ASSIGN_MULTIPLY return build_multiplication_operator(unit, node, true)
+	if operator == Operators.ASSIGN_DIVIDE return build_division_operator(unit, false, node, true)
+	if operator == Operators.ASSIGN_MODULUS return build_division_operator(unit, true, node, true)
+	if operator == Operators.ASSIGN_BITWISE_AND or operator == Operators.ASSIGN_BITWISE_XOR or operator == Operators.ASSIGN_BITWISE_OR return build_bitwise_operator(unit, node, true)
 
 	abort('Missing operator node implementation')
 }
@@ -193,7 +193,7 @@ build_pack(unit: Unit, node: PackNode) {
 		values.add(references.get(unit, value, ACCESS_READ) as Result)
 	}
 
-	=> CreatePackInstruction(unit, node.get_type(), values).add()
+	return CreatePackInstruction(unit, node.get_type(), values).add()
 }
 
 # Summary:
@@ -231,17 +231,17 @@ build_return(unit: Unit, node: ReturnNode) {
 		unit.add_debug_position(scope.end)
 
 		if to.is_pack return_pack(unit, value, to)
-		=> ReturnInstruction(unit, value, unit.function.return_type).add()
+		return ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
 
 	unit.add_debug_position(scope.end)
 
-	=> ReturnInstruction(unit, none as Result, unit.function.return_type).add()
+	return ReturnInstruction(unit, none as Result, unit.function.return_type).add()
 }
 
 get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: Type) {
 	# Static functions can not access any instance data
-	if function.function.is_static => calls.build(unit, function)
+	if function.function.is_static return calls.build(unit, function)
 
 	# Retrieve the context where the function is defined
 	primary = function.function.metadata.find_type_parent()
@@ -250,7 +250,7 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 	# If the function is not defined inside the type of the self pointer, it means it must have been defined in its supertypes, therefore casting is needed
 	if primary != type { self = casts.cast(unit, self, type, primary) }
 
-	=> calls.build(unit, self, function)
+	return calls.build(unit, self, function)
 }
 
 # Summary:
@@ -258,7 +258,7 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 build_jump(unit: Unit, node: JumpNode) {
 	# TODO: Support conditional jumps
 	unit.add(JumpInstruction(unit, node.label))
-	=> Result()
+	return Result()
 }
 
 # Summary:
@@ -274,7 +274,7 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 		member = node.last.(VariableNode).variable
 
 		# Link nodes can also access static variables for example
-		if member.is_global => references.get_variable(unit, member, mode)
+		if member.is_global return references.get_variable(unit, member, mode)
 
 		left = references.get(unit, node.first, mode) as Result
 
@@ -282,16 +282,16 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 		if left.value.instance == INSTANCE_DISPOSABLE_PACK {
 			disposable_pack = left.value.(DisposablePackHandle)
 			member_state = disposable_pack.members[member.name]
-			=> member_state.value
+			return member_state.value
 		}
 
 		alignment = member.get_alignment(type)
-		=> GetObjectPointerInstruction(unit, member, left, alignment, mode).add()
+		return GetObjectPointerInstruction(unit, member, left, alignment, mode).add()
 	}
 
 	if not node.last.match(NODE_FUNCTION) abort('Unsupported member node')
 
-	=> get_member_function_call(unit, node.last as FunctionNode, node.first, type)
+	return get_member_function_call(unit, node.last as FunctionNode, node.first, type)
 }
 
 build_accessor(unit: Unit, node: AccessorNode, mode: large) {
@@ -303,21 +303,21 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER {
 		# Pattern:
 		# index = offset * stride
-		# => [start + index]
+		# return [start + index]
 		index = MultiplicationInstruction(unit, offset, Result(ConstantHandle(stride), SYSTEM_FORMAT), SYSTEM_FORMAT, false).add()
 
-		=> GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, index, 1, mode).add()
+		return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, index, 1, mode).add()
 	}
 
-	=> GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
+	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
 }
 
 build_declaration(unit: Unit, node: DeclareNode) {
 	# Do not declare the variable twice
-	if unit.is_initialized(node.variable) => Result()
+	if unit.is_initialized(node.variable) return Result()
 
 	result = DeclareInstruction(unit, node.variable, node.registerize).add()
-	=> SetVariableInstruction(unit, node.variable, result).add()
+	return SetVariableInstruction(unit, node.variable, result).add()
 }
 
 build_call(unit: Unit, node: CallNode) {
@@ -331,7 +331,7 @@ build_call(unit: Unit, node: CallNode) {
 	self_type = node.descriptor.self
 	if self_type == none { self_type = node.self.get_type() }
 
-	=> calls.build(unit, self, self_type, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
+	return calls.build(unit, self, self_type, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
 }
 
 build_string(unit: Unit, node: StringNode) {
@@ -341,11 +341,11 @@ build_string(unit: Unit, node: StringNode) {
 	handle = DataSectionHandle(node.identifier, true)
 	if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
 
-	=> Result(handle, SYSTEM_FORMAT)
+	return Result(handle, SYSTEM_FORMAT)
 }
 
 build_undefined(unit: Unit, node: UndefinedNode) {
-	=> AllocateRegisterInstruction(unit, node.format).add()
+	return AllocateRegisterInstruction(unit, node.format).add()
 }
 
 build_data_pointer(node: DataPointerNode) {
@@ -353,14 +353,14 @@ build_data_pointer(node: DataPointerNode) {
 		handle = DataSectionHandle(node.(FunctionDataPointerNode).function.get_fullname(), node.offset, true, DATA_SECTION_MODIFIER_NONE)
 		
 		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
-		=> Result(handle, SYSTEM_FORMAT)
+		return Result(handle, SYSTEM_FORMAT)
 	}
 
 	if node.type == TABLE_DATA_POINTER {
 		handle = DataSectionHandle(node.(TableDataPointerNode).table.name, node.offset, true, DATA_SECTION_MODIFIER_NONE)
 
 		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
-		=> Result(handle, SYSTEM_FORMAT)
+		return Result(handle, SYSTEM_FORMAT)
 	}
 
 	abort('Could not build data pointer')
@@ -373,12 +373,12 @@ build_childs(unit: Unit, node: Node) {
 		result = references.get(unit, iterator, ACCESS_READ)
 	}
 
-	if result != none => result
-	=> Result()
+	if result != none return result
+	return Result()
 }
 
 build(unit: Unit, node: Node) {
-	=> when(node.instance) {
+	return when(node.instance) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)
 		NODE_CALL => build_call(unit, node as CallNode)

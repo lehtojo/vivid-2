@@ -1,40 +1,40 @@
 export bitwise_and(a: tiny, b: tiny) {
-	=> a & b
+	return a & b
 }
 
 export bitwise_xor(a: tiny, b: tiny) {
-	=> a ¤ b
+	return a ¤ b
 }
 
 export bitwise_or(a: tiny, b: tiny) {
-	=> a | b
+	return a | b
 }
 
 export synthetic_and(a: tiny, b: tiny) {
-	=> !(a ¤ b) ¤ !(a | b)
+	return !(a ¤ b) ¤ !(a | b)
 }
 
 export synthetic_xor(a: tiny, b: tiny) {
-	=> (a | b) & !(a & b)
+	return (a | b) & !(a & b)
 }
 
 export synthetic_or(a: tiny, b: tiny) {
-	=> (a ¤ b) ¤ (a & b)
+	return (a ¤ b) ¤ (a & b)
 }
 
 export assign_bitwise_and(a: large) {
 	a &= a / 2
-	=> a
+	return a
 }
 
 export assign_bitwise_xor(a: large) {
 	a ¤= 1
-	=> a
+	return a
 }
 
 export assign_bitwise_or(a: large, b: large) {
 	a |= b
-	=> a
+	return a
 }
 
 init() {
@@ -76,5 +76,5 @@ init() {
 
 	# 10101 ¤ 00001 = 10100
 	are_equal(96, assign_bitwise_or(32, 64))
-	=> 0
+	return 0
 }

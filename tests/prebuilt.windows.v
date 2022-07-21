@@ -60,7 +60,7 @@ to_string(number: large, result: link) {
 	}
 
 	reverse(result, position)
-	=> position
+	return position
 }
 
 # Summary: Converts the specified number into a string and stores it in the specified buffer
@@ -80,7 +80,7 @@ to_string(number: decimal, result: link) {
 	# If the number is zero, skip the fractional part computation
 	if number == 0 {
 		result[position] = `0`
-		=> position + 1
+		return position + 1
 	}
 
 	# Compute the fractional part
@@ -93,7 +93,7 @@ to_string(number: decimal, result: link) {
 		position++
 	}
 
-	=> position
+	return position
 }
 
 # Summary: Writes the specified bytes to the console
@@ -117,7 +117,7 @@ length_of(bytes: link) {
 	length = 0
 
 	loop {
-		if bytes[length] == 0 => length
+		if bytes[length] == 0 return length
 		length++
 	}
 }

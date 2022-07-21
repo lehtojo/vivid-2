@@ -22,16 +22,16 @@ StaticLibraryFormatFile {
 	}
 
 	load() {
-		if bytes != none => true
-		if not (io.read_file(name) has result) => false
+		if bytes != none return true
+		if not (io.read_file(name) has result) return false
 		bytes = result
 	}
 
 	get_bytes() {
-		if bytes != none => bytes
-		if not (io.read_file(name) has result) => none as Array<byte>
+		if bytes != none return bytes
+		if not (io.read_file(name) has result) return none as Array<byte>
 		bytes = result
-		=> bytes
+		return bytes
 	}
 }
 
@@ -106,7 +106,7 @@ write_file_header(builder: DataEncoderModule, filename: String, timestamp: large
 write_symbols(files: List<StaticLibraryFormatFile>) {
 	builder = DataEncoderModule()
 	write_symbols(builder, files.flatten<String>((i: StaticLibraryFormatFile) -> i.symbols))
-	=> builder
+	return builder
 }
 
 write_symbols(builder: DataEncoderModule, symbols: List<String>) {
@@ -123,7 +123,7 @@ write_symbols(builder: DataEncoderModule, symbols: List<String>) {
 	# Align to 2 bytes if necessary
 	if builder.position % 2 != 0 builder.write(0)
 
-	=> indices
+	return indices
 }
 
 create_filename_table(files: List<StaticLibraryFormatFile>, timestamp: large) {
@@ -141,7 +141,7 @@ create_filename_table(files: List<StaticLibraryFormatFile>, timestamp: large) {
 	# Write the filenames into the builder
 	builder.write(filenames.output, filenames.position)
 
-	=> builder
+	return builder
 }
 
 build(files: List<StaticLibraryFormatFile>, output: String) {
@@ -221,14 +221,14 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 	static_library_extension = '.a'
 	if settings.is_target_windows { static_library_extension = '.lib' }
 
-	=> io.write_file(output + static_library_extension, Array<byte>(builder.output, builder.position))
+	return io.write_file(output + static_library_extension, Array<byte>(builder.output, builder.position))
 }
 
 get_object_filename(source: SourceFile, output_name: String) {
 	object_file_extension = '.o'
 	if settings.is_target_windows { object_file_extension = '.obj' }
 
-	=> output_name + `.` + source.filename_without_extension() + object_file_extension
+	return output_name + `.` + source.filename_without_extension() + object_file_extension
 }
 
 export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, output_name: String) {
@@ -261,5 +261,5 @@ export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, 
 	files.add(StaticLibraryFormatFile(output_name + importer.TEMPLATE_TYPE_VARIANT_IMPORT_FILE_EXTENSION, List<String>(), template_type_variants_export_file))
 	files.add(StaticLibraryFormatFile(output_name + importer.TEMPLATE_FUNCTION_VARIANT_IMPORT_FILE_EXTENSION, List<String>(), template_function_variants_export_file))
 
-	=> build(files, output_name)
+	return build(files, output_name)
 }

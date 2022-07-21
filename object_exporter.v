@@ -7,7 +7,7 @@ namespace object_exporter
 # Summary:
 # Creates a template name by combining the specified name and the template argument names together
 create_template_name(name: String, template_argument_names: List<String>) {
-	=> name + `<` + String.join(", ", template_argument_names) + `>`
+	return name + `<` + String.join(", ", template_argument_names) + `>`
 }
 
 # Summary:
@@ -24,7 +24,7 @@ get_modifiers(modifiers: large) {
 	if (has_flag(modifiers, MODIFIER_INLINE)) result.add(Keywords.INLINE.identifier)
 	if (has_flag(modifiers, MODIFIER_PLAIN)) result.add(Keywords.PLAIN.identifier)
 	if (has_flag(modifiers, MODIFIER_PACK)) result.add(Keywords.PACK.identifier)
-	=> String.join(` `, result)
+	return String.join(` `, result)
 }
 
 # Summary:
@@ -71,13 +71,13 @@ export_template_type(builder: StringBuilder, type: TemplateType) {
 # Summary:
 # Returns true if the specified function represents an actual template function or if any of its parameter types is not defined
 is_template_function(function: Function) {
-	=> (function.is_template_function or function.parameters.any((i: Parameter) -> i.type == none)) and not function.is_template_function_variant
+	return (function.is_template_function or function.parameters.any((i: Parameter) -> i.type == none)) and not function.is_template_function_variant
 }
 
 # Summary:
 # Returns true if the specified function represents an actual template function variant or if any of its parameter types is not defined
 is_template_function_variant(function: Function) {
-	=> function.is_template_function_variant or function.parameters.any((i: Parameter) -> i.type == none)
+	return function.is_template_function_variant or function.parameters.any((i: Parameter) -> i.type == none)
 }
 
 # Summary:
@@ -177,20 +177,20 @@ get_template_export_files(context: Context) {
 		}
 	}
 
-	=> files
+	return files
 }
 
 node_to_string(node: Node) {
 	if node.instance == NODE_CAST {
-		=> (node_to_string(node.first) as String) + ' as ' + node.(CastNode).get_type().string()
+		return (node_to_string(node.first) as String) + ' as ' + node.(CastNode).get_type().string()
 	}
 
 	if node.instance == NODE_NUMBER {
-		=> node.(NumberNode).string()
+		return node.(NumberNode).string()
 	}
 
 	if node.instance == NODE_STRING {
-		=> node.(StringNode).text
+		return node.(StringNode).text
 	}
 
 	abort('Exporter does not support this constant value')
@@ -322,14 +322,14 @@ export_context(context: Context) {
 		builder.append(`\n`)
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary:
 # Exports all the template type variants from the specified context 
 export_template_type_variants(context: Context) {
 	template_variants = common.get_all_types(context).filter(i -> i.is_template_type_variant)
-	if template_variants.size == 0 => String.empty
+	if template_variants.size == 0 return String.empty
 
 	# Export all variants in the following format: $T1.$T2...$Tn.$T<$P1,$P2,...,$Pn>
 	builder = StringBuilder()
@@ -338,7 +338,7 @@ export_template_type_variants(context: Context) {
 		builder.append_line(template_variant.string())
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary:
@@ -348,7 +348,7 @@ export_template_function_variants(context: Context) {
 	template_variants = common.get_all_function_implementations(context)
 		.filter(i -> i.metadata.is_template_function or i.metadata.parameters.any((j: Parameter) -> j.type == none))
 
-	if template_variants.size == 0 => String.empty
+	if template_variants.size == 0 return String.empty
 
 	# Export all variants in the following format: $T1.$T2...$Tn.$name<$U1, $U2, ..., $Un>($V1, $V2, ..., $Vn)
 	builder = StringBuilder()
@@ -365,5 +365,5 @@ export_template_function_variants(context: Context) {
 		builder.append_line(`)`)
 	}
 
-	=> builder.string()
+	return builder.string()
 }

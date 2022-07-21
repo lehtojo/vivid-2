@@ -29,7 +29,7 @@ capture_nested_assignments(root: Node) {
 # Summary:
 # Produces a descriptor for the specified variable from the specified set of variable nodes
 get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>) {
-	if not nodes.contains_key(variable) => pack { writes: List<VariableWrite>(), reads: List<Node>() } as VariableDescriptor
+	if not nodes.contains_key(variable) return pack { writes: List<VariableWrite>(), reads: List<Node>() } as VariableDescriptor
 
 	usages = nodes[variable]
 	writes = List<VariableWrite>()
@@ -45,7 +45,7 @@ get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>) {
 		}
 	}
 
-	=> pack { writes: writes, reads: reads } as VariableDescriptor
+	return pack { writes: writes, reads: reads } as VariableDescriptor
 }
 
 # Summary:
@@ -58,7 +58,7 @@ get_variable_descriptors(context: Context, root: Node) {
 		result[variable] = get_variable_descriptor(variable, nodes)
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -111,15 +111,15 @@ is_assignable(assignment: Node) {
 	# - Non-predictable variables (members and static variables)
 	# - Non-free casts
 	unallowed = assignment.find((node) -> {
-		if node.instance == NODE_VARIABLE => not node.(VariableNode).variable.is_predictable
-		if node.instance == NODE_OPERATOR => node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT
-		if node.instance == NODE_CAST => not node.(CastNode).is_free()
+		if node.instance == NODE_VARIABLE return not node.(VariableNode).variable.is_predictable
+		if node.instance == NODE_OPERATOR return node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT
+		if node.instance == NODE_CAST return not node.(CastNode).is_free()
 
 		allowed = NODE_DATA_POINTER | NODE_NEGATE | NODE_NOT | NODE_NUMBER | NODE_PARENTHESIS | NODE_STACK_ADDRESS | NODE_STRING | NODE_TYPE
-		=> not node.match(allowed)
+		return not node.match(allowed)
 	})
 
-	=> unallowed === none
+	return unallowed === none
 }
 
 # Summary:
@@ -140,7 +140,7 @@ get_value_dependencies(value: Node) {
 		}
 	}
 
-	=> result
+	return result
 }
 
 # Summary:
@@ -150,11 +150,11 @@ is_dependent_on_other_write(descriptor: VariableDescriptor, write: VariableWrite
 		if other === write continue
 
 		loop dependency in other.dependencies {
-			if dependency === read => true
+			if dependency === read return true
 		}
 	}
 
-	=> false
+	return false
 }
 
 # Summary:
@@ -165,7 +165,7 @@ get_all_variable_usages(root: Node) {
 	if root.instance == NODE_VARIABLE { usages = [ root ] }
 	else { usages = root.find_all(NODE_VARIABLE) }
 
-	=> usages.filter(i -> i.(VariableNode).variable.is_predictable)
+	return usages.filter(i -> i.(VariableNode).variable.is_predictable)
 }
 
 # Summary:
@@ -286,7 +286,7 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 		}
 	}
 
-	if write.dependencies.size != 0 => assigned
+	if write.dependencies.size != 0 return assigned
 
 	# If the write declares the variable and the variable is still used, this write needs to be preserved in simpler form, so that the variable is declared
 	if write.is_declaration and descriptor.writes.size > 1 {
@@ -315,7 +315,7 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 		stop
 	}
 
-	=> assigned
+	return assigned
 }
 
 # Summary:
@@ -323,10 +323,10 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 # Returns whether the specified variable was removed.
 remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescriptor) {
 	# Do nothing if optimizations are not enabled
-	if not settings.is_optimization_enabled => false
+	if not settings.is_optimization_enabled return false
 
 	# If something is written into a parameter object, it can not be determined whether the written value is used elsewhere
-	if variable.is_parameter => false
+	if variable.is_parameter return false
 
 	# The writes must use the registered allocation function or stack allocation
 	loop write in descriptor.writes {
@@ -335,7 +335,7 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 		if value.instance == NODE_STACK_ADDRESS continue
 		if value.instance == NODE_FUNCTION and value.(FunctionNode).function === settings.allocation_function continue
 
-		=> false
+		return false
 	}
 
 	# If any of the reads of the variable is not used to write into the object, just abort
@@ -344,12 +344,12 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 
 		if selected.instance == NODE_SCOPE {
 			# Abort if the scope returns the read
-			if selected.(ScopeNode).is_value_returned and read === selected.last => false
+			if selected.(ScopeNode).is_value_returned and read === selected.last return false
 			continue
 		}
 
 		if selected.instance == NODE_CAST { selected = selected.parent }
-		if selected.instance != NODE_LINK or not common.is_edited(selected) => false
+		if selected.instance != NODE_LINK or not common.is_edited(selected) return false
 	}
 
 	# 1. Remove discarded usages
@@ -373,7 +373,7 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 		editor.replace(editor.last)
 	}
 
-	=> true
+	return true
 }
 
 # Summary:

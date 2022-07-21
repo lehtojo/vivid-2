@@ -225,7 +225,7 @@ pack State {
 # Summary:
 # Returns whether the specified assignment saves a value to the specified variable.
 is_pack_member_assignment(assignment: Node, representive: Variable) {
-	=> assignment !== none and 
+	return assignment !== none and 
 		assignment.match(Operators.ASSIGN) and
 		assignment.first.instance == NODE_VARIABLE and
 		assignment.first.(VariableNode).variable == representive
@@ -286,7 +286,7 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 		rewrite_return_statements_without_values(context, body)
 	}
 
-	=> pack {
+	return pack {
 		caller: caller,
 		body: body,
 		context: context,
@@ -317,7 +317,7 @@ start_inlining(implementation: FunctionImplementation, usage: Node) {
 	environment = usage.get_parent_context()
 	context = Context(environment.create_identity(), NORMAL_CONTEXT)
 
-	=> start_inlining(context, implementation, caller, self_argument, arguments)
+	return start_inlining(context, implementation, caller, self_argument, arguments)
 }
 
 # Summary:
@@ -372,15 +372,15 @@ finish_inlining(state: State) {
 # Summary:
 # Returns whether the called function can be inlined. Do not inline when recursion is detected.
 is_inlinable(destination: FunctionImplementation, called: FunctionImplementation) {
-	if called.metadata.is_outlined => false
+	if called.metadata.is_outlined return false
 
 	calls = called.node.find_all(NODE_FUNCTION)
 
 	loop call in calls {
-		if call.(FunctionNode).function === called => false
+		if call.(FunctionNode).function === called return false
 	}
 
-	=> called !== destination
+	return called !== destination
 }
 
 # Summary:
@@ -388,7 +388,7 @@ is_inlinable(destination: FunctionImplementation, called: FunctionImplementation
 heuristical_cost(called: FunctionImplementation, arguments: Node) {
 	# If the arguments contain constants, inlining is likely to be a win.
 	loop argument in arguments {
-		if common.is_constant(argument) => INLINE_THRESHOLD
+		if common.is_constant(argument) return INLINE_THRESHOLD
 	}
 
 	# If the called function returns a constant, inlining is likely to be a win.
@@ -398,15 +398,15 @@ heuristical_cost(called: FunctionImplementation, arguments: Node) {
 		return_value = return_statement.(ReturnNode).value
 
 		# If the return value exists and is a constant, inlining is likely to be a win.
-		if return_value !== none and common.is_constant(return_value) => INLINE_THRESHOLD
+		if return_value !== none and common.is_constant(return_value) return INLINE_THRESHOLD
 	}
 
 	# If the called function is small, inlining is likely to be a win.
 	cost = expression_optimizer.get_cost(called.node)
 
-	if cost <= expression_optimizer.SMALL_FUNCTION_THRESHOLD => INLINE_THRESHOLD
+	if cost <= expression_optimizer.SMALL_FUNCTION_THRESHOLD return INLINE_THRESHOLD
 
-	=> 0
+	return 0
 }
 
 # Summary:

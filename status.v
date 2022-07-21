@@ -35,12 +35,12 @@ Status {
 	init() {}
 
 	equals(other: Status) {
-		if not (message == other.message) => false
+		if not (message == other.message) return false
 		
 		a = position
 		b = other.position
 
-		if a === none or b === none => a === b
-		=> a == b
+		if a === none or b === none return a === b
+		return a == b
 	}
 }

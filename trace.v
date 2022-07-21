@@ -51,7 +51,7 @@ for(unit: Unit, result: Result) {
 	if unit.position > start { start = unit.position }
 
 	# Do not process results, which have already expired
-	if start > end => List<Directive>()
+	if start > end return List<Directive>()
 
 	loop (i = start, i <= end, i++) {
 		instruction = instructions[i]
@@ -133,7 +133,7 @@ for(unit: Unit, result: Result) {
 	}
 
 	directives.add(AvoidRegistersDirective(avoid))
-	=> directives
+	return directives
 }
 
 # Summary: Returns whether the specified result lives through at least one call
@@ -154,13 +154,13 @@ is_used_after_call(unit: Unit, result: Result) {
 	if unit.position > start { start = unit.position }
 
 	# Do not process results, which have already expired
-	if start > end => false
+	if start > end return false
 
 	loop (i = start, i < end, i++) {
-		if instructions[i].type == INSTRUCTION_CALL => true
+		if instructions[i].type == INSTRUCTION_CALL return true
 	}
 
-	=> false
+	return false
 }
 
 # Summary: Returns whether the specified result stays constant during the lifetime of the specified parent
@@ -181,16 +181,16 @@ is_loading_required(unit: Unit, result: Result) {
 	if unit.position > start { start = unit.position + 1 }
 
 	# Do not process results, which have already expired
-	if start > end => false
+	if start > end return false
 
 	loop (i = start, i < end, i++) {
 		instruction = instructions[i]
 		type = instruction.type
 
-		if type == INSTRUCTION_CALL => true
-		if type == INSTRUCTION_GET_OBJECT_POINTER and instruction.(GetObjectPointerInstruction).mode == ACCESS_WRITE => true
-		if type == INSTRUCTION_GET_MEMORY_ADDRESS and instruction.(GetMemoryAddressInstruction).mode == ACCESS_WRITE => true
+		if type == INSTRUCTION_CALL return true
+		if type == INSTRUCTION_GET_OBJECT_POINTER and instruction.(GetObjectPointerInstruction).mode == ACCESS_WRITE return true
+		if type == INSTRUCTION_GET_MEMORY_ADDRESS and instruction.(GetMemoryAddressInstruction).mode == ACCESS_WRITE return true
 	}
 
-	=> false
+	return false
 }

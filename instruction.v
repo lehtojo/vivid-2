@@ -65,22 +65,22 @@ FLAG_LOCKED = 8192
 
 # Summary: Returns the largest format with the specified sign
 get_system_format(unsigned: bool) {
-	if unsigned => SYSTEM_FORMAT
-	=> SYSTEM_SIGNED
+	if unsigned return SYSTEM_FORMAT
+	return SYSTEM_SIGNED
 }
 
 # Summary: Returns the largest format with the specified sign
 get_system_format(format: large) {
-	if (format & 1) != 0 => SYSTEM_FORMAT
-	=> SYSTEM_SIGNED
+	if (format & 1) != 0 return SYSTEM_FORMAT
+	return SYSTEM_SIGNED
 }
 
 create_bit_limit_flag(bits) {
-	=> FLAG_BIT_LIMIT | (bits <| 24)
+	return FLAG_BIT_LIMIT | (bits <| 24)
 }
 
 get_bit_limit_from_flags(bits) {
-	=> bits |> 24
+	return bits |> 24
 }
 
 InstructionParameter {
@@ -128,32 +128,32 @@ InstructionParameter {
 			mask = mask <| 1
 		}
 
-		=> types & mask
+		return types & mask
 	}
 
 	is_valid() {
-		if not has_flag(types, result.value.type) => false
+		if not has_flag(types, result.value.type) return false
 
 		# Watch out for bit limit
 		if result.is_constant {
 			bits = result.value.(ConstantHandle).bits
 
 			# If the flags do not contain the bit limit flag, use the default bit limit (32-bits)
-			if not has_flag(flags, FLAG_BIT_LIMIT) => bits <= 32
+			if not has_flag(flags, FLAG_BIT_LIMIT) return bits <= 32
 
-			=> bits <= get_bit_limit_from_flags(flags)
+			return bits <= get_bit_limit_from_flags(flags)
 		}
 
 		# Data section handles should be moved into a register
 		if result.value.instance == INSTANCE_DATA_SECTION or result.value.instance == INSTANCE_CONSTANT_DATA_SECTION {
 			handle = result.value as DataSectionHandle
 
-			if settings.is_x64 => has_flag(flags, FLAG_BIT_LIMIT_64) or not handle.address
+			if settings.is_x64 return has_flag(flags, FLAG_BIT_LIMIT_64) or not handle.address
 
-			=> has_flag(flags, FLAG_ALLOW_ADDRESS) and handle.address
+			return has_flag(flags, FLAG_ALLOW_ADDRESS) and handle.address
 		}
 
-		=> true
+		return true
 	}
 }
 
@@ -183,18 +183,18 @@ Instruction {
 
 	destination() {
 		loop parameter in parameters {
-			if parameter.is_destination => parameter
+			if parameter.is_destination return parameter
 		}
 
-		=> none as InstructionParameter
+		return none as InstructionParameter
 	}
 	
 	source() {
 		loop parameter in parameters {
-			if not parameter.is_destination => parameter
+			if not parameter.is_destination return parameter
 		}
 
-		=> none as InstructionParameter
+		return none as InstructionParameter
 	}
 
 	init(unit: Unit, type: large) {
@@ -207,13 +207,13 @@ Instruction {
 	}
 
 	match(type: large) {
-		=> this.type == type
+		return this.type == type
 	}
 
 	# Summary: Adds this instruction to the unit and returns the result of this instruction
 	add() {
 		unit.add(this)
-		=> result
+		return result
 	}
 
 	private validate_handle(handle: Handle, locked: List<Register>) {
@@ -329,12 +329,12 @@ Instruction {
 			# If the value will be used later in the future and the register situation is good, the value can be moved to a register
 			if has_flag(options, HANDLE_REGISTER) {
 				if is_usage_analyzed and not parameter.is_destination and not parameter.result.is_deactivating() and unit.get_next_register_without_releasing() != none {
-					=> memory.move_to_register(unit, parameter.result, parameter.size, false, directives)
+					return memory.move_to_register(unit, parameter.result, parameter.size, false, directives)
 				}
 			}
 			else has_flag(options, HANDLE_MEDIA_REGISTER) {
 				if is_usage_analyzed and not parameter.is_destination and not parameter.result.is_deactivating() and unit.get_next_media_register_without_releasing() != none {
-					=> memory.move_to_register(unit, parameter.result, parameter.size, true, directives)
+					return memory.move_to_register(unit, parameter.result, parameter.size, true, directives)
 				}
 			}
 
@@ -349,13 +349,13 @@ Instruction {
 
 			# If the current parameter is the destination and it is needed later, then it must me copied to another register
 			if protect and parameter.result.is_only_active() {
-				=> memory.copy_to_register(unit, parameter.result, parameter.size, has_flag(parameter.types, HANDLE_MEDIA_REGISTER), directives)
+				return memory.copy_to_register(unit, parameter.result, parameter.size, has_flag(parameter.types, HANDLE_MEDIA_REGISTER), directives)
 			}
 
-			=> parameter.result
+			return parameter.result
 		}
 
-		=> memory.convert(unit, parameter.result, parameter.size, parameter.types, protect, directives)
+		return memory.convert(unit, parameter.result, parameter.size, parameter.types, protect, directives)
 	}
 
 	# Summary: Builds the given operation without any processing
@@ -500,12 +500,12 @@ Instruction {
 
 	virtual on_build() {}
 	virtual on_post_build() {}
-	virtual redirect(handle: Handle) { => false }
+	virtual redirect(handle: Handle) { return false }
 
 	virtual get_dependencies() {
 		all = List<Result>()
 		all.add(result)
-		=> all
+		return all
 	}
 
 	get_all_dependencies() {
@@ -515,7 +515,7 @@ Instruction {
 		if dependencies == none { all.add_all(get_dependencies()) }
 		else { all.add_all(dependencies) }
 		
-		=> all
+		return all
 	}
 }
 
@@ -543,6 +543,6 @@ Instruction DualParameterInstruction {
 		all.add(result)
 		all.add(first)
 		all.add(second)
-		=> all
+		return all
 	}
 }

@@ -71,7 +71,7 @@ Node NumberNode {
 			value = -value
 		}
 
-		=> this
+		return this
 	}
 
 	convert(format: large) {
@@ -86,21 +86,21 @@ Node NumberNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
+		return instance == other.instance and value == other.(NumberNode).value and format == other.(NumberNode).format and type == other.(NumberNode).type
 	}
 
 	override try_get_type() {
 		if type == none { type = numbers.get(format) }
-		=> type
+		return type
 	}
 
 	override copy() {
-		=> NumberNode(format, value, start)
+		return NumberNode(format, value, start)
 	}
 
 	override string() {
-		if format == FORMAT_DECIMAL => "Decimal Number " + to_string(bits_to_decimal(value))
-		=> "Number " + to_string(value)
+		if format == FORMAT_DECIMAL return "Decimal Number " + to_string(bits_to_decimal(value))
+		return "Number " + to_string(value)
 	}
 }
 
@@ -123,17 +123,17 @@ Node OperatorNode {
 	set_operands(left: Node, right: Node) {
 		add(left)
 		add(right)
-		=> this
+		return this
 	}
 
 	private try_resolve_as_setter_accessor() {
-		if operator != Operators.ASSIGN => none as Node
+		if operator != Operators.ASSIGN return none as Node
 
 		# Since the left node represents an accessor, its first node must represent the target object
 		object = first.first
 		type = object.try_get_type()
 
-		if type == none or not type.is_local_function_declared(String(Operators.ACCESSOR_SETTER_FUNCTION_IDENTIFIER)) => none as Node
+		if type == none or not type.is_local_function_declared(String(Operators.ACCESSOR_SETTER_FUNCTION_IDENTIFIER)) return none as Node
 
 		# Since the left node represents an accessor, its last node must represent its arguments
 		arguments = first.last
@@ -141,11 +141,11 @@ Node OperatorNode {
 		# Since the current node is the assign-operator, the right node must represent the assigned value which should be the last parameter
 		arguments.add(last)
 
-		=> create_operator_overload_function_call(object, String(Operators.ACCESSOR_SETTER_FUNCTION_IDENTIFIER), arguments)
+		return create_operator_overload_function_call(object, String(Operators.ACCESSOR_SETTER_FUNCTION_IDENTIFIER), arguments)
 	}
 
 	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
-		=> LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
+		return LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
 	}
 
 	override resolve(context: Context) {
@@ -156,53 +156,53 @@ Node OperatorNode {
 		# Check if the left node represents an accessor and if it is being assigned a value
 		if operator.type == OPERATOR_TYPE_ASSIGNMENT and first.match(NODE_ACCESSOR) {
 			result = try_resolve_as_setter_accessor()
-			if result != none => result
+			if result != none return result
 		}
 
 		# Try to resolve this operator node as an operator overload function call
 		type = first.try_get_type()
-		if type == none => none as Node
+		if type == none return none as Node
 
-		if not type.is_operator_overloaded(operator) => none as Node
+		if not type.is_operator_overloaded(operator) return none as Node
 
 		# Retrieve the function name corresponding to the operator of this node
 		overload = Operators.operator_overloads[operator]
 		arguments = Node()
 		arguments.add(last)
 
-		=> create_operator_overload_function_call(first, overload, arguments)
+		return create_operator_overload_function_call(first, overload, arguments)
 	}
 
 	# Summary:
 	# Returns whether the user is attempting to modify a memory address
 	private is_address_modification(left_type: Type, right_type: Type) {
-		if left_type === none or right_type === none => false
+		if left_type === none or right_type === none return false
 
 		# Allow plus, minus, and multiply operations on memory addresses
-		if operator !== Operators.ADD and operator !== Operators.SUBTRACT and operator !== Operators.MULTIPLY => false
+		if operator !== Operators.ADD and operator !== Operators.SUBTRACT and operator !== Operators.MULTIPLY return false
 
 		# The right operand must be an integer type
-		if not right_type.is_number or right_type.format === FORMAT_DECIMAL => false
+		if not right_type.is_number or right_type.format === FORMAT_DECIMAL return false
 
 		# Allow links and array types as left operands
-		=> primitives.is_primitive(left_type, primitives.LINK) or left_type.is_array_type
+		return primitives.is_primitive(left_type, primitives.LINK) or left_type.is_array_type
 	}
 
 	private get_classic_type() {
 		left_type = first.try_get_type()
 		right_type = last.try_get_type()
 
-		if is_address_modification(left_type, right_type) => left_type
+		if is_address_modification(left_type, right_type) return left_type
 
-		=> resolver.get_shared_type(left_type, right_type)
+		return resolver.get_shared_type(left_type, right_type)
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and operator == other.(OperatorNode).operator and is_tree_equal(other)
+		return instance == other.instance and operator == other.(OperatorNode).operator and is_tree_equal(other)
 	}
 
 	override try_get_type() {
-		=> when(operator.type) {
+		return when(operator.type) {
 			OPERATOR_TYPE_CLASSIC => get_classic_type()
 			OPERATOR_TYPE_COMPARISON => primitives.create_bool()
 			OPERATOR_TYPE_ASSIGNMENT => primitives.create_unit()
@@ -215,11 +215,11 @@ Node OperatorNode {
 	}
 
 	override copy() {
-		=> OperatorNode(operator, start)
+		return OperatorNode(operator, start)
 	}
 
 	override string() {
-		=> "Operator " + operator.identifier
+		return "Operator " + operator.identifier
 	}
 }
 
@@ -237,20 +237,20 @@ Node ScopeNode {
 	}
 
 	override try_get_type() {
-		if last === none => none as Type
-		=> last.try_get_type()
+		if last === none return none as Type
+		return last.try_get_type()
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and context.identity == other.(ScopeNode).context.identity and is_tree_equal(other)
+		return instance == other.instance and context.identity == other.(ScopeNode).context.identity and is_tree_equal(other)
 	}
 
 	override copy() {
-		=> ScopeNode(context, start, end, is_value_returned)
+		return ScopeNode(context, start, end, is_value_returned)
 	}
 
 	override string() {
-		=> "Scope " + context.identity
+		return "Scope " + context.identity
 	}
 }
 
@@ -273,19 +273,19 @@ Node VariableNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and variable == other.(VariableNode).variable
+		return instance == other.instance and variable == other.(VariableNode).variable
 	}
 
 	override try_get_type() {
-		=> variable.type
+		return variable.type
 	}
 
 	override copy() {
-		=> VariableNode(variable, start)
+		return VariableNode(variable, start)
 	}
 
 	override string() {
-		=> "Variable " + variable.name
+		return "Variable " + variable.name
 	}
 }
 
@@ -320,7 +320,7 @@ OperatorNode LinkNode {
 		primary = first.try_get_type()
 
 		# Do not try to resolve the right node without the type of the left
-		if primary == none => none as Node
+		if primary == none return none as Node
 
 		if last.match(NODE_UNRESOLVED_FUNCTION) {
 			function = last as UnresolvedFunction
@@ -330,12 +330,12 @@ OperatorNode LinkNode {
 
 			if result != none {
 				last.replace(result)
-				=> none as Node
+				return none as Node
 			}
 
 			# Try to get the parameter types from the function node
 			types = resolver.get_types(function)
-			if types == none => none as Node
+			if types == none return none as Node
 
 			# Try to form a virtual function call
 			result = common.try_get_virtual_function_call(first, primary, function.name, function, types, start)
@@ -343,7 +343,7 @@ OperatorNode LinkNode {
 
 			if result != none {
 				result.start = start
-				=> result
+				return result
 			}
 		}
 		else last.match(NODE_UNRESOLVED_IDENTIFIER) {
@@ -354,19 +354,19 @@ OperatorNode LinkNode {
 			resolver.resolve(environment, last)
 		}
 
-		=> none as Node
+		return none as Node
 	}
 
 	override try_get_type() {
-		=> last.try_get_type()
+		return last.try_get_type()
 	}
 
 	override copy() {
-		=> LinkNode(start)
+		return LinkNode(start)
 	}
 
 	override string() {
-		=> "Link"
+		return "Link"
 	}
 }
 
@@ -382,31 +382,31 @@ Node UnresolvedIdentifier {
 
 	private try_resolve_as_function_pointer(context: Context) {
 		# TODO: Function pointers
-		=> none as Node
+		return none as Node
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and value == other.(UnresolvedIdentifier).value
+		return instance == other.instance and value == other.(UnresolvedIdentifier).value
 	}
 
 	override resolve(context: Context) {
 		linked = parent != none and parent.match(NODE_LINK) and previous != none
 		result = parser.parse_identifier(context, IdentifierToken(value, start), linked)
 
-		if result.match(NODE_UNRESOLVED_IDENTIFIER) => try_resolve_as_function_pointer(context)
-		=> result
+		if result.match(NODE_UNRESOLVED_IDENTIFIER) return try_resolve_as_function_pointer(context)
+		return result
 	}
 
 	override get_status() {
-		=> Status(start, "Can not resolve identifier " + value)
+		return Status(start, "Can not resolve identifier " + value)
 	}
 
 	override copy() {
-		=> UnresolvedIdentifier(value, start)
+		return UnresolvedIdentifier(value, start)
 	}
 
 	override string() {
-		=> "Unresolved Identifier " + value
+		return "Unresolved Identifier " + value
 	}
 }
 
@@ -437,7 +437,7 @@ Node UnresolvedFunction {
 
 	set_arguments(arguments: Node) {
 		loop argument in arguments { add(argument) }
-		=> this
+		return this
 	}
 
 	private try_resolve_lambda_parameters(primary: Context, call_arguments: List<CallArgument>) {
@@ -456,7 +456,7 @@ Node UnresolvedFunction {
 		# Find all the function overloads that could accept the currently resolved parameter types
 		candidates = functions.overloads.filter(overload -> {
 			# Ensure the number of parameters is the same before continuing
-			if actual_types.size != overload.parameters.size => false
+			if actual_types.size != overload.parameters.size return false
 
 			# Collect the expected parameter types
 			expected_types = overload.parameters.map<Type>((j: Parameter) -> j.type)
@@ -473,7 +473,7 @@ Node UnresolvedFunction {
 			}
 
 			# Check if the final parameter types pass
-			=> types.all(i -> i != none and i.is_resolved) and overload.passes(types, arguments)
+			return types.all(i -> i != none and i.is_resolved) and overload.passes(types, arguments)
 		})
 
 		# Collect all parameter types but this time filling the unresolved lambda types with incomplete call descriptor types
@@ -564,7 +564,7 @@ Node UnresolvedFunction {
 
 		if unresolved {
 			try_resolve_lambda_parameters(primary, call_arguments)
-			=> none as Node
+			return none as Node
 		}
 
 		is_normal_unlinked_call = not linked and arguments.size == 0
@@ -576,7 +576,7 @@ Node UnresolvedFunction {
 
 			if result != none {
 				result.start = start
-				=> result
+				return result
 			}
 		}
 
@@ -589,11 +589,11 @@ Node UnresolvedFunction {
 
 			if result != none {
 				result.start = start
-				=> result
+				return result
 			}
 		}
 
-		if function == none => none as Node
+		if function == none return none as Node
 
 		node = FunctionNode(function, start).set_arguments(this)
 
@@ -602,39 +602,39 @@ Node UnresolvedFunction {
 			if type == none abort('Missing constructor parent type')
 
 			# If the descriptor name is not the same as the function name, it is a direct call rather than a construction
-			if not (type.identifier == name) => node
-			=> ConstructionNode(node, node.start)
+			if not (type.identifier == name) return node
+			return ConstructionNode(node, node.start)
 		}
 
 		# When the function is a member function and the this function is not part of a link it means that the function needs the self pointer
 		if function.is_member and not function.is_static and not linked {
 			self = common.get_self_pointer(environment, start)
-			=> LinkNode(self, node, start)
+			return LinkNode(self, node, start)
 		}
 
-		=> node
+		return node
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and name == other.(UnresolvedFunction).name and is_tree_equal(other)
+		return instance == other.instance and name == other.(UnresolvedFunction).name and is_tree_equal(other)
 	}
 
 	override resolve(context: Context) {
-		=> resolve(context, context)
+		return resolve(context, context)
 	}
 
 	override copy() {
-		=> UnresolvedFunction(name, arguments, start)
+		return UnresolvedFunction(name, arguments, start)
 	}
 
 	override get_status() {
 		types = List<Type>()
 		loop iterator in this { types.add(iterator.try_get_type()) }
-		=> Status(start, "Can not find function " + common.to_string(name, types, arguments))
+		return Status(start, "Can not find function " + common.to_string(name, types, arguments))
 	}
 
 	override string() {
-		=> "Unresolved Function " + name
+		return "Unresolved Function " + name
 	}
 }
 
@@ -655,29 +655,29 @@ Node TypeNode {
 	}
 
 	override resolve(context: Context) {
-		if type.is_resolved => none as Node
+		if type.is_resolved return none as Node
 
 		replacement = resolver.resolve(context, type)
-		if replacement == none => none as Node
+		if replacement == none return none as Node
 
 		type = replacement
-		=> none as Node
+		return none as Node
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(TypeNode).type
+		return instance == other.instance and type == other.(TypeNode).type
 	}
 
 	override try_get_type() {
-		=> type
+		return type
 	}
 
 	override copy() {
-		=> TypeNode(type, start)
+		return TypeNode(type, start)
 	}
 
 	override string() {
-		=> "Type " + type.name
+		return "Type " + type.name
 	}
 }
 
@@ -710,15 +710,15 @@ Node TypeDefinitionNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(TypeDefinitionNode).type
+		return instance == other.instance and type == other.(TypeDefinitionNode).type
 	}
 
 	override copy() {
-		=> TypeDefinitionNode(type, blueprint, start)
+		return TypeDefinitionNode(type, blueprint, start)
 	}
 
 	override string() {
-		=> "Type Definition " + type.name
+		return "Type Definition " + type.name
 	}
 }
 
@@ -732,15 +732,15 @@ Node FunctionDefinitionNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and function == other.(FunctionDefinitionNode).function
+		return instance == other.instance and function == other.(FunctionDefinitionNode).function
 	}
 
 	override copy() {
-		=> FunctionDefinitionNode(function, start)
+		return FunctionDefinitionNode(function, start)
 	}
 
 	override string() {
-		=> "Function Definition " + function.name
+		return "Function Definition " + function.name
 	}
 }
 
@@ -762,19 +762,19 @@ Node StringNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and text == other.(StringNode).text
+		return instance == other.instance and text == other.(StringNode).text
 	}
 
 	override try_get_type() {
-		=> Link()
+		return Link()
 	}
 
 	override copy() {
-		=> StringNode(text, identifier, start)
+		return StringNode(text, identifier, start)
 	}
 
 	override string() {
-		=> "String " + text
+		return "String " + text
 	}
 }
 
@@ -792,23 +792,23 @@ Node FunctionNode {
 
 	set_arguments(arguments: Node) {
 		loop argument in arguments { add(argument) }
-		=> this
+		return this
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and function == other.(FunctionNode).function and is_tree_equal(other)
+		return instance == other.instance and function == other.(FunctionNode).function and is_tree_equal(other)
 	}
 
 	override try_get_type() {
-		=> function.return_type
+		return function.return_type
 	}
 
 	override copy() {
-		=> FunctionNode(function, start)
+		return FunctionNode(function, start)
 	}
 
 	override string() {
-		=> "Function Call " + function.name
+		return "Function Call " + function.name
 	}
 }
 
@@ -828,15 +828,15 @@ Node ConstructionNode {
 	}
 
 	override try_get_type() {
-		=> constructor.function.find_type_parent()
+		return constructor.function.find_type_parent()
 	}
 
 	override copy() {
-		=> ConstructionNode(start)
+		return ConstructionNode(start)
 	}
 
 	override string() {
-		=> "Construction " + constructor.function.name
+		return "Construction " + constructor.function.name
 	}
 }
 
@@ -847,16 +847,16 @@ Node ParenthesisNode {
 	}
 
 	override try_get_type() {
-		if last == none => none as Type
-		=> last.try_get_type()
+		if last == none return none as Type
+		return last.try_get_type()
 	}
 
 	override copy() {
-		=> ParenthesisNode(start)
+		return ParenthesisNode(start)
 	}
 
 	override string() {
-		=> "Parenthesis"
+		return "Parenthesis"
 	}
 }
 
@@ -872,11 +872,11 @@ Node ReturnNode {
 	}
 
 	override copy() {
-		=> ReturnNode(none as Node, start)
+		return ReturnNode(none as Node, start)
 	}
 
 	override string() {
-		=> "Return"
+		return "Return"
 	}
 }
 
@@ -886,14 +886,14 @@ Node IfNode {
 	body => last as ScopeNode
 
 	successor() {
-		if next != none and (next.instance == NODE_ELSE_IF or next.instance == NODE_ELSE) => next
-		=> none as Node
+		if next != none and (next.instance == NODE_ELSE_IF or next.instance == NODE_ELSE) return next
+		return none as Node
 	}
 
 	predecessor() {
-		if instance == NODE_IF => none as Node
-		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) => previous
-		=> none as Node
+		if instance == NODE_IF return none as Node
+		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) return previous
+		return none as Node
 	}
 
 	init(context: Context, condition: Node, body: Node, start: Position, end: Position) {
@@ -942,14 +942,14 @@ Node IfNode {
 			}
 		}
 
-		=> successors
+		return successors
 	}
 
 	get_branches() {
 		branches = List<Node>(1, false)
 		branches.add(this)
 
-		if successor == none => branches
+		if successor == none return branches
 
 		if successor.instance == NODE_ELSE_IF {
 			branches.add_all(successor.(ElseIfNode).get_branches())
@@ -958,7 +958,7 @@ Node IfNode {
 			branches.add(successor)
 		}
 
-		=> branches
+		return branches
 	}
 
 	override resolve(context: Context) {
@@ -967,15 +967,15 @@ Node IfNode {
 
 		if successor != none resolver.resolve(context, successor)
 
-		=> none as Node
+		return none as Node
 	}
 
 	override copy() {
-		=> IfNode(start)
+		return IfNode(start)
 	}
 
 	override string() {
-		=> "If"
+		return "If"
 	}
 }
 
@@ -997,15 +997,15 @@ IfNode ElseIfNode {
 			iterator = iterator.(ElseIfNode).predecessor
 		}
 
-		=> iterator as IfNode
+		return iterator as IfNode
 	}
 
 	override copy() {
-		=> ElseIfNode(start)
+		return ElseIfNode(start)
 	}
 
 	override string() {
-		=> "Else If"
+		return "Else If"
 	}
 }
 
@@ -1024,11 +1024,11 @@ Node ListNode {
 	}
 
 	override copy() {
-		=> ListNode(start)
+		return ListNode(start)
 	}
 
 	override string() {
-		=> "List"
+		return "List"
 	}
 }
 
@@ -1049,7 +1049,7 @@ Node LoopNode {
 	condition_container => first.first.next
 	
 	condition() {
-		=> common.find_condition(first.first.next)
+		return common.find_condition(first.first.next)
 	}
 
 	init(context: Context, steps: Node, body: ScopeNode, position: Position) {
@@ -1079,15 +1079,15 @@ Node LoopNode {
 		}
 
 		resolver.resolve(body.context, body)
-		=> none as Node
+		return none as Node
 	}
 
 	override copy() {
-		=> LoopNode(context, start, start_label, exit_label)
+		return LoopNode(context, start, start_label, exit_label)
 	}
 
 	override string() {
-		=> "Loop"
+		return "Loop"
 	}
 }
 
@@ -1116,12 +1116,12 @@ Node CastNode {
 		# 1. Return true if both of the types have nothing in common: a == none and b == none
 		# 2. If either a or b is zero, no offset is required, so the cast is free: a == 0 or b == 0
 		# Result: (a == none and b == none) or (a == 0 or b == 0)
-		if a.empty => b.empty or b.value == 0
-		=> a.value == 0 or (not b.empty and b.value == 0)
+		if a.empty return b.empty or b.value == 0
+		return a.value == 0 or (not b.empty and b.value == 0)
 	}
 
 	override try_get_type() {
-		=> last.try_get_type()
+		return last.try_get_type()
 	}
 
 	override resolve(context: Context) {
@@ -1130,25 +1130,25 @@ Node CastNode {
 		# - Replace this cast node with the pack construction by returning it
 		if first.instance == NODE_PACK_CONSTRUCTION {
 			first.(PackConstructionNode).type = last.(TypeNode).type
-			=> first
+			return first
 		}
 
 		resolver.resolve(context, first)
 		resolver.resolve(context, last)
 
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
-		=> none as Status
+		return none as Status
 	}
 
 	override copy() {
-		=> CastNode(start)
+		return CastNode(start)
 	}
 
 	override string() {
-		=> "Cast"
+		return "Cast"
 	}
 }
 
@@ -1175,19 +1175,19 @@ Node CommandNode {
 	}
 
 	override resolve(context: Context) {
-		if finished => none as Node
+		if finished return none as Node
 
 		# Try to find the parent loop
 		container: LoopNode = this.container
-		if container == none => none as Node
+		if container == none return none as Node
 
 		# Continue nodes must execute the action of their parent loops
-		if instruction != Keywords.CONTINUE => none as Node
+		if instruction != Keywords.CONTINUE return none as Node
 
 		# Copy the action node if it is present and it is not empty
 		if container.is_forever_loop or container.action.first == none {
 			finished = true
-			=> none as Node
+			return none as Node
 		}
 
 		# Execute the action first then the continue
@@ -1195,24 +1195,24 @@ Node CommandNode {
 		loop iterator in container.action { result.add(iterator.clone()) }
 
 		result.add(CommandNode(instruction, start, true))
-		=> result
+		return result
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and instruction == other.(CommandNode).instruction
+		return instance == other.instance and instruction == other.(CommandNode).instruction
 	}
 
 	override copy() {
-		=> CommandNode(instruction, start, finished)
+		return CommandNode(instruction, start, finished)
 	}
 
 	override get_status() {
-		if finished and container != none => none as Status
-		=> Status('Keyword must be used inside a loop')
+		if finished and container != none return none as Status
+		return Status('Keyword must be used inside a loop')
 	}
 
 	override string() {
-		=> instruction.identifier
+		return instruction.identifier
 	}
 }
 
@@ -1229,15 +1229,15 @@ Node NegateNode {
 	}
 
 	override try_get_type() {
-		=> first.try_get_type()
+		return first.try_get_type()
 	}
 
 	override copy() {
-		=> NegateNode(start)
+		return NegateNode(start)
 	}
 
 	override string() {
-		=> "Negate"
+		return "Negate"
 	}
 }
 
@@ -1245,8 +1245,8 @@ Node ElseNode {
 	body => first as ScopeNode
 
 	predecessor() {
-		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) => previous
-		=> none as Node
+		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) return previous
+		return none as Node
 	}
 
 	init(context: Context, body: Node, start: Position, end: Position) {
@@ -1272,20 +1272,20 @@ Node ElseNode {
 			iterator = iterator.(ElseIfNode).predecessor
 		}
 
-		=> iterator as IfNode
+		return iterator as IfNode
 	}
 
 	override resolve(context: Context) {
 		resolver.resolve(body.context, body)
-		=> none as Node
+		return none as Node
 	}
 
 	override copy() {
-		=> ElseNode(start)
+		return ElseNode(start)
 	}
 
 	override string() {
-		=> "Else"
+		return "Else"
 	}
 }
 
@@ -1306,20 +1306,20 @@ Node IncrementNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and post == other.(IncrementNode).post and is_tree_equal(other)
+		return instance == other.instance and post == other.(IncrementNode).post and is_tree_equal(other)
 	}
 
 	override try_get_type() {
-		=> first.try_get_type()
+		return first.try_get_type()
 	}
 
 	override copy() {
-		=> IncrementNode(start, post)
+		return IncrementNode(start, post)
 	}
 
 	override string() {
-		if post => "PostIncrement"
-		=> "PreIncrement"
+		if post return "PostIncrement"
+		return "PreIncrement"
 	}
 }
 
@@ -1340,20 +1340,20 @@ Node DecrementNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and post == other.(DecrementNode).post and is_tree_equal(other)
+		return instance == other.instance and post == other.(DecrementNode).post and is_tree_equal(other)
 	}
 
 	override try_get_type() {
-		=> first.try_get_type()
+		return first.try_get_type()
 	}
 
 	override copy() {
-		=> DecrementNode(start, post)
+		return DecrementNode(start, post)
 	}
 
 	override string() {
-		if post => "PostDecrement"
-		=> "PreDecrement"
+		if post return "PostDecrement"
+		return "PreDecrement"
 	}
 }
 
@@ -1374,15 +1374,15 @@ Node NotNode {
 	}
 
 	override try_get_type() {
-		=> first.try_get_type()
+		return first.try_get_type()
 	}
 
 	override copy() {
-		=> NotNode(start, is_bitwise)
+		return NotNode(start, is_bitwise)
 	}
 
 	override string() {
-		=> "Not"
+		return "Not"
 	}
 }
 
@@ -1414,23 +1414,23 @@ Node AccessorNode {
 	}
 
 	get_stride() {
-		=> get_type().allocation_size
+		return get_type().allocation_size
 	}
 
 	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
-		=> LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
+		return LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
 	}
 
 	private try_resolve_as_getter_accessor(type: Type) {
 		# Determine if this node represents a setter accessor
 		if parent != none and parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT and parent.first == this {
 			# Indexed accessor setter is handled elsewhere
-			=> none as Node
+			return none as Node
 		}
 
 		# Ensure that the type contains overload for getter accessor
-		if not type.is_local_function_declared(String(Operators.ACCESSOR_GETTER_FUNCTION_IDENTIFIER)) => none as Node
-		=> create_operator_overload_function_call(first, String(Operators.ACCESSOR_GETTER_FUNCTION_IDENTIFIER), last)
+		if not type.is_local_function_declared(String(Operators.ACCESSOR_GETTER_FUNCTION_IDENTIFIER)) return none as Node
+		return create_operator_overload_function_call(first, String(Operators.ACCESSOR_GETTER_FUNCTION_IDENTIFIER), last)
 	}
 
 	override resolve(context: Context) {
@@ -1438,23 +1438,23 @@ Node AccessorNode {
 		resolver.resolve(context, last)
 
 		type = first.try_get_type()
-		if type == none => none as Node
+		if type == none return none as Node
 
-		=> try_resolve_as_getter_accessor(type)
+		return try_resolve_as_getter_accessor(type)
 	}
 
 	override try_get_type() {
 		type = first.try_get_type()
-		if type == none => none as Type
-		=> type.get_accessor_type()
+		if type == none return none as Type
+		return type.get_accessor_type()
 	}
 
 	override copy() {
-		=> AccessorNode(start)
+		return AccessorNode(start)
 	}
 
 	override string() {
-		=> "Accessor"
+		return "Accessor"
 	}
 }
 
@@ -1465,20 +1465,20 @@ Node InlineNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and is_tree_equal(other)
+		return instance == other.instance and is_tree_equal(other)
 	}
 
 	override try_get_type() {
-		if last == none => none as Type
-		=> last.try_get_type()
+		if last == none return none as Type
+		return last.try_get_type()
 	}
 
 	override copy() {
-		=> InlineNode(start)
+		return InlineNode(start)
 	}
 
 	override string() {
-		=> "Inline"
+		return "Inline"
 	}
 }
 
@@ -1497,19 +1497,19 @@ Node DataPointerNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset
+		return instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset
 	}
 
 	override try_get_type() {
-		=> Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
+		return Link.get_variant(primitives.create_number(primitives.LARGE, FORMAT_INT64))
 	}
 
 	override copy() {
-		=> DataPointerNode(type, offset, start)
+		return DataPointerNode(type, offset, start)
 	}
 
 	override string() {
-		=> "Empty Data Pointer"
+		return "Empty Data Pointer"
 	}
 }
 
@@ -1522,15 +1522,15 @@ DataPointerNode FunctionDataPointerNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and function == other.(FunctionDataPointerNode).function
+		return instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and function == other.(FunctionDataPointerNode).function
 	}
 
 	override copy() {
-		=> FunctionDataPointerNode(function, offset, start)
+		return FunctionDataPointerNode(function, offset, start)
 	}
 
 	override string() {
-		=> "Function Data Pointer: " + function.get_fullname()
+		return "Function Data Pointer: " + function.get_fullname()
 	}
 }
 
@@ -1543,15 +1543,15 @@ DataPointerNode TableDataPointerNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and table == other.(TableDataPointerNode).table
+		return instance == other.instance and type == other.(DataPointerNode).type and offset == other.(DataPointerNode).offset and table == other.(TableDataPointerNode).table
 	}
 
 	override copy() {
-		=> TableDataPointerNode(table, offset, start)
+		return TableDataPointerNode(table, offset, start)
 	}
 
 	override string() {
-		=> "Table Data Pointer: " + table.name
+		return "Table Data Pointer: " + table.name
 	}
 }
 
@@ -1575,19 +1575,19 @@ Node StackAddressNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and type == other.(DataPointerNode).type
+		return instance == other.instance and type == other.(DataPointerNode).type
 	}
 
 	override try_get_type() {
-		=> type
+		return type
 	}
 
 	override copy() {
-		=> StackAddressNode(type, identity, start)
+		return StackAddressNode(type, identity, start)
 	}
 
 	override string() {
-		=> "Stack Allocation " + type.name
+		return "Stack Allocation " + type.name
 	}
 }
 
@@ -1601,15 +1601,15 @@ Node LabelNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and label == other.(LabelNode).label
+		return instance == other.instance and label == other.(LabelNode).label
 	}
 
 	override copy() {
-		=> LabelNode(label, start)
+		return LabelNode(label, start)
 	}
 
 	override string() {
-		=> label.name + ':'
+		return label.name + ':'
 	}
 }
 
@@ -1629,15 +1629,15 @@ Node JumpNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and label == other.(JumpNode).label and is_conditional == other.(JumpNode).is_conditional
+		return instance == other.instance and label == other.(JumpNode).label and is_conditional == other.(JumpNode).is_conditional
 	}
 
 	override copy() {
-		=> JumpNode(label, is_conditional)
+		return JumpNode(label, is_conditional)
 	}
 
 	override string() {
-		=> "Jump " + label.name
+		return "Jump " + label.name
 	}
 }
 
@@ -1657,15 +1657,15 @@ Node DeclareNode {
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
+		return instance == other.instance and variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
 	}
 
 	override copy() {
-		=> DeclareNode(variable, start)
+		return DeclareNode(variable, start)
 	}
 
 	override string() {
-		=> "Declare " + variable.name
+		return "Declare " + variable.name
 	}
 }
 
@@ -1679,11 +1679,11 @@ Node SectionNode {
 	}
 
 	override copy() {
-		=> SectionNode(modifiers, start)
+		return SectionNode(modifiers, start)
 	}
 
 	override is_equal(other: Node) {
-		=> instance == other.instance and modifiers == other.(SectionNode).modifiers
+		return instance == other.instance and modifiers == other.(SectionNode).modifiers
 	}
 }
 
@@ -1727,7 +1727,7 @@ Node NamespaceNode {
 			context = type
 		}
 
-		=> context as Type
+		return context as Type
 	}
 
 	parse(context: Context) {
@@ -1761,7 +1761,7 @@ Node NamespaceNode {
 	}
 
 	override copy() {
-		=> NamespaceNode(name, blueprint, is_parsed)
+		return NamespaceNode(name, blueprint, is_parsed)
 	}
 }
 
@@ -1791,15 +1791,15 @@ Node CallNode {
 	}
 
 	override try_get_type() {
-		=> descriptor.return_type
+		return descriptor.return_type
 	}
 
 	override copy() {
-		=> CallNode(descriptor, start)
+		return CallNode(descriptor, start)
 	}
 
 	override string() {
-		=> "Call"
+		return "Call"
 	}
 }
 
@@ -1827,27 +1827,27 @@ Node InspectionNode {
 
 	override resolve(context: Context) {
 		resolver.resolve(context, first)
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
 		type: Type = try_get_type()
-		if type == none or type.is_unresolved => Status(start, 'Can not resolve the type of the inspected object')
-		=> none as Status
+		if type == none or type.is_unresolved return Status(start, 'Can not resolve the type of the inspected object')
+		return none as Status
 	}
 
 	override try_get_type() {
-		if type == INSPECTION_TYPE_NAME => Link()
-		=> primitives.create_number(primitives.LARGE, FORMAT_INT64)
+		if type == INSPECTION_TYPE_NAME return Link()
+		return primitives.create_number(primitives.LARGE, FORMAT_INT64)
 	}
 
 	override copy() {
-		=> InspectionNode(type, start)
+		return InspectionNode(type, start)
 	}
 
 	override string() {
-		if type == INSPECTION_TYPE_NAME => "Name of"
-		=> "Size of"
+		if type == INSPECTION_TYPE_NAME return "Name of"
+		return "Size of"
 	}
 }
 
@@ -1859,11 +1859,11 @@ Node CompilesNode {
 	}
 
 	override copy() {
-		=> CompilesNode(start)
+		return CompilesNode(start)
 	}
 
 	override try_get_type() {
-		=> primitives.create_bool()
+		return primitives.create_bool()
 	}
 }
 
@@ -1891,7 +1891,7 @@ Node IsNode {
 	}
 
 	override try_get_type() {
-		=> primitives.create_bool()
+		return primitives.create_bool()
 	}
 
 	override resolve(context: Context) {
@@ -1902,20 +1902,20 @@ Node IsNode {
 		resolved = resolver.resolve(context, type)
 		if resolved != none { type = resolved }
 
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
-		if type.is_unresolved => Status(start, 'Can not resolve the condition type')
-		=> first.get_status()
+		if type.is_unresolved return Status(start, 'Can not resolve the condition type')
+		return first.get_status()
 	}
 
 	override copy() {
-		=> IsNode(type, start)
+		return IsNode(type, start)
 	}
 
 	override string() {
-		=> "Is"
+		return "Is"
 	}
 }
 
@@ -1953,19 +1953,19 @@ Node LambdaNode {
 	get_parameter_types() {
 		parameter_types = List<Type>(function.parameters.size, false)
 		loop parameter in function.parameters { parameter_types.add(parameter.type) }
-		=> parameter_types
+		return parameter_types
 	}
 
 	get_incomplete_type() {
 		return_type = none as Type
 		if implementation != none { return_type = implementation.return_type }
-		=> FunctionType(get_parameter_types(), return_type, start)
+		return FunctionType(get_parameter_types(), return_type, start)
 	}
 
 	override resolve(context: Context) {
 		if implementation != none {
 			status = Status()
-			=> none as Node
+			return none as Node
 		}
 
 		# Try to resolve all parameter types
@@ -1981,25 +1981,25 @@ Node LambdaNode {
 
 		# Before continuing, ensure all parameters are resolved
 		loop parameter in function.parameters {
-			if parameter.type == none or parameter.type.is_unresolved => none as Node
+			if parameter.type == none or parameter.type.is_unresolved return none as Node
 		}
 
 		status = Status()
 		implementation = function.implement(get_parameter_types())
-		=> none as Node
+		return none as Node
 	}
 
 	override try_get_type() {
-		if implementation != none and implementation.return_type != none => get_incomplete_type()
-		=> none as Type
+		if implementation != none and implementation.return_type != none return get_incomplete_type()
+		return none as Type
 	}
 
 	override copy() {
-		=> LambdaNode(status, function, implementation, start)
+		return LambdaNode(status, function, implementation, start)
 	}
 
 	override get_status() {
-		=> status
+		return status
 	}
 }
 
@@ -2027,50 +2027,50 @@ Node HasNode {
 
 		# Continue if the type of the source object can be extracted
 		type = source.try_get_type()
-		if type === none or type.is_unresolved => none as Node
+		if type === none or type.is_unresolved return none as Node
 
 		# Continue if the source object has the required getter function
 		get_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER))
-		if get_value_function_overloads === none => none as Node
+		if get_value_function_overloads === none return none as Node
 
 		get_value_function = get_value_function_overloads.get_implementation(List<Type>())
-		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved => none as Node
+		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved return none as Node
 
 		# Set the type of the output variable to the return type of the getter function
 		output.variable.type = get_value_function.return_type
 
-		=> none as Node
+		return none as Node
 	}
 
 	override try_get_type() {
-		=> primitives.create_bool()
+		return primitives.create_bool()
 	}
 
 	override get_status() {
 		type = source.try_get_type()
-		if type == none or type.is_unresolved => Status(source.start, 'Can not resolve the type of the inspected object')
+		if type == none or type.is_unresolved return Status(source.start, 'Can not resolve the type of the inspected object')
 
 		has_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER))
-		if has_value_function_overloads === none => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
+		if has_value_function_overloads === none return Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
 
 		has_value_function = has_value_function_overloads.get_implementation(List<Type>())
-		if has_value_function === none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) => Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
+		if has_value_function === none or not primitives.is_primitive(has_value_function.return_type, primitives.BOOL) return Status(source.start, 'Inspected object does not have a \'has_value(): bool\' function')
 
 		get_value_function_overloads = type.get_function(String(reconstruction.RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER))
-		if get_value_function_overloads === none => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
+		if get_value_function_overloads === none return Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
 
 		get_value_function = get_value_function_overloads.get_implementation(List<Type>())
-		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved => Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
+		if get_value_function === none or get_value_function.return_type === none or get_value_function.return_type.is_unresolved return Status(source.start, 'Inspected object does not have a \'get_value(): any\' function')
 
-		=> none as Status
+		return none as Status
 	}
 
 	override copy() {
-		=> HasNode(start)
+		return HasNode(start)
 	}
 
 	override string() {
-		=> "Has"
+		return "Has"
 	}
 }
 
@@ -2106,7 +2106,7 @@ Node ExtensionFunctionNode {
 	override resolve(context: Context) {
 		if destination.is_unresolved {
 			resolved = resolver.resolve(context, destination)
-			if resolved == none => none as Node
+			if resolved == none return none as Node
 			this.destination = resolved
 		}
 
@@ -2125,7 +2125,7 @@ Node ExtensionFunctionNode {
 
 			# Parse the parameters
 			result = descriptor.get_parameters(function)
-			if not (result has parameters) => none as Node
+			if not (result has parameters) return none as Node
 
 			function.parameters.add_all(parameters)
 		}
@@ -2134,20 +2134,20 @@ Node ExtensionFunctionNode {
 		if destination.is_static { function.modifiers = function.modifiers | MODIFIER_STATIC }
 
 		destination.(Context).declare(function)
-		=> FunctionDefinitionNode(function, start)
+		return FunctionDefinitionNode(function, start)
 	}
 
 	override get_status() {
 		message = "Can not resolve the destination " + destination.string() + ' of the extension function'
-		=> Status(start, message)
+		return Status(start, message)
 	}
 
 	override copy() {
-		=> ExtensionFunctionNode(destination, descriptor, template_parameters, body, start, end)
+		return ExtensionFunctionNode(destination, descriptor, template_parameters, body, start, end)
 	}
 
 	override string() {
-		=> "Extension function"
+		return "Extension function"
 	}
 }
 
@@ -2183,19 +2183,19 @@ Node WhenNode {
 			body = get_section_body(section)
 			value = body.last
 
-			if value == none => none as Type
+			if value == none return none as Type
 
 			type = value.try_get_type()
-			if type == none => none as Type
+			if type == none return none as Type
 
 			types.add(type)
 		}
 
-		=> resolver.get_shared_type(types)
+		return resolver.get_shared_type(types)
 	}
 
 	get_section_body(section: Node) {
-		=> when(section.instance) {
+		return when(section.instance) {
 			NODE_IF => section.(IfNode).body
 			NODE_ELSE_IF => section.(ElseIfNode).body
 			NODE_ELSE => section.(ElseNode).body
@@ -2207,14 +2207,14 @@ Node WhenNode {
 		resolver.resolve(environment, value)
 		resolver.resolve(environment, inspected)
 		resolver.resolve(environment, sections)
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
 		inspected_type = value.try_get_type()
 		inspected.variable.type = inspected_type
 
-		if inspected_type == none => Status(inspected.start, 'Can not resolve the type of the inspected value')
+		if inspected_type == none return Status(inspected.start, 'Can not resolve the type of the inspected value')
 
 		types = List<Type>()
 
@@ -2222,26 +2222,26 @@ Node WhenNode {
 			body = get_section_body(section)
 			value = body.last
 
-			if value == none => Status(start, 'When-statement has an empty section')
+			if value == none return Status(start, 'When-statement has an empty section')
 
 			type = value.try_get_type()
-			if type == none => Status(value.start, 'Can not resolve the section return type')
+			if type == none return Status(value.start, 'Can not resolve the section return type')
 			
 			types.add(type)
 		}
 
 		section_return_type = resolver.get_shared_type(types)
-		if section_return_type == none => Status(start, 'Sections do not have a shared return type')
+		if section_return_type == none return Status(start, 'Sections do not have a shared return type')
 
-		=> none as Status
+		return none as Status
 	}
 
 	override copy() {
-		=> WhenNode(start)
+		return WhenNode(start)
 	}
 
 	override string() {
-		=> "When"
+		return "When"
 	}
 }
 
@@ -2267,26 +2267,26 @@ Node ListConstructionNode {
 
 	override try_get_type() {
 		# If the type is already set, return it
-		if type != none => type
+		if type != none return type
 
 		# Resolve the type of a single element
 		element_types = resolver.get_types(this)
-		if element_types == none => none as Type
+		if element_types == none return none as Type
 		element_type = resolver.get_shared_type(element_types)
-		if element_type == none => none as Type
+		if element_type == none return none as Type
 
 		# Try to find the environment context
 		environment = try_get_parent_context()
-		if environment == none => none as Type
+		if environment == none return none as Type
 
 		list_type = environment.get_type(String(parser.STANDARD_LIST_TYPE))
-		if list_type == none or not list_type.is_template_type => none as Type
+		if list_type == none or not list_type.is_template_type return none as Type
 
 		# Get a list type with the resolved element type
 		type = list_type.(TemplateType).get_variant([ element_type ])
 		type.constructors.get_implementation(List<Type>())
 		type.get_function(String(parser.STANDARD_LIST_ADDER)).get_implementation(element_type)
-		=> type
+		return type
 	}
 
 	override resolve(context: Context) {
@@ -2294,26 +2294,26 @@ Node ListConstructionNode {
 			resolver.resolve(context, element)
 		}
 
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
 		try_get_type()
 
-		if type == none => Status(start, 'Can not resolve the shared type between the elements')
+		if type == none return Status(start, 'Can not resolve the shared type between the elements')
 
-		=> none as Status
+		return none as Status
 	}
 
 	override copy() {
-		=> ListConstructionNode(type, start)
+		return ListConstructionNode(type, start)
 	}
 
 	override string() {
 		elements: List<String> = List<String>()
 		loop element in this { elements.add(element.string()) }
 
-		=> "[ " + String.join(", ", elements) + ' ]'
+		return "[ " + String.join(", ", elements) + ' ]'
 	}
 }
 
@@ -2342,7 +2342,7 @@ Node PackConstructionNode {
 	}
 
 	override try_get_type() {
-		=> type
+		return type
 	}
 
 	validate_member_names() {
@@ -2351,11 +2351,11 @@ Node PackConstructionNode {
 			member = members[i]
 
 			loop (j = i + 1, j < members.size, j++) {
-				if members[j] == member => false
+				if members[j] == member return false
 			}
 		}
 
-		=> true
+		return true
 	}
 
 	# Summary:
@@ -2367,10 +2367,10 @@ Node PackConstructionNode {
 			member = iterator.value
 
 			if member.is_static or member.is_constant or member.is_hidden continue
-			if not members.contains(member.name) => member
+			if not members.contains(member.name) return member
 		}
 
-		=> none as Variable
+		return none as Variable
 	}
 
 	override resolve(context: Context) {
@@ -2386,15 +2386,15 @@ Node PackConstructionNode {
 				type = resolver.resolve(context, type)
 			}
 
-			=> none as Node
+			return none as Node
 		}
 
 		# Try to resolve the type of the arguments, these types are the types of the members
 		types = resolver.get_types(this)
-		if types == none => none as Node
+		if types == none return none as Node
 
 		# Ensure that all member names are unique
-		if not validate_member_names() => none as Node
+		if not validate_member_names() return none as Node
 
 		# Create a new pack type in order to construct the pack later
 		type = context.declare_unnamed_pack(start)
@@ -2404,28 +2404,28 @@ Node PackConstructionNode {
 			type.(Context).declare(types[i], VARIABLE_CATEGORY_MEMBER, members[i])
 		}
 
-		=> none as Node
+		return none as Node
 	}
 
 	override get_status() {
 		# Ensure that all member names are unique
-		if not validate_member_names() => Status(start, 'All pack members must be named differently')
-		if type == none => Status(start, 'Can not resolve the types of the pack members')
-		if type.is_unresolved => Status(start, 'Can not resolve the target type')
-		if not type.is_pack => Status(start, 'Target type must be a pack type')
+		if not validate_member_names() return Status(start, 'All pack members must be named differently')
+		if type == none return Status(start, 'Can not resolve the types of the pack members')
+		if type.is_unresolved return Status(start, 'Can not resolve the target type')
+		if not type.is_pack return Status(start, 'Target type must be a pack type')
 
 		missing = capture_missing_member()
-		if missing !== none => Status(start, "Missing value for member " + missing.name)
+		if missing !== none return Status(start, "Missing value for member " + missing.name)
 
-		=> none as Status
+		return none as Status
 	}
 
 	override copy() {
-		=> PackConstructionNode(type, members, start)
+		return PackConstructionNode(type, members, start)
 	}
 
 	override string() {
-		=> "Pack { " + String.join(", ", members) + ' }'
+		return "Pack { " + String.join(", ", members) + ' }'
 	}
 }
 
@@ -2438,15 +2438,15 @@ Node PackNode {
 	}
 
 	override try_get_type() {
-		=> type
+		return type
 	}
 
 	override copy() {
-		=> PackNode(type)
+		return PackNode(type)
 	}
 
 	override string() {
-		=> "Pack"
+		return "Pack"
 	}
 }
 
@@ -2461,14 +2461,14 @@ Node UndefinedNode {
 	}
 
 	override try_get_type() {
-		=> type
+		return type
 	}
 
 	override copy() {
-		=> UndefinedNode(type, format)
+		return UndefinedNode(type, format)
 	}
 
 	override string() {
-		=> "Undefined"
+		return "Undefined"
 	}
 }

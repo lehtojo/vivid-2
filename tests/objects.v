@@ -14,11 +14,11 @@ Car {
 }
 
 export create_apple() {
-	=> Apple()
+	return Apple()
 }
 
 export create_car(price: decimal) {
-	=> Car(price)
+	return Car(price)
 }
 
 init() {
@@ -31,5 +31,5 @@ init() {
 	are_equal(20000.0, car.price)
 
 	are_equal('Flash', car.brand, 0, 5)
-	=> 0
+	return 0
 }

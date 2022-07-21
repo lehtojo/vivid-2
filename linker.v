@@ -22,7 +22,7 @@ namespace linker {
 	# Summary:
 	# Returns whether the specified section should be loaded into memory when the application starts
 	is_loadable_section(section: BinarySection) {
-		=> section.type == BINARY_SECTION_TYPE_TEXT or section.type == BINARY_SECTION_TYPE_DATA
+		return section.type == BINARY_SECTION_TYPE_TEXT or section.type == BINARY_SECTION_TYPE_DATA
 	}
 
 	print_conflicting_symbols_and_abort(objects: List<BinaryObjectFile>, symbol: BinarySymbol) {
@@ -65,7 +65,7 @@ namespace linker {
 			}
 		}
 
-		=> definitions
+		return definitions
 	}
 
 	# Summary:
@@ -142,7 +142,7 @@ namespace linker {
 			i++
 		}
 
-		=> result
+		return result
 	}
 
 	# Summary:

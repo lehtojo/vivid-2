@@ -29,7 +29,7 @@ LoopConditionalStatementLiftupDescriptor {
 
 # Summary: Returns whether the specified node might have a direct effect on the flow
 is_affector(node: Node) {
-	=> node.match(NODE_CALL | NODE_CONSTRUCTION | NODE_DECLARE | NODE_DECREMENT | NODE_DISABLED | NODE_FUNCTION | NODE_INCREMENT | NODE_JUMP | NODE_LABEL | NODE_COMMAND | NODE_RETURN | NODE_OBJECT_LINK | NODE_OBJECT_UNLINK) or (node.instance == NODE_OPERATOR and node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT)
+	return node.match(NODE_CALL | NODE_CONSTRUCTION | NODE_DECLARE | NODE_DECREMENT | NODE_DISABLED | NODE_FUNCTION | NODE_INCREMENT | NODE_JUMP | NODE_LABEL | NODE_COMMAND | NODE_RETURN | NODE_OBJECT_LINK | NODE_OBJECT_UNLINK) or (node.instance == NODE_OPERATOR and node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT)
 }
 
 # Summary:
@@ -95,7 +95,7 @@ remove_unreachable_statements(root: Node) {
 		}
 	}
 
-	=> removed
+	return removed
 }
 
 remove_abandoned_statements_in_scope(statement: Node) {
@@ -256,7 +256,7 @@ find_edited_locals(statement: Node) {
 	}
 
 	editors.clear()
-	=> edited_locals
+	return edited_locals
 }
 
 # Summary:
@@ -267,7 +267,7 @@ is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalSta
 
 	loop dependency in inner_conditional.dependencies {
 		# 1. If the parent context of the dependency is not inside the statement, the dependency is defined outside
-		if dependency.parent.is_inside(statement_context) => false
+		if dependency.parent.is_inside(statement_context) return false
 	}
 
 	# 2. Dependencies can only be edited outside the statement
@@ -279,11 +279,11 @@ is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalSta
 		all_edited = edited_locals[dependency]
 
 		loop edited in all_edited {
-			if edited.is_under(statement) => false
+			if edited.is_under(statement) return false
 		}
 	}
 
-	=> true
+	return true
 }
 
 # Summary:
@@ -306,7 +306,7 @@ deep_copy_statement(statement: Node, context: Context) {
 	copy.remove()
 	copy.parent = none as Node
 
-	=> copy
+	return copy
 }
 
 liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) {

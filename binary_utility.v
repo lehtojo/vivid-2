@@ -78,7 +78,7 @@ BinarySymbol {
 	}
 
 	equals(other: BinarySymbol) {
-		=> this.name == other.name
+		return this.name == other.name
 	}
 }
 
@@ -105,9 +105,9 @@ BINARY_RELOCATION_TYPE_BASE_RELATIVE_64 = 8
 BINARY_RELOCATION_TYPE_BASE_RELATIVE_32 = 9
 
 data_access_modifier_to_relocation_type(modifier: large) {
-	=> when(modifier) {
+	return when(modifier) {
 		DATA_SECTION_MODIFIER_NONE => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
-		DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE=> BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
+		DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
 		DATA_SECTION_MODIFIER_PROCEDURE_LINKAGE_TABLE => BINARY_RELOCATION_TYPE_PROCEDURE_LINKAGE_TABLE,
 		else => 0
 	}
@@ -196,7 +196,7 @@ BinaryStringTable {
 		start = position
 		items.add(item)
 		position += item.length + 1
-		=> start
+		return start
 	}
 
 	build() {
@@ -225,7 +225,7 @@ BinaryStringTable {
 			}
 		}
 
-		=> result
+		return result
 	}
 }
 
@@ -291,7 +291,7 @@ get_all_symbols_from_sections(sections: List<BinarySection>) {
 		}
 	}
 
-	=> symbols
+	return symbols
 }
 
 # Summary:
@@ -330,7 +330,7 @@ compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol
 # Writes the specified source to the specified destination to the specified offset
 write<T>(destination: Array<byte>, offset: large, source: T) {
 	copy(source as link, capacityof(T), destination.data + offset)
-	=> offset + capacityof(T)
+	return offset + capacityof(T)
 }
 
 # Summary:
@@ -344,25 +344,25 @@ write_all<T>(destination: Array<byte>, offset: large, sources: List<T>) {
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read<T>(container: Array<byte>, offset: large) {
-	=> (container.data + offset).(link<T>)[0]
+	return (container.data + offset).(link<T>)[0]
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read<T>(container: link, offset: large) {
-	=> (container + offset).(link<T>)[0]
+	return (container + offset).(link<T>)[0]
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read_object<T>(container: Array<byte>, offset: large) {
-	=> (container.data + offset) as T
+	return (container.data + offset) as T
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read_object<T>(container: link, offset: large) {
-	=> (container + offset) as T
+	return (container + offset) as T
 }
 
 # Summary:
@@ -445,7 +445,7 @@ swap_endianness_int32(value: normal) {
 	c = (value |> 16) & 0xFF
 	d = (value |> 24) & 0xFF
 
-	=> (a <| 24) | (b <| 16) | (c <| 8) | d
+	return (a <| 24) | (b <| 16) | (c <| 8) | d
 }
 
 # Summary:

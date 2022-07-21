@@ -61,5 +61,5 @@ init() {
 	end = time.now()
 	console.write(to_string((end - start) / 10000.0))
 	console.write_line(' ms')
-	=> 0
+	return 0
 }

@@ -31,12 +31,12 @@ DualParameterInstruction AdditionInstruction {
 
 		if assigns {
 			# Example: add r/[...], c/r
-			=> build(platform.shared.ADD, first.size, InstructionParameter(first, FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH | FLAG_READS, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
+			return build(platform.shared.ADD, first.size, InstructionParameter(first, FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH | FLAG_READS, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 
 		if first.is_deactivating() {
 			# Example: add r, c/r/m
-			=> build(platform.shared.ADD, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+			return build(platform.shared.ADD, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 
 		# Example: lea r, [...]
@@ -76,7 +76,7 @@ DualParameterInstruction SubtractionInstruction {
 
 		if assigns {
 			# Example: sub r/[...], c/r
-			=> build(platform.shared.SUBTRACT, first.size, InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
+			return build(platform.shared.SUBTRACT, first.size, InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 
 		# Example: sub r, c/r/[...]
@@ -112,9 +112,9 @@ DualParameterInstruction MultiplicationInstruction {
 	}
 
 	try_get_constant_multiplication() {
-		if first.value.type == HANDLE_CONSTANT and first.format != FORMAT_DECIMAL => ConstantMultiplication(second, first)
-		if second.value.type == HANDLE_CONSTANT and second.format != FORMAT_DECIMAL => ConstantMultiplication(first, second)
-		=> none as ConstantMultiplication
+		if first.value.type == HANDLE_CONSTANT and first.format != FORMAT_DECIMAL return ConstantMultiplication(second, first)
+		if second.value.type == HANDLE_CONSTANT and second.format != FORMAT_DECIMAL return ConstantMultiplication(first, second)
+		return none as ConstantMultiplication
 	}
 
 	on_build_x64() {
@@ -149,7 +149,7 @@ DualParameterInstruction MultiplicationInstruction {
 				# lea rax, [rcx*4]
 
 				calculation = ExpressionHandle(operand, multiplication.multiplier, none as Result, 0)
-				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
+				return build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
 			}
 
 			if common.is_power_of_two(multiplication.multiplier) {
@@ -158,7 +158,7 @@ DualParameterInstruction MultiplicationInstruction {
 				operand = memory.load_operand(unit, multiplication.multiplicand, false, assigns)
 
 				# Example: sal r, c
-				=> build(platform.x64.SHIFT_LEFT, SYSTEM_BYTES, InstructionParameter(operand, FLAG_READS | flags, HANDLE_REGISTER), InstructionParameter(Result(handle, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT))
+				return build(platform.x64.SHIFT_LEFT, SYSTEM_BYTES, InstructionParameter(operand, FLAG_READS | flags, HANDLE_REGISTER), InstructionParameter(Result(handle, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT))
 			}
 
 			if common.is_power_of_two(multiplication.multiplier - 1) and multiplication.multiplier - 1 <= platform.x64.EVALUATE_MAX_MULTIPLIER {
@@ -178,7 +178,7 @@ DualParameterInstruction MultiplicationInstruction {
 
 				if assigns { flags_first = flags_first | FLAG_NO_ATTACH }
 
-				=> build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(destination, flags_first, HANDLE_REGISTER), InstructionParameter(Result(expression, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
+				return build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(destination, flags_first, HANDLE_REGISTER), InstructionParameter(Result(expression, get_system_format(unsigned)), FLAG_NONE, HANDLE_EXPRESSION))
 			}
 		}
 
@@ -195,8 +195,8 @@ DualParameterInstruction MultiplicationInstruction {
 	override on_build() {
 		if assigns and first.is_memory_address unit.add(MoveInstruction(unit, first, result), true)
 
-		if settings.is_x64 => on_build_x64()
-		=> on_build_arm64()
+		if settings.is_x64 return on_build_x64()
+		return on_build_arm64()
 	}
 }
 
@@ -236,12 +236,12 @@ Instruction ReturnInstruction {
 	return_type: Type
 
 	return_register() {
-		if return_type != none and return_type.format == FORMAT_DECIMAL => unit.get_decimal_return_register()
-		=> unit.get_standard_return_register()
+		if return_type != none and return_type.format == FORMAT_DECIMAL return unit.get_decimal_return_register()
+		return unit.get_standard_return_register()
 	}
 
 	return_register_handle() {
-		=> RegisterHandle(return_register)
+		return RegisterHandle(return_register)
 	}
 
 	init(unit: Unit, object: Result, return_type: Type) {
@@ -262,7 +262,7 @@ Instruction ReturnInstruction {
 
 	# Summary: Returns whether the return value is in the wanted return register
 	is_value_in_return_register() {
-		=> object.value.instance == INSTANCE_REGISTER and object.value.(RegisterHandle).register == return_register
+		return object.value.instance == INSTANCE_REGISTER and object.value.(RegisterHandle).register == return_register
 	}
 
 	override on_build() {
@@ -367,9 +367,9 @@ DualParameterInstruction MoveInstruction {
 	# Determines whether the move is considered to be redundant.
 	# If the destination and source operands are the same, the move is considered redundant.
 	is_redundant() {
-		if not first.value.equals(second.value) => false
-		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL => first.format == second.format
-		=> first.size == second.size 
+		if not first.value.equals(second.value) return false
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL return first.format == second.format
+		return first.size == second.size 
 	}
 
 	build_decimal_constant_move_x64(flags_first, flags_second) {
@@ -396,7 +396,7 @@ DualParameterInstruction MoveInstruction {
 			#
 			# mov r, c
 			# mov [...], r
-			=> build(instruction, 0,
+			return build(instruction, 0,
 				InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 				InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 			)
@@ -418,7 +418,7 @@ DualParameterInstruction MoveInstruction {
 		#
 		# mov r, c
 		# mov [...], r
-		=> build(instruction, 0,
+		return build(instruction, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY),
 			InstructionParameter(Result(handle, SYSTEM_FORMAT), flags_second | FLAG_BIT_LIMIT_64, HANDLE_REGISTER)
 		)
@@ -426,7 +426,7 @@ DualParameterInstruction MoveInstruction {
 
 	on_build_decimal_zero_move(flags_first, flags_second) {
 		# Example: pxor x, x
-		=> build(platform.x64.MEDIA_REGISTER_BITWISE_XOR, 0,
+		return build(platform.x64.MEDIA_REGISTER_BITWISE_XOR, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
 			InstructionParameter(first, FLAG_NONE, HANDLE_MEDIA_REGISTER),
 			InstructionParameter(second, flags_second | FLAG_HIDDEN | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT)
@@ -440,7 +440,7 @@ DualParameterInstruction MoveInstruction {
 			second.format = SYSTEM_SIGNED
 
 			# Example: mov r/[...], r/c
-			=> build(platform.shared.MOVE, 0,
+			return build(platform.shared.MOVE, 0,
 				InstructionParameter(first, flags_first, first_parameter_type),
 				InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_CONSTANT)
 			)
@@ -468,7 +468,7 @@ DualParameterInstruction MoveInstruction {
 
 		if is_destination_media_register {
 			if is_source_constant {
-				if second.value.(ConstantHandle).value == 0 => on_build_decimal_zero_move(flags_first, flags_second)
+				if second.value.(ConstantHandle).value == 0 return on_build_decimal_zero_move(flags_first, flags_second)
 
 				build_decimal_constant_move_x64(flags_first, flags_second)
 				return
@@ -481,7 +481,7 @@ DualParameterInstruction MoveInstruction {
 			)
 		}
 		else is_destination_register {
-			if is_source_constant => on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_REGISTER)
+			if is_source_constant return on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_REGISTER)
 
 			# Examples: cvttsd2si r, x/[...]
 			build(platform.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER, SYSTEM_BYTES,
@@ -490,14 +490,14 @@ DualParameterInstruction MoveInstruction {
 			)
 		}
 		else is_destination_memory_address {
-			if is_source_constant => on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_MEMORY)
+			if is_source_constant return on_build_constant_to_decimal_move(flags_first, flags_second, HANDLE_MEMORY)
 
 			if first.format != FORMAT_DECIMAL {
 				# Load the value from memory into a register and use the system size, because if it is smaller than the destination value size, it might not be sign extended
 				if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 				# Example: mov [...], r
-				=> build(platform.shared.MOVE, 0,
+				return build(platform.shared.MOVE, 0,
 					InstructionParameter(first, flags_first, HANDLE_MEMORY),
 					InstructionParameter(second, flags_second, HANDLE_REGISTER)
 				)
@@ -512,15 +512,15 @@ DualParameterInstruction MoveInstruction {
 	}
 
 	on_build_decimal_moves(flags_first, flags_second) {
-		if first.format != second.format => on_build_decimal_conversion(flags_first, flags_second)
+		if first.format != second.format return on_build_decimal_conversion(flags_first, flags_second)
 
 		# If the first operand can be a media register and the second is zero, special instructions can be used
 		if (first.is_media_register or first.is_empty) and second.is_constant and second.value.(ConstantHandle).value == 0 {
-			=> on_build_decimal_zero_move(flags_first, flags_second)
+			return on_build_decimal_zero_move(flags_first, flags_second)
 		}
 
 		if second.is_constant {
-			if settings.is_x64 => build_decimal_constant_move_x64(flags_first, flags_second)
+			if settings.is_x64 return build_decimal_constant_move_x64(flags_first, flags_second)
 
 			# Move the source value into the data section so that it can be loaded into a media register
 			second.value = NumberDataSectionHandle(second.value as ConstantHandle)
@@ -528,7 +528,7 @@ DualParameterInstruction MoveInstruction {
 
 		if first.is_memory_address {
 			# Examples: movsd [...], x
-			=> build(platform.x64.DOUBLE_PRECISION_MOVE, 0,
+			return build(platform.x64.DOUBLE_PRECISION_MOVE, 0,
 				InstructionParameter(first, flags_first, HANDLE_MEMORY),
 				InstructionParameter(second, flags_second, HANDLE_MEDIA_REGISTER)
 			)
@@ -635,14 +635,14 @@ DualParameterInstruction MoveInstruction {
 		else type == MOVE_RELOCATE { flags_second = flags_second | FLAG_ATTACH_TO_DESTINATION | FLAG_RELOCATE_TO_DESTINATION }
 
 		# Handle decimal moves separately
-		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL => on_build_decimal_moves(flags_first, flags_second)
+		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL return on_build_decimal_moves(flags_first, flags_second)
 
 		on_build_x64(flags_first, flags_second)
 	}
 
 	is_move_instruction_x64() {
-		if operation === none => false
-		=> operation == platform.shared.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
+		if operation === none return false
+		return operation == platform.shared.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
 	}
 
 	on_post_build_x64() {
@@ -777,7 +777,7 @@ Instruction InitializeInstruction {
 	}
 
 	get_required_call_memory(call_instructions: List<CallInstruction>) {
-		if call_instructions.size == 0 => 0
+		if call_instructions.size == 0 return 0
 
 		# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
 		max_parameter_memory_offset = -1
@@ -794,11 +794,11 @@ Instruction InitializeInstruction {
 		# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
 		if max_parameter_memory_offset < 0 {
 			# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
-			if settings.is_target_windows => calls.SHADOW_SPACE_SIZE
-			=> 0
+			if settings.is_target_windows return calls.SHADOW_SPACE_SIZE
+			return 0
 		}
 
-		=> max_parameter_memory_offset + SYSTEM_BYTES
+		return max_parameter_memory_offset + SYSTEM_BYTES
 	}
 
 	save_registers_x64(builder: StringBuilder, registers: List<Register>) {
@@ -1067,7 +1067,7 @@ Instruction CallInstruction {
 			locks.add(iterator.register)
 		}
 
-		=> locks
+		return locks
 	}
 
 	output_pack(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
@@ -1218,7 +1218,7 @@ Instruction ReorderInstruction {
 			overflow += SYSTEM_BYTES
 		}
 
-		=> overflow
+		return overflow
 	}
 
 	# Summary: Returns how many bytes of the specified type are returned using the stack
@@ -1226,7 +1226,7 @@ Instruction ReorderInstruction {
 		decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 		standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 
-		=> compute_return_overflow(type, 0, decimal_parameter_registers, standard_parameter_registers)
+		return compute_return_overflow(type, 0, decimal_parameter_registers, standard_parameter_registers)
 	}
 
 	# Summary: Evacuates variables that are located at the overflow zone of the stack
@@ -1295,8 +1295,8 @@ Instruction ReorderInstruction {
 	}
 
 	override get_dependencies() {
-		if extracted => List<Result>()
-		=> sources
+		if extracted return List<Result>()
+		return sources
 	}
 }
 
@@ -1448,7 +1448,7 @@ Instruction GetObjectPointerInstruction {
 			position += member.type.allocation_size
 		}
 
-		=> position
+		return position
 	}
 
 	validate_handle() {
@@ -1560,7 +1560,7 @@ Instruction GetMemoryAddressInstruction {
 			position += member.type.allocation_size
 		}
 
-		=> position
+		return position
 	}
 
 	validate_handle() {
@@ -1707,7 +1707,7 @@ DualParameterInstruction CompareInstruction {
 
 	on_build_x64() {
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
-			=> build(platform.x64.DOUBLE_PRECISION_COMPARE, 0,
+			return build(platform.x64.DOUBLE_PRECISION_COMPARE, 0,
 				InstructionParameter(first, FLAG_NONE, HANDLE_MEDIA_REGISTER),
 				InstructionParameter(second, FLAG_NONE, HANDLE_MEDIA_REGISTER)
 			)
@@ -1715,7 +1715,7 @@ DualParameterInstruction CompareInstruction {
 
 		if settings.is_x64 and second.is_constant and second.value.(ConstantHandle).value == 0 {
 			# Example: test r, r
-			=> build(platform.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER))
+			return build(platform.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER))
 		}
 
 		# Example: cmp r, c/r/[...]
@@ -1723,7 +1723,7 @@ DualParameterInstruction CompareInstruction {
 	}
 
 	override on_build() {
-		if settings.is_x64 => on_build_x64()
+		if settings.is_x64 return on_build_x64()
 	}
 }
 
@@ -1810,19 +1810,19 @@ DualParameterInstruction DivisionInstruction {
 				instruction = MoveInstruction(unit, Result(destination, get_system_format(unsigned)), first)
 				instruction.type = MOVE_RELOCATE
 				unit.add(instruction)
-				=> first
+				return first
 			}
 
 			instruction = MoveInstruction(unit, Result(destination, get_system_format(unsigned)), first)
 			instruction.type = MOVE_COPY
-			=> instruction.add()
+			return instruction.add()
 		}
 		else not assigns {
 			if not first.is_deactivating memory.clear_register(unit, destination.register)
-			=> Result(destination, get_system_format(unsigned))
+			return Result(destination, get_system_format(unsigned))
 		}
 
-		=> first
+		return first
 	}
 
 	# Summary: Ensures the remainder register is ready for division or modulus operation
@@ -1878,8 +1878,8 @@ DualParameterInstruction DivisionInstruction {
 
 	# Summary: Tries to express the current instructions as a division instruction where the divisor is a constant
 	try_get_constant_division() {
-		if second.is_constant and second.format != FORMAT_DECIMAL => ConstantDivision(first, second)
-		=> none as ConstantDivision
+		if second.is_constant and second.format != FORMAT_DECIMAL return ConstantDivision(first, second)
+		return none as ConstantDivision
 	}
 
 	on_build_x64() {
@@ -1909,7 +1909,7 @@ DualParameterInstruction DivisionInstruction {
 				operand = memory.load_operand(unit, division.dividend, false, assigns)
 
 				# Example: sar r, c
-				=> build(platform.x64.SHIFT_RIGHT, SYSTEM_BYTES,
+				return build(platform.x64.SHIFT_RIGHT, SYSTEM_BYTES,
 					InstructionParameter(operand, FLAG_DESTINATION | FLAG_READS | flags, HANDLE_REGISTER),
 					InstructionParameter(Result(count, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT)
 				)
@@ -1939,7 +1939,7 @@ DualParameterInstruction DivisionInstruction {
 			unit.add(MoveInstruction(unit, first, result), true)
 		}
 
-		if settings.is_x64 => on_build_x64()
+		if settings.is_x64 return on_build_x64()
 	}
 }
 
@@ -1970,26 +1970,26 @@ DualParameterInstruction BitwiseInstruction {
 	assigns: bool
 
 	static create_and(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
-		=> BitwiseInstruction(unit, platform.shared.AND, first, second, format, assigns)
+		return BitwiseInstruction(unit, platform.shared.AND, first, second, format, assigns)
 	}
 
 	static create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
 		if settings.is_x64 {
-			if format == FORMAT_DECIMAL => BitwiseInstruction(unit, platform.x64.DOUBLE_PRECISION_XOR, first, second, format, assigns)
-			=> BitwiseInstruction(unit, platform.x64.XOR, first, second, format, assigns)
+			if format == FORMAT_DECIMAL return BitwiseInstruction(unit, platform.x64.DOUBLE_PRECISION_XOR, first, second, format, assigns)
+			return BitwiseInstruction(unit, platform.x64.XOR, first, second, format, assigns)
 		}
 	}
 
 	static create_or(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
-		if settings.is_x64 => BitwiseInstruction(unit, platform.x64.OR, first, second, format, assigns)
+		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.OR, first, second, format, assigns)
 	}
 
 	static create_shift_left(unit: Unit, first: Result, second: Result, format: large) {
-		if settings.is_x64 => BitwiseInstruction(unit, platform.x64.SHIFT_LEFT, first, second, format, false)
+		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_LEFT, first, second, format, false)
 	}
 
 	static create_shift_right(unit: Unit, first: Result, second: Result, format: large) {
-		if settings.is_x64 => BitwiseInstruction(unit, platform.x64.SHIFT_RIGHT, first, second, format, false)
+		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_RIGHT, first, second, format, false)
 	}
 
 	init(unit: Unit, instruction: link, first: Result, second: Result, format: large, assigns: bool) {
@@ -2048,21 +2048,21 @@ DualParameterInstruction BitwiseInstruction {
 		if instruction == platform.x64.DOUBLE_PRECISION_XOR {
 			if assigns abort('Assigning bitwise XOR-operation on media registers is not allowed')
 
-			=> build(instruction.data, 0,
+			return build(instruction.data, 0,
 				InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_MEDIA_REGISTER),
 				InstructionParameter(second, FLAG_NONE, HANDLE_MEDIA_REGISTER | HANDLE_MEMORY)
 			)
 		}
 
 		# TODO: Add unsigned versions
-		if instruction == platform.x64.SHIFT_LEFT or instruction == platform.x64.SHIFT_RIGHT => build_shift_x64()
+		if instruction == platform.x64.SHIFT_LEFT or instruction == platform.x64.SHIFT_RIGHT return build_shift_x64()
 		
 		flags = FLAG_DESTINATION
 		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
 
 		if first.is_memory_address and assigns {
 			# Example: ... [...], c/r
-			=> build(instruction.data, first.size,
+			return build(instruction.data, first.size,
 				InstructionParameter(first, FLAG_READS | flags, HANDLE_MEMORY),
 				InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER)
 			)
@@ -2076,7 +2076,7 @@ DualParameterInstruction BitwiseInstruction {
 	}
 
 	override on_build() {
-		if settings.is_x64 => on_build_x64()
+		if settings.is_x64 return on_build_x64()
 	}
 }
 
@@ -2091,7 +2091,7 @@ Instruction SingleParameterInstruction {
 		else { instruction = SingleParameterInstruction(unit, platform.arm64.NOT, first) }
 
 		instruction.description = "Executes bitwise NOT-operation to the operand"
-		=> instruction
+		return instruction
 	}
 
 	static create_negate(unit: Unit, first: Result, is_decimal: bool) {
@@ -2103,7 +2103,7 @@ Instruction SingleParameterInstruction {
 		else { instruction = SingleParameterInstruction(unit, platform.shared.NEGATE, first) }
 
 		instruction.description = "Negates the operand"
-		=> instruction
+		return instruction
 	}
 
 	init(unit: Unit, instruction: link, first: Result) {
@@ -2121,7 +2121,7 @@ Instruction SingleParameterInstruction {
 	}
 
 	override on_build() {
-		if settings.is_x64 => on_build_x64()
+		if settings.is_x64 return on_build_x64()
 	}
 }
 
@@ -2131,7 +2131,7 @@ Instruction DebugBreakInstruction {
 	position: Position
 
 	static get_position_instruction(position: Position) {
-		=> String(INSTRUCTION) + ' 1 ' + to_string(position.friendly_line) + ' ' + to_string(position.friendly_character)
+		return String(INSTRUCTION) + ' 1 ' + to_string(position.friendly_line) + ' ' + to_string(position.friendly_character)
 	}
 
 	init(unit: Unit, position: Position) {
@@ -2288,7 +2288,7 @@ Instruction CreatePackInstruction {
 			position++
 		}
 
-		=> position
+		return position
 	}
 
 	override on_build() {

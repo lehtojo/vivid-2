@@ -34,7 +34,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		start = header.pointer_of_data
 		end = start + header.size
 
-		if start < 0 or start > bytes.size or end < 0 or end > bytes.size => false
+		if start < 0 or start > bytes.size or end < 0 or end > bytes.size return false
 
 		# Determine the next available index for the new source file
 		index = 0
@@ -51,7 +51,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		files.add(file)
 
 		# Produce tokens from the template code
-		if not (get_tokens(text, true) has tokens) => false
+		if not (get_tokens(text, true) has tokens) return false
 		file.tokens = tokens
 
 		# Register the file to the produced tokens
@@ -80,7 +80,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		}
 	}
 
-	=> true
+	return true
 }
 
 # Summary:
@@ -201,7 +201,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 # Summary:
 # Imports the specified static library by finding the exported symbols and importing them
 internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
-	if not (io.read_file(file) has bytes) => false
+	if not (io.read_file(file) has bytes) return false
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
 
@@ -210,16 +210,16 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 
 	# Load all the exported symbols
 	exported_symbols = pe_format.load_number_of_strings(bytes, position, entries)
-	if exported_symbols == none => false
+	if exported_symbols == none return false
 
 	headers = load_file_headers(bytes)
-	if headers.size == 0 => false
+	if headers.size == 0 return false
 
 	import_templates(context, bytes, headers, file, files)
 	import_object_files_from_static_library(file, headers, bytes, object_files)
 	import_template_type_variants(context, headers, bytes)
 	import_template_function_variants(context, headers, bytes)
-	=> true
+	return true
 }
 
 # Summary:
@@ -257,7 +257,7 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 		header.filename = String.from(bytes.data + position, end - position)
 	}
 
-	=> true
+	return true
 }
 
 # Summary:
@@ -285,7 +285,7 @@ load_file_headers(bytes: Array<byte>) {
 		size_text = String(size_text_buffer.data, size_text_end)
 
 		# Parse the file size
-		if not (as_integer(size_text) has size) => List<StaticLibraryFormatFileHeader>()
+		if not (as_integer(size_text) has size) return List<StaticLibraryFormatFileHeader>()
 
 		# Go to the end of the header, that is the start of the file data
 		position += SIZE_LENGTH + 2 # Skip end command as well: \x60\n
@@ -308,9 +308,9 @@ load_file_headers(bytes: Array<byte>) {
 	}
 
 	# If the filename table was found, apply it to the headers
-	if i != -1 and not load_filenames(bytes, headers[i], headers) => List<StaticLibraryFormatFileHeader>()
+	if i != -1 and not load_filenames(bytes, headers[i], headers) return List<StaticLibraryFormatFileHeader>()
 
-	=> headers
+	return headers
 }
 
 # Summary:
@@ -349,5 +349,5 @@ import_static_library(context: Context, file: String, files: List<SourceFile>, o
 
 	# TODO: Verify all parameter types are resolved
 	context.merge(import_context)
-	=> true
+	return true
 }

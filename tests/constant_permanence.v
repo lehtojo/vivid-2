@@ -30,5 +30,5 @@ init() {
 	constant_permanence_and_array_copy(source, destination)
 
 	are_equal(source, destination, 3, 10)
-	=> 0
+	return 0
 }

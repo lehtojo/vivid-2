@@ -1,8 +1,8 @@
 export special_multiplications(a: large, b: large) {
-	=> 2 * a + b * 17 + a * 9 + b / 4
+	return 2 * a + b * 17 + a * 9 + b / 4
 }
 
 init() { 
 	are_equal(1802, special_multiplications(7, 100))
-	=> 0
+	return 0
 }

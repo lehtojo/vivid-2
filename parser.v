@@ -12,7 +12,7 @@ ParserState {
 		result.tokens = List<Token>(tokens)
 		result.start = start
 		result.end = end
-		=> result
+		return result
 	}
 
 	restore(from: ParserState) {
@@ -31,53 +31,53 @@ ParserState {
 
 	# Summary: Consumes the next token, if its type is contained in the specified types. This function returns true, if the next token is consumed, otherwise false.
 	consume(types: large) {
-		if end >= all.size => false
+		if end >= all.size return false
 		next = all[end]
-		if not has_flag(types, next.type) => false
+		if not has_flag(types, next.type) return false
 		tokens.add(next)
 		end++
-		=> true
+		return true
 	}
 
 	# Summary: Consumes the next token if it exists and it represents the specified operator
 	consume_operator(operator: Operator) {
-		if end >= all.size => false
+		if end >= all.size return false
 		next = all[end]
-		if not next.match(operator) => false
+		if not next.match(operator) return false
 		tokens.add(next)
 		end++
-		=> true
+		return true
 	}
 
 	# Summary: Consumes the next token if it exists and it represents the specified parenthesis
 	consume_parenthesis(type: char) {
-		if end >= all.size => false
+		if end >= all.size return false
 		next = all[end]
-		if not next.match(type) => false
+		if not next.match(type) return false
 		tokens.add(next)
 		end++
-		=> true
+		return true
 	}
 
 	# Summary: Consumes the next token, if its type is contained in the specified types. This function returns true, if the next token is consumed, otherwise an empty token is consumed and false is returned.
 	consume_optional(types: large) {
 		if end >= all.size {
 			tokens.add(Token(TOKEN_TYPE_NONE))
-			=> false
+			return false
 		}
 		next = all[end]
 		if not has_flag(types, next.type) {
 			tokens.add(Token(TOKEN_TYPE_NONE))
-			=> false
+			return false
 		}
 		tokens.add(next)
 		end++
-		=> true
+		return true
 	}
 
 	peek() {
-		if all.size > end => all[end]
-		=> none as Token
+		if all.size > end return all[end]
+		return none as Token
 	}
 }
 
@@ -131,18 +131,18 @@ Token DynamicToken {
 	}
 
 	override clone() {
-		=> DynamicToken(node, position)
+		return DynamicToken(node, position)
 	}
 }
 
 # Summary: Returns the patterns which have the specified priority
 get_patterns(priority: large) {
 	all = patterns[priority]
-	if all != none => all
+	if all != none return all
 
 	all = List<Pattern>()
 	patterns[priority] = all
-	=> all
+	return all
 }
 
 # Summary: Adds the specified pattern to the pattern list
@@ -225,7 +225,7 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 				continue
 			}
 
-			=> false
+			return false
 		}
 
 		token = tokens[start + j]
@@ -242,7 +242,7 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 		}
 		else {
 			result.clear()
-			=> false
+			return false
 		}
 	}
 
@@ -251,7 +251,7 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 	state.start = start
 	state.end = start + j
 
-	=> true
+	return true
 }
 
 # Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
@@ -262,11 +262,11 @@ next(context: Context, tokens: List<Token>, priority: normal, start: large, stat
 		# NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
 		loop (i = 0, i < all.size, i++) {
 			pattern = all[i]
-			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) => true
+			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) return true
 		}
 	}
 
-	=> false
+	return false
 }
 
 # Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
@@ -281,15 +281,15 @@ next_consumable(context: Context, tokens: List<Token>, priority: normal, start: 
 			# Ensure the pattern is consumable and is not disabled
 			if not pattern.is_consumable or (disabled & pattern.id) != 0 continue
 
-			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) => true
+			if fits(pattern, tokens, start, state) and pattern.passes(context, state, state.tokens, priority) return true
 		}
 	}
 
-	=> false
+	return false
 }
 
 parse(root: Node, context: Context, tokens: List<Token>) {
-	=> parse(root, context, tokens, MIN_PRIORITY, MAX_PRIORITY)
+	return parse(root, context, tokens, MIN_PRIORITY, MAX_PRIORITY)
 }
 
 # Summary: Forms function tokens from the specified tokens
@@ -319,17 +319,17 @@ is_line_related(tokens: List<Token>, i: large, j: large, k: large) {
 	second_line_start = none as Token
 	if second_line_start_index < tokens.size { second_line_start = tokens[second_line_start_index] }
 
-	if first_line_end != none and first_line_end.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) => true
-	if second_line_start != none and (second_line_start.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) or second_line_start.match(`{`)) => true
+	if first_line_end != none and first_line_end.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) return true
+	if second_line_start != none and (second_line_start.match(TOKEN_TYPE_OPERATOR | TOKEN_TYPE_KEYWORD) or second_line_start.match(`{`)) return true
 
 	loop (l = i, l < j, l++) {
 		if tokens[l].type != TOKEN_TYPE_KEYWORD continue
 
 		keyword = tokens[l].(KeywordToken).keyword
-		if keyword.type == KEYWORD_TYPE_FLOW => true
+		if keyword.type == KEYWORD_TYPE_FLOW return true
 	}
 
-	=> false
+	return false
 }
 
 is_consuming_namespace(tokens: List<Token>, i: large) {
@@ -343,23 +343,23 @@ is_consuming_namespace(tokens: List<Token>, i: large) {
 	loop (i < tokens.size and tokens[i].match(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_OPERATOR), i++) {}
 
 	# If we reached the end, stop and return none
-	if i >= tokens.size => none as List<Token>
+	if i >= tokens.size return none as List<Token>
 
 	# Optionally consume a line ending
 	if tokens[i].type == TOKEN_TYPE_END {
 		i++
 
 		# If we reached the end, stop and return none
-		if i >= tokens.size => none as List<Token>
+		if i >= tokens.size return none as List<Token>
 	}
 
 	# If this namespace is a consuming section, then the next token is not curly brackets
-	if tokens[i].match(`{`) => none as List<Token>
+	if tokens[i].match(`{`) return none as List<Token>
 
 	section = tokens.slice(start, tokens.size)
 	tokens.remove_all(start, tokens.size)
 
-	=> section
+	return section
 }
 
 # Summary:
@@ -374,10 +374,10 @@ find_consuming_section(tokens: List<Token>) {
 			section = is_consuming_namespace(tokens, i)
 		}
 
-		if section != none => section
+		if section != none return section
 	}
 
-	=> none as List<Token>
+	return none as List<Token>
 }
 
 split(tokens: List<Token>) {
@@ -438,7 +438,7 @@ split(tokens: List<Token>) {
 	# Add the consuming section to the end of all sections, if such was found
 	if consuming_section != none sections.add(consuming_section)
 
-	=> sections
+	return sections
 }
 
 parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
@@ -463,7 +463,7 @@ parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, ma
 
 			# Replace the consumed tokens with the a dynamic token if a node was returned
 			if node != none tokens.insert(state.start, DynamicToken(node))
-			else state.error != none => state.error
+			else state.error != none return state.error
 		}
 	}
 
@@ -476,11 +476,11 @@ parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, ma
 		}
 
 		if token.type != TOKEN_TYPE_END {
-			=> Status(token.position, 'Can not understand')
+			return Status(token.position, 'Can not understand')
 		}
 	}
 
-	=> Status()
+	return Status()
 }
 
 clear_sections(sections: List<List<Token>>) {
@@ -499,32 +499,32 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 
 		if result.problematic {
 			clear_sections(sections)
-			=> result
+			return result
 		}
 	}
 
 	clear_sections(sections)
-	=> Status()
+	return Status()
 }
 
 parse(context: Context, tokens: List<Token>, min: normal, max: normal) {
 	result = Node()
 	parse(result, context, tokens, min, max)
-	=> result
+	return result
 }
 
 # Summary: Creates the root context, which might contain some default types
 create_root_context(index: large) {
 	context = Context(to_string(index), NORMAL_CONTEXT)
 	primitives.inject(context)
-	=> context
+	return context
 }
 
 # Summary: Creates the root context, which might contain some default types
 create_root_context(identity: String) {
 	context = Context(identity, NORMAL_CONTEXT)
 	primitives.inject(context)
-	=> context
+	return context
 }
 
 # Summary: Creates the root node, which might contain some default initializations
@@ -564,7 +564,7 @@ create_root_node(context: Context) {
 		CastNode(NumberNode(SYSTEM_FORMAT, 0, position), TypeNode(primitives.create_bool(), position), position)
 	))
 
-	=> root
+	return root
 }
 
 # Summary: Finds all the extension functions under the specified node and tries to apply them
@@ -666,10 +666,10 @@ validate_supertypes(types: List<Type>) {
 		resolver.resolve_supertypes(type.parent, type)
 		if type.supertypes.all(i -> i.is_resolved) continue
 
-		=> Status("Could not resolve supertypes for type " + type.name)
+		return Status("Could not resolve supertypes for type " + type.name)
 	}
 
-	=> Status()
+	return Status()
 }
 
 # Summary:
@@ -679,9 +679,9 @@ validate_shell(context: Context) {
 	types = common.get_all_types(context)
 
 	result = validate_supertypes(types)
-	if result.problematic => result
+	if result.problematic return result
 
-	=> Status()
+	return Status()
 }
 
 parse() {
@@ -738,24 +738,24 @@ parse() {
 
 	# Validate the shell before proceeding
 	result = validate_shell(context)
-	if result.problematic => result
+	if result.problematic return result
 
 	# Ensure exported and virtual functions are implemented
 	implement_functions(context, none as SourceFile, false)
 
 	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY {
 		function = context.get_function("init")
-		if function == none => Status('Can not find the entry function \'init()\'')
+		if function == none return Status('Can not find the entry function \'init()\'')
 
 		function.overloads[0].get(List<Type>())
 	}
 
 	settings.parse = Parse(context, root as Node)
-	=> Status()
+	return Status()
 }
 
 parse(environment: Context, token: Token) {
-	=> parse(environment, environment, token)
+	return parse(environment, environment, token)
 }
 
 parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
@@ -765,15 +765,15 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
 		variable = context.get_variable(identifier.value)
 
 		# Static variables must be accessed using their parent types
-		if variable.is_static and not linked => LinkNode(TypeNode(variable.parent as Type, position), VariableNode(variable, position), position)
+		if variable.is_static and not linked return LinkNode(TypeNode(variable.parent as Type, position), VariableNode(variable, position), position)
 
 		if variable.is_member and not variable.is_static and not variable.is_constant and not linked {
 			self = common.get_self_pointer(context, position)
 
-			=> LinkNode(self, VariableNode(variable, position), position)
+			return LinkNode(self, VariableNode(variable, position), position)
 		}
 
-		=> VariableNode(variable, position)
+		return VariableNode(variable, position)
 	}
 
 	if context.is_property_declared(identifier.value, linked) {
@@ -781,20 +781,20 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
 
 		if implementation.is_member and not implementation.is_static and not linked {
 			self = common.get_self_pointer(context, position)
-			=> LinkNode(self, FunctionNode(implementation, position), position)
+			return LinkNode(self, FunctionNode(implementation, position), position)
 		}
 
-		=> FunctionNode(implementation, position)
+		return FunctionNode(implementation, position)
 	}
 
-	if context.is_type_declared(identifier.value, linked) => TypeNode(context.get_type(identifier.value), position)
+	if context.is_type_declared(identifier.value, linked) return TypeNode(context.get_type(identifier.value), position)
 
-	=> UnresolvedIdentifier(identifier.value, position)
+	return UnresolvedIdentifier(identifier.value, position)
 }
 
 # Summary: Tries to find a suitable function for the specified settings
 get_function_by_name(context: Context, name: String, parameters: List<Type>, linked: bool) {
-	=> get_function_by_name(context, name, parameters, List<Type>(), linked)
+	return get_function_by_name(context, name, parameters, List<Type>(), linked)
 }
 
 # Summary: Tries to find a suitable function for the specified settings
@@ -806,13 +806,13 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 
 		if template_arguments.size > 0 {
 			# If there are template arguments and if any of the template parameters is unresolved, then this function should fail
-			loop template_argument in template_arguments { if template_argument.is_unresolved => none as FunctionImplementation }
+			loop template_argument in template_arguments { if template_argument.is_unresolved return none as FunctionImplementation }
 
 			if type.is_template_type {
 				# Since the function name refers to a type, the constructors of the type should be explored next
 				functions = type.(TemplateType).get_variant(template_arguments).constructors
 			}
-			else => none as FunctionImplementation
+			else return none as FunctionImplementation
 		}
 		else { functions = type.constructors }
 	}
@@ -820,16 +820,16 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 		functions = context.get_function(name)
 
 		# If there are template parameters, then the function should be retrieved based on them
-		if template_arguments.size > 0 => functions.get_implementation(parameters, template_arguments)
+		if template_arguments.size > 0 return functions.get_implementation(parameters, template_arguments)
 	}
-	else => none as FunctionImplementation
+	else return none as FunctionImplementation
 
-	=> functions.get_implementation(parameters)
+	return functions.get_implementation(parameters)
 }
 
 # Summary: Tries to build the specified function token into a node
 parse_function(environment: Context, primary: Context, token: FunctionToken, linked: bool) {
-	=> parse_function(environment, primary, token, List<Type>(), linked)
+	return parse_function(environment, primary, token, List<Type>(), linked)
 }
 
 # Summary: Tries to build the specified function token into a node
@@ -838,7 +838,7 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 	arguments = descriptor.parse(environment)
 
 	types = resolver.get_types(arguments)
-	if types == none => UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
+	if types == none return UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
 
 	if not linked {
 		# Try to form a lambda function call
@@ -846,7 +846,7 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 
 		if result != none {
 			result.start = descriptor.position
-			=> result
+			return result
 		}
 	}
 
@@ -860,16 +860,16 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 			if type == none abort('Missing constructor parent type')
 
 			# If the descriptor name is not the same as the function name, it is a direct call rather than a construction
-			if not (type.identifier == descriptor.name) => node
-			=> ConstructionNode(node, node.start)
+			if not (type.identifier == descriptor.name) return node
+			return ConstructionNode(node, node.start)
 		}
 
 		if function.is_member and not function.is_static and not linked {
 			self = common.get_self_pointer(environment, descriptor.position)
-			=> LinkNode(self, node, descriptor.position)
+			return LinkNode(self, node, descriptor.position)
 		}
 
-		=> node
+		return node
 	}
 
 	# Lastly, try to form a virtual function call if this function call is not linked
@@ -879,18 +879,18 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 
 		if result != none {
 			result.start = descriptor.position
-			=> result
+			return result
 		}
 	}
 
-	=> UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
+	return UnresolvedFunction(descriptor.name, template_arguments, descriptor.position).set_arguments(arguments)
 }
 
 # Summary: Builds the specified parenthesis into a node
 parse_parenthesis(context: Context, parenthesis: ParenthesisToken) {
 	node = ParenthesisNode(parenthesis.position)
 	loop section in parenthesis.get_sections() { parse(node, context, section, MIN_PRIORITY, MAX_FUNCTION_BODY_PRIORITY) }
-	=> node
+	return node
 }
 
 # Summary: Creates a string object from the specified string node
@@ -898,34 +898,34 @@ create_string_object(node: StringNode) {
 	arguments = Node()
 	arguments.add(node)
 
-	=> UnresolvedFunction(String(STANDARD_STRING_TYPE), node.start).set_arguments(arguments)
+	return UnresolvedFunction(String(STANDARD_STRING_TYPE), node.start).set_arguments(arguments)
 }
 
 parse(environment: Context, primary: Context, token: Token) {
 	if token.type == TOKEN_TYPE_IDENTIFIER {
-		=> parse_identifier(primary, token as IdentifierToken, environment != primary)
+		return parse_identifier(primary, token as IdentifierToken, environment != primary)
 	}
 	else token.type == TOKEN_TYPE_FUNCTION {
-		=> parse_function(environment, primary, token as FunctionToken, environment != primary)
+		return parse_function(environment, primary, token as FunctionToken, environment != primary)
 	}
 	else token.type == TOKEN_TYPE_NUMBER {
 		number = token.(NumberToken)
-		=> NumberNode(number.format, number.data, number.position)
+		return NumberNode(number.format, number.data, number.position)
 	}
 	else token.type == TOKEN_TYPE_PARENTHESIS {
-		=> parse_parenthesis(environment, token as ParenthesisToken)
+		return parse_parenthesis(environment, token as ParenthesisToken)
 	}
 	else token.type == TOKEN_TYPE_STRING {
 		string = StringNode(token.(StringToken).text, token.position)
 
 		if token.(StringToken).opening === `\"` {
-			=> create_string_object(string)
+			return create_string_object(string)
 		}
 
-		=> string
+		return string
 	}
 	else token.type == TOKEN_TYPE_DYNAMIC {
-		=> token.(DynamicToken).node
+		return token.(DynamicToken).node
 	}
 
 	abort("Could not understand token")
@@ -947,24 +947,24 @@ print(node: Node, indentation: large, total: large) {
 
 	loop child in node { total += print(child, indentation + 1, 0) }
 
-	=> total
+	return total
 }
 
 # Summary: Returns whether the token matches the specified character
 Token.match(value: char) {
-	if type != TOKEN_TYPE_PARENTHESIS => false
-	if value == `{` => this.(ParenthesisToken).opening == `{`
-	if value == `(` => this.(ParenthesisToken).opening == `(`
-	if value == `[` => this.(ParenthesisToken).opening == `[`
-	=> false
+	if type != TOKEN_TYPE_PARENTHESIS return false
+	if value == `{` return this.(ParenthesisToken).opening == `{`
+	if value == `(` return this.(ParenthesisToken).opening == `(`
+	if value == `[` return this.(ParenthesisToken).opening == `[`
+	return false
 }
 
 # Summary: Returns whether the token represents the specified operator
 Token.match(operator: Operator) {
-	=> type == TOKEN_TYPE_OPERATOR and this.(OperatorToken).operator == operator
+	return type == TOKEN_TYPE_OPERATOR and this.(OperatorToken).operator == operator
 }
 
 # Summary: Returns whether the token represents the specified keyword
 Token.match(keyword: Keyword) {
-	=> type == TOKEN_TYPE_KEYWORD and this.(KeywordToken).keyword == keyword
+	return type == TOKEN_TYPE_KEYWORD and this.(KeywordToken).keyword == keyword
 }

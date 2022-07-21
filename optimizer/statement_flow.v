@@ -57,7 +57,7 @@ DynamicBitset {
 		# Determine if the bit is set as follows: (data[i / 8] & (1 <| (i % 8))) != 0
 		slot = i / 8
 		mask = 1 <| (i - slot * 8)
-		=> (data[slot] & mask) != 0
+		return (data[slot] & mask) != 0
 	}
 
 	dispose() {
@@ -84,7 +84,7 @@ StatementFlow {
 	label_identity: normal = 0
 
 	get_next_label() {
-		=> to_string(label_identity++)
+		return to_string(label_identity++)
 	}
 
 	init(root: Node) {
@@ -154,7 +154,7 @@ StatementFlow {
 		# Go up in the node tree until we get an index.
 		# This is helpful, because if we pass a child node of an statement, we get back the index of statement
 		loop (iterator = node, iterator != none, iterator = iterator.parent) {
-			if indices.contains_key(iterator) => indices[iterator]
+			if indices.contains_key(iterator) return indices[iterator]
 		}
 
 		abort('Could not return the flow index of the specified node')
@@ -422,7 +422,7 @@ StatementFlow {
 			# 2. If the closest has the value of the maximum integer, it means there is no jump or obstacle ahead
 			# 3. Return from the call if an obstacle is hit
 			# 4. The closest value must represent a jump, so ensure it is not visited before
-			if positions.size == 0 or closest == NORMAL_MAX or closest == closest_obstacle or visited[closest] => executable
+			if positions.size == 0 or closest == NORMAL_MAX or closest == closest_obstacle or visited[closest] return executable
 
 			# Do not visit this jump again
 			visited.set(closest_jump)
@@ -432,10 +432,10 @@ StatementFlow {
 				destination = labels[closest_jump_node.label.name]
 
 				# Do not continue if the maximum depth is reached (recursion limit)
-				if depth - 1 <= 0 => none as List<normal>
+				if depth - 1 <= 0 return none as List<normal>
 
 				result = get_executable_positions(destination, obstacles, positions, visited, depth - 1)
-				if result == none => none as List<normal>
+				if result == none return none as List<normal>
 
 				executable.add_all(result)
 
@@ -443,7 +443,7 @@ StatementFlow {
 				result.clear()
 
 				# Do not continue if all positions have been reached already
-				if positions.size == 0 => executable
+				if positions.size == 0 return executable
 
 				# Fall through the conditional jump
 				start = closest + 1
@@ -462,6 +462,6 @@ StatementFlow {
 		visited = DynamicBitset(indices.size, DEFAULT_MAX_BITSET_SIZE)
 		result = get_executable_positions(start, obstacles, positions, visited, DEFAULT_MAX_DEPTH)
 		visited.dispose()
-		=> result
+		return result
 	}
 }

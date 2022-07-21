@@ -47,7 +47,7 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 		}
 	}
 
-	=> result
+	return result
 }
 
 # Summary: Aligns the specified moves so that intersections are minimized
@@ -120,11 +120,11 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 
 # Summary: Loads the operand so that it is ready based on the specified settings
 load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool) {
-	if not assigns => operand
-	if operand.is_memory_address => memory.copy_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
+	if not assigns return operand
+	if operand.is_memory_address return memory.copy_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
 
 	memory.move_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
-	=> operand
+	return operand
 }
 
 # Summary: Moves the value inside the given register to other register or releases it memory
@@ -187,13 +187,13 @@ copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 		result = MoveInstruction(unit, destination, result).add()
 		source.unlock()
 
-		=> result
+		return result
 	}
 	else {
 		register = get_next_register(unit, media_register, directives, false)
 		destination = Result(RegisterHandle(register), format)
 
-		=> MoveInstruction(unit, destination, result).add()
+		return MoveInstruction(unit, destination, result).add()
 	}
 }
 
@@ -201,10 +201,10 @@ copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 move_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
 	# Prevents redundant moving to registers
 	if media_register {
-		if result.value.type == HANDLE_MEDIA_REGISTER => result
+		if result.value.type == HANDLE_MEDIA_REGISTER return result
 	}
 	else {
-		if result.value.type == HANDLE_REGISTER => result
+		if result.value.type == HANDLE_REGISTER return result
 	}
 
 	format = FORMAT_DECIMAL
@@ -217,12 +217,12 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 	instruction.description = "Move source to a register"
 	instruction.type = MOVE_RELOCATE
 
-	=> instruction.add()
+	return instruction.add()
 }
 
 # Summary: Tries to apply the most important directive
 consider(unit: Unit, directive: Directive, media_register: bool) {
-	=> when(directive.type) {
+	return when(directive.type) {
 		DIRECTIVE_NON_VOLATILITY => unit.get_next_non_volatile_register(media_register, false),
 		DIRECTIVE_AVOID_REGISTERS => {
 			register = none as Register
@@ -251,7 +251,7 @@ consider(unit: Unit, directives: List<Directive>, media_register: bool) {
 		}
 	}
 
-	=> register
+	return register
 }
 
 # Summary: Determines the next register to use
@@ -272,11 +272,11 @@ get_next_register(unit: Unit, media_register: bool, directives: List<Directive>,
 	}
 
 	if register == none {
-		if media_register => unit.get_next_media_register()
-		=> unit.get_next_register()
+		if media_register return unit.get_next_media_register()
+		return unit.get_next_register()
 	}
 
-	=> register
+	return register
 }
 
 # Summary: Tries to get a register without releasing based on the specified directives
@@ -295,11 +295,11 @@ get_next_register_without_releasing(unit: Unit, media_register: bool, directives
 	}
 
 	if register == none {
-		if media_register => unit.get_next_media_register_without_releasing()
-		=> unit.get_next_register_without_releasing()
+		if media_register return unit.get_next_media_register_without_releasing()
+		return unit.get_next_register_without_releasing()
 	}
 
-	=> register
+	return register
 }
 
 # Summary: Moves the specified result to an available register
@@ -333,11 +333,11 @@ try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool,
 		# If the result is empty, a new available register can be assigned to it
 		if result.is_empty {
 			get_register_for(unit, result, is_unsigned(result.format), is_media_register)
-			=> result
+			return result
 		}
 
 		# If the format does not match the required register type, only copy it since the conversion may be lossy
-		if (result.format == FORMAT_DECIMAL) != is_media_register => copy_to_register(unit, result, size, is_media_register, directives)
+		if (result.format == FORMAT_DECIMAL) != is_media_register return copy_to_register(unit, result, size, is_media_register, directives)
 
 		expiring = result.is_deactivating()
 
@@ -352,22 +352,22 @@ try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool,
 			result = copy_to_register(unit, result, size, is_media_register, directives)
 			register.unlock()
 
-			=> result
+			return result
 		}
 
-		=> move_to_register(unit, result, size, is_media_register, directives)
+		return move_to_register(unit, result, size, is_media_register, directives)
 	}
 	else type == HANDLE_MEMORY {
-		if settings.is_x64 and not result.is_data_section_handle => none as Result
+		if settings.is_x64 and not result.is_data_section_handle return none as Result
 
 		# TODO: Support data section handles on Arm64
-		=> none as Result
+		return none as Result
 	}
 	else type == HANDLE_NONE {
 		abort('Tried to convert into an empty result')
 	}
 
-	=> none as Result
+	return none as Result
 }
 
 convert(unit: Unit, result: Result, size: large, types: large, protect: bool, directives: List<Directive>) {
@@ -378,7 +378,7 @@ convert(unit: Unit, result: Result, size: large, types: large, protect: bool, di
 		if (types & type) == 0 continue
 
 		converted = try_convert(unit, result, size, type, protect, directives)
-		if converted != none => converted
+		if converted != none return converted
 
 		# Remove the current type from the flags
 		types = types & (!type)
@@ -395,13 +395,13 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 
 	if result.format != FORMAT_DECIMAL { format = to_format(size, is_unsigned(result.format)) }
 
-	if result.is_media_register => result
+	if result.is_media_register return result
 	else result.is_constant {
 		result.format = format
-		=> result
+		return result
 	}
 	else result.is_standard_register {
-		if result.size >= size => result
+		if result.size >= size return result
 	}
 	else result.is_memory_address {
 		register = get_next_register(unit, format == FORMAT_DECIMAL, directives, false)
@@ -410,7 +410,7 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 		instruction = MoveInstruction(unit, destination, result)
 		instruction.description = "Converts the format of the source operand"
 		instruction.type = MOVE_RELOCATE
-		=> instruction.add()
+		return instruction.add()
 	}
 	else {
 		abort('Unsupported conversion requested')
@@ -424,5 +424,5 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 	instruction = MoveInstruction(unit, destination, result)
 	instruction.description = "Converts the format of the source operand"
 	instruction.type = MOVE_RELOCATE
-	=> instruction.add()
+	return instruction.add()
 }

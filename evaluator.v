@@ -79,7 +79,7 @@ evaluate_conditional_statement(root: IfNode) {
 
 	# 1. Ensure there is only a single node in the condition
 	# 2. Ensure the node is a number
-	if condition != condition_container.last or condition.instance != NODE_NUMBER => false
+	if condition != condition_container.last or condition.instance != NODE_NUMBER return false
 
 	if condition.(NumberNode).value != 0 {
 		# None of the successors will execute
@@ -104,14 +104,14 @@ evaluate_conditional_statement(root: IfNode) {
 			successor = root.successor as ElseIfNode
 			root.replace(IfNode(successor.body.context, successor.condition, successor.body, successor.start, successor.body.end))
 			successor.remove()
-			=> true
+			return true
 		}
 
 		root.replace_with_children(root.successor)
 		root.successor.remove()
 	}
 
-	=> true
+	return true
 }
 
 # Summary: Evaluates conditional statements under the specified node
@@ -148,7 +148,7 @@ evaluate_compiles_nodes(root: Node) {
 		result = 1
 		if node.find(i -> {
 			status = i.get_status()
-			=> status != none and status.problematic
+			return status != none and status.problematic
 		}) != none { result = 0 }
 
 		node.replace(NumberNode(SYSTEM_FORMAT, result, node.start))

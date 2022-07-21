@@ -1,10 +1,10 @@
 namespace textual_assembler
 
 assemble() {
-	if not settings.textual_assembly => Status()
+	if not settings.textual_assembly return Status()
 
 	files = settings.source_files
-	if files.size == 0 => Status('Nothing to assemble')
+	if files.size == 0 return Status('Nothing to assemble')
 
 	link_object_files = settings.link_objects
 
@@ -89,5 +89,5 @@ assemble() {
 	}
 
 	application.exit(0)
-	=> Status()
+	return Status()
 }

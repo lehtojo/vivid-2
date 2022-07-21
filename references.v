@@ -4,19 +4,19 @@ ACCESS_WRITE = 2
 namespace references
 
 create_constant_number(value: large, format: large) {
-	=> ConstantHandle(value, format)
+	return ConstantHandle(value, format)
 }
 
 create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 	category = variable.category
 
-	if category == VARIABLE_CATEGORY_PARAMETER => StackVariableHandle(unit, variable)
+	if category == VARIABLE_CATEGORY_PARAMETER return StackVariableHandle(unit, variable)
 	else category == VARIABLE_CATEGORY_LOCAL {
 		if variable.is_inlined {
-			=> StackAllocationHandle(unit, variable.type.allocation_size, variable.parent.identity + `.` + variable.name)
+			return StackAllocationHandle(unit, variable.type.allocation_size, variable.parent.identity + `.` + variable.name)
 		}
 
-		=> StackVariableHandle(unit, variable)
+		return StackVariableHandle(unit, variable)
 	}
 	else category == VARIABLE_CATEGORY_MEMBER {
 		abort('Can not access member variables here')
@@ -28,7 +28,7 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 
 		handle = DataSectionHandle(variable.get_static_name(), false)
 		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
-		=> handle
+		return handle
 	}
 
 	abort('Unsupported variable category')
@@ -36,10 +36,10 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 
 get_variable(unit: Unit, variable: Variable, mode: large) {
 	if settings.is_debugging_enabled or variable.is_static or variable.is_inlined {
-		=> GetVariableInstruction(unit, variable, mode).add()
+		return GetVariableInstruction(unit, variable, mode).add()
 	}
 
-	=> unit.get_variable_value(variable)
+	return unit.get_variable_value(variable)
 }
 
 get_variable(unit: Unit, node: VariableNode, mode: large) {
@@ -48,22 +48,22 @@ get_variable(unit: Unit, node: VariableNode, mode: large) {
 
 		self = VariableNode(unit.self, node.start)
 		member = VariableNode(node.variable, node.start)
-		=> builders.build_link(unit, LinkNode(self, member, node.start), mode)
+		return builders.build_link(unit, LinkNode(self, member, node.start), mode)
 	}
 
-	=> get_variable(unit, node.variable, mode)
+	return get_variable(unit, node.variable, mode)
 }
 
 get_constant(unit: Unit, node: NumberNode) {
-	=> GetConstantInstruction(unit, node.value, is_unsigned(node.format), node.format == FORMAT_DECIMAL).add()
+	return GetConstantInstruction(unit, node.value, is_unsigned(node.format), node.format == FORMAT_DECIMAL).add()
 }
 
 get(unit: Unit, node: Node, mode: large) {
 	instance = node.instance
 
-	if instance == NODE_VARIABLE => get_variable(unit, node as VariableNode, mode)
-	else instance == NODE_NUMBER => get_constant(unit, node as NumberNode)
-	else instance == NODE_LINK => builders.build_link(unit, node, mode)
-	else instance == NODE_ACCESSOR => builders.build_accessor(unit, node, mode)
-	=> builders.build(unit, node) as Result
+	if instance == NODE_VARIABLE return get_variable(unit, node as VariableNode, mode)
+	else instance == NODE_NUMBER return get_constant(unit, node as NumberNode)
+	else instance == NODE_LINK return builders.build_link(unit, node, mode)
+	else instance == NODE_ACCESSOR return builders.build_accessor(unit, node, mode)
+	return builders.build(unit, node) as Result
 }

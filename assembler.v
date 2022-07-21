@@ -81,7 +81,7 @@ AssemblyBuilder {
 			file_modules = modules[file]
 
 			loop module in file_modules {
-				if module.name == section => module
+				if module.name == section return module
 			}
 		}
 		else {
@@ -92,7 +92,7 @@ AssemblyBuilder {
 		module = DataEncoderModule()
 		module.name = section
 		file_modules.add(module)
-		=> module
+		return module
 	}
 
 	export_symbols(symbols: Array<String>) {
@@ -142,8 +142,8 @@ AssemblyBuilder {
 	}
 
 	string() {
-		if this.text == none => String.empty
-		=> this.text.string()
+		if this.text == none return String.empty
+		return this.text.string()
 	}
 }
 
@@ -175,19 +175,19 @@ Register {
 	}
 
 	is_value_copy() {
-		=> value != none and not (value.value.instance == INSTANCE_REGISTER and value.value.(RegisterHandle).register == this)
+		return value != none and not (value.value.instance == INSTANCE_REGISTER and value.value.(RegisterHandle).register == this)
 	}
 
 	is_available() {
-		=> not is_locked and (value == none or not value.is_active() or is_value_copy())
+		return not is_locked and (value == none or not value.is_active() or is_value_copy())
 	}
 
 	is_deactivating() {
-		=>  not is_locked and value != none and value.is_deactivating()
+		return  not is_locked and value != none and value.is_deactivating()
 	}
 
 	is_releasable(unit: Unit) {
-		=> not is_locked and (value == none or value.is_releasable(unit))
+		return not is_locked and (value == none or value.is_releasable(unit))
 	}
 
 	get(size: large) {
@@ -195,7 +195,7 @@ Register {
 		count = partitions.size
 
 		loop (j = 0, j < count, j++) {
-			if size == i => partitions[count - 1 - j]
+			if size == i return partitions[count - 1 - j]
 			i *= 2
 		}
 
@@ -207,7 +207,7 @@ Register {
 	}
 
 	string() {
-		=> partitions[0]
+		return partitions[0]
 	}
 }
 
@@ -226,7 +226,7 @@ Lifetime {
 			state = usages[i].state
 
 			# If one of the usages is being built, the lifetime must be active
-			if state == INSTRUCTION_STATE_BUILDING => true
+			if state == INSTRUCTION_STATE_BUILDING return true
 
 			# If one of the usages is built, the lifetime must have started already
 			if state == INSTRUCTION_STATE_BUILT {
@@ -236,14 +236,14 @@ Lifetime {
 		}
 
 		# If the lifetime has not started, it can not be active
-		if not started => false
+		if not started return false
 
 		loop (i = 0, i < usages.size, i++) {
 			# Since the lifetime has started, if any of the usages is not built, this lifetime must be active 
-			if usages[i].state != INSTRUCTION_STATE_BUILT => true
+			if usages[i].state != INSTRUCTION_STATE_BUILT return true
 		}
 
-		=> false
+		return false
 	}
 
 	# Summary: Returns true if the lifetime is active and is not starting or ending
@@ -259,14 +259,14 @@ Lifetime {
 		}
 
 		# If the lifetime has not started, it can not be only active
-		if not started => false
+		if not started return false
 
 		loop (i = 0, i < usages.size, i++) {
 			# Look for usage, which has not been built and is not being built
-			if usages[i].state == INSTRUCTION_STATE_NOT_BUILT => true
+			if usages[i].state == INSTRUCTION_STATE_NOT_BUILT return true
 		}
 
-		=> false
+		return false
 	}
 
 	# Summary: Returns true if the lifetime is expiring
@@ -282,14 +282,14 @@ Lifetime {
 		}
 
 		# If none of usages is being built, the lifetime can not be expiring
-		if not building => false
+		if not building return false
 
 		loop (i = 0, i < usages.size, i++) {
 			# If one of the usages is not built, the lifetime can not be expiring
-			if usages[i].state == INSTRUCTION_STATE_NOT_BUILT => false
+			if usages[i].state == INSTRUCTION_STATE_NOT_BUILT return false
 		}
 
-		=> true
+		return true
 	}
 }
 
@@ -318,7 +318,7 @@ Result {
 	register => value.(RegisterHandle).register
 
 	is_releasable(unit: Unit) {
-		=> unit.is_variable_value(this)
+		return unit.is_variable_value(this)
 	}
 
 	is_expression => value.type == HANDLE_EXPRESSION
@@ -419,7 +419,7 @@ Scope {
 			input.value.(RegisterHandle).register.value = input
 		}
 
-		=> input
+		return input
 	}
 
 	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
@@ -455,7 +455,7 @@ Scope {
 
 	add_input(variable: Variable) {
 		# If the variable is already in the input list, do nothing
-		if inputs.contains_key(variable) => inputs[variable]
+		if inputs.contains_key(variable) return inputs[variable]
 
 		# Create a placeholder handle for the variable
 		handle = Handle()
@@ -465,7 +465,7 @@ Scope {
 		inputter.dependencies.add(input)
 		input.lifetime.usages.add(inputter)
 
-		=> input
+		return input
 	}
 
 	add_output(variable: Variable, value: Result) {
@@ -527,18 +527,18 @@ Scope {
 	# Summary: Returns the current handle of the specified variable, if one is present
 	get_variable_value(variable: Variable, recursive: bool) {
 		# Only predictable variables are allowed to be stored
-		if not variable.is_predictable => none as Result
+		if not variable.is_predictable return none as Result
 
 		if variables.contains_key(variable) {
 			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
 			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to individual local variables
 			value = variables[variable]
-			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK => none as Result
-			=> value
+			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK return none as Result
+			return value
 		}
 
 		abort('Missing value for variable')
-		=> none as Result
+		return none as Result
 	}
 
 	exit() {
@@ -560,7 +560,7 @@ pack VariableState {
 		copy = result.value.finalize()
 		copy.format = result.format
 
-		=> pack { variable: variable, handle: copy } as VariableState
+		return pack { variable: variable, handle: copy } as VariableState
 	}
 }
 
@@ -702,7 +702,7 @@ Unit {
 			}
 		}
 
-		=> input
+		return input
 	}
 
 	# Summary:
@@ -725,16 +725,16 @@ Unit {
 
 	# Summary: Tries to return the current value of the specified variable
 	get_variable_value(variable: Variable) {
-		if scope === none => none as Result
+		if scope === none return none as Result
 
 		# If the current scope has a value for the specified variable, we can return it
 		if scope.variables.contains_key(variable) {
-			=> scope.variables[variable]
+			return scope.variables[variable]
 		}
 
 		require(mode !== UNIT_MODE_BUILD, 'Can not require variable from other scopes in build mode')
 
-		=> require_variable_from_arrivals(variable, scope)
+		return require_variable_from_arrivals(variable, scope)
 	}
 
 	add_arrival(id: String, scope: Scope) {
@@ -799,11 +799,11 @@ Unit {
 	}
 
 	add(instruction: Instruction) {
-		if instruction.type === INSTRUCTION_JUMP => add(instruction as JumpInstruction)
-		if instruction.type === INSTRUCTION_LABEL => add(instruction as LabelInstruction)
-		if instruction.type === INSTRUCTION_RETURN => add(instruction as ReturnInstruction)
+		if instruction.type === INSTRUCTION_JUMP return add(instruction as JumpInstruction)
+		if instruction.type === INSTRUCTION_LABEL return add(instruction as LabelInstruction)
+		if instruction.type === INSTRUCTION_RETURN return add(instruction as ReturnInstruction)
 
-		=> add(instruction, false)
+		return add(instruction, false)
 	}
 
 	add(instruction: Instruction, after: bool) {
@@ -853,7 +853,7 @@ Unit {
 
 	release(register: Register) {
 		value = register.value
-		if value == none => register
+		if value == none return register
 
 		if value.is_releasable(this) {
 			loop iterator in scope.variables {
@@ -886,19 +886,19 @@ Unit {
 
 		# Now the register is ready for use
 		register.reset()
-		=> register
+		return register
 	}
 
 	# Summary: Retrieves the next available register, releasing a register to memory if necessary
 	get_next_register() {
 		# Try to find the next fully available volatile register
-		loop register in volatile_standard_registers { if register.is_available() => register }
+		loop register in volatile_standard_registers { if register.is_available() return register }
 		# Try to find the next fully available non-volatile register
-		loop register in non_volatile_standard_registers { if register.is_available() => register }
+		loop register in non_volatile_standard_registers { if register.is_available() return register }
 		# Try to find the next volatile register which contains a value that has a corresponding memory location
-		loop register in volatile_standard_registers { if register.is_releasable(this) => release(register) }
+		loop register in volatile_standard_registers { if register.is_releasable(this) return release(register) }
 		# Try to find the next non-volatile register which contains a value that has a corresponding memory location
-		loop register in non_volatile_standard_registers { if register.is_releasable(this) => release(register) }
+		loop register in non_volatile_standard_registers { if register.is_releasable(this) return release(register) }
 
 		# Since all registers contain intermediate values, one of them must be released to a temporary memory location
 		# NOTE: Some registers may be locked which prevents them from being used, but not all registers should be locked, otherwise something very strange has happened
@@ -906,7 +906,7 @@ Unit {
 		# Find the next register which is not locked
 		loop register in standard_registers {
 			if register.is_locked continue
-			=> release(register)
+			return release(register)
 		}
 
 		# NOTE: This usually happens when there is a flaw in the algorithm and the compiler does not know how to handle a value for example
@@ -916,14 +916,14 @@ Unit {
 	# Summary: Retrieves the next available media register, releasing a media register to memory if necessary
 	get_next_media_register() {
 		# Try to find the next fully available media register
-		loop register in media_registers { if register.is_available() => register }
+		loop register in media_registers { if register.is_available() return register }
 		# Try to find the next media register which contains a value that has a corresponding memory location
-		loop register in media_registers { if register.is_releasable(this) => release(register) }
+		loop register in media_registers { if register.is_releasable(this) return release(register) }
 
 		# Find the next media register which is not locked
 		loop register in media_registers {
 			if register.is_locked continue
-			=> release(register)
+			return release(register)
 		}
 
 		# NOTE: This usually happens when there is a flaw in the algorithm and the compiler does not know how to handle a value for example
@@ -932,111 +932,111 @@ Unit {
 
 	# Summary: Tries to find an available standard register without releasing a register to memory
 	get_next_register_without_releasing() {
-		loop register in volatile_standard_registers { if register.is_available() => register }
-		loop register in non_volatile_standard_registers { if register.is_available() => register }
-		=> none as Register
+		loop register in volatile_standard_registers { if register.is_available() return register }
+		loop register in non_volatile_standard_registers { if register.is_available() return register }
+		return none as Register
 	}
 
 	# Summary: Tries to find an available register without releasing a register to memory, while excluding the specified registers
 	get_next_register_without_releasing(denylist: List<Register>) {
 		loop register in volatile_standard_registers {
-			if not denylist.contains(register) and register.is_available() => register
+			if not denylist.contains(register) and register.is_available() return register
 		}
 
 		loop register in non_volatile_standard_registers {
-			if not denylist.contains(register) and register.is_available() => register
+			if not denylist.contains(register) and register.is_available() return register
 		}
 
-		=> none as Register
+		return none as Register
 	}
 
 	# Summary: Tries to find an available media register without releasing a register to memory
 	get_next_media_register_without_releasing() {
-		loop register in media_registers { if register.is_available() => register }
-		=> none as Register
+		loop register in media_registers { if register.is_available() return register }
+		return none as Register
 	}
 
 	# Summary: Tries to find an available media register without releasing a register to memory, while excluding the specified registers
 	get_next_media_register_without_releasing(denylist: List<Register>) {
 		loop register in media_registers {
-			if not denylist.contains(register) and register.is_available() => register
+			if not denylist.contains(register) and register.is_available() return register
 		}
 
-		=> none as Register
+		return none as Register
 	}
 
 	get_next_non_volatile_register(media_register: bool, release: bool) {
-		loop register in non_volatile_registers { if register.is_available() and register.is_media_register == media_register => register }
-		if not release => none as Register
+		loop register in non_volatile_registers { if register.is_available() and register.is_media_register == media_register return register }
+		if not release return none as Register
 
 		loop register in non_volatile_registers {
 			if register.is_releasable(this) and register.is_media_register == media_register {
 				release(register)
-				=> register
+				return register
 			}
 		}
 
-		=> none as Register
+		return none as Register
 	}
 
 	get_next_string() {
-		=> function.get_fullname() + '_S' + to_string(indexer.string)
+		return function.get_fullname() + '_S' + to_string(indexer.string)
 	}
 
 	get_next_label() {
-		=> Label(function.get_fullname() + '_L' + to_string(indexer.label))
+		return Label(function.get_fullname() + '_L' + to_string(indexer.label))
 	}
 
 	get_next_constant() {
-		=> function.get_fullname() + '_C' + to_string(indexer.constant_value)
+		return function.get_fullname() + '_C' + to_string(indexer.constant_value)
 	}
 
 	get_next_identity() {
-		=> function.identity + '.' + to_string(indexer.identity)
+		return function.identity + '.' + to_string(indexer.identity)
 	}
 
 	get_next_scope() {
-		=> to_string(indexer.scope)
+		return to_string(indexer.scope)
 	}
 
 	get_stack_pointer() {
-		loop register in registers { if has_flag(register.flags, REGISTER_STACK_POINTER) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_STACK_POINTER) return register }
 		abort('Architecture did not have stack pointer register')
 	}
 
 	get_standard_return_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_RETURN) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_RETURN) return register }
 		abort('Architecture did not have standard return register')
 	}
 
 	get_decimal_return_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_DECIMAL_RETURN) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_DECIMAL_RETURN) return register }
 		abort('Architecture did not have decimal return register')
 	}
 
 	get_numerator_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_NUMERATOR) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_NUMERATOR) return register }
 		abort('Architecture did not have numerator register')
 	}
 
 	get_remainder_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_REMAINDER) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_REMAINDER) return register }
 		abort('Architecture did not have remainder register')
 	}
 
 	get_shift_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_SHIFT) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_SHIFT) return register }
 		abort('Architecture did not have shift register')
 	}
 
 	get_return_address_register() {
-		loop register in registers { if has_flag(register.flags, REGISTER_RETURN_ADDRESS) => register }
+		loop register in registers { if has_flag(register.flags, REGISTER_RETURN_ADDRESS) return register }
 		abort('Architecture did not have return address register')
 	}
 
 	# Summary:  Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
-		=> scope != none and scope.variables.contains_key(variable)
+		return scope != none and scope.variables.contains_key(variable)
 	}
 
 	# Summary: Updates the value of the specified variable in the current scope
@@ -1047,37 +1047,37 @@ Unit {
 
 	# Summary: Returns whether any variables owns the specified value
 	is_variable_value(result: Result) {
-		if scope == none => false
-		loop iterator in scope.variables { if iterator.value == result => true }
-		=> false
+		if scope == none return false
+		loop iterator in scope.variables { if iterator.value == result return true }
+		return false
 	}
 
 	# Summary: Returns the variable which owns the specified value, if it is owned by any
 	get_value_owner(value: Result) {
-		if scope == none => none as Variable
+		if scope == none return none as Variable
 
 		loop iterator in scope.variables {
-			if iterator.value == value => iterator.key
+			if iterator.value == value return iterator.key
 		}
 
-		=> none as Variable
+		return none as Variable
 	}
 
 	add_debug_position(node: Node) {
-		=> add_debug_position(node.start)
+		return add_debug_position(node.start)
 	}
 
 	add_debug_position(position: Position) {
-		if not settings.is_debugging_enabled => true
-		if position === none => false
+		if not settings.is_debugging_enabled return true
+		if position === none return false
 
 		add(DebugBreakInstruction(this, position))
 
-		=> true
+		return true
 	}
 
 	string() {
-		=> builder.string()
+		return builder.string()
 	}
 }
 
@@ -1137,7 +1137,7 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 		}
 	}
 
-	=> registers
+	return registers
 }
 
 get_all_handles(results: List<Result>) {
@@ -1148,7 +1148,7 @@ get_all_handles(results: List<Result>) {
 		handles.add_all(get_all_handles(result.value.get_inner_results()))
 	}
 
-	=> handles
+	return handles
 }
 
 get_all_handles(instructions: List<Instruction>) {
@@ -1161,7 +1161,7 @@ get_all_handles(instructions: List<Instruction>) {
 		}
 	}
 
-	=> handles
+	return handles
 }
 
 # Summary: Collects all variables which are saved using stack memory handles
@@ -1173,7 +1173,7 @@ get_all_saved_local_variables(handles: List<Handle>) {
 		variables.add(handle.(StackVariableHandle).variable)
 	}
 
-	=> variables.distinct()
+	return variables.distinct()
 }
 
 # Summary: Collects all temporary memory handles from the specified handle list
@@ -1184,7 +1184,7 @@ get_all_temporary_handles(handles: List<Handle>) {
 		if handle.instance == INSTANCE_TEMPORARY_MEMORY temporary_handles.add(handle as TemporaryMemoryHandle)
 	}
 
-	=> temporary_handles
+	return temporary_handles
 }
 
 # Summary: Collects all stack allocation handles from the specified handle list
@@ -1195,7 +1195,7 @@ get_all_stack_allocation_handles(handles: List<Handle>) {
 		if handle.instance == INSTANCE_STACK_ALLOCATION stack_allocation_handles.add(handle as StackAllocationHandle)
 	}
 
-	=> stack_allocation_handles
+	return stack_allocation_handles
 }
 
 # Summary: Collects all constant data section handles from the specified handle list
@@ -1206,7 +1206,7 @@ get_all_constant_data_section_handles(handles: List<Handle>) {
 		if handle.instance == INSTANCE_CONSTANT_DATA_SECTION constant_data_section_handles.add(handle as ConstantDataSectionHandle)
 	}
 
-	=> constant_data_section_handles
+	return constant_data_section_handles
 }
 
 align_function(function: FunctionImplementation) {
@@ -1256,7 +1256,7 @@ align(context: Context) {
 # NOTE: Available only in debugging mode, because in optimized builds pack representives might not be available
 align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 	# Do nothing if debugging mode is not enabled
-	if not settings.is_debugging_enabled => position
+	if not settings.is_debugging_enabled return position
 
 	loop local in local_variables {
 		# Skip variables that are not packs
@@ -1292,7 +1292,7 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 		}
 	}
 
-	=> position
+	return position
 }
 
 # Summary: Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
@@ -1681,7 +1681,7 @@ get_text_section(implementation: FunctionImplementation) {
 	# Export the generated constants as well
 	builder.add(file, constant_data_section_handles.distinct())
 
-	=> builder
+	return builder
 }
 
 constant EXPORT_DIRECTIVE = '.export'
@@ -1697,8 +1697,8 @@ constant TEXT_SECTION_IDENTIFIER = 'text'
 constant DATA_SECTION_IDENTIFIER = 'data'
 
 get_default_entry_point() {
-	if settings.is_target_windows => "main"
-	=> "_start"
+	if settings.is_target_windows return "main"
+	return "_start"
 }
 
 add_linux_x64_header(entry_function_call: String) {
@@ -1711,7 +1711,7 @@ add_linux_x64_header(entry_function_call: String) {
 	builder.append_line('mov rax, 60')
 	builder.append_line('syscall')
 	builder.append(`\n`)
-	=> builder.string()
+	return builder.string()
 }
 
 add_windows_x64_header(entry_function_call: String) {
@@ -1720,7 +1720,7 @@ add_windows_x64_header(entry_function_call: String) {
 	builder.append_line('main:')
 	builder.append_line(entry_function_call)
 	builder.append(`\n`)
-	=> builder.string()
+	return builder.string()
 }
 
 add_linux_arm64_header(entry_function_call: String) {
@@ -1732,7 +1732,7 @@ add_linux_arm64_header(entry_function_call: String) {
 	builder.append_line('mov x8, #93')
 	builder.append_line('svc #0')
 	builder.append(`\n`)
-	=> builder.string()
+	return builder.string()
 }
 
 add_windows_arm64_header(entry_function_call: String) {
@@ -1741,7 +1741,7 @@ add_windows_arm64_header(entry_function_call: String) {
 	builder.append_line('main:')
 	builder.append_line(entry_function_call)
 	builder.append(`\n`)
-	=> builder.string()
+	return builder.string()
 }
 
 group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
@@ -1760,7 +1760,7 @@ group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
 		groups.add(key, members)
 	}
 
-	=> groups
+	return groups
 }
 
 get_static_variables(type: Type) {
@@ -1789,7 +1789,7 @@ get_static_variables(type: Type) {
 		builder.append_line(to_string(size))
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary:
@@ -1815,14 +1815,14 @@ allocate_static_variable(variable: Variable) {
 	builder.append(` `)
 	builder.append_line(size)
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary: Allocates the specified table label using assembly directives
 add_table_label(label: TableLabel) {
-	if label.declare => label.name + `:`
-	if label.is_section_relative => String(SECTION_RELATIVE_DIRECTIVE) + to_string(label.size * 8) + ` ` + label.name
-	=> String(to_data_section_allocator(label.size)) + ` ` + label.name
+	if label.declare return label.name + `:`
+	if label.is_section_relative return String(SECTION_RELATIVE_DIRECTIVE) + to_string(label.size * 8) + ` ` + label.name
+	return String(to_data_section_allocator(label.size)) + ` ` + label.name
 }
 
 # Summary: Allocates the specified table using assembly directives
@@ -1946,7 +1946,7 @@ allocate_string(text: String) {
 	builder.append(BYTE_ALLOCATOR)
 	builder.append(' 0')
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary: Allocates the specified constants using the specified data section builder
@@ -2002,7 +2002,7 @@ get_bytes<T>(value: T) {
 		bytes.add((value & mask) |> slide)
 	}
 
-	=> bytes
+	return bytes
 }
 
 # Summary: Constructs data section for the specified constants
@@ -2036,14 +2036,14 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 		builder.append_line(text)
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary:
 # Constructs debugging information for each of the files inside the context
 get_debug_sections(context: Context, files: List<SourceFile>) {
 	builders = Map<SourceFile, AssemblyBuilder>()
-	if not settings.is_debugging_enabled => builders
+	if not settings.is_debugging_enabled return builders
 
 	all_implementations = common.get_all_function_implementations(context, false)
 	loop (i = all_implementations.size - 1, i >= 0, i--) { if all_implementations[i].metadata.is_imported all_implementations.remove_at(i) }
@@ -2089,7 +2089,7 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 		builders.add(file, debug.build(file))
 	}
 
-	=> builders
+	return builders
 }
 
 # Summary: Constructs file specific data sections based on the specified context
@@ -2177,7 +2177,7 @@ get_data_sections(context: Context) {
 		sections[iterator.key] = builder
 	}
 
-	=> sections
+	return sections
 }
 
 get_text_sections(context: Context) {
@@ -2235,7 +2235,7 @@ get_text_sections(context: Context) {
 		sections.add(file, builder)
 	}
 
-	=> sections
+	return sections
 }
 
 # Summary: Removes unnecessary line endings
@@ -2261,7 +2261,7 @@ beautify(text: String) {
 		builder.remove(i + 2, j)
 	}
 
-	=> builder.string()
+	return builder.string()
 }
 
 # Summary: Adds debug information to the header, if needed
@@ -2297,7 +2297,7 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	add_debug_information_to_header(builder, file)
 
 	# Do not add the entry function call, if the we are outputting a static library
-	if output_type == BINARY_TYPE_STATIC_LIBRARY => builder
+	if output_type == BINARY_TYPE_STATIC_LIBRARY return builder
 
 	selector = context.get_function("init")
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
@@ -2312,7 +2312,7 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	if settings.initialization_function != none { implementation = settings.initialization_function }
 
 	# Add the entry function call only into the file, which contains the actual entry function
-	if implementation.metadata.start.file != file => builder
+	if implementation.metadata.start.file != file return builder
 
 	header = none as String
 
@@ -2333,14 +2333,14 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	builder.add(file, parser.instructions)
 	builder.export_symbols(parser.exports.to_list())
 
-	=> builder
+	return builder
 }
 
 run(executable: link, arguments: List<String>) {
 	command = String(executable) + ` ` + String.join(` `, arguments)
 	pid = io.shell(command)
 	io.wait_for_exit(pid)
-	=> Status()
+	return Status()
 }
 
 assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
@@ -2442,7 +2442,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	}
 
 	if output_type == BINARY_TYPE_STATIC_LIBRARY {
-		if static_library_format.build(context, object_files, output_name) => assemblies
+		if static_library_format.build(context, object_files, output_name) return assemblies
 		abort('Failed to create the static library')
 	}
 
@@ -2471,7 +2471,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	}
 
 	io.write_file(output_filename, binary)
-	=> assemblies
+	return assemblies
 }
 
 assemble() {
@@ -2495,5 +2495,5 @@ assemble() {
 	# Clean up
 	parse.context.dispose()
 
-	=> Status()
+	return Status()
 }

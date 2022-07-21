@@ -31,24 +31,24 @@ DEFAULT_OUTPUT_NAME = 'v'
 # Summary: Returns the extension of a static library file
 static_library_extension() {
 	if OS == OPERATING_SYSTEM_WINDOWS {
-		=> '.lib'
+		return '.lib'
 	}
 
-	=> '.a'
+	return '.a'
 }
 
 # Summary: Returns the extension of a static library file
 shared_library_extension() {
 	if OS == OPERATING_SYSTEM_WINDOWS {
-		=> '.dll'
+		return '.dll'
 	}
 
-	=> '.so'
+	return '.so'
 }
 
 # Summary: Returns whether the element starts with '-'
 is_option(element: String) {
-	=> element[0] == `-`
+	return element[0] == `-`
 }
 
 # Summary: Collect files from the specified folder
@@ -114,25 +114,25 @@ find_library(library: String) {
 	loop folder in settings.included_folders {
 		filename = folder + library
 
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 
 		filename = folder + LIBRARY_PREFIX + library
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 
 		filename = folder + library + static_library_extension()
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 
 		filename = folder + library + shared_library_extension()
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 
 		filename = folder + LIBRARY_PREFIX + library + static_library_extension()
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 		
 		filename = folder + LIBRARY_PREFIX + library + shared_library_extension()
-		if io.exists(filename) => filename
+		if io.exists(filename) return filename
 	}
 
-	=> none as String
+	return none as String
 }
 
 configure(parameters: List<String>, files: List<String>, libraries: List<String>, value: String) {
@@ -161,38 +161,38 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
-		if parameters.size == 0 => Status('Missing or invalid value for option')
+		if parameters.size == 0 return Status('Missing or invalid value for option')
 		
 		folder = parameters.pop_or(none as String)
-		if is_option(folder) => Status('Missing or invalid value for option')
+		if is_option(folder) return Status('Missing or invalid value for option')
 
 		# Ensure the specified folder exists
-		if not io.exists(folder) => Status('Folder does not exist')
+		if not io.exists(folder) return Status('Folder does not exist')
 
 		collect(files, folder, true)
 	}
 	else value == '-d' or value == '-debug' {
-		if settings.is_optimization_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_optimization_enabled return Status('Optimization and debugging can not be enabled at the same time')
 
 		settings.is_debugging_enabled = true
 	}
 	else value == '-o' or value == '-output' {
-		if parameters.size == 0 => Status('Missing or invalid value for option')
+		if parameters.size == 0 return Status('Missing or invalid value for option')
 
 		name = parameters.pop_or(none as String)
-		if is_option(name) => Status('Missing or invalid value for option')
+		if is_option(name) return Status('Missing or invalid value for option')
 
 		settings.output_name = name
 	}
 	else value == '-l' or value == '-library' {
-		if parameters.size == 0 => Status('Missing or invalid value for option')
+		if parameters.size == 0 return Status('Missing or invalid value for option')
 
 		library = parameters.pop_or(none as String)
-		if is_option(library) => Status('Missing or invalid value for option')
+		if is_option(library) return Status('Missing or invalid value for option')
 
 		filename = find_library(library)
 
-		if filename === none => Status('Can not find the specified library')
+		if filename === none return Status('Can not find the specified library')
 
 		libraries.add(filename)
 	}
@@ -221,7 +221,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.rebuild = true
 	}
 	else value == '-O' or value == '-O1' {
-		if settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_debugging_enabled return Status('Optimization and debugging can not be enabled at the same time')
 
 		settings.is_optimization_enabled = true
 
@@ -232,7 +232,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.is_function_inlining_enabled = false
 	}
 	else value == '-O2' {
-		if settings.is_debugging_enabled => Status('Optimization and debugging can not be enabled at the same time')
+		if settings.is_debugging_enabled return Status('Optimization and debugging can not be enabled at the same time')
 
 		settings.is_optimization_enabled = true
 
@@ -257,10 +257,10 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.service = true
 	}
 	else {
-		=> Status("Unknown option " + value)
+		return Status("Unknown option " + value)
 	}
 	
-	=> Status()
+	return Status()
 }
 
 configure(arguments: List<String>) {
@@ -273,7 +273,7 @@ configure(arguments: List<String>) {
 
 		if is_option(element) {
 			result = configure(arguments, files, libraries, element)
-			if result.problematic => result
+			if result.problematic return result
 			continue
 		}
 		else io.exists(element) {
@@ -295,17 +295,17 @@ configure(arguments: List<String>) {
 				objects.add(element)
 			}
 			else {
-				=> Status('Source files must end with the language extension')
+				return Status('Source files must end with the language extension')
 			}
 
 			continue
 		}
 
-		=> Status('Invalid source file or folder')
+		return Status('Invalid source file or folder')
 	}
 
 	settings.filenames = files
 	settings.user_imported_object_files = objects
 	settings.libraries = libraries
-	=> Status()
+	return Status()
 }

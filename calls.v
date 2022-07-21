@@ -33,25 +33,25 @@ get_standard_parameter_register_names() {
 		result.add('x7')
 	}
 
-	=> result
+	return result
 }
 
 get_standard_parameter_register_count() {
 	if settings.is_x64 {
-		if settings.is_target_windows => 4
-		=> 6
+		if settings.is_target_windows return 4
+		return 6
 	}
 
-	=> 8
+	return 8
 }
 
 get_decimal_parameter_register_count() {
 	if settings.is_x64 {
-		if settings.is_target_windows => 4
-		=> 7
+		if settings.is_target_windows return 4
+		return 7
 	}
 
-	=> 8
+	return 8
 }
 
 get_standard_parameter_registers(unit: Unit) {
@@ -64,7 +64,7 @@ get_standard_parameter_registers(unit: Unit) {
 		}
 	}
 
-	=> registers
+	return registers
 }
 
 get_decimal_parameter_registers(unit: Unit) {
@@ -75,16 +75,16 @@ get_decimal_parameter_registers(unit: Unit) {
 		registers.add(unit.media_registers[i])
 	}
 
-	=> registers
+	return registers
 }
 
 is_self_pointer_required(current: FunctionImplementation, other: FunctionImplementation) {
-	if other.is_static or other.is_constructor or not current.is_member or current.is_static or not other.is_member or other.is_static => false
+	if other.is_static or other.is_constructor or not current.is_member or current.is_static or not other.is_member or other.is_static return false
 
 	x = current.find_type_parent()
 	y = other.find_type_parent()
 
-	=> x == y or x.is_supertype_declared(y)
+	return x == y or x.is_supertype_declared(y)
 }
 
 # Summary: Passes the specified disposable pack by passing its member one by one
@@ -181,9 +181,9 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 # Summary: Collects all parameters from the specified node tree into an array
 collect_parameters(parameters: Node) {
 	result = List<Node>()
-	if parameters == none => result
+	if parameters == none return result
 	loop parameter in parameters { result.add(parameter) }
-	=> result
+	return result
 }
 
 build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplementation) {
@@ -197,7 +197,7 @@ build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplem
 	# Pass the parameters to the function and then execute it
 	pass_arguments(unit, call, self, self_type, false, collect_parameters(parameters), implementation.parameter_types)
 
-	=> call.add()
+	return call.add()
 }
 
 build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>) {
@@ -206,7 +206,7 @@ build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: 
 	# Pass the parameters to the function and then execute it
 	pass_arguments(unit, call, self, self_type, true, collect_parameters(parameters), parameter_types)
 
-	=> call.add()
+	return call.add()
 }
 
 build(unit: Unit, node: FunctionNode) {
@@ -224,12 +224,12 @@ build(unit: Unit, node: FunctionNode) {
 		if local_self_type != function_self_type { self = casts.cast(unit, self, local_self_type, function_self_type) }
 	}
 
-	=> build(unit, self, node.parameters, node.function)
+	return build(unit, self, node.parameters, node.function)
 }
 
 build(unit: Unit, self: Result, node: FunctionNode) {
 	unit.add_debug_position(node)
-	=> build(unit, self, node.parameters, node.function)
+	return build(unit, self, node.parameters, node.function)
 }
 
 move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
