@@ -103,14 +103,14 @@ execute(name: link) {
 	exit_code = io.wait_for_exit(pid)
 	if exit_code != 0 abort('Executed process exited with an error code')
 
-	if not (io.read_file(executable_name + '.out') has log) return String.empty
+	if io.read_file(executable_name + '.out') has not log return String.empty
 
 	return String(log.data, log.size)
 }
 
 # Summary: Loads the specified assembly output file and returns the section which represents the specified function
 load_assembly_function(output: link, function: link) {
-	if not [io.read_file(String(UNIT_TEST_PREFIX) + output + '.asm') has content] {
+	if io.read_file(String(UNIT_TEST_PREFIX) + output + '.asm') has not content {
 		abort('Could not load the specified assembly function')
 	}
 
@@ -425,7 +425,7 @@ pi(optimization: large) {
 
 	log = execute('pi')
 
-	if not (io.read_file(project_file('tests', 'pi.txt')) has bytes) {
+	if io.read_file(project_file('tests', 'pi.txt')) has not bytes {
 		console.write_line('Could not load the expected Pi unit test output')
 	}
 
@@ -479,7 +479,7 @@ virtuals(optimization: large) {
 
 	log = execute('virtuals')
 
-	if not (io.read_file(project_file('tests', 'virtuals.txt')) has bytes) {
+	if io.read_file(project_file('tests', 'virtuals.txt')) has not bytes {
 		console.write_line('Could not load the expected Virtuals unit test output')
 	}
 
@@ -498,7 +498,7 @@ expression_variables(optimization: large) {
 
 	log = execute('expression_variables')
 
-	if not (io.read_file(project_file('tests', 'expression_variables.txt')) has bytes) {
+	if io.read_file(project_file('tests', 'expression_variables.txt')) has not bytes {
 		console.write_line('Could not load the expected Expression variables unit test output')
 	}
 
@@ -526,7 +526,7 @@ lambdas(optimization: large) {
 
 	log = execute('lambdas')
 
-	if not (io.read_file(project_file('tests', 'lambdas.txt')) has bytes) {
+	if io.read_file(project_file('tests', 'lambdas.txt')) has not bytes {
 		console.write_line('Could not load the expected Lambdas unit test output')
 	}
 

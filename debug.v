@@ -872,7 +872,7 @@ Debug {
 			information.add(inheritance_abbrevation)
 			information.add(get_offset(start, get_type_label(supertype, types)))
 
-			if not (type.get_supertype_base_offset(supertype) has supertype_base_offset) abort('Could not resolve supertype base offset')
+			if type.get_supertype_base_offset(supertype) has not supertype_base_offset abort('Could not resolve supertype base offset')
 
 			information.add(supertype_base_offset as normal)
 			information.add(DWARF_ACCESS_PUBLIC)

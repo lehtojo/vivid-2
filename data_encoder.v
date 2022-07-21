@@ -230,7 +230,7 @@ DataEncoderModule {
 			}
 
 			hexadecimal = text.slice(position, position + length)
-			if not (hexadecimal_to_integer(hexadecimal) has value) abort(error)
+			if hexadecimal_to_integer(hexadecimal) has not value abort(error)
 
 			bytes = length / 2
 

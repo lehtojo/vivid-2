@@ -1751,7 +1751,7 @@ Function TemplateFunction {
 		header: FunctionToken = this.header.clone() as FunctionToken
 		insert_arguments(header.parameters.tokens, template_arguments)
 
-		if not (header.get_parameters(Context(this, FUNCTION_CONTEXT)) has expected_parameters) return false
+		if header.get_parameters(Context(this, FUNCTION_CONTEXT)) has not expected_parameters return false
 		if expected_parameters.size != actual_types.size return false
 
 		loop (i = 0, i < actual_types.size, i++) {

@@ -1374,7 +1374,7 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 	to = implementation.find_type_parent()
 
 	# NOTE: The type 'from' must be one of the subtypes of 'to'
-	if not (to.get_supertype_base_offset(from) has alignment) or alignment < 0 abort('Could not add virtual function header')
+	if to.get_supertype_base_offset(from) has not alignment or alignment < 0 abort('Could not add virtual function header')
 
 	if alignment != 0 {
 		self = references.get_variable(unit, unit.self, ACCESS_WRITE)
@@ -1926,7 +1926,7 @@ allocate_string(text: String) {
 
 		hexadecimal = text.slice(position, position + length)
 
-		if not (hexadecimal_to_integer(hexadecimal) has value) abort(error)
+		if hexadecimal_to_integer(hexadecimal) has not value abort(error)
 
 		bytes = length / 2
 		allocator = none as link
@@ -2363,11 +2363,11 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		file = SourceFile(object_filename, String.empty, -1)
 
 		if settings.is_target_windows {
-			if not (pe_format.import_object_file(object_filename) has object_file) abort("Could not import object file " + object_filename)
+			if pe_format.import_object_file(object_filename) has not object_file abort("Could not import object file " + object_filename)
 			object_files.add(file, object_file)
 		}
 		else {
-			if not (elf_format.import_object_file(object_filename) has object_file) abort("Could not import object file " + object_filename)
+			if elf_format.import_object_file(object_filename) has not object_file abort("Could not import object file " + object_filename)
 			object_files.add(file, object_file)
 		}
 	}

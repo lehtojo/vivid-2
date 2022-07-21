@@ -5,7 +5,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 
 	# Determine whether the cast is a down cast
 	if from.is_type_inherited(to) {
-		if not (from.get_supertype_base_offset(to) has offset) abort('Could not compute base offset of a supertype while building down cast')
+		if from.get_supertype_base_offset(to) has not offset abort('Could not compute base offset of a supertype while building down cast')
 		if offset == 0 return result
 
 		return AdditionInstruction(unit, result, Result(ConstantHandle(offset), SYSTEM_SIGNED), result.format, false).add()
@@ -13,7 +13,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 
 	# Determine whether the cast is a up cast
 	if to.is_type_inherited(from) {
-		if not (to.get_supertype_base_offset(from) has offset) abort('Could not compute base offset of a supertype while building up cast')
+		if to.get_supertype_base_offset(from) has not offset abort('Could not compute base offset of a supertype while building up cast')
 		if offset == 0 return result
 
 		return AdditionInstruction(unit, result, Result(ConstantHandle(-offset), SYSTEM_SIGNED), result.format, false).add()

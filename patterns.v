@@ -140,7 +140,7 @@ Pattern FunctionPattern {
 		function.return_type = return_type
 
 		result = descriptor.get_parameters(function)
-		if not (result has parameters) {
+		if result has not parameters {
 			state.error = Status(result.get_error())
 			return none as Node
 		}
@@ -950,7 +950,7 @@ Pattern ImportPattern {
 
 		result = descriptor.get_parameters(function)
 		
-		if not (result has parameters) {
+		if result has not parameters {
 			state.error = Status(descriptor.position, result.get_error())
 			return none as Node
 		}
@@ -1044,7 +1044,7 @@ Pattern ConstructorPattern {
 
 		result = descriptor.get_parameters(function)
 		
-		if not (result has parameters) {
+		if result has not parameters {
 			state.error = Status(descriptor.position, result.get_error())
 			return none as Node
 		}
@@ -1525,7 +1525,7 @@ Pattern TemplateFunctionPattern {
 		template_function = TemplateFunction(context, MODIFIER_DEFAULT, name.value, template_parameters, parenthesis.tokens, start, end)
 
 		# Determine the parameters of the template function
-		if not (descriptor.clone().(FunctionToken).get_parameters(template_function) has parameters) {
+		if descriptor.clone().(FunctionToken).get_parameters(template_function) has not parameters {
 			state.error = Status(start, 'Can not determine the parameters of the template function')
 			return none as Node
 		}
@@ -1691,7 +1691,7 @@ Pattern VirtualFunctionPattern {
 
 		function = VirtualFunction(type, descriptor.name, return_type, start, none as Position)
 
-		if not (descriptor.get_parameters(function) has parameters) {
+		if descriptor.get_parameters(function) has not parameters {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
 			return none as VirtualFunction
 		}
@@ -1744,7 +1744,7 @@ Pattern VirtualFunctionPattern {
 		# Create the virtual function declaration
 		virtual_function = VirtualFunction(type, descriptor.name, return_type, start, none as Position)
 
-		if not (descriptor.get_parameters(virtual_function) has parameters) {
+		if descriptor.get_parameters(virtual_function) has not parameters {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
 			return none as VirtualFunction
 		}
@@ -1761,7 +1761,7 @@ Pattern VirtualFunctionPattern {
 		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, descriptor.position, end)
 
 		# Define the parameters of the default implementation
-		if not (descriptor.get_parameters(function) has implementation_parameters) {
+		if descriptor.get_parameters(function) has not implementation_parameters {
 			state.error = Status(start, 'Can not resolve the parameters of the virtual function')
 			return none as VirtualFunction
 		}
@@ -2001,7 +2001,7 @@ Pattern OverrideFunctionPattern {
 		# Parse the function parameters
 		result = descriptor.get_parameters(function)
 
-		if not (result has parameters) {
+		if result has not parameters {
 			state.error = Status(start, 'Could not resolve the parameters')
 			return none as Node
 		}
@@ -2091,7 +2091,7 @@ Pattern LambdaPattern {
 
 		# Parse the lambda parameters
 		result = header.get_parameters(function)
-		if not (result has parameters) {
+		if result has not parameters {
 			state.error = Status(start, 'Could not resolve the parameters')
 			return none as Node
 		}

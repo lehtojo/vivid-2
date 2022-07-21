@@ -51,7 +51,7 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 		files.add(file)
 
 		# Produce tokens from the template code
-		if not (get_tokens(text, true) has tokens) return false
+		if get_tokens(text, true) has not tokens return false
 		file.tokens = tokens
 
 		# Register the file to the produced tokens
@@ -121,7 +121,7 @@ import_template_type_variants(context: Context, headers: List<StaticLibraryForma
 
 		loop template_variant in template_variants {
 			if template_variant.length == 0 continue
-			if not (get_tokens(template_variant, true) has tokens) continue
+			if get_tokens(template_variant, true) has not tokens continue
 
 			# Create the template variant from the current line
 			imported_type = common.read_type(context, tokens)
@@ -145,7 +145,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 			if template_variant_text.length == 0 continue
 
 			# Extract the container type components
-			if not (get_tokens(template_variant_text, true) has tokens) abort('Could not to import template function variant')
+			if get_tokens(template_variant_text, true) has not tokens abort('Could not to import template function variant')
 			components = List<UnresolvedTypeComponent>()
 
 			loop (tokens.size > 0) {
@@ -201,7 +201,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 # Summary:
 # Imports the specified static library by finding the exported symbols and importing them
 internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
-	if not (io.read_file(file) has bytes) return false
+	if io.read_file(file) has not bytes return false
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
 
@@ -242,7 +242,7 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 		if not is_extended_filename continue
 
 		# This still might fail if the index is too large
-		if not (as_integer(digits) has offset) continue
+		if as_integer(digits) has not offset continue
 
 		# Compute the position of the filename
 		position = filenames.pointer_of_data + offset
@@ -285,7 +285,7 @@ load_file_headers(bytes: Array<byte>) {
 		size_text = String(size_text_buffer.data, size_text_end)
 
 		# Parse the file size
-		if not (as_integer(size_text) has size) return List<StaticLibraryFormatFileHeader>()
+		if as_integer(size_text) has not size return List<StaticLibraryFormatFileHeader>()
 
 		# Go to the end of the header, that is the start of the file data
 		position += SIZE_LENGTH + 2 # Skip end command as well: \x60\n

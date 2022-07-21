@@ -728,7 +728,7 @@ import_object_file(name: String, source: Array<byte>) {
 # Summary:
 # Load the specified object file and constructs a object structure that represents it
 import_object_file(path: String) {
-	if not (io.read_file(path) has bytes) return Optional<BinaryObjectFile>()
+	if io.read_file(path) has not bytes return Optional<BinaryObjectFile>()
 	return Optional<BinaryObjectFile>(import_object_file(path, bytes))
 }
 

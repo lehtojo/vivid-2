@@ -23,13 +23,13 @@ StaticLibraryFormatFile {
 
 	load() {
 		if bytes != none return true
-		if not (io.read_file(name) has result) return false
+		if io.read_file(name) has not result return false
 		bytes = result
 	}
 
 	get_bytes() {
 		if bytes != none return bytes
-		if not (io.read_file(name) has result) return none as Array<byte>
+		if io.read_file(name) has not result return none as Array<byte>
 		bytes = result
 		return bytes
 	}

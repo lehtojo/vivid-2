@@ -989,10 +989,10 @@ private get_number_format(text: String) {
 
 # Summary: Tries to convert the specified string to a number token
 try_create_number_token(text: String, position: Position) {
-	if not (get_exponent(text) has exponent) return Error<NumberToken, String>("Invalid exponent")
+	if get_exponent(text) has not exponent return Error<NumberToken, String>("Invalid exponent")
 
 	if text.index_of(DECIMAL_SEPARATOR) != -1 {
-		if not (as_decimal(get_number_part(text)) has value) return Error<NumberToken, String>("Can not resolve the number")
+		if as_decimal(get_number_part(text)) has not value return Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1.0
@@ -1004,7 +1004,7 @@ try_create_number_token(text: String, position: Position) {
 		return Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
 	}
 	else {
-		if not (as_integer(get_number_part(text)) has value) return Error<NumberToken, String>("Can not resolve the number")
+		if as_integer(get_number_part(text)) has not value return Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1
@@ -1346,7 +1346,7 @@ get_next_token(text: String, start: Position) {
 		area.end = skip_character_value(text, area.start)
 
 		result = get_character_value(text.slice(area.start.local, area.end.local))
-		if not (result has value) return Error<TextArea, String>(result.get_error())
+		if result has not value return Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
 
@@ -1400,7 +1400,7 @@ parse_token(area: TextArea) {
 	}
 	else area.type == TEXT_TYPE_NUMBER {
 		result = try_create_number_token(area.text, area.start)
-		if not (result has number) return Error<Token, String>(result.get_error())
+		if result has not number return Error<Token, String>(result.get_error())
 		return Ok<Token, String>(number)
 	}
 	else area.type == TEXT_TYPE_PARENTHESIS {
@@ -1408,7 +1408,7 @@ parse_token(area: TextArea) {
 		if text.length == 2 return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
 
 		result: Outcome<List<Token>, String> = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
-		if not (result has tokens) return Error<Token, String>(result.get_error())
+		if result has not tokens return Error<Token, String>(result.get_error())
 
 		return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))
 	}
@@ -1420,7 +1420,7 @@ parse_token(area: TextArea) {
 	else area.type == TEXT_TYPE_STRING { token = StringToken(area.text) }
 	else area.type == TEXT_TYPE_HEXADECIMAL {
 		result = parse_hexadecimal(area)
-		if not (result has value) return Error<Token, String>(result.get_error())
+		if result has not value return Error<Token, String>(result.get_error())
 
 		token = NumberToken(value, SYSTEM_FORMAT, area.start, area.end)
 	}
@@ -1532,12 +1532,12 @@ get_tokens(text: String, anchor: Position, postprocess: bool) {
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())
-		if not (area_result has area) return Error<List<Token>, String>(area_result.get_error())
+		if area_result has not area return Error<List<Token>, String>(area_result.get_error())
 		if area == none stop
 
 		if area.type != TEXT_TYPE_COMMENT {
 			token_result = parse_token(area)
-			if not (token_result has token) return Error<List<Token>, String>(token_result.get_error())
+			if token_result has not token return Error<List<Token>, String>(token_result.get_error())
 
 			token.position = area.start
 			tokens.add(token)
@@ -1577,7 +1577,7 @@ tokenize() {
 		file = files[i]
 
 		result = get_tokens(file.content, true)
-		if not (result has tokens) return Status(result.get_error())
+		if result has not tokens return Status(result.get_error())
 
 		register_file(tokens, file)
 		file.tokens = tokens

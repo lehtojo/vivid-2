@@ -628,7 +628,7 @@ AssemblyParser {
 			position.next_line()
 
 			# Tokenize the current line
-			if not (get_tokens(line, position, false) has tokens) abort('Could not understand a line of assembly')
+			if get_tokens(line, position, false) has not tokens abort('Could not understand a line of assembly')
 			register_file(tokens, file)
 
 			# Skip empty lines

@@ -2125,7 +2125,7 @@ Node ExtensionFunctionNode {
 
 			# Parse the parameters
 			result = descriptor.get_parameters(function)
-			if not (result has parameters) return none as Node
+			if result has not parameters return none as Node
 
 			function.parameters.add_all(parameters)
 		}

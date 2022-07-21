@@ -116,7 +116,7 @@ namespace pe_format {
 	# Loads library metadata including the PE-header, data directories and section tables
 	load_library_metadata(file: String) {
 		# Load the image file and determine the PE header offset
-		if not (io.read_file(file) has bytes) return none as PeMetadata
+		if io.read_file(file) has not bytes return none as PeMetadata
 		header_offset = get_header_offset(bytes)
 
 		if header_offset < 0 or header_offset + PeHeader.Size > bytes.size return none as PeMetadata
@@ -1451,7 +1451,7 @@ namespace pe_format {
 	# Summary:
 	# Load the specified object file and constructs a object structure that represents it
 	import_object_file(path: String) {
-		if not (io.read_file(path) has bytes) return Optional<BinaryObjectFile>()
+		if io.read_file(path) has not bytes return Optional<BinaryObjectFile>()
 		return Optional<BinaryObjectFile>(import_object_file(path, bytes))
 	}
 }
