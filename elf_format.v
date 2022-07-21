@@ -1078,7 +1078,7 @@ link(objects: List<BinaryObjectFile>, entry: String, executable: bool) {
 	# Ensure are relocations are resolved
 	loop relocation in relocations {
 		if not relocation.symbol.external continue
-		abort(String('Symbol ') + relocation.symbol.name + String(' is not defined locally or externally'))
+		abort("Symbol " + relocation.symbol.name + " is not defined locally or externally")
 	}
 
 	# Add dynamic sections if needed

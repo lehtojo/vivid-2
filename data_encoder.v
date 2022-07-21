@@ -226,7 +226,7 @@ DataEncoderModule {
 				continue
 			}
 			else {
-				abort(String('Can not understand command: ') + command)
+				abort("Can not understand command: " + command)
 			}
 
 			hexadecimal = text.slice(position, position + length)
@@ -239,7 +239,7 @@ DataEncoderModule {
 				2 => write_int16(value)
 				4 => write_int32(value)
 				8 => write_int64(value)
-				else => abort(String('Can not understand hexadecimal value: ') + hexadecimal)
+				else => abort("Can not understand hexadecimal value: " + hexadecimal)
 			}
 
 			position += length

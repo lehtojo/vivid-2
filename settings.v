@@ -59,7 +59,7 @@ initialize() {
 	user_imported_object_files = List<String>()
 	source_files = List<SourceFile>()
 	libraries = List<String>()
-	output_name = String('v')
+	output_name = "v"
 	output_type = BINARY_TYPE_EXECUTABLE
 	link_objects = false
 	time = false

@@ -447,7 +447,7 @@ Context {
 	}
 
 	create_stack_address() {
-		=> String('stack.') + identity + '.' + to_string(indexer.stack)
+		=> "stack." + identity + '.' + to_string(indexer.stack)
 	}
 
 	create_lambda() {
@@ -646,7 +646,7 @@ RuntimeConfiguration {
 		loop supertype in type.get_all_supertypes() { supertypes.add(supertype.name) }
 
 		builder.append('\\x00')
-		builder.append(String.join(String('\\x00'), supertypes))
+		builder.append(String.join("\\x00", supertypes))
 		builder.append('\\x01')
 
 		=> builder.string()
@@ -1090,7 +1090,7 @@ Context Type {
 				else { member_section = member_section + '?' }
 			}
 
-			=> String('{ ') + String.join(String(', '), member_sections) + ' }'
+			=> "{ " + String.join(", ", member_sections) + ' }'
 		}
 
 		names = List<String>()
@@ -1605,7 +1605,7 @@ Type TemplateType {
 	get_variant_identifier(arguments: List<Type>) {
 		names = List<String>(arguments.size, false)
 		loop argument in arguments { names.add(argument.string()) }
-		=> String.join(String(', '), names)
+		=> String.join(", ", names)
 	}
 
 	try_get_variant(arguments: List<Type>) {
@@ -1685,7 +1685,7 @@ Function TemplateFunction {
 	try_get_variant(template_arguments: List<Type>) {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
-		variant_identifier = String.join(String(', '), names)
+		variant_identifier = String.join(", ", names)
 
 		if variants.contains_key(variant_identifier) => variants[variant_identifier]
 		=> none as FunctionImplementation
@@ -1716,7 +1716,7 @@ Function TemplateFunction {
 	create_variant(template_arguments: List<Type>) {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
-		variant_identifier = String.join(String(', '), names)
+		variant_identifier = String.join(", ", names)
 
 		# Copy the blueprint and insert the specified arguments to their places
 		blueprint: List<Token> = clone(this.blueprint)
@@ -1956,7 +1956,7 @@ Context FunctionImplementation {
 		start: String = String.empty
 		if parent != none and parent.is_type { start = parent.string() + `.` }
 
-		middle: String = metadata.name + `(` + String.join(String(', '), parameters().map<String>((i: Variable) -> i.string())) + '): '
+		middle: String = metadata.name + `(` + String.join(", ", parameters().map<String>((i: Variable) -> i.string())) + '): '
 
 		result = start + middle
 
@@ -2298,7 +2298,7 @@ UnresolvedType FunctionType {
 
 		loop parameter in parameters {
 			if parameter == none {
-				names.add(String('?'))
+				names.add("?")
 				continue
 			}
 
@@ -2308,9 +2308,9 @@ UnresolvedType FunctionType {
 		return_type_name = none as String
 
 		if return_type != none { return_type_name = return_type.string() }
-		else { return_type_name = String('?') }
+		else { return_type_name = "?" }
 
-		=> String('(') + String.join(String(', '), names) + ') -> ' + return_type_name
+		=> "(" + String.join(", ", names) + ') -> ' + return_type_name
 	}
 }
 
@@ -2385,7 +2385,7 @@ Number ArrayType {
 		size: String = none as String
 
 		if expression == none or expression.instance != NODE_NUMBER {
-			size = String('?')
+			size = "?"
 		}
 		else {
 			size = to_string(this.size)

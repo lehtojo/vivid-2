@@ -124,7 +124,7 @@ DataEncoderModule DebugLineEncoderModule {
 
 	private add_folder(folder: String) {
 		components = folder.split(`\\`)
-		string(String.join(String('\\\\'), components)) # Terminated folder path
+		string(String.join("\\\\", components)) # Terminated folder path
 	}
 
 	private add_file(name: String, folder: large) {
@@ -357,11 +357,11 @@ Debug {
 	inheritance_abbrevation: byte = 0
 
 	static get_debug_file_start_label(file_index: large) {
-		=> String('debug_file_') + to_string(file_index) + '_start'
+		=> "debug_file_" + to_string(file_index) + '_start'
 	}
 
 	static get_debug_file_end_label(file_index: large) {
-		=> String('debug_file_') + to_string(file_index) + '_end'
+		=> "debug_file_" + to_string(file_index) + '_end'
 	}
 
 	static get_offset(from: TableLabel, to: TableLabel) {
@@ -1120,10 +1120,10 @@ Debug {
 		abbrevation.is_section = true
 		information.is_section = true
 
-		start = TableLabel(String('debug_info_start'), 8, true)
-		end = TableLabel(String('debug_info_end'), 8, true)
+		start = TableLabel("debug_info_start", 8, true)
+		end = TableLabel("debug_info_end", 8, true)
 
-		version_number_label = TableLabel(String('debug_info_version'), 8, true)
+		version_number_label = TableLabel("debug_info_version", 8, true)
 
 		information.add(start)
 		information.add(get_offset(version_number_label, end))

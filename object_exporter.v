@@ -7,7 +7,7 @@ namespace object_exporter
 # Summary:
 # Creates a template name by combining the specified name and the template argument names together
 create_template_name(name: String, template_argument_names: List<String>) {
-	=> name + `<` + String.join(String(', '), template_argument_names) + `>`
+	=> name + `<` + String.join(", ", template_argument_names) + `>`
 }
 
 # Summary:
@@ -34,7 +34,7 @@ export_template_function(builder: StringBuilder, function: TemplateFunction) {
 	builder.append(` `)
 	builder.append(create_template_name(function.name, function.template_parameters))
 	builder.append(`(`)
-	builder.append(String.join(String(', '), function.parameters.map<String>((i: Parameter) -> i.export_string())))
+	builder.append(String.join(", ", function.parameters.map<String>((i: Parameter) -> i.export_string())))
 	builder.append(`)`)
 	builder.append(` `)
 	builder.append(to_string(function.blueprint.slice(1)))
@@ -48,7 +48,7 @@ export_short_template_function(builder: StringBuilder, function: Function) {
 	builder.append(` `)
 	builder.append(function.name)
 	builder.append(`(`)
-	builder.append(String.join(String(', '), function.parameters.map<String>((i: Parameter) -> i.export_string())))
+	builder.append(String.join(", ", function.parameters.map<String>((i: Parameter) -> i.export_string())))
 	builder.append(`)`)
 	builder.append(' {\n')
 	builder.append(to_string(function.blueprint))
@@ -206,7 +206,7 @@ export_function(builder: StringBuilder, function: Function, implementation: Func
 	builder.append(` `)
 	builder.append(function.name)
 	builder.append(`(`)
-	builder.append(String.join(String(', '), implementation.parameters.map<String>((i: Variable) -> i.string())))
+	builder.append(String.join(", ", implementation.parameters.map<String>((i: Variable) -> i.string())))
 	builder.append(`)`)
 
 	# Add the return type if it is needed
@@ -303,7 +303,7 @@ export_context(context: Context) {
 		}
 
 		if type.supertypes.size > 0 {
-			builder.append(String.join(String(', '), type.supertypes.map<String>((i: Type) -> i.string())))
+			builder.append(String.join(", ", type.supertypes.map<String>((i: Type) -> i.string())))
 			builder.append(` `)
 		}
 
@@ -361,7 +361,7 @@ export_template_function_variants(context: Context) {
 
 		builder.append(template_variant.name)
 		builder.append(`(`)
-		builder.append(String.join(String(', '), template_variant.parameter_types.map<String>((i: Type) -> i.string())))
+		builder.append(String.join(", ", template_variant.parameter_types.map<String>((i: Type) -> i.string())))
 		builder.append_line(`)`)
 	}
 

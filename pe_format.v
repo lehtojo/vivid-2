@@ -440,7 +440,7 @@ namespace pe_format {
 
 			# If the section name is too long, move it into the string table and point to that name by using the pattern '/<Section name offset in the string table>'
 			if section.name.length > 8 {
-				section_name = String('/') + to_string(symbol_name_table.add(section.name))
+				section_name = "/" + to_string(symbol_name_table.add(section.name))
 			}
 
 			section_table = PeSectionTable()
@@ -619,9 +619,9 @@ namespace pe_format {
 		ordinal_table_position = PeExportDirectoryTable.Size + symbols.size * (sizeof(normal) + sizeof(normal))
 
 		# Create symbols, which represent the start of the tables specified above
-		export_address_table_symbol = BinarySymbol(String('.export-address-table'), export_address_table_position, false, exporter_section)
-		name_pointer_table_symbol = BinarySymbol(String('.name-pointer-table'), name_pointer_table_position, false, exporter_section)
-		ordinal_table_symbol = BinarySymbol(String('.ordinal-table'), ordinal_table_position, false, exporter_section)
+		export_address_table_symbol = BinarySymbol(".export-address-table", export_address_table_position, false, exporter_section)
+		name_pointer_table_symbol = BinarySymbol(".name-pointer-table", name_pointer_table_position, false, exporter_section)
+		ordinal_table_symbol = BinarySymbol(".ordinal-table", ordinal_table_position, false, exporter_section)
 
 		loop (i = 0, i < symbols.size, i++) {
 			# NOTE: None of the virtual addresses can be written at the moment, since section virtual addresses are not yet known. Therefore, they must be completed with relocations.
@@ -632,7 +632,7 @@ namespace pe_format {
 
 			# Write the name virtual address to the export section data using a relocation
 			name_pointer = string_table_start + string_table.add(symbol.name)
-			name_symbol = BinarySymbol(String('.string.') + symbol.name, name_pointer, false, exporter_section)
+			name_symbol = BinarySymbol(".string." + symbol.name, name_pointer, false, exporter_section)
 			exporter_section.relocations.add(BinaryRelocation(name_symbol, name_pointer_table_position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32, exporter_section))
 
 			# Write the ordinal to the export section data
@@ -645,7 +645,7 @@ namespace pe_format {
 		}
 
 		# Store the output name of this shared library in the string table
-		library_name_symbol = BinarySymbol(String('.library'), string_table_start + string_table.add(output_name), false, exporter_section)
+		library_name_symbol = BinarySymbol(".library", string_table_start + string_table.add(output_name), false, exporter_section)
 
 		# Add the string table inside the exporter section
 		string_table_data = string_table.build()
@@ -798,20 +798,20 @@ namespace pe_format {
 
 				# Not being able to load the exported symbols is not fatal, so we can continue, however we should notify the user
 				if symbols == none {
-					console.write_line(String('Warning: Could not load exported symbols from library: ') + imports[i])
+					console.write_line("Warning: Could not load exported symbols from library: " + imports[i])
 					continue
 				}
 
 				if not symbols.contains(relocation.symbol.name) continue
 
 				# Ensure the external symbol is not defined in multiple libraries, because this could cause weird behavior depending on the order of the imported libraries
-				if library != none abort(String('Symbol ') + relocation.symbol.name + ' is defined in both ' + library + ' and ' + imports[i])
+				if library != none abort("Symbol " + relocation.symbol.name + ' is defined in both ' + library + ' and ' + imports[i])
 
 				library = imports[i]
 			}
 
 			# Ensure the library was found
-			if library === none abort(String('Symbol ') + relocation.symbol.name + ' is not defined locally or externally')
+			if library === none abort("Symbol " + relocation.symbol.name + ' is not defined locally or externally')
 
 			# Add the symbol to the import list linked to the library
 			if import_lists.contains_key(library) { import_lists[library].add(relocation.symbol.name) }
@@ -844,9 +844,9 @@ namespace pe_format {
 			import_list = import_lists[import_library]
 
 			# Create symbols for the import lookup table, library name and import address table that describe their virtual addresses
-			import_lookup_table_start = BinarySymbol(String('.lookup.') + to_string(i), 0, false, importer_section)
-			import_library_name_start = BinarySymbol(String('.library.') + to_string(i), 0, false, importer_section)
-			import_address_table_start = BinarySymbol(String('.imports.') + to_string(i), 0, false)
+			import_lookup_table_start = BinarySymbol(".lookup." + to_string(i), 0, false, importer_section)
+			import_library_name_start = BinarySymbol(".library." + to_string(i), 0, false, importer_section)
+			import_address_table_start = BinarySymbol(".imports." + to_string(i), 0, false)
 
 			# Add the library name to the string table and compute its offset
 			string_table.write_int16(0)
@@ -891,14 +891,14 @@ namespace pe_format {
 				# Align the next entry on an even boundary
 				if string_table.position % 2 != 0 string_table.write(0)
 
-				import_symbol = BinarySymbol(String('.string.') + import_symbol_name, import_symbol_offset, false, importer_section)
+				import_symbol = BinarySymbol(".string." + import_symbol_name, import_symbol_offset, false, importer_section)
 
 				# Fill in the location of the imported symbol when its virtual address is decided
 				relocations.add(BinaryRelocation(import_symbol, position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32, importer_section))
 				position += sizeof(large)
 
 				# Reserve space for the address of the imported function when it is loaded, also create a symbol which represents the location of the address
-				import_address_symbol = import_address_section_builder.create_local_symbol(String('.import.') + import_symbol_name, import_address_section_builder.position, false)
+				import_address_symbol = import_address_section_builder.create_local_symbol(".import." + import_symbol_name, import_address_section_builder.position, false)
 				import_address_section_builder.relocations.add(BinaryRelocation(import_symbol, import_address_section_builder.position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32))
 				import_address_section_builder.write_int64(0)
 

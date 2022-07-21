@@ -99,8 +99,8 @@ Node NumberNode {
 	}
 
 	override string() {
-		if format == FORMAT_DECIMAL => String('Decimal Number ') + to_string(bits_to_decimal(value))
-		=> String('Number ') + to_string(value)
+		if format == FORMAT_DECIMAL => "Decimal Number " + to_string(bits_to_decimal(value))
+		=> "Number " + to_string(value)
 	}
 }
 
@@ -219,7 +219,7 @@ Node OperatorNode {
 	}
 
 	override string() {
-		=> String('Operator ') + operator.identifier
+		=> "Operator " + operator.identifier
 	}
 }
 
@@ -250,7 +250,7 @@ Node ScopeNode {
 	}
 
 	override string() {
-		=> String('Scope ') + context.identity
+		=> "Scope " + context.identity
 	}
 }
 
@@ -285,7 +285,7 @@ Node VariableNode {
 	}
 
 	override string() {
-		=> String('Variable ') + variable.name
+		=> "Variable " + variable.name
 	}
 }
 
@@ -366,7 +366,7 @@ OperatorNode LinkNode {
 	}
 
 	override string() {
-		=> String('Link')
+		=> "Link"
 	}
 }
 
@@ -398,7 +398,7 @@ Node UnresolvedIdentifier {
 	}
 
 	override get_status() {
-		=> Status(start, String('Can not resolve identifier ') + value)
+		=> Status(start, "Can not resolve identifier " + value)
 	}
 
 	override copy() {
@@ -406,7 +406,7 @@ Node UnresolvedIdentifier {
 	}
 
 	override string() {
-		=> String('Unresolved Identifier ') + value
+		=> "Unresolved Identifier " + value
 	}
 }
 
@@ -630,11 +630,11 @@ Node UnresolvedFunction {
 	override get_status() {
 		types = List<Type>()
 		loop iterator in this { types.add(iterator.try_get_type()) }
-		=> Status(start, String('Can not find function ') + common.to_string(name, types, arguments))
+		=> Status(start, "Can not find function " + common.to_string(name, types, arguments))
 	}
 
 	override string() {
-		=> String('Unresolved Function ') + name
+		=> "Unresolved Function " + name
 	}
 }
 
@@ -677,7 +677,7 @@ Node TypeNode {
 	}
 
 	override string() {
-		=> String('Type ') + type.name
+		=> "Type " + type.name
 	}
 }
 
@@ -718,7 +718,7 @@ Node TypeDefinitionNode {
 	}
 
 	override string() {
-		=> String('Type Definition ') + type.name
+		=> "Type Definition " + type.name
 	}
 }
 
@@ -740,7 +740,7 @@ Node FunctionDefinitionNode {
 	}
 
 	override string() {
-		=> String('Function Definition ') + function.name
+		=> "Function Definition " + function.name
 	}
 }
 
@@ -774,7 +774,7 @@ Node StringNode {
 	}
 
 	override string() {
-		=> String('String ') + text
+		=> "String " + text
 	}
 }
 
@@ -808,7 +808,7 @@ Node FunctionNode {
 	}
 
 	override string() {
-		=> String('Function Call ') + function.name
+		=> "Function Call " + function.name
 	}
 }
 
@@ -836,7 +836,7 @@ Node ConstructionNode {
 	}
 
 	override string() {
-		=> String('Construction ') + constructor.function.name
+		=> "Construction " + constructor.function.name
 	}
 }
 
@@ -856,7 +856,7 @@ Node ParenthesisNode {
 	}
 
 	override string() {
-		=> String('Parenthesis')
+		=> "Parenthesis"
 	}
 }
 
@@ -876,7 +876,7 @@ Node ReturnNode {
 	}
 
 	override string() {
-		=> String('Return')
+		=> "Return"
 	}
 }
 
@@ -975,7 +975,7 @@ Node IfNode {
 	}
 
 	override string() {
-		=> String('If')
+		=> "If"
 	}
 }
 
@@ -1005,7 +1005,7 @@ IfNode ElseIfNode {
 	}
 
 	override string() {
-		=> String('Else If')
+		=> "Else If"
 	}
 }
 
@@ -1028,7 +1028,7 @@ Node ListNode {
 	}
 
 	override string() {
-		=> String('List')
+		=> "List"
 	}
 }
 
@@ -1087,7 +1087,7 @@ Node LoopNode {
 	}
 
 	override string() {
-		=> String('Loop')
+		=> "Loop"
 	}
 }
 
@@ -1148,7 +1148,7 @@ Node CastNode {
 	}
 
 	override string() {
-		=> String('Cast')
+		=> "Cast"
 	}
 }
 
@@ -1237,7 +1237,7 @@ Node NegateNode {
 	}
 
 	override string() {
-		=> String('Negate')
+		=> "Negate"
 	}
 }
 
@@ -1285,7 +1285,7 @@ Node ElseNode {
 	}
 
 	override string() {
-		=> String('Else')
+		=> "Else"
 	}
 }
 
@@ -1318,8 +1318,8 @@ Node IncrementNode {
 	}
 
 	override string() {
-		if post => String('PostIncrement')
-		=> String('PreIncrement')
+		if post => "PostIncrement"
+		=> "PreIncrement"
 	}
 }
 
@@ -1352,8 +1352,8 @@ Node DecrementNode {
 	}
 
 	override string() {
-		if post => String('PostDecrement')
-		=> String('PreDecrement')
+		if post => "PostDecrement"
+		=> "PreDecrement"
 	}
 }
 
@@ -1382,7 +1382,7 @@ Node NotNode {
 	}
 
 	override string() {
-		=> String('Not')
+		=> "Not"
 	}
 }
 
@@ -1454,7 +1454,7 @@ Node AccessorNode {
 	}
 
 	override string() {
-		=> String('Accessor')
+		=> "Accessor"
 	}
 }
 
@@ -1478,7 +1478,7 @@ Node InlineNode {
 	}
 
 	override string() {
-		=> String('Inline')
+		=> "Inline"
 	}
 }
 
@@ -1509,7 +1509,7 @@ Node DataPointerNode {
 	}
 
 	override string() {
-		=> String('Empty Data Pointer')
+		=> "Empty Data Pointer"
 	}
 }
 
@@ -1530,7 +1530,7 @@ DataPointerNode FunctionDataPointerNode {
 	}
 
 	override string() {
-		=> String('Function Data Pointer: ') + function.get_fullname()
+		=> "Function Data Pointer: " + function.get_fullname()
 	}
 }
 
@@ -1551,7 +1551,7 @@ DataPointerNode TableDataPointerNode {
 	}
 
 	override string() {
-		=> String('Table Data Pointer: ') + table.name
+		=> "Table Data Pointer: " + table.name
 	}
 }
 
@@ -1587,7 +1587,7 @@ Node StackAddressNode {
 	}
 
 	override string() {
-		=> String('Stack Allocation ') + type.name
+		=> "Stack Allocation " + type.name
 	}
 }
 
@@ -1637,7 +1637,7 @@ Node JumpNode {
 	}
 
 	override string() {
-		=> String('Jump ') + label.name
+		=> "Jump " + label.name
 	}
 }
 
@@ -1665,7 +1665,7 @@ Node DeclareNode {
 	}
 
 	override string() {
-		=> String('Declare ') + variable.name
+		=> "Declare " + variable.name
 	}
 }
 
@@ -1799,7 +1799,7 @@ Node CallNode {
 	}
 
 	override string() {
-		=> String('Call')
+		=> "Call"
 	}
 }
 
@@ -1846,8 +1846,8 @@ Node InspectionNode {
 	}
 
 	override string() {
-		if type == INSPECTION_TYPE_NAME => String('Name of')
-		=> String('Size of')
+		if type == INSPECTION_TYPE_NAME => "Name of"
+		=> "Size of"
 	}
 }
 
@@ -1915,7 +1915,7 @@ Node IsNode {
 	}
 
 	override string() {
-		=> String('Is')
+		=> "Is"
 	}
 }
 
@@ -2070,7 +2070,7 @@ Node HasNode {
 	}
 
 	override string() {
-		=> String('Has')
+		=> "Has"
 	}
 }
 
@@ -2138,7 +2138,7 @@ Node ExtensionFunctionNode {
 	}
 
 	override get_status() {
-		message = String('Can not resolve the destination ') + destination.string() + ' of the extension function'
+		message = "Can not resolve the destination " + destination.string() + ' of the extension function'
 		=> Status(start, message)
 	}
 
@@ -2147,7 +2147,7 @@ Node ExtensionFunctionNode {
 	}
 
 	override string() {
-		=> String('Extension function')
+		=> "Extension function"
 	}
 }
 
@@ -2241,7 +2241,7 @@ Node WhenNode {
 	}
 
 	override string() {
-		=> String('When')
+		=> "When"
 	}
 }
 
@@ -2313,7 +2313,7 @@ Node ListConstructionNode {
 		elements: List<String> = List<String>()
 		loop element in this { elements.add(element.string()) }
 
-		=> String('[ ') + String.join(String(', '), elements) + ' ]'
+		=> "[ " + String.join(", ", elements) + ' ]'
 	}
 }
 
@@ -2415,7 +2415,7 @@ Node PackConstructionNode {
 		if not type.is_pack => Status(start, 'Target type must be a pack type')
 
 		missing = capture_missing_member()
-		if missing !== none => Status(start, String('Missing value for member ') + missing.name)
+		if missing !== none => Status(start, "Missing value for member " + missing.name)
 
 		=> none as Status
 	}
@@ -2425,7 +2425,7 @@ Node PackConstructionNode {
 	}
 
 	override string() {
-		=> String('Pack { ') + String.join(String(', '), members) + ' }'
+		=> "Pack { " + String.join(", ", members) + ' }'
 	}
 }
 
@@ -2446,7 +2446,7 @@ Node PackNode {
 	}
 
 	override string() {
-		=> String('Pack')
+		=> "Pack"
 	}
 }
 
@@ -2469,6 +2469,6 @@ Node UndefinedNode {
 	}
 
 	override string() {
-		=> String('Undefined')
+		=> "Undefined"
 	}
 }

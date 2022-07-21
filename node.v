@@ -396,9 +396,7 @@ Node {
 
 	get_type() {
 		type = try_get_type()
-		if type == none {
-			abort(String('Could not get node type'))
-		}
+		if type === none { abort('Could not get node type') }
 		=> type
 	}
 
@@ -451,6 +449,6 @@ Node {
 	}
 
 	virtual string() {
-		=> String('Node')
+		=> "Node"
 	}
 }

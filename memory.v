@@ -155,7 +155,7 @@ clear_register(unit: Unit, target: Register) {
 
 	instruction = MoveInstruction(unit, Result(destination, target.value.format), target.value)
 	instruction.type = MOVE_RELOCATE
-	instruction.description = String('Relocates the source value so that the register is cleared for another purpose')
+	instruction.description = "Relocates the source value so that the register is cleared for another purpose"
 
 	unit.add(instruction)
 
@@ -169,7 +169,7 @@ zero(unit: Unit, register: Register) {
 	handle = RegisterHandle(register)
 
 	instruction = BitwiseInstruction.create_xor(unit, Result(handle, SYSTEM_FORMAT), Result(handle, SYSTEM_FORMAT), SYSTEM_FORMAT, false)
-	instruction.description = String('Sets the value of the destination to zero')
+	instruction.description = "Sets the value of the destination to zero"
 
 	unit.add(instruction)
 }
@@ -214,7 +214,7 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 	destination = Result(RegisterHandle(register), format)
 
 	instruction = MoveInstruction(unit, destination, result)
-	instruction.description = String('Move source to a register')
+	instruction.description = "Move source to a register"
 	instruction.type = MOVE_RELOCATE
 
 	=> instruction.add()
@@ -408,7 +408,7 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 		destination = Result(RegisterHandle(register), format)
 
 		instruction = MoveInstruction(unit, destination, result)
-		instruction.description = String('Converts the format of the source operand')
+		instruction.description = "Converts the format of the source operand"
 		instruction.type = MOVE_RELOCATE
 		=> instruction.add()
 	}
@@ -422,7 +422,7 @@ convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
 	destination = Result(RegisterHandle(register), format)
 
 	instruction = MoveInstruction(unit, destination, result)
-	instruction.description = String('Converts the format of the source operand')
+	instruction.description = "Converts the format of the source operand"
 	instruction.type = MOVE_RELOCATE
 	=> instruction.add()
 }

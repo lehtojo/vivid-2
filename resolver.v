@@ -405,21 +405,21 @@ are_reports_equal(a: List<Status>, b: List<Status>) {
 
 register_default_functions(context: Context) {
 	# Allocation:
-	allocation_function_overloads = context.get_function(String('allocate'))
+	allocation_function_overloads = context.get_function("allocate")
 	if allocation_function_overloads == none abort('Missing the allocation function, please implement it or include the standard library')
 
 	settings.allocation_function = allocation_function_overloads.get_implementation(primitives.create_number(primitives.LARGE, FORMAT_INT64))
 	if settings.allocation_function == none abort('Missing the allocation function, please implement it or include the standard library')
 
 	# Deallocation:
-	deallocation_function_overloads = context.get_function(String('deallocate'))
+	deallocation_function_overloads = context.get_function("deallocate")
 	if deallocation_function_overloads == none abort('Missing the deallocation function, please implement it or include the standard library')
 
 	settings.deallocation_function = deallocation_function_overloads.get_implementation(Link())
 	if settings.deallocation_function == none abort('Missing the deallocation function, please implement it or include the standard library')
 
 	# Inheritance:
-	inheritance_function_overloads = context.get_function(String('internal_is'))
+	inheritance_function_overloads = context.get_function("internal_is")
 	if inheritance_function_overloads == none abort('Missing the inheritance function, please implement it or include the standard library')
 
 	types = List<Type>(2, false)
@@ -430,7 +430,7 @@ register_default_functions(context: Context) {
 	if settings.inheritance_function == none abort('Missing the inheritance function, please implement it or include the standard library')
 
 	# Initialization function:
-	initialization_function_overloads = context.get_function(String('internal_init'))
+	initialization_function_overloads = context.get_function("internal_init")
 	if initialization_function_overloads != none {
 		# Try to implement the initialization function with a link as parameter and without
 		settings.initialization_function = initialization_function_overloads.get_implementation(Link())

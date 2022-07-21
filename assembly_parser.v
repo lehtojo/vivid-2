@@ -122,7 +122,7 @@ AssemblyParser {
 		if not (tokens[1].(IdentifierToken).value == SECTION_DIRECTIVE) => false
 
 		# Switch the active section
-		section: String = String('.') + tokens[2].(IdentifierToken).value
+		section: String = "." + tokens[2].(IdentifierToken).value
 
 		if section == TEXT_SECTION {
 			# Save the current data section, if it is not saved already
@@ -548,7 +548,7 @@ AssemblyParser {
 			=> number
 		}
 
-		abort(String('Can not understand: ') + to_string(all))
+		abort("Can not understand: " + to_string(all))
 	}
 
 	# Summary:

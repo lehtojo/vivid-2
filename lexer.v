@@ -65,6 +65,7 @@ TOKEN_TYPE_COUNT = 10
 LINE_ENDING = `\n`
 COMMENT = `#`
 STRING = `\'`
+STRING_OBJECT = `\"`
 # MULTILINE_COMMENT
 MULTILINE_COMMENT = '###'
 CHARACTER = `\x60`
@@ -206,47 +207,47 @@ namespace Operators {
 	}
 
 	initialize() {
-		COLON = IndependentOperator(String(':'))
-		POWER = ClassicOperator(String('^'), 15, true)
-		MULTIPLY = ClassicOperator(String('*'), 12, true)
-		DIVIDE = ClassicOperator(String('/'), 12, true)
-		MODULUS = ClassicOperator(String('%'), 12, true)
-		ADD = ClassicOperator(String('+'), 11, true)
-		SUBTRACT = ClassicOperator(String('-'), 11, true)
-		SHIFT_LEFT = ClassicOperator(String('<|'), 10, true)
-		SHIFT_RIGHT = ClassicOperator(String('|>'), 10, true)
-		GREATER_THAN = ComparisonOperator(String('>'), 9)
-		GREATER_OR_EQUAL = ComparisonOperator(String('>='), 9)
-		LESS_THAN = ComparisonOperator(String('<'), 9)
-		LESS_OR_EQUAL = ComparisonOperator(String('<='), 9)
-		EQUALS = ComparisonOperator(String('=='), 8)
-		NOT_EQUALS = ComparisonOperator(String('!='), 8)
-		ABSOLUTE_EQUALS = ComparisonOperator(String('==='), 8)
-		ABSOLUTE_NOT_EQUALS = ComparisonOperator(String('!=='), 8)
-		BITWISE_AND = ClassicOperator(String('&'), 7, true)
-		BITWISE_XOR = ClassicOperator(String('\xA4'), 6, true)
-		BITWISE_OR = ClassicOperator(String('|'), 5, true)
-		RANGE = IndependentOperator(String('..'))
-		LOGICAL_AND = Operator(String('and'), OPERATOR_TYPE_LOGICAL, 4)
-		LOGICAL_OR = Operator(String('or'), OPERATOR_TYPE_LOGICAL, 3)
-		ASSIGN = AssignmentOperator(String('='), none as Operator, 1)
-		ASSIGN_POWER = AssignmentOperator(String('^='), POWER, 1)
-		ASSIGN_ADD = AssignmentOperator(String('+='), ADD, 1)
-		ASSIGN_SUBTRACT = AssignmentOperator(String('-='), SUBTRACT, 1)
-		ASSIGN_MULTIPLY = AssignmentOperator(String('*='), MULTIPLY, 1)
-		ASSIGN_DIVIDE = AssignmentOperator(String('/='), DIVIDE, 1)
-		ASSIGN_MODULUS = AssignmentOperator(String('%='), MODULUS, 1)
-		ASSIGN_BITWISE_AND = AssignmentOperator(String('&='), BITWISE_AND, 1)
-		ASSIGN_BITWISE_XOR = AssignmentOperator(String('\xA4='), BITWISE_XOR, 1)
-		ASSIGN_BITWISE_OR = AssignmentOperator(String('|='), BITWISE_OR, 1)
-		EXCLAMATION = IndependentOperator(String('!'))
-		COMMA = IndependentOperator(String(','))
-		DOT = IndependentOperator(String('.'))
-		INCREMENT = IndependentOperator(String('++'))
-		DECREMENT = IndependentOperator(String('--'))
-		ARROW = IndependentOperator(String('->'))
-		HEAVY_ARROW = IndependentOperator(String('=>'))
-		END = IndependentOperator(String('\n'))
+		COLON = IndependentOperator(":")
+		POWER = ClassicOperator("^", 15, true)
+		MULTIPLY = ClassicOperator("*", 12, true)
+		DIVIDE = ClassicOperator("/", 12, true)
+		MODULUS = ClassicOperator("%", 12, true)
+		ADD = ClassicOperator("+", 11, true)
+		SUBTRACT = ClassicOperator("-", 11, true)
+		SHIFT_LEFT = ClassicOperator("<|", 10, true)
+		SHIFT_RIGHT = ClassicOperator("|>", 10, true)
+		GREATER_THAN = ComparisonOperator(">", 9)
+		GREATER_OR_EQUAL = ComparisonOperator(">=", 9)
+		LESS_THAN = ComparisonOperator("<", 9)
+		LESS_OR_EQUAL = ComparisonOperator("<=", 9)
+		EQUALS = ComparisonOperator("==", 8)
+		NOT_EQUALS = ComparisonOperator("!=", 8)
+		ABSOLUTE_EQUALS = ComparisonOperator("===", 8)
+		ABSOLUTE_NOT_EQUALS = ComparisonOperator("!==", 8)
+		BITWISE_AND = ClassicOperator("&", 7, true)
+		BITWISE_XOR = ClassicOperator("\xA4", 6, true)
+		BITWISE_OR = ClassicOperator("|", 5, true)
+		RANGE = IndependentOperator("..")
+		LOGICAL_AND = Operator("and", OPERATOR_TYPE_LOGICAL, 4)
+		LOGICAL_OR = Operator("or", OPERATOR_TYPE_LOGICAL, 3)
+		ASSIGN = AssignmentOperator("=", none as Operator, 1)
+		ASSIGN_POWER = AssignmentOperator("^=", POWER, 1)
+		ASSIGN_ADD = AssignmentOperator("+=", ADD, 1)
+		ASSIGN_SUBTRACT = AssignmentOperator("-=", SUBTRACT, 1)
+		ASSIGN_MULTIPLY = AssignmentOperator("*=", MULTIPLY, 1)
+		ASSIGN_DIVIDE = AssignmentOperator("/=", DIVIDE, 1)
+		ASSIGN_MODULUS = AssignmentOperator("%=", MODULUS, 1)
+		ASSIGN_BITWISE_AND = AssignmentOperator("&=", BITWISE_AND, 1)
+		ASSIGN_BITWISE_XOR = AssignmentOperator("\xA4=", BITWISE_XOR, 1)
+		ASSIGN_BITWISE_OR = AssignmentOperator("|=", BITWISE_OR, 1)
+		EXCLAMATION = IndependentOperator("!")
+		COMMA = IndependentOperator(",")
+		DOT = IndependentOperator(".")
+		INCREMENT = IndependentOperator("++")
+		DECREMENT = IndependentOperator("--")
+		ARROW = IndependentOperator("->")
+		HEAVY_ARROW = IndependentOperator("=>")
+		END = IndependentOperator("\n")
 		ATOMIC_EXCHANGE_ADD = ClassicOperator(String.empty, 11, true)
 
 		all = Map<String, Operator>()
@@ -295,17 +296,17 @@ namespace Operators {
 		add(HEAVY_ARROW)
 		add(END)
 
-		operator_overloads.add(ADD, String('plus'))
-		operator_overloads.add(SUBTRACT, String('minus'))
-		operator_overloads.add(MULTIPLY, String('times'))
-		operator_overloads.add(DIVIDE, String('divide'))
-		operator_overloads.add(MODULUS, String('remainder'))
-		operator_overloads.add(ASSIGN_ADD, String('assign_plus'))
-		operator_overloads.add(ASSIGN_SUBTRACT, String('assign_minus'))
-		operator_overloads.add(ASSIGN_MULTIPLY, String('assign_times'))
-		operator_overloads.add(ASSIGN_DIVIDE, String('assign_divide'))
-		operator_overloads.add(ASSIGN_MODULUS, String('assign_remainder'))
-		operator_overloads.add(EQUALS, String('equals'))
+		operator_overloads.add(ADD, "plus")
+		operator_overloads.add(SUBTRACT, "minus")
+		operator_overloads.add(MULTIPLY, "times")
+		operator_overloads.add(DIVIDE, "divide")
+		operator_overloads.add(MODULUS, "remainder")
+		operator_overloads.add(ASSIGN_ADD, "assign_plus")
+		operator_overloads.add(ASSIGN_SUBTRACT, "assign_minus")
+		operator_overloads.add(ASSIGN_MULTIPLY, "assign_times")
+		operator_overloads.add(ASSIGN_DIVIDE, "assign_divide")
+		operator_overloads.add(ASSIGN_MODULUS, "assign_remainder")
+		operator_overloads.add(EQUALS, "equals")
 	}
 
 	exists(identifier: String) {
@@ -390,38 +391,38 @@ namespace Keywords {
 	}
 
 	initialize() {
-		AS = Keyword(String('as'), KEYWORD_TYPE_NORMAL)
-		COMPILES = Keyword(String('compiles'), KEYWORD_TYPE_NORMAL)
-		CONSTANT = ModifierKeyword(String('constant'), MODIFIER_CONSTANT)
-		CONTINUE = Keyword(String('continue'), KEYWORD_TYPE_FLOW)
-		DEINIT = Keyword(String('deinit'), KEYWORD_TYPE_NORMAL)
-		ELSE = Keyword(String('else'), KEYWORD_TYPE_FLOW)
-		EXPORT = ModifierKeyword(String('export'), MODIFIER_EXPORTED)
-		HAS = Keyword(String('has'), KEYWORD_TYPE_NORMAL)
-		HAS_NOT = Keyword(String('has not'), KEYWORD_TYPE_NORMAL)
-		IF = Keyword(String('if'), KEYWORD_TYPE_FLOW)
-		IN = Keyword(String('in'), KEYWORD_TYPE_NORMAL)
-		INLINE = ModifierKeyword(String('inline'), MODIFIER_INLINE)
-		IS = Keyword(String('is'), KEYWORD_TYPE_NORMAL)
-		IS_NOT = Keyword(String('is not'), KEYWORD_TYPE_NORMAL)
-		INIT = Keyword(String('init'), KEYWORD_TYPE_NORMAL)
-		IMPORT = ModifierKeyword(String('import'), MODIFIER_IMPORTED)
-		LOOP = Keyword(String('loop'), KEYWORD_TYPE_FLOW)
-		NAMESPACE = Keyword(String('namespace'), KEYWORD_TYPE_NORMAL)
-		NOT = Keyword(String('not'), KEYWORD_TYPE_NORMAL)
-		OUTLINE = ModifierKeyword(String('outline'), MODIFIER_OUTLINE)
-		PACK = ModifierKeyword(String('pack'), MODIFIER_PACK)
-		PLAIN = ModifierKeyword(String('plain'), MODIFIER_PLAIN)
-		OVERRIDE = Keyword(String('override'), KEYWORD_TYPE_NORMAL)
-		PRIVATE = ModifierKeyword(String('private'), MODIFIER_PRIVATE)
-		PROTECTED = ModifierKeyword(String('protected'), MODIFIER_PROTECTED)
-		PUBLIC = ModifierKeyword(String('public'), MODIFIER_PUBLIC)
-		READONLY = ModifierKeyword(String('readonly'), MODIFIER_READONLY)
-		RETURN = Keyword(String('return'), KEYWORD_TYPE_FLOW)
-		STATIC = ModifierKeyword(String('static'), MODIFIER_STATIC)
-		STOP = Keyword(String('stop'), KEYWORD_TYPE_FLOW)
-		VIRTUAL = Keyword(String('virtual'), KEYWORD_TYPE_NORMAL)
-		WHEN = Keyword(String('when'), KEYWORD_TYPE_FLOW)
+		AS = Keyword("as", KEYWORD_TYPE_NORMAL)
+		COMPILES = Keyword("compiles", KEYWORD_TYPE_NORMAL)
+		CONSTANT = ModifierKeyword("constant", MODIFIER_CONSTANT)
+		CONTINUE = Keyword("continue", KEYWORD_TYPE_FLOW)
+		DEINIT = Keyword("deinit", KEYWORD_TYPE_NORMAL)
+		ELSE = Keyword("else", KEYWORD_TYPE_FLOW)
+		EXPORT = ModifierKeyword("export", MODIFIER_EXPORTED)
+		HAS = Keyword("has", KEYWORD_TYPE_NORMAL)
+		HAS_NOT = Keyword("has not", KEYWORD_TYPE_NORMAL)
+		IF = Keyword("if", KEYWORD_TYPE_FLOW)
+		IN = Keyword("in", KEYWORD_TYPE_NORMAL)
+		INLINE = ModifierKeyword("inline", MODIFIER_INLINE)
+		IS = Keyword("is", KEYWORD_TYPE_NORMAL)
+		IS_NOT = Keyword("is not", KEYWORD_TYPE_NORMAL)
+		INIT = Keyword("init", KEYWORD_TYPE_NORMAL)
+		IMPORT = ModifierKeyword("import", MODIFIER_IMPORTED)
+		LOOP = Keyword("loop", KEYWORD_TYPE_FLOW)
+		NAMESPACE = Keyword("namespace", KEYWORD_TYPE_NORMAL)
+		NOT = Keyword("not", KEYWORD_TYPE_NORMAL)
+		OUTLINE = ModifierKeyword("outline", MODIFIER_OUTLINE)
+		PACK = ModifierKeyword("pack", MODIFIER_PACK)
+		PLAIN = ModifierKeyword("plain", MODIFIER_PLAIN)
+		OVERRIDE = Keyword("override", KEYWORD_TYPE_NORMAL)
+		PRIVATE = ModifierKeyword("private", MODIFIER_PRIVATE)
+		PROTECTED = ModifierKeyword("protected", MODIFIER_PROTECTED)
+		PUBLIC = ModifierKeyword("public", MODIFIER_PUBLIC)
+		READONLY = ModifierKeyword("readonly", MODIFIER_READONLY)
+		RETURN = Keyword("return", KEYWORD_TYPE_FLOW)
+		STATIC = ModifierKeyword("static", MODIFIER_STATIC)
+		STOP = Keyword("stop", KEYWORD_TYPE_FLOW)
+		VIRTUAL = Keyword("virtual", KEYWORD_TYPE_NORMAL)
+		WHEN = Keyword("when", KEYWORD_TYPE_FLOW)
 
 		all = Map<String, Keyword>()
 
@@ -527,7 +528,7 @@ Position {
 	}
 
 	string() {
-		if file === none => String('<unknown>') + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
+		if file === none => "<unknown>" + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
 		=> file.fullname + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
 	}
 }
@@ -545,7 +546,7 @@ Token {
 	}
 
 	string() {
-		if type == TOKEN_TYPE_END => String('\n')
+		if type == TOKEN_TYPE_END => "\n"
 		=> String.empty
 	}
 
@@ -677,25 +678,28 @@ Token NumberToken {
 
 Token StringToken {
 	text: String
+	opening: char
 	end => position.translate(text.length + 2)
 
 	init(text: String) {
 		Token.init(TOKEN_TYPE_STRING)
 		this.text = text.slice(1, text.length - 1)
+		this.opening = text[0]
 	}
 
-	init(text: String, position: Position) {
+	init(text: String, opening: char, position: Position) {
 		Token.init(TOKEN_TYPE_STRING)
 		this.text = text
 		this.position = position
+		this.opening = opening
 	}
 
 	string() {
-		=> String(STRING) + text + STRING
+		=> String(opening) + text + opening
 	}
 
 	override clone() {
-		=> StringToken(text, position)
+		=> StringToken(text, opening, position)
 	}
 }
 
@@ -789,7 +793,7 @@ Token FunctionToken {
 			# Ensure the name is valid
 			name = tokens.pop_or(none as Token)
 			if name == none or not name.match(TOKEN_TYPE_IDENTIFIER) {
-				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+				=> Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 			
 			next = tokens.pop_or(none as Token)
@@ -801,20 +805,20 @@ Token FunctionToken {
 
 			# If there are tokens left and the next token is not a comma, it must represent a parameter type
 			if not next.match(Operators.COLON) {
-				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+				=> Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 
 			parameter_type = common.read_type(context, tokens)
 
 			if parameter_type == none {
-				=> Error<List<Parameter>, String>(String('Can not understand the parameter type'))
+				=> Error<List<Parameter>, String>("Can not understand the parameter type")
 			}
 
 			result.add(Parameter(name.(IdentifierToken).value, name.position, parameter_type))
 
 			# If there are tokens left, the next token must be a comma and it must be removed before starting over
 			if tokens.size > 0 and not tokens.pop_or(none as Token).match(Operators.COMMA) {
-				=> Error<List<Parameter>, String>(String('Can not understand the parameters'))
+				=> Error<List<Parameter>, String>("Can not understand the parameters")
 			}
 		}
 
@@ -919,7 +923,7 @@ private get_exponent(text: String) {
 	i = text.index_of(EXPONENT_SEPARATOR)
 	if i == -1 => Ok<large, String>(0)
 
-	if text.length == ++i => Error<large, String>(String('Invalid exponent'))
+	if text.length == ++i => Error<large, String>("Invalid exponent")
 
 	sign = 1
 
@@ -938,7 +942,7 @@ private get_exponent(text: String) {
 	# Try to convert the exponent string to an integer
 	if as_integer(exponent) has result => Ok<large, String>(sign * result)
 
-	=> Error<large, String>(String('Invalid exponent'))
+	=> Error<large, String>("Invalid exponent")
 }
 
 # Summary: Returns the format which has the same properties as specified
@@ -985,10 +989,10 @@ private get_number_format(text: String) {
 
 # Summary: Tries to convert the specified string to a number token
 try_create_number_token(text: String, position: Position) {
-	if not (get_exponent(text) has exponent) => Error<NumberToken, String>(String('Invalid exponent'))
+	if not (get_exponent(text) has exponent) => Error<NumberToken, String>("Invalid exponent")
 
 	if text.index_of(DECIMAL_SEPARATOR) != -1 {
-		if not (as_decimal(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
+		if not (as_decimal(get_number_part(text)) has value) => Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1.0
@@ -1000,7 +1004,7 @@ try_create_number_token(text: String, position: Position) {
 		=> Ok<NumberToken, String>(NumberToken(value, FORMAT_DECIMAL, text.length, position))
 	}
 	else {
-		if not (as_integer(get_number_part(text)) has value) => Error<NumberToken, String>(String('Can not resolve the number'))
+		if not (as_integer(get_number_part(text)) has value) => Error<NumberToken, String>("Can not resolve the number")
 
 		# Apply the exponent
 		scale = 1
@@ -1024,7 +1028,7 @@ get_closing(opening: char) {
 
 # Returns whether the specified character is an operator
 is_operator(i: char) {
-	=> i >= 33 and i <= 47 and i != COMMENT and i != STRING or i >= 58 and i <= 63 or i == 94 or i == 124 or i == 126 or i == -92 # 0xA4 = 164 => -92 as char
+	=> (i >= `*` and i <= `/`) or (i >= `:` and i <= `?`) or i == `&` or i == `%` or i == `!` or i == `^` or i == `|` or i == -92 # 0xA4 = 164 => -92 as char
 }
 
 # Summary:
@@ -1073,7 +1077,7 @@ is_comment(i: char) {
 
 # Summary: Returns whether the character start of a string
 is_string(i: char) {
-	=> i == STRING
+	=> i == STRING or i == STRING_OBJECT
 }
 
 # Summary: Returns whether the character start of a character value
@@ -1143,7 +1147,10 @@ skip_parenthesis(text: String, start: Position) {
 			position = skip_comment(text, position)
 		}
 		else i == STRING {
-			position = skip_string(text, position)
+			position = skip_closures(STRING, text, position)
+		}
+		else i == STRING_OBJECT {
+			position = skip_closures(STRING_OBJECT, text, position)
 		}
 		else i == CHARACTER {
 			position = skip_character_value(text, position)
@@ -1217,11 +1224,6 @@ skip_closures(closure: char, text: String, start: Position) {
 	=> Position(start.line, start.character + length, start.local + length, start.absolute + length)
 }
 
-# Summary: Skips the current string and returns the position
-skip_string(text: String, start: Position) {
-	=> skip_closures(STRING, text, start)
-}
-
 # Summary: Skips the current character value and returns the position
 skip_character_value(text: String, start: Position) {
 	=> skip_closures(CHARACTER, text, start)
@@ -1265,13 +1267,13 @@ get_special_character_value(text: String) {
 		error = 'Can not understand unicode character'
 	}
 	else {
-		=> Error<large, String>(String('Can not understand string command'))
+		=> Error<large, String>("Can not understand string command")
 	}
 
 	hexadecimal = text.slice(2, text.length)
 	
 	if hexadecimal.length != length {
-		=> Error<large, String>(String('Invalid character'))
+		=> Error<large, String>("Invalid character")
 	}
 
 	if hexadecimal_to_integer(hexadecimal) has value => Ok<large, String>(value)
@@ -1283,16 +1285,16 @@ get_special_character_value(text: String) {
 get_character_value(text: String) {
 	text = text.slice(1, text.length - 1) # Remove the closures
 
-	if text.length == 0 => Error<large, String>(String('Character value is empty'))
+	if text.length == 0 => Error<large, String>("Character value is empty")
 
 	if text[0] != `\\` {
-		if text.length != 1 => Error<large, String>(String('Character value allows only one character'))
+		if text.length != 1 => Error<large, String>("Character value allows only one character")
 		=> Ok<large, String>(text[0])
 	}
 
 	if text.length == 2 and text[1] == `\\` => Ok<large, String>(`\\`)
 	if text.length <= 2 {
-		=> Error<large, String>(String('Invalid character'))
+		=> Error<large, String>("Invalid character")
 	}
 
 	=> get_special_character_value(text)
@@ -1319,7 +1321,7 @@ get_next_token(text: String, start: Position) {
 	}
 	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
-		if end === none => Error<TextArea, String>(String('Can not find the closing parenthesis'))
+		if end === none => Error<TextArea, String>("Can not find the closing parenthesis")
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
@@ -1327,13 +1329,13 @@ get_next_token(text: String, start: Position) {
 	}
 	else type == TEXT_TYPE_END {
 		area.end = position.clone().next_line()
-		area.text = String('\n')
+		area.text = "\n"
 		=> Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_STRING {
-		end = skip_string(text, area.start)
+		end = skip_closures(current, text, area.start)
 		if end === none {
-			=> Error<TextArea, String>(String('Can not find the end of the string'))
+			=> Error<TextArea, String>("Can not find the end of the string")
 		}
 
 		area.end = end
@@ -1387,13 +1389,13 @@ parse_text_token(text: String) {
 parse_hexadecimal(area: TextArea) {
 	# Extract the integer value from the hexadecimal by skipping the 0x prefix
 	if hexadecimal_to_integer(area.text.slice(2)) has value => Ok<large, String>(value)
-	=> Error<large, String>(String('Can not understand the hexadecimal ') + area.text)
+	=> Error<large, String>("Can not understand the hexadecimal " + area.text)
 }
 
 # Summary: Parses a token from a text area
 parse_token(area: TextArea) {
 	if area.type == TEXT_TYPE_OPERATOR {
-		if not Operators.exists(area.text) => Error<Token, String>(String('Unknown operator'))
+		if not Operators.exists(area.text) => Error<Token, String>("Unknown operator")
 		=> Ok<Token, String>(OperatorToken(area.text))
 	}
 	else area.type == TEXT_TYPE_NUMBER {
@@ -1424,7 +1426,7 @@ parse_token(area: TextArea) {
 	}
 	
 	if token != none => Ok<Token, String>(token)
-	=> Error<Token, String>(String('Unknown token ') + area.text)
+	=> Error<Token, String>("Unknown token " + area.text)
 }
 
 # Summary: Join all sequential modifier keywords into one token

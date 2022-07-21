@@ -28,7 +28,7 @@ namespace linker {
 	print_conflicting_symbols_and_abort(objects: List<BinaryObjectFile>, symbol: BinarySymbol) {
 		# Find the objects that have the same symbol
 		conflicting_objects = objects.filter(i -> i.exports.contains(symbol.name))
-		abort(String('Symbol ') + symbol.name + ' is exported by multiple object files: ' + String.join(String(', '), conflicting_objects.map<String>((i: BinaryObjectFile) -> i.name)))
+		abort("Symbol " + symbol.name + ' is exported by multiple object files: ' + String.join(", ", conflicting_objects.map<String>((i: BinaryObjectFile) -> i.name)))
 	}
 
 	# Summary:

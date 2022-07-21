@@ -64,26 +64,26 @@ apply_constants(context: Context) {
 		if not classify_variable_usages(variable) continue
 
 		if variable.writes.size == 0 {
-			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is never assigned'))
+			resolver.output(Status(variable.position, "Value for constant " + variable.name + ' is never assigned'))
 			application.exit(1)
 		}
 
 		if variable.writes.size > 1 {
-			resolver.output(Status(variable.position, String('Value for constant ') + variable.name + ' is assigned more than once'))
+			resolver.output(Status(variable.position, "Value for constant " + variable.name + ' is assigned more than once'))
 			application.exit(1)
 		}
 
 		write = variable.writes[0].parent
 
 		if write == none or not write.match(Operators.ASSIGN) {
-			resolver.output(Status(variable.position, String('Invalid assignment for constant ') + variable.name))
+			resolver.output(Status(variable.position, "Invalid assignment for constant " + variable.name))
 			application.exit(1)
 		}
 
 		value = common.get_source(write.last)
 
 		if not value.match(NODE_NUMBER) and not value.match(NODE_STRING) {
-			resolver.output(Status(variable.position, String('Value assigned to constant ') + variable.name + ' is not a constant'))
+			resolver.output(Status(variable.position, "Value assigned to constant " + variable.name + ' is not a constant'))
 			application.exit(1)
 		}
 
@@ -116,15 +116,15 @@ apply_constants(root: Node) {
 		usage_variable = usage.(VariableNode).variable
 		analysis.classify_variable_usages(usage_variable)
 
-		if usage_variable.writes.size == 0 abort(String('Value for the constant ') + usage_variable.name + ' is never assigned')
-		if usage_variable.writes.size > 1 abort(String('Value for the constant ') + usage_variable.name + ' is assigned more than once')
+		if usage_variable.writes.size == 0 abort("Value for the constant " + usage_variable.name + ' is never assigned')
+		if usage_variable.writes.size > 1 abort("Value for the constant " + usage_variable.name + ' is assigned more than once')
 
 		write = usage_variable.writes[0].parent
 
-		if write == none or not write.match(Operators.ASSIGN) abort(String('Invalid assignment for ') + usage_variable.name)
+		if write == none or not write.match(Operators.ASSIGN) abort("Invalid assignment for " + usage_variable.name)
 		
 		value = common.get_source(write.last)
-		if value.instance != NODE_NUMBER and value.instance != NODE_STRING abort(String('Value assigned to ') + usage_variable.name + ' is not a constant')
+		if value.instance != NODE_NUMBER and value.instance != NODE_STRING abort("Value assigned to " + usage_variable.name + ' is not a constant')
 
 		destination = usage
 

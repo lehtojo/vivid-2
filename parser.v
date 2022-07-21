@@ -104,6 +104,7 @@ constant PRIORITY_ALL = -1
 constant STANDARD_RANGE_TYPE = 'Range'
 constant STANDARD_LIST_TYPE = 'List'
 constant STANDARD_LIST_ADDER = 'add'
+constant STANDARD_STRING_TYPE = 'String'
 
 Pattern {
 	path: List<small> = List<small>()
@@ -533,8 +534,8 @@ create_root_node(context: Context) {
 	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 	negative_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(NEGATIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 
-	true_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('true'), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
-	false_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, String('false'), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
+	true_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, "true", MODIFIER_PRIVATE | MODIFIER_CONSTANT)
+	false_constant = Variable(context, primitives.create_bool(), VARIABLE_CATEGORY_GLOBAL, "false", MODIFIER_PRIVATE | MODIFIER_CONSTANT)
 
 	context.declare(positive_infinity)
 	context.declare(negative_infinity)
@@ -665,7 +666,7 @@ validate_supertypes(types: List<Type>) {
 		resolver.resolve_supertypes(type.parent, type)
 		if type.supertypes.all(i -> i.is_resolved) continue
 
-		=> Status(String('Could not resolve supertypes for type ') + type.name)
+		=> Status("Could not resolve supertypes for type " + type.name)
 	}
 
 	=> Status()
@@ -743,7 +744,7 @@ parse() {
 	implement_functions(context, none as SourceFile, false)
 
 	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY {
-		function = context.get_function(String('init'))
+		function = context.get_function("init")
 		if function == none => Status('Can not find the entry function \'init()\'')
 
 		function.overloads[0].get(List<Type>())
@@ -892,6 +893,14 @@ parse_parenthesis(context: Context, parenthesis: ParenthesisToken) {
 	=> node
 }
 
+# Summary: Creates a string object from the specified string node
+create_string_object(node: StringNode) {
+	arguments = Node()
+	arguments.add(node)
+
+	=> UnresolvedFunction(String(STANDARD_STRING_TYPE), node.start).set_arguments(arguments)
+}
+
 parse(environment: Context, primary: Context, token: Token) {
 	if token.type == TOKEN_TYPE_IDENTIFIER {
 		=> parse_identifier(primary, token as IdentifierToken, environment != primary)
@@ -907,13 +916,19 @@ parse(environment: Context, primary: Context, token: Token) {
 		=> parse_parenthesis(environment, token as ParenthesisToken)
 	}
 	else token.type == TOKEN_TYPE_STRING {
-		=> StringNode(token.(StringToken).text, token.position)
+		string = StringNode(token.(StringToken).text, token.position)
+
+		if token.(StringToken).opening === `\"` {
+			=> create_string_object(string)
+		}
+
+		=> string
 	}
 	else token.type == TOKEN_TYPE_DYNAMIC {
 		=> token.(DynamicToken).node
 	}
 
-	abort(String('Could not understand token'))
+	abort("Could not understand token")
 }
 
 print(node: Node) {

@@ -38,7 +38,7 @@ load() {
 		filename = filenames[i]
 
 		bytes = io.read_file(filename)
-		if bytes.empty => Status((String('Could not load file ') + filename).data)
+		if bytes.empty => Status("Could not load file " + filename)
 
 		content = String(bytes.value.data, bytes.value.size).replace(`\r`, ` `).replace(`\t`, ` `)
 		files[i] = SourceFile(filename, content, i)

@@ -165,14 +165,14 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 
 			loop (parameter_tokens.size > 0) {
 				parameter_type = common.read_type(context, parameter_tokens)
-				if parameter_type == none abort(String('Could not import template function variant: ') + template_variant_text)
+				if parameter_type == none abort("Could not import template function variant: " + template_variant_text)
 
 				parameter_types.add(parameter_type)
 
 				if parameter_tokens.size == 0 stop
 				if parameter_tokens.pop_or(none as Token).match(Operators.COMMA) continue
 
-				abort(String('Could not import template function variant: ') + template_variant_text)
+				abort("Could not import template function variant: " + template_variant_text)
 			}
 
 			# Extract the type, which will contain the template function variant
@@ -180,18 +180,18 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 
 			if components.size > 1 {
 				environment = UnresolvedType(components.slice(0, components.size - 1)).try_resolve_type(context)
-				if environment == none abort(String('Could not import template function variant: ') + template_variant_text)
+				if environment == none abort("Could not import template function variant: " + template_variant_text)
 			}
 
 			template_function_name = components[components.size - 1].identifier
 
 			# Find the template function from the container type
 			template_function = environment.get_function(template_function_name)
-			if template_function == none abort(String('Could not import template function variant: ') + template_variant_text)
+			if template_function == none abort("Could not import template function variant: " + template_variant_text)
 
 			# Now, find the overload which accepts the template arguments
 			template_variant = template_function.get_implementation(parameter_types, components[components.size - 1].arguments)
-			if template_variant == none abort(String('Could not import template function variant: ') + template_variant_text)
+			if template_variant == none abort("Could not import template function variant: " + template_variant_text)
 
 			template_variant.is_imported = true
 		}

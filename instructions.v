@@ -4,7 +4,7 @@ DualParameterInstruction AdditionInstruction {
 	init(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
 		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_ADDITION)
 		this.assigns = assigns
-		this.description = String('Add operands')
+		this.description = "Add operands"
 	}
 
 	override on_build() {
@@ -226,8 +226,8 @@ Instruction RequireVariablesInstruction {
 		this.is_inputter = is_inputter
 		this.is_abstract = true
 
-		if is_inputter { this.description = String('Inputs variables to the scope') }
-		else { this.description = String('Outputs variables to the scope') }
+		if is_inputter { this.description = "Inputs variables to the scope" }
+		else { this.description = "Outputs variables to the scope" }
 	}
 }
 
@@ -359,7 +359,7 @@ DualParameterInstruction MoveInstruction {
 
 	init(unit: Unit, first: Result, second: Result) {
 		DualParameterInstruction.init(unit, first, second, SYSTEM_FORMAT, INSTRUCTION_MOVE)
-		this.description = String('Assign source operand to destination operand')
+		this.description = "Assign source operand to destination operand"
 		this.is_usage_analyzed = false
 	}
 
@@ -724,11 +724,11 @@ Instruction GetConstantInstruction {
 
 		if is_decimal {
 			this.format = FORMAT_DECIMAL
-			this.description = String('Load constant ') + to_string(bits_to_decimal(value))
+			this.description = "Load constant " + to_string(bits_to_decimal(value))
 		}
 		else {
 			this.format = get_system_format(is_unsigned)
-			this.description = String('Load constant ') + to_string(value)
+			this.description = "Load constant " + to_string(value)
 		}
 
 		this.result.value = references.create_constant_number(value, format)
@@ -751,7 +751,7 @@ Instruction GetVariableInstruction {
 		this.variable = variable
 		this.mode = mode
 		this.is_abstract = true
-		this.description = String('Load variable ') + variable.name
+		this.description = "Load variable " + variable.name
 
 		result.value = references.create_variable_handle(unit, variable, mode)
 		result.format = variable.type.format
@@ -914,7 +914,7 @@ Instruction SetVariableInstruction {
 		this.variable = variable
 		this.value = value
 		this.dependencies.add(value)
-		this.description = String('Updates the value of the variable ') + variable.name
+		this.description = "Updates the value of the variable " + variable.name
 		this.is_abstract = true
 		this.result.format = variable.type.get_register_format()
 
@@ -988,7 +988,7 @@ Instruction CallInstruction {
 		this.function = Result(handle, SYSTEM_FORMAT)
 		this.return_type = return_type
 		this.dependencies.add(this.function)
-		this.description = String('Calls function ') + function
+		this.description = "Calls function " + function
 		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
 
 		if return_type != none {
@@ -1011,7 +1011,7 @@ Instruction CallInstruction {
 		this.function = function
 		this.return_type = return_type
 		this.dependencies.add(this.function)
-		this.description = String('Calls the function handle')
+		this.description = "Calls the function handle"
 		this.is_usage_analyzed = false # NOTE: Fixes an issue where the build system moves the function handle to volatile register even though it is needed later
 
 		if return_type != none {
@@ -1060,7 +1060,7 @@ Instruction CallInstruction {
 			if register == none abort('Could not validate call memory handle')
 
 			instruction = MoveInstruction(unit, Result(RegisterHandle(register), SYSTEM_FORMAT), iterator)
-			instruction.description = String('Validates a call memory handle')
+			instruction.description = "Validates a call memory handle"
 			instruction.type = MOVE_RELOCATE
 
 			unit.add(instruction)
@@ -1270,7 +1270,7 @@ Instruction ReorderInstruction {
 			}
 
 			instruction = MoveInstruction(unit, Result(destination, destination_format), value)
-			instruction.description = String('Evacuate overflow')
+			instruction.description = "Evacuate overflow"
 			instruction.type = MOVE_RELOCATE
 			unit.add(instruction)
 		}
@@ -1328,8 +1328,8 @@ Instruction LockStateInstruction {
 		this.is_locked = locked
 		this.is_abstract = true
 		
-		if is_locked { description = String('Locks a register') }
-		else { description = String('Unlocks a register') }
+		if is_locked { description = "Locks a register" }
+		else { description = "Unlocks a register" }
 
 		register.is_locked = is_locked
 	}
@@ -1375,7 +1375,7 @@ Instruction EvacuateInstruction {
 				}
 
 				instruction = MoveInstruction(unit, Result(destination, register.value.format), register.value)
-				instruction.description = String('Evacuates a value')
+				instruction.description = "Evacuates a value"
 				instruction.type = MOVE_RELOCATE
 
 				unit.add(instruction)
@@ -1702,7 +1702,7 @@ Instruction JumpInstruction {
 DualParameterInstruction CompareInstruction {
 	init(unit: Unit, first: Result, second: Result) {
 		DualParameterInstruction.init(unit, first, second, SYSTEM_FORMAT, INSTRUCTION_COMPARE)
-		this.description = String('Compares two operands')
+		this.description = "Compares two operands"
 	}
 
 	on_build_x64() {
@@ -1736,7 +1736,7 @@ Instruction SetModifiableInstruction {
 	init(unit: Unit, variable: Variable) {
 		Instruction.init(unit, INSTRUCTION_SET_MODIFIABLE)
 		this.variable = variable
-		this.description = String('Ensures the variable is in a modifiable location')
+		this.description = "Ensures the variable is in a modifiable location"
 		this.is_abstract = true
 
 		this.result.format = variable.type.get_register_format()
@@ -1995,7 +1995,7 @@ DualParameterInstruction BitwiseInstruction {
 	init(unit: Unit, instruction: link, first: Result, second: Result, format: large, assigns: bool) {
 		DualParameterInstruction.init(unit, first, second, format, INSTRUCTION_BITWISE)
 		this.instruction = String(instruction)
-		this.description = String('Executes a bitwise operation between the operands')
+		this.description = "Executes a bitwise operation between the operands"
 		this.assigns = assigns
 	}
 
@@ -2090,7 +2090,7 @@ Instruction SingleParameterInstruction {
 		if settings.is_x64 { instruction = SingleParameterInstruction(unit, platform.x64.NOT, first) }
 		else { instruction = SingleParameterInstruction(unit, platform.arm64.NOT, first) }
 
-		instruction.description = String('Executes bitwise NOT-operation to the operand')
+		instruction.description = "Executes bitwise NOT-operation to the operand"
 		=> instruction
 	}
 
@@ -2102,7 +2102,7 @@ Instruction SingleParameterInstruction {
 		if is_decimal { instruction = SingleParameterInstruction(unit, platform.arm64.DECIMAL_NEGATE, first) }
 		else { instruction = SingleParameterInstruction(unit, platform.shared.NEGATE, first) }
 
-		instruction.description = String('Negates the operand')
+		instruction.description = "Negates the operand"
 		=> instruction
 	}
 
@@ -2139,7 +2139,7 @@ Instruction DebugBreakInstruction {
 		this.position = position
 		this.operation = get_position_instruction(position)
 		this.state = INSTRUCTION_STATE_BUILT
-		this.description = String('Line: ') + to_string(position.friendly_line) + String(', Character: ') + to_string(position.friendly_character)
+		this.description = "Line: " + to_string(position.friendly_line) + ", Character: " + to_string(position.friendly_character)
 	}
 }
 
@@ -2156,7 +2156,7 @@ Instruction ConvertInstruction {
 		this.format = format
 		this.dependencies.add(number)
 		this.is_abstract = true
-		this.description = String('Converts the specified number into the specified format')
+		this.description = "Converts the specified number into the specified format"
 
 		if format == FORMAT_DECIMAL { this.result.format = FORMAT_DECIMAL }
 		else { this.result.format = get_system_format(format) }
@@ -2167,7 +2167,7 @@ Instruction ConvertInstruction {
 
 		instruction = MoveInstruction(unit, result, number)
 		instruction.type = MOVE_LOAD
-		instruction.description = String('Loads the specified number into the specified register')
+		instruction.description = "Loads the specified number into the specified register"
 		unit.add(instruction)
 	}
 }
@@ -2232,7 +2232,7 @@ Instruction NoOperationInstruction {
 	init(unit: Unit) {
 		Instruction.init(unit, INSTRUCTION_NO_OPERATION)
 		this.operation = String(platform.shared.NOP)
-		this.description = String('No operation')
+		this.description = "No operation"
 	}
 }
 

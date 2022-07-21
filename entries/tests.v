@@ -27,16 +27,16 @@ relative_file(name: link) {
 }
 
 compile(output: link, source_files: List<String>, optimization: large, prebuilt: bool) {
-	String.empty = String('')
+	String.empty = ""
 	settings.initialize()
 	initialize_configuration()
 
 	arguments = List<String>()
 	arguments.add_all(source_files)
-	arguments.add(String('-a'))
-	arguments.add(String('-l'))
-	arguments.add(String('kernel32.dll'))
-	arguments.add(String('-o'))
+	arguments.add("-a")
+	arguments.add("-l")
+	arguments.add("kernel32.dll")
+	arguments.add("-o")
 	arguments.add(String(UNIT_TEST_PREFIX) + output)
 
 	if prebuilt {
@@ -45,13 +45,13 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	}
 	else {
 		# Add the built standard library
-		# arguments.add(String('-l'))
-		# arguments.add(String('v'))
+		# arguments.add("-l")
+		# arguments.add("v")
 		arguments.add_all(get_standard_library_utility())
 	}
 
 	# Add optimization level
-	if optimization != 0 arguments.add(String('-O') + to_string(optimization))
+	if optimization != 0 arguments.add("-O" + to_string(optimization))
 
 	result = configure(arguments)
 	if result.problematic complain(result)
@@ -89,7 +89,7 @@ execute(name: link) {
 	executable_name = String(UNIT_TEST_PREFIX) + name
 	if settings.is_target_windows { executable_name = executable_name + '.exe' }
 
-	io.write_file(executable_name + '.out', String(''))
+	io.write_file(executable_name + '.out', String.empty)
 
 	pid = 0
 
@@ -97,7 +97,7 @@ execute(name: link) {
 		pid = io.shell(executable_name + ' > ' + executable_name + '.out')
 	}
 	else {
-		pid = io.shell(String('./') + executable_name + ' > ' + executable_name + '.out')
+		pid = io.shell("./" + executable_name + ' > ' + executable_name + '.out')
 	}
 
 	exit_code = io.wait_for_exit(pid)
@@ -119,7 +119,7 @@ load_assembly_function(output: link, function: link) {
 	end = assembly.index_of('\n\n', start)
 
 	if start == -1 or end == -1 {
-		abort(String('Could not load assembly function ') + function + ' from file ' + UNIT_TEST_PREFIX + output + '.asm')
+		abort("Could not load assembly function " + function + ' from file ' + UNIT_TEST_PREFIX + output + '.asm')
 	}
 
 	=> assembly.slice(start, end)
@@ -358,8 +358,8 @@ stack(optimization: large) {
 
 	# There should be five 'add rsp, ...' or 'ldp' instructions
 	loop (i = 0, i < 4, i++) {
-		if settings.is_x64 { j = assembly.index_of(String('add rsp, '), j) }
-		else { j = assembly.index_of(String('ldp'), j) }
+		if settings.is_x64 { j = assembly.index_of("add rsp, ", j) }
+		else { j = assembly.index_of("ldp", j) }
 
 		if j < 0 abort('Assembly output did not contain five \'add rsp, ...\' or \'ldp\' instructions')
 		j++

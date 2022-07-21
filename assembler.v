@@ -142,7 +142,7 @@ AssemblyBuilder {
 	}
 
 	string() {
-		if this.text == none => String('')
+		if this.text == none => String.empty
 		=> this.text.string()
 	}
 }
@@ -648,40 +648,40 @@ Unit {
 		base_pointer_flags = REGISTER_NONE
 		if settings.is_debugging_enabled { base_pointer_flags = REGISTER_RESERVED }
 
-		registers.add(Register(platform.x64.RAX, String('rax eax ax al'), REGISTER_VOLATILE | REGISTER_RETURN | REGISTER_NUMERATOR))
-		registers.add(Register(platform.x64.RBX, String('rbx ebx bx bl'), REGISTER_NONE))
-		registers.add(Register(platform.x64.RCX, String('rcx ecx cx cl'), REGISTER_VOLATILE | REGISTER_SHIFT))
-		registers.add(Register(platform.x64.RDX, String('rdx edx dx dl'), REGISTER_VOLATILE | REGISTER_REMAINDER))
-		registers.add(Register(platform.x64.RSI, String('rsi esi si sil'), volatility_flag))
-		registers.add(Register(platform.x64.RDI, String('rdi edi di dil'), volatility_flag))
-		registers.add(Register(platform.x64.RBP, String('rbp ebp bp bpl'), base_pointer_flags))
-		registers.add(Register(platform.x64.RSP, String('rsp esp sp spl'), REGISTER_RESERVED | REGISTER_STACK_POINTER))
+		registers.add(Register(platform.x64.RAX, "rax eax ax al", REGISTER_VOLATILE | REGISTER_RETURN | REGISTER_NUMERATOR))
+		registers.add(Register(platform.x64.RBX, "rbx ebx bx bl", REGISTER_NONE))
+		registers.add(Register(platform.x64.RCX, "rcx ecx cx cl", REGISTER_VOLATILE | REGISTER_SHIFT))
+		registers.add(Register(platform.x64.RDX, "rdx edx dx dl", REGISTER_VOLATILE | REGISTER_REMAINDER))
+		registers.add(Register(platform.x64.RSI, "rsi esi si sil", volatility_flag))
+		registers.add(Register(platform.x64.RDI, "rdi edi di dil", volatility_flag))
+		registers.add(Register(platform.x64.RBP, "rbp ebp bp bpl", base_pointer_flags))
+		registers.add(Register(platform.x64.RSP, "rsp esp sp spl", REGISTER_RESERVED | REGISTER_STACK_POINTER))
 
-		registers.add(Register(platform.x64.YMM0, String('ymm0 xmm0 xmm0 xmm0 xmm0'), REGISTER_MEDIA | REGISTER_VOLATILE | REGISTER_DECIMAL_RETURN))
-		registers.add(Register(platform.x64.YMM1, String('ymm1 xmm1 xmm1 xmm1 xmm1'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM2, String('ymm2 xmm2 xmm2 xmm2 xmm2'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM3, String('ymm3 xmm3 xmm3 xmm3 xmm3'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM4, String('ymm4 xmm4 xmm4 xmm4 xmm4'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM5, String('ymm5 xmm5 xmm5 xmm5 xmm5'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM6, String('ymm6 xmm6 xmm6 xmm6 xmm6'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM7, String('ymm7 xmm7 xmm7 xmm7 xmm7'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM8, String('ymm8 xmm8 xmm8 xmm8 xmm8'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM9, String('ymm9 xmm9 xmm9 xmm9 xmm9'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM10, String('ymm10 xmm10 xmm10 xmm10 xmm10'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM11, String('ymm11 xmm11 xmm11 xmm11 xmm11'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM12, String('ymm12 xmm12 xmm12 xmm12 xmm12'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM13, String('ymm13 xmm13 xmm13 xmm13 xmm13'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM14, String('ymm14 xmm14 xmm14 xmm14 xmm14'), REGISTER_MEDIA | REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.YMM15, String('ymm15 xmm15 xmm15 xmm15 xmm15'), REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM0, "ymm0 xmm0 xmm0 xmm0 xmm0", REGISTER_MEDIA | REGISTER_VOLATILE | REGISTER_DECIMAL_RETURN))
+		registers.add(Register(platform.x64.YMM1, "ymm1 xmm1 xmm1 xmm1 xmm1", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM2, "ymm2 xmm2 xmm2 xmm2 xmm2", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM3, "ymm3 xmm3 xmm3 xmm3 xmm3", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM4, "ymm4 xmm4 xmm4 xmm4 xmm4", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM5, "ymm5 xmm5 xmm5 xmm5 xmm5", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM6, "ymm6 xmm6 xmm6 xmm6 xmm6", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM7, "ymm7 xmm7 xmm7 xmm7 xmm7", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM8, "ymm8 xmm8 xmm8 xmm8 xmm8", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM9, "ymm9 xmm9 xmm9 xmm9 xmm9", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM10, "ymm10 xmm10 xmm10 xmm10 xmm10", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM11, "ymm11 xmm11 xmm11 xmm11 xmm11", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM12, "ymm12 xmm12 xmm12 xmm12 xmm12", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM13, "ymm13 xmm13 xmm13 xmm13 xmm13", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM14, "ymm14 xmm14 xmm14 xmm14 xmm14", REGISTER_MEDIA | REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.YMM15, "ymm15 xmm15 xmm15 xmm15 xmm15", REGISTER_MEDIA | REGISTER_VOLATILE))
 
-		registers.add(Register(platform.x64.R8, String('r8 r8d r8w r8b'), REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.R9, String('r9 r9d r9w r9b'), REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.R10, String('r10 r10d r10w r10b'), REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.R11, String('r11 r11d r11w r11b'), REGISTER_VOLATILE))
-		registers.add(Register(platform.x64.R12, String('r12 r12d r12w r12b'), REGISTER_NONE))
-		registers.add(Register(platform.x64.R13, String('r13 r13d r13w r13b'), REGISTER_NONE))
-		registers.add(Register(platform.x64.R14, String('r14 r14d r14w r14b'), REGISTER_NONE))
-		registers.add(Register(platform.x64.R15, String('r15 r15d r15w r15b'), REGISTER_NONE))
+		registers.add(Register(platform.x64.R8, "r8 r8d r8w r8b", REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R9, "r9 r9d r9w r9b", REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R10, "r10 r10d r10w r10b", REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R11, "r11 r11d r11w r11b", REGISTER_VOLATILE))
+		registers.add(Register(platform.x64.R12, "r12 r12d r12w r12b", REGISTER_NONE))
+		registers.add(Register(platform.x64.R13, "r13 r13d r13w r13b", REGISTER_NONE))
+		registers.add(Register(platform.x64.R14, "r14 r14d r14w r14b", REGISTER_NONE))
+		registers.add(Register(platform.x64.R15, "r15 r15d r15w r15b", REGISTER_NONE))
 	}
 
 	load_architecture_arm64() {
@@ -868,7 +868,7 @@ Unit {
 				destination = Result(handle, iterator.key.type.format)
 
 				instruction = MoveInstruction(this, destination, value)
-				instruction.description = String('Releases the value into local memory')
+				instruction.description = "Releases the value into local memory"
 				instruction.type = MOVE_RELOCATE
 
 				add(instruction)
@@ -878,7 +878,7 @@ Unit {
 		else {
 			destination = Result(TemporaryMemoryHandle(this), value.format)
 			instruction = MoveInstruction(this, destination, value)
-			instruction.description = String('Releases the value into local memory')
+			instruction.description = "Releases the value into local memory"
 			instruction.type = MOVE_RELOCATE
 
 			add(instruction)
@@ -1697,8 +1697,8 @@ constant TEXT_SECTION_IDENTIFIER = 'text'
 constant DATA_SECTION_IDENTIFIER = 'data'
 
 get_default_entry_point() {
-	if settings.is_target_windows => String('main')
-	=> String('_start')
+	if settings.is_target_windows => "main"
+	=> "_start"
 }
 
 add_linux_x64_header(entry_function_call: String) {
@@ -1921,7 +1921,7 @@ allocate_string(text: String) {
 			continue
 		}
 		else {
-			abort(String('Can not understand string command ') + String(command))
+			abort("Can not understand string command " + String(command))
 		}
 
 		hexadecimal = text.slice(position, position + length)
@@ -2018,7 +2018,7 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 		if item.value_type == CONSTANT_TYPE_BYTES {
 			values = List<String>()
 			loop value in item.(ByteArrayDataSectionHandle).value { values.add(to_string(value)) }
-			text = String.join(String(', '), values)
+			text = String.join(", ", values)
 			allocator = BYTE_ALLOCATOR
 		}
 		else {
@@ -2201,7 +2201,7 @@ get_text_sections(context: Context) {
 
 		# Add the debug label, which indicates the start of debuggable code
 		if settings.is_debugging_enabled {
-			label = String('debug_file_') + to_string(file.index) + '_start'
+			label = "debug_file_" + to_string(file.index) + '_start'
 			builder.write_line(label + `:`)
 			builder.add(file, LabelInstruction(none as Unit, Label(label)))
 		}
@@ -2227,7 +2227,7 @@ get_text_sections(context: Context) {
 
 		# Add the debug label, which indicates the end of debuggable code
 		if settings.is_debugging_enabled {
-			label = String('debug_file_') + to_string(file.index) + '_end'
+			label = "debug_file_" + to_string(file.index) + '_end'
 			builder.write_line(label + `:`)
 			builder.add(file, LabelInstruction(none as Unit, Label(label)))
 		}
@@ -2278,7 +2278,7 @@ add_debug_information_to_header(builder: AssemblyBuilder, file: SourceFile) {
 
 	# Convert the full path to a relative path if possible
 	if fullname.starts_with(current_folder) {
-		fullname = String('./') + fullname.slice(current_folder.length)
+		fullname = "./" + fullname.slice(current_folder.length)
 	}
 
 	# Write a directive that stores the path to the specified source file, this is needed for debugging information
@@ -2299,7 +2299,7 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	# Do not add the entry function call, if the we are outputting a static library
 	if output_type == BINARY_TYPE_STATIC_LIBRARY => builder
 
-	selector = context.get_function(String('init'))
+	selector = context.get_function("init")
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
 
 	overload = selector.overloads[0]
@@ -2363,17 +2363,17 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		file = SourceFile(object_filename, String.empty, -1)
 
 		if settings.is_target_windows {
-			if not (pe_format.import_object_file(object_filename) has object_file) abort(String('Could not import object file ') + object_filename)
+			if not (pe_format.import_object_file(object_filename) has object_file) abort("Could not import object file " + object_filename)
 			object_files.add(file, object_file)
 		}
 		else {
-			if not (elf_format.import_object_file(object_filename) has object_file) abort(String('Could not import object file ') + object_filename)
+			if not (elf_format.import_object_file(object_filename) has object_file) abort("Could not import object file " + object_filename)
 			object_files.add(file, object_file)
 		}
 	}
 
 	loop file in files {
-		logger.verbose.write_line(String('Building object file for ') + file.fullname)
+		logger.verbose.write_line("Building object file for " + file.fullname)
 
 		builder = create_header(context, file, output_type)
 
@@ -2416,10 +2416,10 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		encoder_debug_file = none as String
 		if settings.is_debugging_enabled { encoder_debug_file = file.fullname }
 
-		logger.verbose.write_line(String('- Encoding instructions...'))
+		logger.verbose.write_line("- Encoding instructions...")
 		encoder_output = instruction_encoder.encode(builder.instructions.try_get(file).value_or(List<Instruction>()), encoder_debug_file)
 
-		logger.verbose.write_line(String('- Building data sections...'))
+		logger.verbose.write_line("- Building data sections...")
 		sections = List<BinarySection>()
 		sections.add(encoder_output.section) # Add the text section
 		sections.add_all(modules.map<BinarySection>((i: DataEncoderModule) -> i.build())) # Add the data sections
@@ -2427,7 +2427,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		if encoder_output.lines != none { sections.add(encoder_output.lines.build()) } # Add the debug lines
 		if encoder_output.frames != none { sections.add(encoder_output.frames.build()) } # Add the debug frames
 
-		logger.verbose.write_line(String('- Packing the object file...'))
+		logger.verbose.write_line("- Packing the object file...")
 
 		object_file = none as BinaryObjectFile
 
@@ -2461,7 +2461,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	output_filename = output_name + extension
 	binary = none as Array<byte>
 
-	logger.verbose.write_line(String('Linking...'))
+	logger.verbose.write_line("Linking...")
 
 	if settings.is_target_windows {
 		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)

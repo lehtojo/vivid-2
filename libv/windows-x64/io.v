@@ -343,7 +343,7 @@ shell(command: String, working_folder: link) {
 
 	process_information = inline internal.ProcessInformation()
 
-	command = String('/C ') + command
+	command = "/C " + command
 
 	# Try to create the requested process: Return -1, if the process creation fails, otherwise return the PID
 	if not internal.CreateProcessA(shell.data, command.data, none as link, none as link, true, 0, none as link, working_folder, startup_information, process_information) => -1
@@ -462,7 +462,7 @@ find_argument_ending(text: String, ending: char, i: large) {
 # Summary: Returns the list of the arguments passed to this application
 export get_command_line_arguments() {
 	text = String(internal.GetCommandLineA())
-	empty = String('')
+	empty = String.empty
 
 	arguments = List<String>()
 	argument = empty

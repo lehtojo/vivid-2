@@ -45,7 +45,7 @@ Pattern AssignPattern {
 		if not context.is_variable_declared(name) {
 			# Ensure the name is not reserved
 			if name == SELF_POINTER_IDENTIFIER or name == LAMBDA_SELF_POINTER_IDENTIFIER {
-				state.error = Status(destination.position, String('Can not declare variable with name ') + name)
+				state.error = Status(destination.position, "Can not declare variable with name " + name)
 				=> none as Node
 			}
 

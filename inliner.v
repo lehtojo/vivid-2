@@ -416,7 +416,7 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 	if states.contains_key(implementation) return
 	states[implementation] = true # Mark the implementation as visited
 
-	logger.verbose.write_line(String('Inlining in ') + implementation.string())
+	logger.verbose.write_line("Inlining in " + implementation.string())
 
 	# Get the root of the function implementation and clone it
 	snapshot = implementation.node.clone()
@@ -432,7 +432,7 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 		# 2. Do not inline recursive function and the current function
 		if called_function.is_imported or not is_inlinable(implementation, called_function) continue
 
-		logger.verbose.write_line(String('- Deciding inlining of ') + called_function.string())
+		logger.verbose.write_line("- Deciding inlining of " + called_function.string())
 
 		# Perform inlining in the called function before doing anything, so that obvious inlining is not done multiple times when others call the same function
 		optimize(called_function, states)

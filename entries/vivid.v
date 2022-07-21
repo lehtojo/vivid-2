@@ -21,7 +21,7 @@ complain(status: Status) {
 init() {
 	start = time.now()
 
-	String.empty = String('')
+	String.empty = ""
 	settings.initialize()
 	initialize_configuration()
 

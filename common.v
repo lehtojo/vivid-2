@@ -350,7 +350,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 	state.all = tokens
 
 	consumptions = List<Pair<parser.DynamicToken, large>>()
-	context = Context(String('0'), NORMAL_CONTEXT)
+	context = Context("0", NORMAL_CONTEXT)
 
 	loop (priority = parser.MAX_FUNCTION_BODY_PRIORITY, priority >= parser.MIN_PRIORITY, priority--) {
 		loop {
@@ -957,7 +957,7 @@ to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
 
 	loop template_argument in template_arguments {
 		if template_argument == none or template_argument.is_unresolved {
-			template_argument_strings.add(String('?'))
+			template_argument_strings.add("?")
 		}
 		else {
 			template_argument_strings.add(template_argument.string())
@@ -968,16 +968,16 @@ to_string(name: String, arguments: List<Type>, template_arguments: List<Type>) {
 
 	loop argument in arguments {
 		if argument == none or argument.is_unresolved {
-			argument_strings.add(String('?'))
+			argument_strings.add("?")
 		}
 		else {
 			argument_strings.add(argument.string())
 		}
 	}
 
-	if template_argument_strings.size > 0 => name + `<` + String.join(String(', '), template_argument_strings) + '>(' + String.join(String(', '), argument_strings) + `)`
+	if template_argument_strings.size > 0 => name + `<` + String.join(", ", template_argument_strings) + '>(' + String.join(", ", argument_strings) + `)`
 	
-	=> name + `(` + String.join(String(', '), argument_strings) + `)`
+	=> name + `(` + String.join(", ", argument_strings) + `)`
 }
 
 # Summary: Aligns the member variables of the specified type

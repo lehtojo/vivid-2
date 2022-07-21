@@ -438,7 +438,7 @@ liftup_conditional_statements_from_loops(root: Node) {
 			inner_conditional_position = inner_conditional.statement.start
 
 			if inner_conditional_position !== none {
-				logger.verbose.write_line(String('Lifting conditional statement from loop at ') + inner_conditional_position.string())
+				logger.verbose.write_line("Lifting conditional statement from loop at " + inner_conditional_position.string())
 			}
 			else {
 				logger.verbose.write_line('Lifting conditional statement from loop')

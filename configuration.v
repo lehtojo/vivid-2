@@ -72,7 +72,7 @@ initialize_configuration() {
 
 	if OS == OPERATING_SYSTEM_WINDOWS {
 		path = io.get_environment_variable('PATH')
-		if path === none { path = String('') }
+		if path === none { path = String.empty }
 
 		folders = path.split(`;`)
 
@@ -83,7 +83,7 @@ initialize_configuration() {
 	}
 	else {
 		path = io.get_environment_variable('Path')
-		if path === none { path = String('') }
+		if path === none { path = String.empty }
 
 		folders = path.split(`:`)
 	}
@@ -257,7 +257,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		settings.service = true
 	}
 	else {
-		=> Status(String('Unknown option ') + value)
+		=> Status("Unknown option " + value)
 	}
 	
 	=> Status()

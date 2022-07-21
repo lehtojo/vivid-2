@@ -264,7 +264,7 @@ apply_exports(symbols: Map<String, BinarySymbol>, exports: Set<String>) {
 			continue
 		}
 
-		abort(String('Exporting of symbol ') + symbol + ' is requested, but it does not exist')
+		abort("Exporting of symbol " + symbol + ' is requested, but it does not exist')
 	}
 }
 
@@ -284,7 +284,7 @@ get_all_symbols_from_sections(sections: List<BinarySection>) {
 
 			# If the version of the current symbol in the dictionary is not external, the current symbol is defined at least twice
 			conflict = symbols[symbol.name]
-			if not conflict.external abort(String('Symbol ') + symbol.name + ' is created at least twice')
+			if not conflict.external abort("Symbol " + symbol.name + ' is created at least twice')
 
 			# Since the version of the current symbol in the dictionary is external, it can be replaced with the actual definition (current symbol)
 			symbols[symbol.name] = symbol
@@ -301,12 +301,12 @@ compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol
 		loop offset in section.offsets {
 			# Try to find the 'from'-symbol
 			symbol = offset.offset.from.name
-			if not symbols.contains_key(symbol) abort(String('Can not compute an offset, because symbol ') + symbol + ' can not be found')
+			if not symbols.contains_key(symbol) abort("Can not compute an offset, because symbol " + symbol + ' can not be found')
 			from = symbols[symbol]
 
 			# Try to find the 'to'-symbol
 			symbol = offset.offset.to.name
-			if not symbols.contains_key(symbol) abort(String('Can not compute an offset, because symbol ') + symbol + ' can not be found')
+			if not symbols.contains_key(symbol) abort("Can not compute an offset, because symbol " + symbol + ' can not be found')
 			to = symbols[symbol]
 
 			# Ensure both symbols are defined locally

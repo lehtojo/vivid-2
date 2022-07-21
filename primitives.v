@@ -30,7 +30,7 @@ Number Link {
 	}
 
 	init(accessor_type: Type) {
-		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
+		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = List<Type>(1, true)
 		this.template_arguments[0] = accessor_type
 		this.identifier = String(primitives.LINK_IDENTIFIER)
@@ -38,7 +38,7 @@ Number Link {
 	}
 
 	init() {
-		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, String('link'))
+		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = List<Type>(0, false)
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE

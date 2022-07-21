@@ -100,7 +100,7 @@ Handle {
 	}
 
 	virtual string() {
-		=> String('?')
+		=> "?"
 	}
 }
 
@@ -145,7 +145,7 @@ Handle ConstantHandle {
 
 	override string() {
 		if settings.is_x64 => string_shared()
-		=> String('#') + string_shared()
+		=> "#" + string_shared()
 	}
 
 	override equals(other: Handle) {
@@ -232,7 +232,7 @@ Handle MemoryHandle {
 
 		if start == none {
 			if settings.is_x64 => String(to_size_modifier(size)) + ' [' + to_string(offset) + `]`
-			else => String('[xzr, #') + to_string(offset) + `]`
+			else => "[xzr, #" + to_string(offset) + `]`
 		}
 		else {
 			if settings.is_x64 {
@@ -244,7 +244,7 @@ Handle MemoryHandle {
 				=> String(to_size_modifier(size)) + ' [' + start.string() + offset_text + `]`
 			}
 			else {
-				=> String('[') + start.string() + String(', #') + to_string(offset) + `]`
+				=> "[" + start.string() + ", #" + to_string(offset) + `]`
 			}
 		}
 	}
@@ -438,7 +438,7 @@ Handle DataSectionHandle {
 		# Apply the offset if it is not zero
 		if offset != 0 {
 			postfix = to_string(offset)
-			if offset > 0 { postfix = String('+') + postfix }
+			if offset > 0 { postfix = "+" + postfix }
 
 			=> String(to_size_modifier(size)) + ' [' + identifier + postfix + ']'
 		}
@@ -504,7 +504,7 @@ ConstantDataSectionHandle ByteArrayDataSectionHandle {
 	init(bytes: Array<byte>) {
 		values = List<String>()
 		loop value in bytes { values.add(to_string(value)) }
-		ConstantDataSectionHandle.init(String('{ ') + String.join(String(', '), values) + ' }')
+		ConstantDataSectionHandle.init("{ " + String.join(", ", values) + ' }')
 		this.value = bytes
 		this.value_type = CONSTANT_TYPE_BYTES
 	}
@@ -583,7 +583,7 @@ Handle ComplexMemoryHandle {
 		index: Register = get_index()
 		offset: large = get_offset()
 
-		result = String(' [')
+		result = " ["
 
 		if start != none { result = result + start.string() }
 
@@ -748,7 +748,7 @@ Handle ExpressionHandle {
 			else { expression = expression + to_string(postfix) }
 		}
 
-		=> String('[') + expression + ']'
+		=> "[" + expression + ']'
 	}
 
 	string_arm64() {
@@ -842,10 +842,10 @@ Handle StackAllocationHandle {
 
 		if not settings.is_x64 => stack_pointer[SYSTEM_BYTES] + ', #' + to_string(offset)
 
-		if offset > 0 => String('[') + stack_pointer[SYSTEM_BYTES] + '+' + to_string(offset) + ']'
-		else offset < 0 => String('[') + stack_pointer[SYSTEM_BYTES] + to_string(offset) + ']'
+		if offset > 0 => "[" + stack_pointer[SYSTEM_BYTES] + '+' + to_string(offset) + ']'
+		else offset < 0 => "[" + stack_pointer[SYSTEM_BYTES] + to_string(offset) + ']'
 
-		=> String('[') + stack_pointer[SYSTEM_BYTES] + ']'
+		=> "[" + stack_pointer[SYSTEM_BYTES] + ']'
 	}
 
 	override equals(other: Handle) {
