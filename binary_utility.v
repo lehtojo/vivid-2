@@ -209,7 +209,7 @@ BinaryStringTable {
 			result = Array<byte>(bytes)
 			
 			# Insert the size of the String table
-			result.data.(link<normal>)[0] = bytes
+			result.data.(normal*)[0] = bytes
 
 			# Copy the payload
 			if payload.length > 0 {
@@ -344,13 +344,13 @@ write_all<T>(destination: Array<byte>, offset: large, sources: List<T>) {
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read<T>(container: Array<byte>, offset: large) {
-	return (container.data + offset).(link<T>)[0]
+	return (container.data + offset).(T*)[0]
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
 read<T>(container: link, offset: large) {
-	return (container + offset).(link<T>)[0]
+	return (container + offset).(T*)[0]
 }
 
 # Summary:
@@ -386,55 +386,55 @@ write(container: link, offset: large, value: large) {
 # Summary:
 # Writes the specified value to the specified offset
 write_int16(container: Array<byte>, offset: large, value: large) {
-	(container.data + offset).(link<small>)[0] = value as small
+	(container.data + offset).(small*)[0] = value as small
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int16(container: List<byte>, offset: large, value: large) {
-	(container.data + offset).(link<small>)[0] = value as small
+	(container.data + offset).(small*)[0] = value as small
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int16(container: link, offset: large, value: large) {
-	(container + offset).(link<small>)[0] = value as small
+	(container + offset).(small*)[0] = value as small
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int32(container: Array<byte>, offset: large, value: large) {
-	(container.data + offset).(link<normal>)[0] = value as normal
+	(container.data + offset).(normal*)[0] = value as normal
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int32(container: List<byte>, offset: large, value: large) {
-	(container.data + offset).(link<normal>)[0] = value as normal
+	(container.data + offset).(normal*)[0] = value as normal
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int32(container: link, offset: large, value: large) {
-	(container + offset).(link<normal>)[0] = value as normal
+	(container + offset).(normal*)[0] = value as normal
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int64(container: Array<byte>, offset: large, value: large) {
-	(container.data + offset).(link<large>)[0] = value as large
+	(container.data + offset).(large*)[0] = value as large
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int64(container: List<byte>, offset: large, value: large) {
-	(container.data + offset).(link<large>)[0] = value as large
+	(container.data + offset).(large*)[0] = value as large
 }
 
 # Summary:
 # Writes the specified value to the specified offset
 write_int64(container: link, offset: large, value: large) {
-	(container + offset).(link<large>)[0] = value as large
+	(container + offset).(large*)[0] = value as large
 }
 
 # Summary:

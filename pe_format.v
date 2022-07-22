@@ -30,7 +30,7 @@ namespace pe_format {
 			bytes[i] = name[i]
 		}
 
-		return bytes.(link<large>)[0]
+		return bytes.(large*)[0]
 	}
 
 	# Summary: Converts the encoded 64-bit integer name into a string
@@ -45,7 +45,7 @@ namespace pe_format {
 	# Summary:
 	# Loads the offset of the PE header in the image file
 	get_header_offset(bytes: Array<byte>) {
-		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(link<normal>)[0]
+		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(normal*)[0]
 	}
 
 	# Summary:

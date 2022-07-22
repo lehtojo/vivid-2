@@ -1,6 +1,6 @@
 import 'C' ExitProcess(status: large)
 import 'C' GetStdHandle(handle: large): large
-import 'C' WriteFile(handle: large, buffer: link, size: large, written: link<large>, overlapped: link<large>): bool
+import 'C' WriteFile(handle: large, buffer: link, size: large, written: large*, overlapped: large*): bool
 
 STANDARD_OUTPUT_HANDLE = -11
 STRING_DECIMAL_PRECISION = 15

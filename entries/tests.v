@@ -604,7 +604,7 @@ unnamed_packs(optimization: large) {
 }
 
 init() {
-	optimization = 1
+	optimization = 2
 	console.write_line('Arithmetic')
 	arithmetic(optimization)
 	console.write_line('Assignment')

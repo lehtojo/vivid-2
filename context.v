@@ -2160,7 +2160,8 @@ UnresolvedTypeComponent {
 
 Type UnresolvedType {
 	components: List<UnresolvedTypeComponent>
-	count: ParenthesisToken
+	size: ParenthesisToken
+	pointers: large = 0
 
 	init(identifier: String) {
 		Type.init(String.empty, MODIFIER_DEFAULT)
@@ -2211,19 +2212,40 @@ Type UnresolvedType {
 			}
 		}
 
-		if count != none return TypeNode(ArrayType(environment, context as Type, count, position))
+		result = context as Type
 
-		return TypeNode(context as Type)
+		# Array types:
+		if size != none {
+			return TypeNode(ArrayType(environment, result, size, position))
+		}
+
+		# Wrap the result type around pointers
+		loop (i = 0, i < pointers, i++) {
+			pointer = Link(result)
+			result = pointer
+		}
+
+		return TypeNode(result)
 	}
 
 	override match(other: Type) {
 		return false
 	}
 
-	try_resolve_type(context: Context) {
+	resolve_or_none(context: Context) {
 		result = resolve(context)
-		if result == none return none as Type
+		if result === none return none as Type
 		return result.try_get_type()
+	}
+
+	resolve_or_this(context: Context) {
+		node = resolve(context)
+		if node === none return this
+
+		result = node.try_get_type()
+		if result === none return this
+
+		return result
 	}
 }
 

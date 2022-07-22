@@ -128,9 +128,11 @@ read_type(context: Context, tokens: List<Token>) {
 	if tokens.size == 0 return none as Type
 
 	next = tokens[0]
+
 	if next.match(TOKEN_TYPE_PARENTHESIS) {
 		if next.match(`(`) return read_function_type(context, tokens, next.position)
 		if next.match(`{`) return read_pack_type(context, tokens, next.position)
+
 		return none as Type
 	}
 
@@ -149,19 +151,33 @@ read_type(context: Context, tokens: List<Token>) {
 
 	type = UnresolvedType(components)
 
-	if tokens.size > 0 {
-		next = tokens[0]
+	# If there are no more tokens, return the type
+	if tokens.size === 0 return type.resolve_or_this(context)
 
-		if next.match(`[`) {
-			type.count = next as ParenthesisToken
-			tokens.pop_or(none as Token)
-		}
+	# Array types:
+	next = tokens[0]
+
+	if next.match(`[`) {
+		tokens.pop_or(none as Token)
+
+		type.size = next as ParenthesisToken
+		return type.resolve_or_this(context)
 	}
 
-	resolved = type.try_resolve_type(context)
-	if resolved != none return resolved
+	# Count the number of pointers
+	loop {
+		# Require at least one token
+		if tokens.size === 0 stop
 
-	return type
+		# Expect a multiplication operator (pointer)
+		if not tokens[0].match(Operators.MULTIPLY) stop
+		tokens.pop_or(none as Token)
+
+		# Wrap the current type around a pointer
+		type.pointers++
+	}
+
+	return type.resolve_or_this(context)
 }
 
 # Summary: Reads a type from the next tokens inside the specified tokens
@@ -274,17 +290,45 @@ consume_pack_type(state: ParserState) {
 	return true
 }
 
-consume_type(state: ParserState) {
-	is_normal_type = state.consume(TOKEN_TYPE_IDENTIFIER)
+consume_type_end(state: ParserState) {
+	next = none as Token
 
-	if not is_normal_type {
+	# Consume pointers
+	loop {
 		next = state.peek()
-		if next == none or not (next.match(`{`) or next.match(`(`)) return false
+		if next === none return
+
+		if not next.match(Operators.MULTIPLY) stop
+		state.consume()
+	}
+
+	# Do not allow creating nested arrays
+	if next.match(`[`) {
+		state.consume()
+	}
+}
+
+consume_type(state: ParserState) {
+	if not state.consume(TOKEN_TYPE_IDENTIFIER) {
+		next = state.peek()
+		if next === none return false
+
+		if next.match(`{`) {
+			if not consume_pack_type(state) return false
+		}
+		else next.match(`(`) {
+			if not consume_function_type(state) return false
+		}
+		else {
+			return false
+		}
+
+		return true
 	}
 
 	loop {
 		next = state.peek()
-		if next == none return true
+		if next === none return true
 
 		if next.match(Operators.DOT) {
 			state.consume()
@@ -293,21 +337,13 @@ consume_type(state: ParserState) {
 		else next.match(Operators.LESS_THAN) {
 			if not consume_template_arguments(state) return false
 		}
-		else next.match(`[`) {
-			state.consume()
-			return true
+		else {
+			stop
 		}
-		else is_normal_type {
-			return true
-		}
-		else next.match(`(`) {
-			if not consume_function_type(state) return false
-		}
-		else next.match(`{`) {
-			if not consume_pack_type(state) return false
-		}
-		else return true
 	}
+
+	consume_type_end(state)
+	return true
 }
 
 # Summary: Returns the types of the child nodes

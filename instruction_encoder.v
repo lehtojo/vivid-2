@@ -402,27 +402,27 @@ namespace instruction_encoder {
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int16(module: EncoderModule, value: large) {
-		(module.output + module.position).(link<small>)[0] = value as small
+		(module.output + module.position).(small*)[0] = value as small
 		module.position += sizeof(small)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int32(module: EncoderModule, value: large) {
-		(module.output + module.position).(link<normal>)[0] = value as normal
+		(module.output + module.position).(normal*)[0] = value as normal
 		module.position += sizeof(normal)
 	}
 
 	# Summary:
 	# Writes the specified value to the specified position
 	write_int32(module: EncoderModule, position: large, value: large) {
-		(module.output + position).(link<normal>)[0] = value as normal
+		(module.output + position).(normal*)[0] = value as normal
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int64(module: EncoderModule, value: large) {
-		(module.output + module.position).(link<large>)[0] = value as large
+		(module.output + module.position).(large*)[0] = value as large
 		module.position += sizeof(large)
 	}
 

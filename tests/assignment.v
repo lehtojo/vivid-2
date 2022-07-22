@@ -7,7 +7,7 @@ Holder {
 }
 
 Sequence {
-	address: link<decimal>
+	address: decimal*
 }
 
 # Tests whether the compiler can store values into object instances

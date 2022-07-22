@@ -1,5 +1,5 @@
 Array<T> {
-	data: link<T>
+	data: T*
 	count: large
 	
 	init(count: large) {

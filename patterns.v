@@ -1925,7 +1925,7 @@ Pattern IsPattern {
 	init() {
 		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_KEYWORD)
-		priority = 5
+		priority = 16
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
@@ -2161,7 +2161,7 @@ Pattern HasPattern {
 		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_IDENTIFIER)
-		priority = 5
+		priority = 16
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {

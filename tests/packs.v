@@ -63,13 +63,13 @@ pack_6(x: Bar, y: Bar) {
 }
 
 # Test: Loading pack from memory
-pack_7(memory: link<Foo>, i: large) {
+pack_7(memory: Foo*, i: large) {
 	foo = memory[i]
 	return foo.x * foo.x + foo.y * foo.y
 }
 
 # Test: Store pack in memory
-pack_8(memory: link<Foo>, i: large, x: large, y: large) {
+pack_8(memory: Foo*, i: large, x: large, y: large) {
 	foo: Foo
 	foo.x = y
 	foo.y = x
@@ -77,13 +77,13 @@ pack_8(memory: link<Foo>, i: large, x: large, y: large) {
 }
 
 # Test: Loading nested pack from memory
-pack_9(memory: link<Bar>, i: large) {
+pack_9(memory: Bar*, i: large) {
 	bar = memory[i]
 	return bar.a.x * bar.b.x + bar.a.y * bar.b.y
 }
 
 # Test: Store nested pack in memory
-pack_10(memory: link<Bar>, i: large, x: large, y: large) {
+pack_10(memory: Bar*, i: large, x: large, y: large) {
 	bar: Bar
 	bar.a.x = y
 	bar.a.y = x
@@ -106,7 +106,7 @@ init() {
 	y = pack_5(27, 31)
 	console.write_line(pack_6(x, y))
 
-	memory = allocate(sizeof(Bar) * 2) as link<large>
+	memory = allocate(sizeof(Bar) * 2) as large*
 	zero(memory, sizeof(Bar) * 2)
 	memory[0] = 37
 	memory[1] = 41

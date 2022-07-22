@@ -64,7 +64,7 @@ resolve(context: Context, type: Type) {
 	# Resolve array types, because their sizes need to be determined at compile time and they can be dependent on expressions
 	if type.is_array_type return resolve_array_type(type.parent, type as ArrayType)
 
-	return type.(UnresolvedType).try_resolve_type(context)
+	return type.(UnresolvedType).resolve_or_none(context)
 }
 
 # Summary: Tries to resolve the specified node tree
@@ -168,7 +168,7 @@ resolve_return_type(implementation: FunctionImplementation) {
 		if implementation.return_type.is_resolved return
 
 		# Try to resolve the return type
-		resolved = implementation.return_type.(UnresolvedType).try_resolve_type(implementation)
+		resolved = implementation.return_type.(UnresolvedType).resolve_or_none(implementation)
 		if resolved === none return
 
 		# Update the return type, since we resolved it

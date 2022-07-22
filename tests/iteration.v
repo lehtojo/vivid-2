@@ -1,9 +1,9 @@
 CustomArrayIterator<T> {
-	elements: link<T>
+	elements: T*
 	position: normal
 	count: normal
 
-	init(elements: link<T>, count: large) {
+	init(elements: T*, count: large) {
 		this.elements = elements
 		this.position = -1
 		this.count = count
@@ -23,7 +23,7 @@ CustomArrayIterator<T> {
 }
 
 CustomArray<T> {
-	data: link<T>
+	data: T*
 	count: large
 	
 	init(count: large) {
@@ -31,7 +31,7 @@ CustomArray<T> {
 		this.count = count
 	}
 
-	init(data: link<T>, count: large) {
+	init(data: T*, count: large) {
 		this.data = data
 		this.count = count
 	}
@@ -63,21 +63,21 @@ Object {
 	}
 }
 
-export iteration_1(array: CustomArray<large>, destination: link<large>) {
+export iteration_1(array: CustomArray<large>, destination: large*) {
 	loop i in array {
 		destination[0] = i
 		destination += sizeof(large)
 	}
 }
 
-export iteration_2(destination: link<large>) {
+export iteration_2(destination: large*) {
 	loop i in -10..10 {
 		destination[0] = i * i
 		destination += sizeof(large)
 	}
 }
 
-export iteration_3(range: Range, destination: link<large>) {
+export iteration_3(range: Range, destination: large*) {
 	loop i in range {
 		destination[0] = 2 * i
 		destination += sizeof(large)
