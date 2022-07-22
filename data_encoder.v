@@ -316,7 +316,7 @@ DataEncoderModule {
 		symbol_name = name
 
 		# Remove the dot from the name, if it exists
-		if symbol_name.length > 0 and symbol_name[0] == `.` {
+		if symbol_name.length > 0 and symbol_name[] == `.` {
 			symbol_name = symbol_name.slice(1)
 		}
 

@@ -65,21 +65,21 @@ Object {
 
 export iteration_1(array: CustomArray<large>, destination: large*) {
 	loop i in array {
-		destination[0] = i
+		destination[] = i
 		destination += sizeof(large)
 	}
 }
 
 export iteration_2(destination: large*) {
 	loop i in -10..10 {
-		destination[0] = i * i
+		destination[] = i * i
 		destination += sizeof(large)
 	}
 }
 
 export iteration_3(range: Range, destination: large*) {
 	loop i in range {
-		destination[0] = 2 * i
+		destination[] = 2 * i
 		destination += sizeof(large)
 	}
 }
@@ -120,7 +120,7 @@ export range_4(a: large, b: large) {
 
 init() {
 	numbers = allocate<large>(5)
-	numbers[0] = -2
+	numbers[] = -2
 	numbers[1] = 3
 	numbers[2] = -5
 	numbers[3] = 7
@@ -171,7 +171,7 @@ init() {
 	third.value = 1010
 	third.flag = false
 	
-	objects[0] = first
+	objects[] = first
 	objects[1] = second
 	objects[2] = third
 

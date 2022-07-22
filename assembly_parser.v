@@ -282,7 +282,7 @@ AssemblyParser {
 	# Pattern: . $directive $1 $2 ... $n
 	private parse_directive(tokens: List<Token>) {
 		# Directives start with a dot
-		if not tokens[0].match(Operators.DOT) return false
+		if not tokens[].match(Operators.DOT) return false
 
 		# The second token must be the identifier of the directive
 		if tokens.size == 1 or not tokens[1].match(TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_KEYWORD) return false
@@ -308,12 +308,12 @@ AssemblyParser {
 	# Pattern: $name :
 	private parse_label(tokens: List<Token>) {
 		# Labels must begin with an identifier
-		if not tokens[0].match(TOKEN_TYPE_IDENTIFIER) return false
+		if not tokens[].match(TOKEN_TYPE_IDENTIFIER) return false
 
 		# Labels must end with a colon
 		if tokens.size == 1 or not tokens[1].match(Operators.COLON) return false
 
-		name = tokens[0].(IdentifierToken).value
+		name = tokens[].(IdentifierToken).value
 
 		if data == none {
 			instructions.add(LabelInstruction(unit, Label(name)))
@@ -388,10 +388,10 @@ AssemblyParser {
 
 				# Ensure the last operator is a plus or minus operator
 				# Also handle the negation of the integer offset.
-				if tokens[0].match(Operators.SUBTRACT) {
+				if tokens[].match(Operators.SUBTRACT) {
 					offset = -tokens[1].(NumberToken).data
 				}
-				else tokens[0].match(Operators.ADD) {
+				else tokens[].match(Operators.ADD) {
 					offset = tokens[1].(NumberToken).data
 				}
 				else {
@@ -572,8 +572,8 @@ AssemblyParser {
 	# Summary:
 	# Tries to create an instruction from the specified tokens
 	parse_instruction(tokens: List<Token>) {
-		if tokens[0].type != TOKEN_TYPE_IDENTIFIER return false
-		operation = tokens[0].(IdentifierToken).value
+		if tokens[].type != TOKEN_TYPE_IDENTIFIER return false
+		operation = tokens[].(IdentifierToken).value
 
 		parameters = List<InstructionParameter>()
 		position = 1 # Start after the operation identifier

@@ -51,7 +51,7 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 		parameters.add(parameter)
 
 		# Consume the next token, if it is a comma
-		if tokens[0].match(Operators.COMMA) tokens.pop_or(none as Token)
+		if tokens[].match(Operators.COMMA) tokens.pop_or(none as Token)
 	}
 
 	next = tokens.pop_or(none as Token)
@@ -64,7 +64,7 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 read_type_component(context: Context, tokens: List<Token>) {
 	name = tokens.pop_or(none as Token).(IdentifierToken).value
 
-	if tokens.size > 0 and tokens[0].match(Operators.LESS_THAN) {
+	if tokens.size > 0 and tokens[].match(Operators.LESS_THAN) {
 		template_arguments = read_template_arguments(context, tokens)
 		return UnresolvedTypeComponent(name, template_arguments)
 	}
@@ -110,7 +110,7 @@ read_pack_type(context: Context, tokens: List<Token>, position: Position) {
 	# We are not going to feed the sections straight to the parser while using the pack type as context, because it would allow defining whole member functions
 	loop section in sections {
 		# Determine the member name and its type
-		member = section[0].(IdentifierToken).value
+		member = section[].(IdentifierToken).value
 
 		type = read_type(context, section.slice(2))
 		if type == none return none as Type
@@ -127,7 +127,7 @@ read_pack_type(context: Context, tokens: List<Token>, position: Position) {
 read_type(context: Context, tokens: List<Token>) {
 	if tokens.size == 0 return none as Type
 
-	next = tokens[0]
+	next = tokens[]
 
 	if next.match(TOKEN_TYPE_PARENTHESIS) {
 		if next.match(`(`) return read_function_type(context, tokens, next.position)
@@ -144,7 +144,7 @@ read_type(context: Context, tokens: List<Token>) {
 		components.add(read_type_component(context, tokens))
 
 		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
-		if tokens.size == 0 or not tokens[0].match(Operators.DOT) stop
+		if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
 
 		tokens.pop_or(none as Token)
 	}
@@ -155,7 +155,7 @@ read_type(context: Context, tokens: List<Token>) {
 	if tokens.size === 0 return type.resolve_or_this(context)
 
 	# Array types:
-	next = tokens[0]
+	next = tokens[]
 
 	if next.match(`[`) {
 		tokens.pop_or(none as Token)
@@ -170,7 +170,7 @@ read_type(context: Context, tokens: List<Token>) {
 		if tokens.size === 0 stop
 
 		# Expect a multiplication operator (pointer)
-		if not tokens[0].match(Operators.MULTIPLY) stop
+		if not tokens[].match(Operators.MULTIPLY) stop
 		tokens.pop_or(none as Token)
 
 		# Wrap the current type around a pointer
@@ -281,7 +281,7 @@ consume_pack_type(state: ParserState) {
 		if section.size < 3 return false
 
 		# Verify the first token is a member name
-		if section[0].type != TOKEN_TYPE_IDENTIFIER return false
+		if section[].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Verify the second token is a colon
 		if not section[1].match(Operators.COLON) return false
@@ -427,7 +427,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 		}
 	}
 
-	next = tokens[0]
+	next = tokens[]
 
 	if next.type == TOKEN_TYPE_DYNAMIC {
 		consumed = 1

@@ -747,7 +747,7 @@ parse() {
 		function = context.get_function("init")
 		if function == none return Status('Can not find the entry function \'init()\'')
 
-		function.overloads[0].get(List<Type>())
+		function.overloads[].get(List<Type>())
 	}
 
 	settings.parse = Parse(context, root as Node)

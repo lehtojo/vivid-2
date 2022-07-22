@@ -325,7 +325,7 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 	successors = conditional.get_successors()
 
 	if successors.size > 0 {
-		successor = successors[0]
+		successor = successors[]
 		replacement = none as Node
 
 		if successor.instance == NODE_ELSE {
@@ -347,7 +347,7 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 			successor.replace(replacement)
 		}
 
-		successors[0] = replacement
+		successors[] = replacement
 	}
 
 	# 3. Remove the specified conditional statement. This will form the negative statement, because the successors will be executed.

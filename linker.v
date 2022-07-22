@@ -82,7 +82,7 @@ namespace linker {
 		# Compute the amount of allocated section types
 		loop iterator in section_fragments {
 			inner_fragments = iterator.value
-			inner_fragment = inner_fragments[0]
+			inner_fragment = inner_fragments[]
 
 			if inner_fragment.type == BINARY_SECTION_TYPE_NONE or has_flag(inner_fragment.flags, BINARY_SECTION_FLAGS_ALLOCATE) { allocated_fragments++ }
 		}
@@ -94,13 +94,13 @@ namespace linker {
 			inner_fragments = iterator.value
 			is_allocated_section = i + 1 <= allocated_fragments
 
-			flags = inner_fragments[0].flags
-			type = inner_fragments[0].type
-			name = inner_fragments[0].name
+			flags = inner_fragments[].flags
+			type = inner_fragments[].type
+			name = inner_fragments[].name
 
 			# Compute the margin needed to align the overlay section, this is different from the inner alignments
 			alignment = SEGMENT_ALIGNMENT
-			if not is_allocated_section { alignment = inner_fragments[0].alignment }
+			if not is_allocated_section { alignment = inner_fragments[].alignment }
 
 			overlay_margin = alignment - file_position % alignment
 
@@ -112,10 +112,10 @@ namespace linker {
 			start_file_position = file_position
 
 			# Set the alignment to the alignment of the first inner fragment, so that it is the alignment for the whole section if there are no other inner fragments
-			alignment = inner_fragments[0].alignment
+			alignment = inner_fragments[].alignment
 
 			# Move over the first inner fragment
-			file_position += inner_fragments[0].data.size
+			file_position += inner_fragments[].data.size
 
 			# Skip the first fragment, since it is already part of the section
 			loop (j = 1, j < inner_fragments.size, j++) {

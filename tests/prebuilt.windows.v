@@ -107,7 +107,7 @@ print(bytes: link, length: large) {
 print(character: char) {
 	written: large[1]
 	bytes: char[1]
-	bytes[0] = character
+	bytes[] = character
 	handle = GetStdHandle(STANDARD_OUTPUT_HANDLE)
 	WriteFile(handle, bytes as link, 1, written as link, 0)
 }

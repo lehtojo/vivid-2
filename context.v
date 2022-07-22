@@ -796,7 +796,7 @@ Context Type {
 	}
 
 	add_constructor(constructor: Constructor) {
-		if constructors.overloads.size <= 0 or not constructors.overloads[0].(Constructor).is_default {
+		if constructors.overloads.size <= 0 or not constructors.overloads[].(Constructor).is_default {
 			constructors.add(constructor)
 			Context.declare(constructor)
 			return
@@ -812,7 +812,7 @@ Context Type {
 	}
 
 	add_destructor(destructor: Destructor) {
-		if not is_user_defined or not destructors.overloads[0].(Destructor).is_default {
+		if not is_user_defined or not destructors.overloads[].(Destructor).is_default {
 			destructors.add(destructor)
 			Context.declare(destructor)
 			return
@@ -1020,10 +1020,10 @@ Context Type {
 	# Summary: Finds the first configuration variable in the hierarchy of this type
 	get_configuration_variable() {
 		if supertypes.size > 0 {
-			supertype = supertypes[0]
+			supertype = supertypes[]
 
 			loop (supertype.supertypes.size > 0) {
-				supertype = supertype.supertypes[0]
+				supertype = supertype.supertypes[]
 			}
 
 			if supertype.configuration == none abort('Could not find runtime configuration from an inherited supertype')
@@ -1273,9 +1273,9 @@ FunctionList {
 		}
 
 		if candidates.size == 0 return none as Function
-		if candidates.size == 1 return candidates[0]
+		if candidates.size == 1 return candidates[]
 
-		minimum_candidate =  candidates[0]
+		minimum_candidate =  candidates[]
 		minimum_casts = get_cast_count(minimum_candidate, parameter_types)
 
 		loop (i = 1, i < candidates.size, i++) {
@@ -1621,7 +1621,7 @@ Type TemplateType {
 		tokens = clone(inherited)
 
 		blueprint: List<Token> = clone(this.blueprint)
-		blueprint[0].(IdentifierToken).value = name + `<` + identifier + `>`
+		blueprint[].(IdentifierToken).value = name + `<` + identifier + `>`
 
 		tokens.add_all(blueprint)
 
@@ -1720,7 +1720,7 @@ Function TemplateFunction {
 
 		# Copy the blueprint and insert the specified arguments to their places
 		blueprint: List<Token> = clone(this.blueprint)
-		blueprint[0].(FunctionToken).identifier.value = name + `<` + variant_identifier + `>`
+		blueprint[].(FunctionToken).identifier.value = name + `<` + variant_identifier + `>`
 
 		insert_arguments(blueprint, template_arguments)
 
@@ -2182,7 +2182,7 @@ Type UnresolvedType {
 		loop component in components {
 			component.resolve(environment)
 
-			local = component != components[0]
+			local = component != components[]
 			if not context.is_type_declared(component.identifier, local) return none as TypeNode
 
 			component_type = context.get_type(component.identifier)

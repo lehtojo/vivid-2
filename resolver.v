@@ -27,7 +27,7 @@ get_shared_type(expected: Type, actual: Type) {
 # Summary: Returns the shared type between all the specified types
 outline get_shared_type(types: List<Type>) {
 	if types.size == 0 return none as Type
-	shared = types[0]
+	shared = types[]
 
 	loop (i = 1, i < types.size, i++) {
 		shared = get_shared_type(shared, types[i])
@@ -242,7 +242,7 @@ resolve_virtual_functions(type: Type) {
 			if skip or overload.implementations.size == 0 continue
 
 			# Now the current overload must be the default implementation for the virtual function
-			virtual_function.return_type = overload.implementations[0].return_type
+			virtual_function.return_type = overload.implementations[].return_type
 			stop
 		}
 	}

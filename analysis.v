@@ -73,7 +73,7 @@ apply_constants(context: Context) {
 			application.exit(1)
 		}
 
-		write = variable.writes[0].parent
+		write = variable.writes[].parent
 
 		if write == none or not write.match(Operators.ASSIGN) {
 			resolver.output(Status(variable.position, "Invalid assignment for constant " + variable.name))
@@ -119,7 +119,7 @@ apply_constants(root: Node) {
 		if usage_variable.writes.size == 0 abort("Value for the constant " + usage_variable.name + ' is never assigned')
 		if usage_variable.writes.size > 1 abort("Value for the constant " + usage_variable.name + ' is assigned more than once')
 
-		write = usage_variable.writes[0].parent
+		write = usage_variable.writes[].parent
 
 		if write == none or not write.match(Operators.ASSIGN) abort("Invalid assignment for " + usage_variable.name)
 		

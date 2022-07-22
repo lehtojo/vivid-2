@@ -684,7 +684,7 @@ Token StringToken {
 	init(text: String) {
 		Token.init(TOKEN_TYPE_STRING)
 		this.text = text.slice(1, text.length - 1)
-		this.opening = text[0]
+		this.opening = text[]
 	}
 
 	init(text: String, opening: char, position: Position) {
@@ -1288,9 +1288,9 @@ get_character_value(text: String) {
 
 	if text.length == 0 return Error<large, String>("Character value is empty")
 
-	if text[0] != `\\` {
+	if text[] != `\\` {
 		if text.length != 1 return Error<large, String>("Character value allows only one character")
-		return Ok<large, String>(text[0])
+		return Ok<large, String>(text[])
 	}
 
 	if text.length == 2 and text[1] == `\\` return Ok<large, String>(`\\`)
@@ -1406,12 +1406,12 @@ parse_token(area: TextArea) {
 	}
 	else area.type == TEXT_TYPE_PARENTHESIS {
 		text = area.text
-		if text.length == 2 return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, List<Token>()))
+		if text.length == 2 return Ok<Token, String>(ParenthesisToken(text[], area.start, area.end, List<Token>()))
 
 		result: Outcome<List<Token>, String> = get_tokens(text.slice(1, text.length - 1), area.start.clone().next_character(), true)
 		if result has not tokens return Error<Token, String>(result.get_error())
 
-		return Ok<Token, String>(ParenthesisToken(text[0], area.start, area.end, tokens))
+		return Ok<Token, String>(ParenthesisToken(text[], area.start, area.end, tokens))
 	}
 
 	token = none as Token

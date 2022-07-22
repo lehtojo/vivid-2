@@ -94,7 +94,7 @@ InstructionPrinter {
 
 	name_of(result: Result) {
 		if result.is_constant return String(`#`) + to_string(result.value.(ConstantHandle).value)
-		if result.is_any_register return result.value.(RegisterHandle).register.partitions[0]
+		if result.is_any_register return result.value.(RegisterHandle).register.partitions[]
 
 		index = 0
 
@@ -266,7 +266,7 @@ InstructionPrinter {
 
 	print(builder: InstructionPrinterBuilder, instruction: LockStateInstruction) {
 		builder.append('lock ')
-		builder.append(instruction.register.partitions[0])
+		builder.append(instruction.register.partitions[])
 	}
 
 	print(builder: InstructionPrinterBuilder, instruction: EvacuateInstruction) {

@@ -252,7 +252,7 @@ export_context(context: Context) {
 
 		if variable.is_constant {
 			# Extract the constant value
-			editor = common.get_editor(variable.writes[0])
+			editor = common.get_editor(variable.writes[])
 			constant_node_value = editor.last
 
 			# Convert the constant value into a string

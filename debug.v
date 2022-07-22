@@ -1056,7 +1056,7 @@ Debug {
 
 			local_variable_alignment.add(DWARF_OP_DEREFERENCE)
 			local_variable_alignment.add(DWARF_OP_ADD_BYTE_CONSTANT)
-			local_variable_alignment.add(data_variable_alignment[0])
+			local_variable_alignment.add(data_variable_alignment[])
 
 			add_operation(DWARF_OP_BASE_POINTER_OFFSET, local_variable_alignment) # DW_AT_location
 		}
@@ -1098,7 +1098,7 @@ Debug {
 
 			parameter_alignment.add(DWARF_OP_DEREFERENCE)
 			parameter_alignment.add(DWARF_OP_ADD_BYTE_CONSTANT)
-			parameter_alignment.add(data_variable_alignment[0])
+			parameter_alignment.add(data_variable_alignment[])
 
 			add_operation(DWARF_OP_BASE_POINTER_OFFSET, parameter_alignment) # DW_AT_location
 		}

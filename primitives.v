@@ -32,7 +32,7 @@ Number Link {
 	init(accessor_type: Type) {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = List<Type>(1, true)
-		this.template_arguments[0] = accessor_type
+		this.template_arguments[] = accessor_type
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
 	}
@@ -53,7 +53,7 @@ Number Link {
 	}
 
 	override get_accessor_type() {
-		if template_arguments.size > 0 return template_arguments[0]
+		if template_arguments.size > 0 return template_arguments[]
 		return primitives.create_number(primitives.U8, FORMAT_UINT8)
 	}
 }

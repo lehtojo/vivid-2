@@ -152,7 +152,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 				components.add(common.read_type_component(context, tokens))
 
 				# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
-				if tokens.size == 0 or not tokens[0].match(Operators.DOT) stop
+				if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
 
 				tokens.pop_or(none as Token)
 			}
@@ -161,7 +161,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 			
 			# Extract the parameter types
 			parameter_types = List<Type>()
-			parameter_tokens = tokens[0].(ParenthesisToken).tokens
+			parameter_tokens = tokens[].(ParenthesisToken).tokens
 
 			loop (parameter_tokens.size > 0) {
 				parameter_type = common.read_type(context, parameter_tokens)

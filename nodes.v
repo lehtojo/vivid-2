@@ -508,7 +508,7 @@ Node UnresolvedFunction {
 		# Resolve the lambda type only if there is only one option left since the analysis would go too complex
 		if candidates.size != 1 return
 
-		match = candidates[0]
+		match = candidates[]
 		expected_types = match.parameters.map<Type>((i: Parameter) -> i.type)
 
 		loop (i = 0, i < expected_types.size, i++) {
@@ -1709,7 +1709,7 @@ Node NamespaceNode {
 	# Defines the actual namespace from the stored tokens.
 	# This does not create the body of the namespace.
 	create_namespace(context: Context) {
-		position = this.name[0].position
+		position = this.name[].position
 
 		loop (i = 0, i < name.size, i += 2) {
 			if this.name[i].type != TOKEN_TYPE_IDENTIFIER abort('Invalid namespace tokens')

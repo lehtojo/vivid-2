@@ -506,7 +506,7 @@ create_object_file(name: String, sections: List<BinarySection>, exports: Set<Str
 # Summary:
 # Creates an object file from the specified sections and converts it to binary format
 build_object_file(sections: List<BinarySection>, exports: Set<String>) {
-	if sections.size === 0 or sections[0].type !== BINARY_SECTION_TYPE_NONE {
+	if sections.size === 0 or sections[].type !== BINARY_SECTION_TYPE_NONE {
 		# Create an empty section, so that it is possible to leave section index unspecified in symbols for example
 		none_section = BinarySection(String.Empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
 		sections.insert(0, none_section)
@@ -603,7 +603,7 @@ import_symbols_and_relocations(sections: List<BinarySection>, section_intermedia
 		symbol_name = symbol_names.data + symbol_entry.name
 
 		# Sometimes other assemblers give empty names for sections for instance, these are not supported (yet)
-		if symbol_name[0] === 0 continue
+		if symbol_name[] === 0 continue
 
 		symbol = BinarySymbol(String(symbol_name), symbol_entry.value, symbol_entry.section_index == 0)
 		symbol.exported = symbol_entry.is_exported

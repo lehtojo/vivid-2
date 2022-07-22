@@ -30,7 +30,7 @@ namespace pe_format {
 			bytes[i] = name[i]
 		}
 
-		return bytes.(large*)[0]
+		return bytes.(large*)[]
 	}
 
 	# Summary: Converts the encoded 64-bit integer name into a string
@@ -45,7 +45,7 @@ namespace pe_format {
 	# Summary:
 	# Loads the offset of the PE header in the image file
 	get_header_offset(bytes: Array<byte>) {
-		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(normal*)[0]
+		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(normal*)[]
 	}
 
 	# Summary:
@@ -422,7 +422,7 @@ namespace pe_format {
 		symbols = binary_utility.get_all_symbols_from_sections(sections)
 
 		# Filter out the none-section if it is present
-		if sections.size > 0 and sections[0].type == BINARY_SECTION_TYPE_NONE sections.remove_at(0)
+		if sections.size > 0 and sections[].type == BINARY_SECTION_TYPE_NONE sections.remove_at(0)
 
 		# Export the specified symbols
 		binary_utility.apply_exports(symbols, exports)

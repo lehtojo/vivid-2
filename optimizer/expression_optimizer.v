@@ -108,7 +108,7 @@ get_cost(node: Node) {
 # Summary:
 # Creates a node tree representing the specified components
 recreate(components: List<Component>) {
-	result = recreate(components[0])
+	result = recreate(components[])
 
 	loop (i = 1, i < components.size, i++) {
 		component = components[i]
@@ -223,7 +223,7 @@ recreate(component: Component) {
 		product_component = component as VariableProductComponent
 		coefficient = product_component.coefficient
 
-		result = create_variable_with_order(product_component.variables[0].variable, product_component.variables[0].order)
+		result = create_variable_with_order(product_component.variables[].variable, product_component.variables[].order)
 
 		loop (i = 1, i < product_component.variables.size, i++) {
 			variable = product_component.variables[i]
@@ -252,8 +252,8 @@ perform_negate(components: List<Component>) {
 # Summary:
 # Performs not operation when the specified components have exactly one component, otherwise builds a complex component
 perform_not(expression: NotNode, components: List<Component>) {
-	if components.size == 1 and components[0].is_integer {
-		data = components[0].(NumberComponent).value.data
+	if components.size == 1 and components[].is_integer {
+		data = components[].(NumberComponent).value.data
 
 		if expression.is_bitwise return [ NumberComponent(!data) as Component ]
 		else return [ NumberComponent(data ¤ 1) as Component ]
@@ -456,7 +456,7 @@ simplify_multiplication(left_components: List<Component>, right_components: List
 # Simplifies the division between the specified operands
 simplify_division(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
-		result = left_components[0] / right_components[0]
+		result = left_components[] / right_components[]
 
 		if result !== none return [ result ]
 	}
@@ -467,12 +467,12 @@ simplify_division(left_components: List<Component>, right_components: List<Compo
 # Summary:
 # Simplifies left shift between the specified operands
 simplify_shift_left(left_components: List<Component>, right_components: List<Component>) {
-	if right_components.size != 1 or not right_components[0].is_number or right_components[0].(NumberComponent).value.is_decimal {
+	if right_components.size != 1 or not right_components[].is_number or right_components[].(NumberComponent).value.is_decimal {
 		return [ ComplexComponent(OperatorNode(Operators.SHIFT_LEFT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
 
 	components = List<Component>()
-	shifter = right_components[0].(NumberComponent).value.data
+	shifter = right_components[].(NumberComponent).value.data
 	multiplier = NumberComponent(1 <| shifter)
 
 	loop component in left_components {
@@ -491,12 +491,12 @@ simplify_shift_left(left_components: List<Component>, right_components: List<Com
 # Summary:
 # Simplifies right shift between the specified operands
 simplify_shift_right(left_components: List<Component>, right_components: List<Component>) {
-	if right_components.size != 1 or not right_components[0].is_number or right_components[0].(NumberComponent).value.is_decimal {
+	if right_components.size != 1 or not right_components[].is_number or right_components[].(NumberComponent).value.is_decimal {
 		return [ ComplexComponent(OperatorNode(Operators.SHIFT_RIGHT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
 
 	components = List<Component>()
-	shifter = right_components[0].(NumberComponent).value.data
+	shifter = right_components[].(NumberComponent).value.data
 	divider = NumberComponent(1 <| shifter)
 
 	loop component in left_components {
@@ -516,7 +516,7 @@ simplify_shift_right(left_components: List<Component>, right_components: List<Co
 # Simplifies bitwise and between the specified operands
 simplify_bitwise_and(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
-		result = left_components[0].bitwise_and(right_components[0])
+		result = left_components[].bitwise_and(right_components[])
 		if result !== none return [ result ]
 	}
 
@@ -527,7 +527,7 @@ simplify_bitwise_and(left_components: List<Component>, right_components: List<Co
 # Simplifies bitwise xor between the specified operands
 simplify_bitwise_xor(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
-		result = left_components[0].bitwise_xor(right_components[0])
+		result = left_components[].bitwise_xor(right_components[])
 		if result !== none return [ result ]
 	}
 
@@ -538,7 +538,7 @@ simplify_bitwise_xor(left_components: List<Component>, right_components: List<Co
 # Simplifies bitwise or between the specified operands
 simplify_bitwise_or(left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
-		result = left_components[0].bitwise_or(right_components[0])
+		result = left_components[].bitwise_or(right_components[])
 		if result !== none return [ result ]
 	}
 
@@ -549,7 +549,7 @@ simplify_bitwise_or(left_components: List<Component>, right_components: List<Com
 # Simplifies comparison operators between the specified operands
 simplify_comparison(operator: Operator, left_components: List<Component>, right_components: List<Component>) {
 	if left_components.size == 1 and right_components.size == 1 {
-		comparison = left_components[0].compare(right_components[0])
+		comparison = left_components[].compare(right_components[])
 
 		if comparison !== COMPARISON_UNKNOWN {
 			result = when(operator) {

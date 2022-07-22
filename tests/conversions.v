@@ -100,35 +100,35 @@ export automatic_cast_2(baz: Baz) {
 
 # Tests whether the loaded tiny from the specified address will be converted into a large integer
 export automatic_conversion_1(a: link) {
-	if a return a[0]
+	if a return a[]
 
 	return 0
 }
 
 # Tests whether the loaded small from the specified address will be converted into a large integer
 export automatic_conversion_2(a: small*) {
-	if a return a[0]
+	if a return a[]
 
 	return 0
 }
 
 # Tests whether the loaded normal from the specified address will be converted into a large integer
 export automatic_conversion_3(a: normal*) {
-	if a return a[0]
+	if a return a[]
 
 	return 0
 }
 
 # Tests whether the loaded large from the specified address will be converted into a large integer
 export automatic_conversion_4(a: large*) {
-	if a return a[0]
+	if a return a[]
 
 	return 0
 }
 
 # Tests whether the loaded decimal from the specified address will be converted into a large integer
 export automatic_conversion_5(a: decimal*) {
-	if a return a[0] as large
+	if a return a[] as large
 
 	return 0
 }
@@ -293,11 +293,11 @@ init() {
 	baz.c = 0
 	are_equal(505.0, automatic_cast_2(baz))
 
-	(baz as decimal*)[0] = 3.14159
-	are_equal((baz as tiny*)[0], automatic_conversion_1(baz as tiny*))
-	are_equal((baz as small*)[0], automatic_conversion_2(baz as small*))
-	are_equal((baz as normal*)[0], automatic_conversion_3(baz as normal*))
-	are_equal((baz as large*)[0], automatic_conversion_4(baz as large*))
+	(baz as decimal*)[] = 3.14159
+	are_equal((baz as tiny*)[], automatic_conversion_1(baz as tiny*))
+	are_equal((baz as small*)[], automatic_conversion_2(baz as small*))
+	are_equal((baz as normal*)[], automatic_conversion_3(baz as normal*))
+	are_equal((baz as large*)[], automatic_conversion_4(baz as large*))
 	are_equal(3, automatic_conversion_5(baz as decimal*))
 
 	are_equal(0, automatic_conversion_1(none as link))

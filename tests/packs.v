@@ -108,7 +108,7 @@ init() {
 
 	memory = allocate(sizeof(Bar) * 2) as large*
 	zero(memory, sizeof(Bar) * 2)
-	memory[0] = 37
+	memory[] = 37
 	memory[1] = 41
 
 	console.write_line(pack_7(memory, 0))

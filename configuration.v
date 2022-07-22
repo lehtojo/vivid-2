@@ -48,7 +48,7 @@ shared_library_extension() {
 
 # Summary: Returns whether the element starts with '-'
 is_option(element: String) {
-	return element[0] == `-`
+	return element[] == `-`
 }
 
 # Summary: Collect files from the specified folder

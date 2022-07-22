@@ -73,7 +73,7 @@ AssemblyBuilder {
 	}
 
 	get_data_section(file: SourceFile, section: String) {
-		if section.length > 0 and section[0] != `.` { section = String(`.`) + section }
+		if section.length > 0 and section[] != `.` { section = String(`.`) + section }
 
 		file_modules = none as List<DataEncoderModule>
 
@@ -207,7 +207,7 @@ Register {
 	}
 
 	string() {
-		return partitions[0]
+		return partitions[]
 	}
 }
 
@@ -1311,7 +1311,7 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 
 	# Temporary handles:
 	loop (temporary_handles.size > 0) {
-		handle = temporary_handles[0]
+		handle = temporary_handles[]
 		identity = handle.identity
 		position -= handle.size
 
@@ -1327,7 +1327,7 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 
 	# Stack allocation handles:
 	loop (stack_allocation_handles.size > 0) {
-		handle = stack_allocation_handles[0]
+		handle = stack_allocation_handles[]
 		identity = handle.identity
 		position -= handle.bytes
 
@@ -1975,7 +1975,7 @@ allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<Const
 			size = bytes.size
 		}
 		else item.value_type == CONSTANT_TYPE_INTEGER or item.value_type == CONSTANT_TYPE_DECIMAL {
-			temporary[0] = item.(NumberDataSectionHandle).value
+			temporary[] = item.(NumberDataSectionHandle).value
 			data = temporary as link
 			size = sizeof(large)
 		}
@@ -2302,11 +2302,11 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	selector = context.get_function("init")
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
 
-	overload = selector.overloads[0]
+	overload = selector.overloads[]
 	if overload.implementations.size == 0 abort('Missing entry function')
 
 	# Now, if an internal initialization function is defined, we need to call it and it is its responsibility to call the user defined entry function
-	entry_function_implementation = overload.implementations[0]
+	entry_function_implementation = overload.implementations[]
 
 	implementation = entry_function_implementation
 	if settings.initialization_function != none { implementation = settings.initialization_function }

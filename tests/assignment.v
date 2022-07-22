@@ -21,7 +21,7 @@ export assignment_1(instance: Holder) {
 
 # Tests whether the compiler can store values into raw memory
 export assignment_2(instance: Sequence) {
-	instance.address[0] = -123.456
+	instance.address[] = -123.456
 	instance.address[1] = -987.654
 	instance.address[2] = 101.010
 }
@@ -42,7 +42,7 @@ init() {
 
 	assignment_2(sequence)
 
-	are_equal(-123.456, sequence.address[0])
+	are_equal(-123.456, sequence.address[])
 	are_equal(-987.654, sequence.address[1])
 	are_equal(101.010, sequence.address[2])
 	return 0

@@ -402,27 +402,27 @@ namespace instruction_encoder {
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int16(module: EncoderModule, value: large) {
-		(module.output + module.position).(small*)[0] = value as small
+		(module.output + module.position).(small*)[] = value as small
 		module.position += sizeof(small)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int32(module: EncoderModule, value: large) {
-		(module.output + module.position).(normal*)[0] = value as normal
+		(module.output + module.position).(normal*)[] = value as normal
 		module.position += sizeof(normal)
 	}
 
 	# Summary:
 	# Writes the specified value to the specified position
 	write_int32(module: EncoderModule, position: large, value: large) {
-		(module.output + position).(normal*)[0] = value as normal
+		(module.output + position).(normal*)[] = value as normal
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int64(module: EncoderModule, value: large) {
-		(module.output + module.position).(large*)[0] = value as large
+		(module.output + module.position).(large*)[] = value as large
 		module.position += sizeof(large)
 	}
 
@@ -710,7 +710,7 @@ namespace instruction_encoder {
 		encodings = platform.x64.parameterless_encodings[type]
 		if encodings.size == 0 abort('Could not find instruction encoding')
 
-		return encodings[0]
+		return encodings[]
 	}
 
 	# Summary:
@@ -871,13 +871,13 @@ namespace instruction_encoder {
 		}
 
 		if instruction.type == INSTRUCTION_DEBUG_START {
-			symbol = instruction.parameters[0].value.(DataSectionHandle).identifier
+			symbol = instruction.parameters[].value.(DataSectionHandle).identifier
 			module.debug_frame_information.add(EncoderDebugFrameStartInformation(module.position, symbol))
 			return
 		}
 
 		if instruction.type == INSTRUCTION_DEBUG_FRAME_OFFSET {
-			offset = instruction.parameters[0].value.(ConstantHandle).value
+			offset = instruction.parameters[].value.(ConstantHandle).value
 			module.debug_frame_information.add(EncoderDebugFrameOffsetInformation(module.position, offset))
 			return
 		}
@@ -915,9 +915,9 @@ namespace instruction_encoder {
 
 		# Find the correct encoding
 		if parameters.size == 0 { encoding = find_encoding(identifier) }
-		else parameters.size == 1 { encoding = find_encoding(identifier, parameters[0].value) }
-		else parameters.size == 2 { encoding = find_encoding(identifier, parameters[0].value, parameters[1].value) }
-		else parameters.size == 3 { encoding = find_encoding(identifier, parameters[0].value, parameters[1].value, parameters[2].value) }
+		else parameters.size == 1 { encoding = find_encoding(identifier, parameters[].value) }
+		else parameters.size == 2 { encoding = find_encoding(identifier, parameters[].value, parameters[1].value) }
+		else parameters.size == 3 { encoding = find_encoding(identifier, parameters[].value, parameters[1].value, parameters[2].value) }
 		else { encoding = InstructionEncoding(0) }
 
 		# Write the lock prefix if necessary
@@ -929,11 +929,11 @@ namespace instruction_encoder {
 		route = encoding.route
 
 		if route == ENCODING_ROUTE_RRC {
-			write_register_and_register(module, encoding, parameters[0].value.(RegisterHandle).register, parameters[1].value.(RegisterHandle).register)
+			write_register_and_register(module, encoding, parameters[].value.(RegisterHandle).register, parameters[1].value.(RegisterHandle).register)
 			write_raw_constant(module, parameters[2].value.(ConstantHandle).value, encoding.input_size_of_third)
 		}
 		else route == ENCODING_ROUTE_RMC {
-			destination = parameters[0].value.(RegisterHandle).register
+			destination = parameters[].value.(RegisterHandle).register
 			descriptor = get_memory_address_descriptor(parameters[1].value)
 
 			if descriptor.relocation != none write_register_and_symbol(module, encoding, destination.identifier, descriptor.relocation)
@@ -948,17 +948,17 @@ namespace instruction_encoder {
 			if descriptor.relocation != none { descriptor.relocation.addend -= module.position - descriptor.relocation.offset }
 		}
 		else route == ENCODING_ROUTE_DRC {
-			write_register_and_register(module, encoding, parameters[0].value.(RegisterHandle).register, parameters[0].value.(RegisterHandle).register)
+			write_register_and_register(module, encoding, parameters[].value.(RegisterHandle).register, parameters[].value.(RegisterHandle).register)
 			write_raw_constant(module, parameters[1].value.(ConstantHandle).value, encoding.input_size_of_second)
 		}
 		else route == ENCODING_ROUTE_RR {
-			write_register_and_register(module, encoding, parameters[0].value.(RegisterHandle).register, parameters[1].value.(RegisterHandle).register)
+			write_register_and_register(module, encoding, parameters[].value.(RegisterHandle).register, parameters[1].value.(RegisterHandle).register)
 		}
 		else route == ENCODING_ROUTE_RC {
-			write_register_and_constant(module, encoding, parameters[0].value.(RegisterHandle).register, parameters[1].value.(ConstantHandle).value, encoding.input_size_of_second)
+			write_register_and_constant(module, encoding, parameters[].value.(RegisterHandle).register, parameters[1].value.(ConstantHandle).value, encoding.input_size_of_second)
 		}
 		else route == ENCODING_ROUTE_RM {
-			destination = parameters[0].value.(RegisterHandle).register
+			destination = parameters[].value.(RegisterHandle).register
 			descriptor = get_memory_address_descriptor(parameters[1].value)
 
 			if descriptor.relocation != none write_register_and_symbol(module, encoding, destination.identifier, descriptor.relocation)
@@ -972,7 +972,7 @@ namespace instruction_encoder {
 		}
 		else route == ENCODING_ROUTE_MR {
 			source = parameters[1].value.(RegisterHandle).register
-			descriptor = get_memory_address_descriptor(parameters[0].value)
+			descriptor = get_memory_address_descriptor(parameters[].value)
 
 			if descriptor.relocation != none write_register_and_symbol(module, encoding, source.identifier, descriptor.relocation)
 			else descriptor.start != none and descriptor.index != none write_register_and_memory_address(module, encoding, source.identifier, descriptor.start, descriptor.index, descriptor.stride, descriptor.offset)
@@ -984,7 +984,7 @@ namespace instruction_encoder {
 			if descriptor.relocation != none { descriptor.relocation.addend -= module.position - descriptor.relocation.offset }
 		}
 		else route == ENCODING_ROUTE_MC {
-			descriptor = get_memory_address_descriptor(parameters[0].value)
+			descriptor = get_memory_address_descriptor(parameters[].value)
 
 			if descriptor.relocation != none write_register_and_symbol(module, encoding, encoding.modifier, descriptor.relocation)
 			else descriptor.start != none and descriptor.index != none write_register_and_memory_address(module, encoding, encoding.modifier, descriptor.start, descriptor.index, descriptor.stride, descriptor.offset)
@@ -998,17 +998,17 @@ namespace instruction_encoder {
 			if descriptor.relocation != none { descriptor.relocation.addend -= module.position - descriptor.relocation.offset }
 		}
 		else route == ENCODING_ROUTE_OC {
-			first = parameters[0].value.(RegisterHandle).register
+			first = parameters[].value.(RegisterHandle).register
 			force = is_overridable_register(first, encoding.input_size_of_first)
 			try_write_rex(module, encoding.is_64bit, false, false, is_extension_register(first), force)
 			write_operation(module, encoding.operation + first.name)
 			write_raw_constant(module, parameters[1].value.(ConstantHandle).value, encoding.input_size_of_first)
 		}
 		else route == ENCODING_ROUTE_R {
-			write_single_register(module, encoding, parameters[0].value.(RegisterHandle).register)
+			write_single_register(module, encoding, parameters[].value.(RegisterHandle).register)
 		}
 		else route == ENCODING_ROUTE_M {
-			destination = parameters[0].value
+			destination = parameters[].value
 			descriptor = get_memory_address_descriptor(destination)
 
 			if descriptor.relocation != none write_register_and_symbol(module, encoding, encoding.modifier, descriptor.relocation)
@@ -1026,7 +1026,7 @@ namespace instruction_encoder {
 			write_raw_constant(module, parameters[1].value.(ConstantHandle).value, encoding.input_size_of_second)
 		}
 		else route == ENCODING_ROUTE_O {
-			first = parameters[0].value.(RegisterHandle).register
+			first = parameters[].value.(RegisterHandle).register
 			force = is_overridable_register(first, encoding.input_size_of_first)
 			try_write_rex(module, encoding.is_64bit, false, false, is_extension_register(first), force)
 			write_operation(module, encoding.operation + first.name)
@@ -1041,7 +1041,7 @@ namespace instruction_encoder {
 			write_operation(module, encoding.operation)
 
 			if operation == platform.x64.CALL {
-				label = Label(instruction.parameters[0].value.(DataSectionHandle).identifier)
+				label = Label(instruction.parameters[].value.(DataSectionHandle).identifier)
 				module.calls.add(LabelUsageItem(LABEL_USAGE_TYPE_CALL, module.position, label))
 			}
 
@@ -1087,7 +1087,7 @@ namespace instruction_encoder {
 				if instruction.type != INSTRUCTION_JUMP and not AssemblyParser.is_jump(instruction.operation) continue
 
 				# Now ensure that it jumps to a label instead of using registers or memory addresses
-				destination = instruction.parameters[0].value
+				destination = instruction.parameters[].value
 				if destination.instance != INSTANCE_DATA_SECTION continue
 
 				end = i + 1
@@ -1095,7 +1095,7 @@ namespace instruction_encoder {
 			}
 
 			if end != 0 {
-				label = Label(instructions[end - 1].parameters[0].value.(DataSectionHandle).identifier)
+				label = Label(instructions[end - 1].parameters[].value.(DataSectionHandle).identifier)
 				is_conditional_jump = not (instructions[end - 1].operation == platform.x64.JUMP)
 
 				module = EncoderModule(label, is_conditional_jump)

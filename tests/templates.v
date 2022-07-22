@@ -56,7 +56,7 @@ Product {
 	enchant() {
 		length = get_name_length()
 		buffer = allocate(length + 2)
-		buffer[0] = `i`
+		buffer[] = `i`
 		buffer[length + 1] = 0
 
 		copy(name, length, buffer + 1)
@@ -65,7 +65,7 @@ Product {
 	}
 
 	is_enchanted() {
-		if name[0] == 105 {
+		if name[] == 105 {
 			return true
 		}
 

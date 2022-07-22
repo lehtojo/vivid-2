@@ -10,7 +10,7 @@ export constant_permanence_and_array_copy(source: link, destination: link) {
 
 init() {
 	source = allocate(14)
-	source[0] = 1
+	source[] = 1
 	source[1] = 2
 	source[2] = 3
 	source[3] = 5

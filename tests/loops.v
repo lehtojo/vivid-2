@@ -125,7 +125,7 @@ init() {
 	are_equal(42, normal_for_loop_with_continue(42, -1))
 
 	expected = allocate(27)
-	expected[0] = 100
+	expected[] = 100
 	expected[1] = 0
 	expected[2] = 100
 	expected[3] = 0

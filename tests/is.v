@@ -144,8 +144,8 @@ export choose_vehicle(entity: Entity, vehicles: List<Vehicle>, distance: decimal
 		return Pig() as Vehicle
 	}
 
-	chosen_vehicle = vehicles[0]
-	minimum_time = vehicles[0].time(distance)
+	chosen_vehicle = vehicles[]
+	minimum_time = vehicles[].time(distance)
 
 	loop (i = 1, i < vehicles.size, i++) {
 		vehicle = vehicles[i]

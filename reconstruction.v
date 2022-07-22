@@ -1623,7 +1623,7 @@ rewrite_pack_comparisons(root: Node) {
 		# Rewrite the comparisons as follows:
 		if operator == Operators.EQUALS or operator == Operators.ABSOLUTE_EQUALS {
 			# Equals: a == b => a.a == b.a && a.b == b.b && ...
-			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
+			result = OperatorNode(operator).set_operands(left_members[], right_members[])
 
 			loop (i = 1, i < left_members.size, i++) {
 				left_member = left_members[i]
@@ -1636,7 +1636,7 @@ rewrite_pack_comparisons(root: Node) {
 		}
 		else {
 			# Not equals: a != b => a.a != b.a || a.b != b.b || ...
-			result = OperatorNode(operator).set_operands(left_members[0], right_members[0])
+			result = OperatorNode(operator).set_operands(left_members[], right_members[])
 
 			loop (i = 1, i < left_members.size, i++) {
 				left_member = left_members[i]
