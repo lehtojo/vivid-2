@@ -1032,35 +1032,35 @@ align_members(type: Type) {
 
 # Summary:
 # Returns all local variables, which represent the specified pack variable
-get_pack_representives(context: Context, prefix: String, type: Type, category: large) {
-	representives = List<Variable>()
+get_pack_proxies(context: Context, prefix: String, type: Type, category: large) {
+	proxies = List<Variable>()
 
 	loop iterator in type.variables {
 		member = iterator.value
 		name = prefix + '.' + member.name
 
-		# Create representives for each member, even for nested pack members
-		representive = context.get_variable(name)
-		if representive == none { representive = context.declare(member.type, category, name) }
+		# Create proxies for each member, even for nested pack members
+		proxy = context.get_variable(name)
+		if proxy == none { proxy = context.declare(member.type, category, name) }
 
 		if member.type.is_pack {
-			representives.add_all(get_pack_representives(context, name, member.type, category))
+			proxies.add_all(get_pack_proxies(context, name, member.type, category))
 		}
 		else {
-			representives.add(representive)
+			proxies.add(proxy)
 		}
 	}
 
-	return representives
+	return proxies
 }
 
 # Summary:
 # Returns all local variables, which represent the specified pack variable
-get_pack_representives(variable: Variable) {
-	# If we are accessing a pack representive, no need to add dot to the name
-	if variable.name.starts_with(`.`) return get_pack_representives(variable.parent, variable.name, variable.type, variable.category)
+get_pack_proxies(variable: Variable) {
+	# If we are accessing a pack proxy, no need to add dot to the name
+	if variable.name.starts_with(`.`) return get_pack_proxies(variable.parent, variable.name, variable.type, variable.category)
 
-	return get_pack_representives(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
+	return get_pack_proxies(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
 }
 
 # Summary:

@@ -233,12 +233,12 @@ build(unit: Unit, self: Result, node: FunctionNode) {
 }
 
 move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
-	representives = common.get_pack_representives(parameter)
+	proxies = common.get_pack_proxies(parameter)
 
-	loop representive in representives {
+	loop proxy in proxies {
 		# Do not use the default parameter alignment, use local stack memory, because we want the pack members to be sequentially
-		representive.alignment = 0
-		representive.is_aligned = false
+		proxy.alignment = 0
+		proxy.is_aligned = false
 
 		register = none as Register
 		source = none as Result
@@ -251,10 +251,10 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 		}
 
 		if register !== none {
-			source = Result(RegisterHandle(register), representive.type.get_register_format())
+			source = Result(RegisterHandle(register), proxy.type.get_register_format())
 		}
 		else {
-			source = Result(stack_position.finalize(), representive.type.get_register_format())
+			source = Result(stack_position.finalize(), proxy.type.get_register_format())
 		}
 
 		destination = Result(references.create_variable_handle(unit, parameter, ACCESS_READ), parameter.type.format)
@@ -272,7 +272,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 }
 
 # Summary:
-# Moves the specified parameter or its representives to their own stack locations, if they are not already in the stack.
+# Moves the specified parameter or its proxies to their own stack locations, if they are not already in the stack.
 # The location of the parameter is determined by using the specified registers.
 # This is used for debugging purposes.
 move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
@@ -307,7 +307,7 @@ move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_reg
 }
 
 # Summary:
-# Moves the specified parameters or their representives to their own stack locations, if they are not already in the stack.
+# Moves the specified parameters or their proxies to their own stack locations, if they are not already in the stack.
 # This is used for debugging purposes.
 move_parameters_to_stack(unit: Unit) {
 	stack_offset = 0

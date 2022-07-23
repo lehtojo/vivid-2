@@ -721,7 +721,7 @@ parse() {
 			importer.import_static_library(context, library, files, object_files)
 		}
 		else {
-			# println('Warning: Shared libraries are not supported yet')
+			# console.write_line('Warning: Shared libraries are not supported yet')
 		}
 	}
 

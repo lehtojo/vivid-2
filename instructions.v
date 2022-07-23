@@ -2193,39 +2193,6 @@ Instruction AllocateStackInstruction {
 }
 
 # Summary:
-# Ensures that the specified variable has a location in the current scope
-# This instruction works on all architectures
-Instruction DeclareInstruction {
-	variable: Variable
-	registerize: bool
-
-	init(unit: Unit, variable: Variable, registerize: bool) {
-		Instruction.init(unit, INSTRUCTION_DECLARE)
-		this.variable = variable
-		this.registerize = registerize
-	}
-
-	override on_build() {
-		if not registerize {
-			result.value = Handle()
-			result.format = variable.type.get_register_format()
-			return
-		}
-
-		media_register = variable.type.get_register_format() == FORMAT_DECIMAL
-		register = memory.get_next_register(unit, media_register, trace.for(unit, result), false)
-
-		result.value = RegisterHandle(register)
-		result.format = variable.type.get_register_format()
-
-		type: large = HANDLE_REGISTER
-		if media_register { type = HANDLE_MEDIA_REGISTER }
-
-		build('', 0, InstructionParameter(result, FLAG_DESTINATION, type), InstructionParameter(Result(), FLAG_NONE, HANDLE_NONE))
-	}
-}
-
-# Summary:
 # This instruction does nothing. However, this instruction is used for stopping the debugger.
 # This instruction works on all architectures
 Instruction NoOperationInstruction {

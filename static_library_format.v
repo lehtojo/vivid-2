@@ -56,7 +56,7 @@ constant EXPORT_TABLE_FILEMODE = '0'
 constant DEFAULT_FILEMODE = '100666'
 constant END_COMMAND = '\x60\n'
 
-constant FILEHEADER_LENGTH = 60
+constant FILE_HEADER_LENGTH = 60
 
 constant FILENAME_LENGTH = 16
 constant TIMESTAMP_LENGTH = 12
@@ -162,7 +162,7 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 		write_file_header(contents, file.name, timestamp, bytes.size, String(DEFAULT_FILEMODE))
 		contents.write(bytes)
 
-		position += FILEHEADER_LENGTH + bytes.size
+		position += FILE_HEADER_LENGTH + bytes.size
 
 		# Align the position to 2 bytes
 		if position % 2 == 0 continue
@@ -188,7 +188,7 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 	export_table_size = sizeof(normal) + symbol_count * sizeof(normal) + symbol_buffer.position
 
 	# Compute the offset which must be applied to all the file positions
-	offset = length_of(SIGNATURE) + FILEHEADER_LENGTH + export_table_size + filename_table.position
+	offset = length_of(SIGNATURE) + FILE_HEADER_LENGTH + export_table_size + filename_table.position
 
 	loop file in files {
 		file.position += offset

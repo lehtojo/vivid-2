@@ -246,7 +246,7 @@ DataEncoderModule DebugLineEncoderModule {
 }
 
 Debug {
-	constant DEBUG_ABBREVATION_TABLE = 'debug_abbrev'
+	constant DEBUG_ABBREVIATION_TABLE = 'debug_abbrev'
 	constant DEBUG_INFORMATION_TABLE = 'debug_info'
 	constant DEBUG_LINE_TABLE = 'debug_line'
 
@@ -337,24 +337,24 @@ Debug {
 	constant DWARF_END: byte = 0
 
 	information: Table
-	abbrevation: Table
+	abbreviation: Table
 
 	start: TableLabel
 	end: TableLabel
 
 	index: byte = 1
 
-	file_abbrevation: byte = 0
-	object_type_with_members_abbrevation: byte = 0
-	object_type_without_members_abbrevation: byte = 0
-	base_type_abbrevation: byte = 0
-	pointer_type_abbrevation: byte = 0
-	member_variable_abbrevation: byte = 0
-	parameter_variable_abbrevation: byte = 0
-	local_variable_abbrevation: byte = 0
-	array_type_abbrevation: byte = 0
-	subrange_type_abbrevation: byte = 0
-	inheritance_abbrevation: byte = 0
+	file_abbreviation: byte = 0
+	object_type_with_members_abbreviation: byte = 0
+	object_type_without_members_abbreviation: byte = 0
+	base_type_abbreviation: byte = 0
+	pointer_type_abbreviation: byte = 0
+	member_variable_abbreviation: byte = 0
+	parameter_variable_abbreviation: byte = 0
+	local_variable_abbreviation: byte = 0
+	array_type_abbreviation: byte = 0
+	subrange_type_abbreviation: byte = 0
+	inheritance_abbreviation: byte = 0
 
 	static get_debug_file_start_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_start'
@@ -369,7 +369,7 @@ Debug {
 	}
 
 	begin_file(file: SourceFile) {
-		information.add(file_abbrevation) # DW_TAG_compile_unit
+		information.add(file_abbreviation) # DW_TAG_compile_unit
 		information.add(DWARF_PRODUCER_TEXT) # DW_AT_producer
 		information.add(DWARF_LANGUAGE_IDENTIFIER) # DW_AT_language
 
@@ -489,9 +489,9 @@ Debug {
 
 	add_function(implementation: FunctionImplementation, types: Map<String, Type>) {
 		file = get_file(implementation)
-		abbreviation = to_uleb128(index++) # DW_TAG_subprogram
+		function_abbreviation = to_uleb128(index++) # DW_TAG_subprogram
 
-		loop value in abbreviation {
+		loop value in function_abbreviation {
 			information.add(value)
 		}
 
@@ -510,44 +510,44 @@ Debug {
 
 		has_children = implementation.self != none or implementation.parameters.size > 0 or implementation.locals.size > 0
 
-		loop value in abbreviation {
-			abbrevation.add(value)
+		loop value in function_abbreviation {
+			abbreviation.add(value)
 		}
 
-		abbrevation.add(DWARF_FUNCTION)
+		abbreviation.add(DWARF_FUNCTION)
 
 		has_children_value = DWARF_HAS_NO_CHILDREN
 		if has_children { has_children_value = DWARF_HAS_CHILDREN }
-		abbrevation.add(has_children_value)
+		abbreviation.add(has_children_value)
 
-		abbrevation.add(DWARF_LOW_PC)
-		abbrevation.add(DWARF_ADDRESS)
+		abbreviation.add(DWARF_LOW_PC)
+		abbreviation.add(DWARF_ADDRESS)
 
-		abbrevation.add(DWARF_HIGH_PC)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_HIGH_PC)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_FRAME_BASE)
-		abbrevation.add(DWARF_EXPRESSION)
+		abbreviation.add(DWARF_FRAME_BASE)
+		abbreviation.add(DWARF_EXPRESSION)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
 		if implementation.metadata.is_exported {
-			abbrevation.add(DWARF_EXPORTED)
-			abbrevation.add(DWARF_PRESENT)
+			abbreviation.add(DWARF_EXPORTED)
+			abbreviation.add(DWARF_PRESENT)
 		}
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
 		if implementation.return_type != none {
 			information.add(get_offset(start, get_type_label(implementation.return_type, types))) # DW_AT_type
@@ -572,256 +572,256 @@ Debug {
 		}
 	}
 
-	add_file_abbrevation() {
-		abbrevation.add(index) # Define the current abbreviation code
+	add_file_abbreviation() {
+		abbreviation.add(index) # Define the current abbreviation code
 
-		abbrevation.add(DWARF_TAG_COMPILE_UNIT) # This is a compile unit and it has children
-		abbrevation.add(DWARF_HAS_CHILDREN)
+		abbreviation.add(DWARF_TAG_COMPILE_UNIT) # This is a compile unit and it has children
+		abbreviation.add(DWARF_HAS_CHILDREN)
 
-		abbrevation.add(DWARF_PRODUCER) # The producer is identified with a pointer
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_PRODUCER) # The producer is identified with a pointer
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_LANGUAGE) # The language is identified with a short integer
-		abbrevation.add(DWARF_DATA_16)
+		abbreviation.add(DWARF_LANGUAGE) # The language is identified with a short integer
+		abbreviation.add(DWARF_DATA_16)
 
-		abbrevation.add(DWARF_NAME) # The name of the file is added with a pointer
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME) # The name of the file is added with a pointer
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_LINE_NUMBER_INFORMATION) # The line number information is added with a section offset
-		abbrevation.add(DWARF_DATA_SECTION_OFFSET)
+		abbreviation.add(DWARF_LINE_NUMBER_INFORMATION) # The line number information is added with a section offset
+		abbreviation.add(DWARF_DATA_SECTION_OFFSET)
 
-		abbrevation.add(DWARF_COMPILATION_FOLDER) # The compilation folder is added with a pointer
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_COMPILATION_FOLDER) # The compilation folder is added with a pointer
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_LOW_PC)
-		abbrevation.add(DWARF_ADDRESS)
+		abbreviation.add(DWARF_LOW_PC)
+		abbreviation.add(DWARF_ADDRESS)
 
-		abbrevation.add(DWARF_HIGH_PC)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_HIGH_PC)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		file_abbrevation = index++
+		file_abbreviation = index++
 	}
 
-	add_object_type_with_members_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_OBJECT_TYPE_DECLARATION)
-		abbrevation.add(DWARF_HAS_CHILDREN)
+	add_object_type_with_members_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
+		abbreviation.add(DWARF_HAS_CHILDREN)
 
-		abbrevation.add(DWARF_CALLING_CONVENTION)
-		abbrevation.add(DWARF_DATA_8)
+		abbreviation.add(DWARF_CALLING_CONVENTION)
+		abbreviation.add(DWARF_DATA_8)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_BYTE_SIZE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_BYTE_SIZE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		object_type_with_members_abbrevation = index++
+		object_type_with_members_abbreviation = index++
 	}
 
-	add_object_type_without_members_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_OBJECT_TYPE_DECLARATION)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_object_type_without_members_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_CALLING_CONVENTION)
-		abbrevation.add(DWARF_DATA_8)
+		abbreviation.add(DWARF_CALLING_CONVENTION)
+		abbreviation.add(DWARF_DATA_8)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_BYTE_SIZE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_BYTE_SIZE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		object_type_without_members_abbrevation = index++
+		object_type_without_members_abbreviation = index++
 	}
 
-	add_base_type_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_BASE_TYPE_DECLARATION)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_base_type_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_BASE_TYPE_DECLARATION)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_ENCODING)
-		abbrevation.add(DWARF_DATA_8)
+		abbreviation.add(DWARF_ENCODING)
+		abbreviation.add(DWARF_DATA_8)
 
-		abbrevation.add(DWARF_BYTE_SIZE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_BYTE_SIZE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		base_type_abbrevation = index++
+		base_type_abbreviation = index++
 	}
 
-	add_pointer_type_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_POINTER_TYPE_DECLARATION)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_pointer_type_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_POINTER_TYPE_DECLARATION)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		pointer_type_abbrevation = index++
+		pointer_type_abbreviation = index++
 	}
 
-	add_member_variable_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_MEMBER_DECLARATION)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_member_variable_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_MEMBER_DECLARATION)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_MEMBER_LOCATION)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_MEMBER_LOCATION)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_ACCESSIBILITY)
-		abbrevation.add(DWARF_DATA_8)
+		abbreviation.add(DWARF_ACCESSIBILITY)
+		abbreviation.add(DWARF_DATA_8)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		member_variable_abbrevation = index++
+		member_variable_abbreviation = index++
 	}
 
-	add_local_variable_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_VARIABLE)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_local_variable_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_VARIABLE)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_LOCATION)
-		abbrevation.add(DWARF_EXPRESSION)
+		abbreviation.add(DWARF_LOCATION)
+		abbreviation.add(DWARF_EXPRESSION)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		local_variable_abbrevation = index++
+		local_variable_abbreviation = index++
 	}
 
-	add_parameter_variable_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_PARAMETER)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_parameter_variable_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_PARAMETER)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_LOCATION)
-		abbrevation.add(DWARF_EXPRESSION)
+		abbreviation.add(DWARF_LOCATION)
+		abbreviation.add(DWARF_EXPRESSION)
 
-		abbrevation.add(DWARF_NAME)
-		abbrevation.add(DWARF_STRING)
+		abbreviation.add(DWARF_NAME)
+		abbreviation.add(DWARF_STRING)
 
-		abbrevation.add(DWARF_DECLARATION_FILE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_FILE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_DECLARATION_LINE)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_DECLARATION_LINE)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		parameter_variable_abbrevation = index++
+		parameter_variable_abbreviation = index++
 	}
 
-	add_array_type_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_ARRAY_TYPE)
-		abbrevation.add(DWARF_HAS_CHILDREN)
+	add_array_type_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_ARRAY_TYPE)
+		abbreviation.add(DWARF_HAS_CHILDREN)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		array_type_abbrevation = index++
+		array_type_abbreviation = index++
 	}
 
-	add_subrange_type_abbrevation() {
-		abbrevation.add(index)
-		abbrevation.add(DWARF_SUBRANGE_TYPE)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+	add_subrange_type_abbreviation() {
+		abbreviation.add(index)
+		abbreviation.add(DWARF_SUBRANGE_TYPE)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_COUNT)
-		abbrevation.add(DWARF_DATA_16)
+		abbreviation.add(DWARF_COUNT)
+		abbreviation.add(DWARF_DATA_16)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		subrange_type_abbrevation = index++
+		subrange_type_abbreviation = index++
 	}
 
 	add_inheritance_abbreviation() {
-		abbrevation.add(index)
+		abbreviation.add(index)
 
-		abbrevation.add(DWARF_INHERITANCE)
-		abbrevation.add(DWARF_HAS_NO_CHILDREN)
+		abbreviation.add(DWARF_INHERITANCE)
+		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
-		abbrevation.add(DWARF_TYPE)
-		abbrevation.add(DWARF_REFERENCE_32)
+		abbreviation.add(DWARF_TYPE)
+		abbreviation.add(DWARF_REFERENCE_32)
 
-		abbrevation.add(DWARF_MEMBER_LOCATION)
-		abbrevation.add(DWARF_DATA_32)
+		abbreviation.add(DWARF_MEMBER_LOCATION)
+		abbreviation.add(DWARF_DATA_32)
 
-		abbrevation.add(DWARF_ACCESSIBILITY)
-		abbrevation.add(DWARF_DATA_8)
+		abbreviation.add(DWARF_ACCESSIBILITY)
+		abbreviation.add(DWARF_DATA_8)
 
-		abbrevation.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
-		inheritance_abbrevation = index++
+		inheritance_abbreviation = index++
 	}
 
 	static is_pointer_type(type: Type) {
@@ -831,7 +831,7 @@ Debug {
 	add_member_variable(variable: Variable, types: Map<String, Type>) {
 		if variable.type.is_array_type return
 		
-		information.add(member_variable_abbrevation)
+		information.add(member_variable_abbreviation)
 		information.add(variable.name.replace('.', ''))
 		information.add(get_offset(start, get_type_label(variable.type, types, is_pointer_type(variable.type))))
 		information.add(get_file(variable))
@@ -857,10 +857,10 @@ Debug {
 		members = type.variables.get_values().filter(i -> not i.is_static and not i.is_constant)
 		has_members = type.supertypes.size > 0 or members.size > 0
 
-		abbrevation_value = object_type_without_members_abbrevation
-		if has_members { abbrevation_value = object_type_with_members_abbrevation }
+		abbreviation_value = object_type_without_members_abbreviation
+		if has_members { abbreviation_value = object_type_with_members_abbreviation }
 
-		information.add(abbrevation_value)
+		information.add(abbreviation_value)
 		information.add(DWARF_CALLING_CONVENTION_PASS_BY_REFERENCE)
 		information.add(type.name)
 		information.add(type.content_size as normal)
@@ -869,7 +869,7 @@ Debug {
 
 		# Include the supertypes
 		loop supertype in type.supertypes {
-			information.add(inheritance_abbrevation)
+			information.add(inheritance_abbreviation)
 			information.add(get_offset(start, get_type_label(supertype, types)))
 
 			if type.get_supertype_base_offset(supertype) has not supertype_base_offset abort('Could not resolve supertype base offset')
@@ -892,7 +892,7 @@ Debug {
 		if has_members information.add(DWARF_END)
 
 		information.add(TableLabel(get_type_label_name(type, true), 8, true))
-		information.add(pointer_type_abbrevation)
+		information.add(pointer_type_abbreviation)
 		information.add(get_offset(start, get_type_label(type, types)))
 	}
 	
@@ -905,17 +905,17 @@ Debug {
 		subrange = TableLabel(name, 8, true)
 
 		information.add(subrange)
-		information.add(array_type_abbrevation) # Abbrevation code
+		information.add(array_type_abbreviation) # Abbreviation code
 		information.add(get_offset(start, get_type_label(element, types, is_pointer))) # DW_AT_type
 
-		information.add(subrange_type_abbrevation) # Abbrevation code
+		information.add(subrange_type_abbreviation) # Abbreviation code
 		information.add(get_offset(start, get_type_label(element, types, is_pointer))) # DW_AT_type
 		information.add(ARRAY_TYPE_ELEMENTS) # DW_AT_count
 
 		information.add(DWARF_END) # End of children
 
 		information.add(TableLabel(get_type_label_name(type, true), 8, true))
-		information.add(pointer_type_abbrevation)
+		information.add(pointer_type_abbreviation)
 		information.add(get_offset(start, subrange))
 
 		types[element.identity] = element
@@ -931,7 +931,7 @@ Debug {
 		}
 
 		information.add(TableLabel(get_type_label_name(type, true), 8, true))
-		information.add(pointer_type_abbrevation)
+		information.add(pointer_type_abbreviation)
 		information.add(get_offset(start, get_type_label(element, types, is_pointer_type(element))))
 
 		types[element.identity] = element
@@ -975,7 +975,7 @@ Debug {
 			return
 		}
 
-		information.add(base_type_abbrevation)
+		information.add(base_type_abbreviation)
 		information.add(type.name)
 
 		information.add(encoding as byte)
@@ -1038,7 +1038,7 @@ Debug {
 		alignment = variable.alignment
 		if not variable.is_aligned return
 
-		information.add(local_variable_abbrevation) # DW_TAG_variable
+		information.add(local_variable_abbreviation) # DW_TAG_variable
 
 		type = variable.type
 		local_variable_alignment = to_sleb128(local_memory_size + alignment)
@@ -1080,7 +1080,7 @@ Debug {
 		alignment = variable.alignment
 		if not variable.is_aligned return
 
-		information.add(parameter_variable_abbrevation) # DW_TAG_variable
+		information.add(parameter_variable_abbreviation) # DW_TAG_variable
 
 		type = variable.type
 		parameter_alignment = to_sleb128(local_memory_size + alignment)
@@ -1115,9 +1115,9 @@ Debug {
 	}
 
 	init() {
-		abbrevation = Table(String(DEBUG_ABBREVATION_TABLE))
+		abbreviation = Table(String(DEBUG_ABBREVIATION_TABLE))
 		information = Table(String(DEBUG_INFORMATION_TABLE))
-		abbrevation.is_section = true
+		abbreviation.is_section = true
 		information.is_section = true
 
 		start = TableLabel("debug_info_start", 8, true)
@@ -1130,22 +1130,22 @@ Debug {
 		information.add(version_number_label)
 		information.add(DWARF_VERSION)
 
-		debug_abbrevation_table_reference_label = TableLabel(String(DEBUG_ABBREVATION_TABLE), 4, false)
-		debug_abbrevation_table_reference_label.is_section_relative = settings.is_x64 and settings.is_target_windows
-		information.add(debug_abbrevation_table_reference_label)
+		debug_abbreviation_table_reference_label = TableLabel(String(DEBUG_ABBREVIATION_TABLE), 4, false)
+		debug_abbreviation_table_reference_label.is_section_relative = settings.is_x64 and settings.is_target_windows
+		information.add(debug_abbreviation_table_reference_label)
 
 		information.add(SYSTEM_BYTES as byte)
 
-		add_file_abbrevation()
-		add_object_type_with_members_abbrevation()
-		add_object_type_without_members_abbrevation()
-		add_base_type_abbrevation()
-		add_pointer_type_abbrevation()
-		add_member_variable_abbrevation()
-		add_parameter_variable_abbrevation()
-		add_local_variable_abbrevation()
-		add_array_type_abbrevation()
-		add_subrange_type_abbrevation()
+		add_file_abbreviation()
+		add_object_type_with_members_abbreviation()
+		add_object_type_without_members_abbreviation()
+		add_base_type_abbreviation()
+		add_pointer_type_abbreviation()
+		add_member_variable_abbreviation()
+		add_parameter_variable_abbreviation()
+		add_local_variable_abbreviation()
+		add_array_type_abbreviation()
+		add_subrange_type_abbreviation()
 		add_inheritance_abbreviation()
 	}
 
@@ -1155,23 +1155,23 @@ Debug {
 
 	build(file: SourceFile) {
 		information.add(DWARF_END)
-		abbrevation.add(DWARF_END)
+		abbreviation.add(DWARF_END)
 
 		information.add(end)
 
 		builder = AssemblyBuilder()
-		assembler.add_table(builder, abbrevation, TABLE_MARKER_TEXTUAL_ASSEMBLY)
+		assembler.add_table(builder, abbreviation, TABLE_MARKER_TEXTUAL_ASSEMBLY)
 		assembler.add_table(builder, information, TABLE_MARKER_TEXTUAL_ASSEMBLY)
 
 		if settings.is_debugging_enabled {
-			abbreviation_section = builder.get_data_section(file, abbrevation.name)
+			abbreviation_section = builder.get_data_section(file, abbreviation.name)
 			information_section = builder.get_data_section(file, information.name)
 
-			# The abbrevation and information sections must be tightly packed and the start of these sections will be at least multiple of 8 bytes (this is guaranteed by the linker).s
+			# The abbreviation and information sections must be tightly packed and the start of these sections will be at least multiple of 8 bytes (this is guaranteed by the linker).s
 			abbreviation_section.alignment = 1
 			information_section.alignment = 1
 
-			data_encoder.add_table(builder, abbreviation_section, abbrevation, TABLE_MARKER_DATA_ENCODER)
+			data_encoder.add_table(builder, abbreviation_section, abbreviation, TABLE_MARKER_DATA_ENCODER)
 			data_encoder.add_table(builder, information_section, information, TABLE_MARKER_DATA_ENCODER)
 		}
 

@@ -312,14 +312,6 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
 }
 
-build_declaration(unit: Unit, node: DeclareNode) {
-	# Do not declare the variable twice
-	if unit.is_initialized(node.variable) return Result()
-
-	result = DeclareInstruction(unit, node.variable, node.registerize).add()
-	return SetVariableInstruction(unit, node.variable, result).add()
-}
-
 build_call(unit: Unit, node: CallNode) {
 	unit.add_debug_position(node)
 
@@ -384,7 +376,6 @@ build(unit: Unit, node: Node) {
 		NODE_CALL => build_call(unit, node as CallNode)
 		NODE_COMMAND => loops.build_command(unit, node as CommandNode)
 		NODE_DATA_POINTER => build_data_pointer(node as DataPointerNode)
-		NODE_DECLARE => build_declaration(unit, node as DeclareNode)
 		NODE_DISABLED => Result()
 		NODE_ELSE => Result()
 		NODE_ELSE_IF => Result()

@@ -468,9 +468,9 @@ debug_print(context: Context) {
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {
-		print('Function ')
-		print(implementation.metadata.name)
-		println(':')
+		console.write('Function ')
+		console.write(implementation.metadata.name)
+		console.write_line(':')
 		parser.print(implementation.node)
 	}
 }

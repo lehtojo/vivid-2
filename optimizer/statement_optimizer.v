@@ -1,6 +1,6 @@
 namespace statement_optimizer
 
-LoopConditionalStatementLiftupDescriptor {
+LoopConditionalStatementPullDescriptor {
 	statement: IfNode
 	dependencies: List<Variable>
 	is_condition_predictable: bool
@@ -29,7 +29,7 @@ LoopConditionalStatementLiftupDescriptor {
 
 # Summary: Returns whether the specified node might have a direct effect on the flow
 is_affector(node: Node) {
-	return node.match(NODE_CALL | NODE_CONSTRUCTION | NODE_DECLARE | NODE_DECREMENT | NODE_DISABLED | NODE_FUNCTION | NODE_INCREMENT | NODE_JUMP | NODE_LABEL | NODE_COMMAND | NODE_RETURN | NODE_OBJECT_LINK | NODE_OBJECT_UNLINK) or (node.instance == NODE_OPERATOR and node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT)
+	return node.match(NODE_CALL | NODE_CONSTRUCTION | NODE_DECREMENT | NODE_DISABLED | NODE_FUNCTION | NODE_INCREMENT | NODE_JUMP | NODE_LABEL | NODE_COMMAND | NODE_RETURN | NODE_OBJECT_LINK | NODE_OBJECT_UNLINK) or (node.instance == NODE_OPERATOR and node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT)
 }
 
 # Summary:
@@ -261,7 +261,7 @@ find_edited_locals(statement: Node) {
 
 # Summary:
 # Returns whether the condition is not dependent on the statements inside the specified loop.
-is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementLiftupDescriptor, edited_locals: Map<Variable, List<Node>>) {
+is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementPullDescriptor, edited_locals: Map<Variable, List<Node>>) {
 	# 1. Dependencies must be defined outside the statement
 	statement_context = statement.context
 
@@ -309,7 +309,7 @@ deep_copy_statement(statement: Node, context: Context) {
 	return copy
 }
 
-liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) {
+pull_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) {
 	# Get the environment context
 	environment = statement.context.parent
 
@@ -417,10 +417,10 @@ liftup_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode
 # a = random() > 0.5
 # if a { loop (i = 0, i < n, i++) { ... }
 # else { loop (i = 0, i < n, i++) { # If-statement is optimized out } }
-liftup_conditional_statements_from_loops(root: Node) {
+pull_conditional_statements_from_loops(root: Node) {
 	statements = root.find_all(NODE_LOOP)
 	conditionals = root.find_all(NODE_IF)
-		.map<LoopConditionalStatementLiftupDescriptor>((i: Node) -> LoopConditionalStatementLiftupDescriptor(i as IfNode))
+		.map<LoopConditionalStatementPullDescriptor>((i: Node) -> LoopConditionalStatementPullDescriptor(i as IfNode))
 		.filter(i -> i.is_potentially_liftable)
 
 	loop (i = 0, i < statements.size, i++) {
@@ -444,7 +444,7 @@ liftup_conditional_statements_from_loops(root: Node) {
 				logger.verbose.write_line('Lifting conditional statement from loop')
 			}
 
-			liftup_conditional_statements_from_loop(statement, inner_conditional.statement)
+			pull_conditional_statements_from_loop(statement, inner_conditional.statement)
 		}
 	}
 }
@@ -452,5 +452,5 @@ liftup_conditional_statements_from_loops(root: Node) {
 optimize(context: Context, root: Node) {
 	remove_unreachable_statements(root)
 	remove_abandoned_expressions(root)
-	liftup_conditional_statements_from_loops(root)
+	pull_conditional_statements_from_loops(root)
 }

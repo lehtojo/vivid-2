@@ -34,7 +34,7 @@ NODE_STACK_ADDRESS = 4294967296
 NODE_DISABLED = 8589934592
 NODE_LABEL = 17179869184
 NODE_JUMP = 34359738368
-NODE_DECLARE = 68719476736
+# Free: 68719476736
 NODE_SECTION = 137438953472
 NODE_NAMESPACE = 274877906944
 NODE_INSPECTION = 549755813888
@@ -1638,34 +1638,6 @@ Node JumpNode {
 
 	override string() {
 		return "Jump " + label.name
-	}
-}
-
-Node DeclareNode {
-	variable: Variable
-	registerize: bool = true
-
-	init(variable: Variable) {
-		this.variable = variable
-		this.instance = NODE_DECLARE
-	}
-
-	init(variable: Variable, position: Position) {
-		this.variable = variable
-		this.start = position
-		this.instance = NODE_DECLARE
-	}
-
-	override is_equal(other: Node) {
-		return instance == other.instance and variable == other.(DeclareNode).variable and registerize == other.(DeclareNode).registerize
-	}
-
-	override copy() {
-		return DeclareNode(variable, start)
-	}
-
-	override string() {
-		return "Declare " + variable.name
 	}
 }
 

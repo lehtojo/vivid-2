@@ -224,22 +224,22 @@ pack State {
 
 # Summary:
 # Returns whether the specified assignment saves a value to the specified variable.
-is_pack_member_assignment(assignment: Node, representive: Variable) {
+is_pack_member_assignment(assignment: Node, proxy: Variable) {
 	return assignment !== none and 
 		assignment.match(Operators.ASSIGN) and
 		assignment.first.instance == NODE_VARIABLE and
-		assignment.first.(VariableNode).variable == representive
+		assignment.first.(VariableNode).variable == proxy
 }
 
 # Summary:
-# Removes statements that save a returned pack to the representives of the specified pack variable.
+# Removes statements that save a returned pack to the proxies of the specified pack variable.
 # These statements are expected to come after the specified assignment.
 remove_pack_return_value_assignments(assignment: Node, variable: Variable) {
-	representives = common.get_pack_representives(variable)
+	proxies = common.get_pack_proxies(variable)
 
-	loop representive in representives {
+	loop proxy in proxies {
 		member_assignment = assignment.next
-		require(is_pack_member_assignment(member_assignment, representive), 'Expected pack member assignment')
+		require(is_pack_member_assignment(member_assignment, proxy), 'Expected pack member assignment')
 
 		member_assignment.remove()
 	}
@@ -385,7 +385,7 @@ is_inlinable(destination: FunctionImplementation, called: FunctionImplementation
 
 # Summary:
 # Returns cost for inlining the specified function that is based on general heuristics.
-heuristical_cost(called: FunctionImplementation, arguments: Node) {
+heuristic_cost(called: FunctionImplementation, arguments: Node) {
 	# If the arguments contain constants, inlining is likely to be a win.
 	loop argument in arguments {
 		if common.is_constant(argument) return INLINE_THRESHOLD
@@ -464,7 +464,7 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 		# usage.instance = instance
 
 		# 5. If the decrease in the cost reaches a specific threshold, proceed with inlining the function
-		if heuristical_cost(called_function, usage) >= INLINE_THRESHOLD {
+		if heuristic_cost(called_function, usage) >= INLINE_THRESHOLD {
 			finish_inlining(state)
 
 			logger.verbose.write_line('Inlined function', usage)

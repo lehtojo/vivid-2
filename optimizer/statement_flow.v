@@ -160,7 +160,7 @@ StatementFlow {
 		abort('Could not return the flow index of the specified node')
 	}
 
-	linearize_logical_operator(operation: OperatorNode, success: Label, failure: Label) {
+	linearise_logical_operator(operation: OperatorNode, success: Label, failure: Label) {
 		left = operation.first
 		right = operation.last
 
@@ -168,10 +168,10 @@ StatementFlow {
 			intermediate = Label(get_next_label())
 
 			if operation.operator == Operators.LOGICAL_AND {
-				linearize_logical_operator(left as OperatorNode, intermediate, failure) # Operator: AND
+				linearise_logical_operator(left as OperatorNode, intermediate, failure) # Operator: AND
 			}
 			else {
-				linearize_logical_operator(left as OperatorNode, success, intermediate) # Operator: OR
+				linearise_logical_operator(left as OperatorNode, success, intermediate) # Operator: OR
 			}
 
 			add(LabelNode(intermediate, none as Position))
@@ -186,7 +186,7 @@ StatementFlow {
 		}
 
 		if right.instance == NODE_OPERATOR and right.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL {
-			linearize_logical_operator(right as OperatorNode, success, failure)
+			linearise_logical_operator(right as OperatorNode, success, failure)
 		}
 		else operation.operator == Operators.LOGICAL_AND {
 			linearise(right) # Operator: AND
@@ -198,14 +198,14 @@ StatementFlow {
 		}
 	}
 
-	linearize_condition(statement: IfNode, failure: Label) {
+	linearise_condition(statement: IfNode, failure: Label) {
 		condition = statement.condition
 		parent = condition.parent
 
 		# Remove the condition for a while
 		if not condition.remove() abort('Could not remove the condition of a conditional statement during flow analysis')
 
-		# Linearize all the nodes under the condition container except the actual condition
+		# Linearise all the nodes under the condition container except the actual condition
 		loop node in statement.condition_container {
 			linearise(node)
 		}
@@ -215,7 +215,7 @@ StatementFlow {
 
 		if condition.instance == NODE_OPERATOR and condition.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL {
 			success = Label(get_next_label())
-			linearize_logical_operator(condition as OperatorNode, success, failure)
+			linearise_logical_operator(condition as OperatorNode, success, failure)
 			add(LabelNode(success, none as Position))
 		}
 		else {
@@ -224,14 +224,14 @@ StatementFlow {
 		}
 	}
 
-	linearize_condition(statement: LoopNode, failure: Label) {
+	linearise_condition(statement: LoopNode, failure: Label) {
 		condition = statement.condition
 		parent = condition.parent
 
 		# Remove the condition for a while
 		if not condition.remove() abort('Could not remove the condition of a conditional statement during flow analysis')
 
-		# Linearize all the nodes under the condition container except the actual condition
+		# Linearise all the nodes under the condition container except the actual condition
 		loop node in statement.condition_container {
 			linearise(node)
 		}
@@ -241,7 +241,7 @@ StatementFlow {
 
 		if condition.instance == NODE_OPERATOR and condition.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL {
 			success = Label(get_next_label())
-			linearize_logical_operator(condition as OperatorNode, success, failure)
+			linearise_logical_operator(condition as OperatorNode, success, failure)
 			add(LabelNode(success, none as Position))
 		}
 		else {
@@ -262,7 +262,7 @@ StatementFlow {
 			intermediate = Label(get_next_label())
 			end: Label = Label(get_next_label())
 
-			linearize_condition(statement, intermediate)
+			linearise_condition(statement, intermediate)
 			add(statement.condition_container) # Add the condition scope
 
 			# The body may be executed based on the condition. If it executes, it jumps to the end label
@@ -275,7 +275,7 @@ StatementFlow {
 					successor = iterator as ElseIfNode
 					intermediate = Label(get_next_label())
 
-					linearize_condition(successor, intermediate)
+					linearise_condition(successor, intermediate)
 					add(successor.condition_container) # Add the condition scope
 
 					# The body may be executed based on the condition. If it executes, it jumps to the end label
@@ -313,7 +313,7 @@ StatementFlow {
 
 			add(LabelNode(start, none as Position)) # Add the start label, so that the loop can repeat
 
-			linearize_condition(statement, end) # Add the condition for the loop, which can fall through or exit the loop
+			linearise_condition(statement, end) # Add the condition for the loop, which can fall through or exit the loop
 			add(JumpNode(end, true))
 
 			linearise(statement.body) # Add the body of the loop

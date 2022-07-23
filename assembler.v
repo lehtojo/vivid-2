@@ -425,10 +425,10 @@ Scope {
 	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
 	receive_parameter(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, parameter: Variable) {
 		if parameter.type.is_pack {
-			representives = common.get_pack_representives(parameter)
+			proxies = common.get_pack_proxies(parameter)
 
-			loop representive in representives {
-				receive_parameter(standard_parameter_registers, decimal_parameter_registers, representive)
+			loop proxy in proxies {
+				receive_parameter(standard_parameter_registers, decimal_parameter_registers, proxy)
 			}
 
 			return
@@ -1099,8 +1099,8 @@ ParameterAligner {
 		type = parameter.type
 
 		if type.is_pack {
-			representives = common.get_pack_representives(parameter)
-			loop representive in representives { align(representive) }
+			proxies = common.get_pack_proxies(parameter)
+			loop proxy in proxies { align(proxy) }
 			return
 		}
 
@@ -1251,9 +1251,9 @@ align(context: Context) {
 }
 
 # Summary:
-# Align all used local packs and their representives sequentially.
+# Align all used local packs and their proxies sequentially.
 # Returns the stack position after aligning.
-# NOTE: Available only in debugging mode, because in optimized builds pack representives might not be available
+# NOTE: Available only in debugging mode, because in optimized builds pack proxies might not be available
 align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 	# Do nothing if debugging mode is not enabled
 	if not settings.is_debugging_enabled return position
@@ -1263,11 +1263,11 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 		if not local.type.is_pack continue
 
 		# Align the whole pack if it is used
-		representives = common.get_pack_representives(local)
+		proxies = common.get_pack_proxies(local)
 		used = false
 
-		loop representive in representives {
-			if not local_variables.contains(representive) continue
+		loop proxy in proxies {
+			if not local_variables.contains(proxy) continue
 			used = true
 			stop
 		}
@@ -1282,13 +1282,13 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 		# Keep track of the position inside the pack, so that we can align the members properly
 		subposition = position
 
-		# Align the pack representives inside the allocated stack memory
-		loop representive in representives {
-			representive.alignment = subposition
-			subposition += representive.type.allocation_size
+		# Align the pack proxies inside the allocated stack memory
+		loop proxy in proxies {
+			proxy.alignment = subposition
+			subposition += proxy.type.allocation_size
 
-			# Remove the representive from the variable list that will be aligned later
-			local_variables.remove(representive)
+			# Remove the proxy from the variable list that will be aligned later
+			local_variables.remove(proxy)
 		}
 	}
 
@@ -1536,14 +1536,14 @@ get_text_section(implementation: FunctionImplementation) {
 		parameters.add(self)
 	}
 
-	# Include pack representives as well
+	# Include pack proxies as well
 	parameter_count = parameters.size
 
 	loop (i = 0, i < parameter_count, i++) {
 		parameter = parameters[i]
 		if not parameter.type.is_pack continue
 
-		parameters.add_all(common.get_pack_representives(parameter))
+		parameters.add_all(common.get_pack_proxies(parameter))
 	}
 
 	if settings.is_debugging_enabled {

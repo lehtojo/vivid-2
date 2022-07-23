@@ -255,7 +255,7 @@ export read_file(filename: link) {
 		available = size - position
 		result = internal.system_read(file_descriptor, buffer + position, available)
 
-		# If the resutl is -1, it means the read failed
+		# If the result is -1, it means the read failed
 		if result < 0 {
 			deallocate(buffer)
 			internal.system_close(file_descriptor)
@@ -333,7 +333,7 @@ export delete(path: String) {
 	return delete(path.data)
 }
 
-# TODO: Seperate files?
+# TODO: Separate files?
 # Processes:
 start_process(executable: String, command_line_arguments: List<String>, working_folder: String) {
 	result = internal.system_fork()
@@ -342,7 +342,7 @@ start_process(executable: String, command_line_arguments: List<String>, working_
 	if result == 0 {
 		# Executes in the child process:
 
-		# If a seperate working folder is defined, change the current folder to it
+		# If a separate working folder is defined, change the current folder to it
 		if working_folder != none internal.system_change_folder(working_folder.data)
 
 		# Linux needs the internal data pointers of the specified command line argument strings
@@ -388,7 +388,7 @@ shell(command: String, working_folder: String) {
 	if result == 0 {
 		# Executes in the child process:
 
-		# If a seperate working folder is defined, change the current folder to it
+		# If a separate working folder is defined, change the current folder to it
 		if working_folder != none internal.system_change_folder(working_folder.data)
 
 		# Linux needs the internal data pointers of the specified command line argument strings
@@ -424,7 +424,7 @@ wait_for_exit(pid: large) {
 }
 
 # Command line:
-# Summary: Tries to find the specified enviroment variable and return its value, on failure none is returned.
+# Summary: Tries to find the specified environment variable and return its value, on failure none is returned.
 export get_environment_variable(name: link) {
 	start = String.from(name, length_of(name)) + '='
 

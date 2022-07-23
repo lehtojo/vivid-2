@@ -1411,7 +1411,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 		is_function_assignment = common.is_function_call(assignment.last)
 
-		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local representives of the members
+		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local proxies of the members
 		if is_function_assignment {
 			loads = create_pack_member_accessors(destination, type, position)
 			sources = List<Node>()
@@ -1446,8 +1446,8 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 	local_packs = local_pack_usages.map<Variable>((i: Node) -> i.(VariableNode).variable).distinct()
 
-	# Create the pack representives for all the collected local packs
-	loop local_pack in local_packs { common.get_pack_representives(local_pack) }
+	# Create the pack proxies for all the collected local packs
+	loop local_pack in local_packs { common.get_pack_proxies(local_pack) }
 
 	loop (i = local_pack_usages.size - 1, i >= 0, i--) {
 		usage = local_pack_usages[i]
@@ -1502,12 +1502,12 @@ rewrite_pack_usages(environment: Context, root: Node) {
 			usage.replace(VariableNode(accessed, usage.start))
 		}
 		else {
-			# Since we are accessing a pack, we must create a pack from its representives:
+			# Since we are accessing a pack, we must create a pack from its proxies:
 			packer = PackNode(type)
-			representives = common.get_pack_representives(accessed)
+			proxies = common.get_pack_proxies(accessed)
 
-			loop representive in representives {
-				packer.add(VariableNode(representive, usage.start))
+			loop proxy in proxies {
+				packer.add(VariableNode(proxy, usage.start))
 			}
 
 			usage.replace(packer)
