@@ -1,16 +1,16 @@
 constant REGISTER_NONE = 0
 constant REGISTER_VOLATILE = 1
-constant REGISTER_RESERVED = 2
-constant REGISTER_RETURN = 4
-constant REGISTER_STACK_POINTER = 8
-constant REGISTER_NUMERATOR = 16
-constant REGISTER_REMAINDER = 32
-constant REGISTER_MEDIA = 64
-constant REGISTER_DECIMAL_RETURN = 128
-constant REGISTER_SHIFT = 256
-constant REGISTER_BASE_POINTER = 512
-constant REGISTER_ZERO = 1024
-constant REGISTER_RETURN_ADDRESS = 2048
+constant REGISTER_RESERVED = 1 <| 1
+constant REGISTER_RETURN = 1 <| 2
+constant REGISTER_STACK_POINTER = 1 <| 3
+constant REGISTER_NUMERATOR = 1 <| 4
+constant REGISTER_REMAINDER = 1 <| 5
+constant REGISTER_MEDIA = 1 <| 6
+constant REGISTER_DECIMAL_RETURN = 1 <| 7
+constant REGISTER_SHIFT = 1 <| 8
+constant REGISTER_BASE_POINTER = 1 <| 9
+constant REGISTER_ZERO = 1 <| 10
+constant REGISTER_RETURN_ADDRESS = 1 <| 11
 
 AssemblyBuilder {
 	instructions: Map<SourceFile, List<Instruction>> = Map<SourceFile, List<Instruction>>()

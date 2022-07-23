@@ -1,6 +1,6 @@
 namespace inliner
 
-constant INLINE_THRESHOLD = 30 # 3 * STANDARD_OPERATOR_COST
+constant INLINE_THRESHOLD = 3 * expression_optimizer.STANDARD_OPERATOR_COST
 
 # Summary: Finds all the labels under the specified root and localizes them by declaring new labels to the specified context
 localize_labels(context: Context, root: Node) {

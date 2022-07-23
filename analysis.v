@@ -73,28 +73,18 @@ apply_constants(context: Context) {
 			application.exit(1)
 		}
 
-		write = variable.writes[].parent
+		value = evaluate_constant(variable)
 
-		if write == none or not write.match(Operators.ASSIGN) {
-			resolver.output(Status(variable.position, "Invalid assignment for constant " + variable.name))
-			application.exit(1)
-		}
-
-		value = common.get_source(write.last)
-
-		if not value.match(NODE_NUMBER) and not value.match(NODE_STRING) {
-			resolver.output(Status(variable.position, "Value assigned to constant " + variable.name + ' is not a constant'))
+		if value === none {
+			resolver.output(Status(variable.position, "Could not evaluate a constant value for " + variable.name))
 			application.exit(1)
 		}
 
 		loop usage in variable.reads {
-			destination = usage
-
 			# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
-			# Example:
-			# namespace A { C = 0 }
-			# print(A.C) --> print(0)
-			if usage.parent != none and usage.parent.match(NODE_LINK) { destination = usage.parent }
+			destination = usage
+			if usage.previous !== none and usage.parent !== none and usage.parent.instance == NODE_LINK { destination = usage.parent }
+
 			destination.replace(value.clone())
 		}
 	}
@@ -108,33 +98,76 @@ apply_constants(context: Context) {
 	}
 }
 
+# Summary: Evaluates the value of the specified constant and returns it. If evaluation fails, none is returned.
+evaluate_constant(variable: Variable, trace: Map<Variable, bool>) {
+	# Ensure we do not enter into an infinite evaluation cycle
+	if trace.contains_key(variable) return none as Node
+	trace[variable] = true
+
+	# Verify there is exactly one definition for the specified constant
+	analysis.classify_variable_usages(variable)
+
+	writes = variable.writes
+	if writes.size !== 1 return none as Node
+
+	write = variable.writes[].parent
+	if write === none or not write.match(Operators.ASSIGN) return none as Node
+
+	# Extract the definition for the constant
+	value = common.get_source(write.last)
+
+	# If the current value is a constant, we can just stop
+	if value.match(NODE_NUMBER | NODE_STRING) return write.last
+
+	# Find other constant from the extracted definition
+	dependencies = value.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_constant)
+
+	if value.instance === NODE_VARIABLE and value.(VariableNode).variable.is_constant {
+		dependencies = [ value ]
+	}
+
+	evaluation = none as Node
+
+	# Evaluate the dependencies
+	loop dependency in dependencies {
+		# If the evaluation of the dependency fails, the whole evaluation fails as well
+		evaluation = evaluate_constant(dependency.(VariableNode).variable, trace)
+		if evaluation === none return none as Node
+
+		# If the parent of the dependency is a link node, it needs to be replaced with the value of the dependency
+		destination = dependency
+		if dependency.previous !== none and dependency.parent !== none and dependency.parent.instance == NODE_LINK { destination = dependency.parent }
+
+		# Replace the dependency with its value
+		destination.replace(evaluation)
+	}
+
+	# Since all of the dependencies were evaluated successfully, we can try evaluating the value of the specified constant
+	evaluation = expression_optimizer.get_simplified_value(value)
+	if not evaluation.match(NODE_NUMBER | NODE_STRING) return none as Node
+
+	value.replace(evaluation)
+	return write.last
+}
+
+# Summary: Evaluates the value of the specified constant and returns it. If evaluation fails, none is returned.
+evaluate_constant(variable: Variable) {
+	return evaluate_constant(variable, Map<Variable, bool>())
+}
+
 # Summary: Finds all the constant usages in the specified node tree and inserts the values of the constants into their usages
-apply_constants(root: Node) {
+apply_constants_into(root: Node) {
 	usages = root.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_constant)
 
 	loop usage in usages {
-		usage_variable = usage.(VariableNode).variable
-		analysis.classify_variable_usages(usage_variable)
-
-		if usage_variable.writes.size == 0 abort("Value for the constant " + usage_variable.name + ' is never assigned')
-		if usage_variable.writes.size > 1 abort("Value for the constant " + usage_variable.name + ' is assigned more than once')
-
-		write = usage_variable.writes[].parent
-
-		if write == none or not write.match(Operators.ASSIGN) abort("Invalid assignment for " + usage_variable.name)
-		
-		value = common.get_source(write.last)
-		if value.instance != NODE_NUMBER and value.instance != NODE_STRING abort("Value assigned to " + usage_variable.name + ' is not a constant')
-
-		destination = usage
+		value = evaluate_constant(usage.(VariableNode).variable)
+		if value === none continue
 
 		# If the parent of the constant is a link node, it needs to be replaced with the value of the constant
-		# Example:
-		# namespace A { C = 0 }
-		# print(A.C) --> print(0)
-		if usage.parent != none and usage.parent.instance == NODE_LINK { destination = usage.parent }
+		destination = usage
+		if usage.previous !== none and usage.parent !== none and usage.parent.instance == NODE_LINK { destination = usage.parent }
 
-		destination.replace(write.last.clone())
+		destination.replace(value.clone())
 	}
 }
 

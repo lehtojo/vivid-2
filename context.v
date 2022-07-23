@@ -4,13 +4,13 @@ VARIABLE_CATEGORY_MEMBER = 2
 VARIABLE_CATEGORY_GLOBAL = 3
 
 NORMAL_CONTEXT = 1
-TYPE_CONTEXT = 2
-FUNCTION_CONTEXT = 4
-IMPLEMENTATION_CONTEXT = 8
+TYPE_CONTEXT = 1 <| 1
+FUNCTION_CONTEXT = 1 <| 2
+IMPLEMENTATION_CONTEXT = 1 <| 3
 
-LAMBDA_CONTEXT_MODIFIER = 16
-CONSTRUCTOR_CONTEXT_MODIFIER = 32
-DESTRUCTOR_CONTEXT_MODIFIER = 64
+LAMBDA_CONTEXT_MODIFIER = 1 <| 4
+CONSTRUCTOR_CONTEXT_MODIFIER = 1 <| 5
+DESTRUCTOR_CONTEXT_MODIFIER = 1 <| 6
 
 LANGUAGE_OTHER = 0
 LANGUAGE_CPP = 1
@@ -2388,11 +2388,15 @@ Number ArrayType {
 		if expression.first == none return
 
 		# Insert values of constants manually
-		analysis.apply_constants(expression)
+		analysis.apply_constants_into(expression)
 
 		# Try to convert the expression into a constant number
-		# TODO: Evaluate array size
-		if expression.first.instance != NODE_NUMBER return
+		if expression.first.instance !== NODE_NUMBER {
+			evaluated = expression_optimizer.get_simplified_value(expression.first)
+			if evaluated.instance !== NODE_NUMBER or evaluated.(NumberNode).format === FORMAT_DECIMAL return
+
+			expression.first.replace(evaluated)
+		}
 
 		expression = NumberNode(SYSTEM_FORMAT, expression.first.(NumberNode).value, position)
 		is_resolved = true

@@ -496,6 +496,8 @@ resolve() {
 
 		# Try to resolve problems in the node tree and get the status after that
 		resolve_context(context)
+		resolve(context, root)
+
 		current = get_report(context, root)
 
 		if settings.is_verbose_output_enabled {

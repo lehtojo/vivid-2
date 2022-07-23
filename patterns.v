@@ -531,7 +531,7 @@ Pattern LinkPattern {
 }
 
 Pattern ListPattern {
-	static constant ID = 1
+	constant ID = 1
 
 	constant LEFT = 0
 	constant COMMA = 2
