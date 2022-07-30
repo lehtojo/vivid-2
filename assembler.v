@@ -1258,12 +1258,12 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 	# Do nothing if debugging mode is not enabled
 	if not settings.is_debugging_enabled return position
 
-	loop local in local_variables {
-		# Skip variables that are not packs
-		if not local.type.is_pack continue
+	# Find all local variables that are packs
+	local_packs = local_variables.filter(i -> i.type.is_pack)
 
+	loop local_pack in local_packs {
 		# Align the whole pack if it is used
-		proxies = common.get_pack_proxies(local)
+		proxies = common.get_pack_proxies(local_pack)
 		used = false
 
 		loop proxy in proxies {
@@ -1275,9 +1275,9 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 		if not used continue
 
 		# Allocate stack memory for the whole pack
-		position -= local.type.allocation_size
-		local.alignment = position
-		local.is_aligned = true
+		position -= local_pack.type.allocation_size
+		local_pack.alignment = position
+		local_pack.is_aligned = true
 
 		# Keep track of the position inside the pack, so that we can align the members properly
 		subposition = position
@@ -1285,6 +1285,7 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 		# Align the pack proxies inside the allocated stack memory
 		loop proxy in proxies {
 			proxy.alignment = subposition
+			proxy.is_aligned = true
 			subposition += proxy.type.allocation_size
 
 			# Remove the proxy from the variable list that will be aligned later
@@ -1307,6 +1308,7 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 
 		position -= variable.type.allocation_size
 		variable.alignment = position
+		variable.is_aligned = true
 	}
 
 	# Temporary handles:
@@ -2062,18 +2064,21 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 		}
 
 		# Save all processed types, so that types are not added multiple times
-		denylist = Map<String, Type>()
+		denylist = Map<String, bool>()
 
 		loop (types.size > 0) {
 			# Load the next batch
-			batch = types.get_values()
+			batch = types
 
 			# Reset the types so that we can collect new types
 			types = Map<String, Type>()
 
-			loop type in batch {
+			loop iterator in batch {
+				label = iterator.key
+				type = iterator.value
+
 				# Mark the current type as processed
-				denylist[type.identity] = type
+				denylist[label] = true
 
 				# Add the debugging information for the current type
 				debug.add_type(type, types)
@@ -2081,7 +2086,8 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 
 			# Remove all the processed types from the collected types
 			loop iterator in denylist {
-				types.remove(iterator.value.identity)
+				label = iterator.key
+				types.remove(label)
 			}
 		}
 
@@ -2180,7 +2186,7 @@ get_data_sections(context: Context) {
 	return sections
 }
 
-get_text_sections(context: Context) {
+get_text_sections(files: List<SourceFile>, context: Context) {
 	sections = Map<SourceFile, AssemblyBuilder>()
 
 	all = common.get_all_function_implementations(context, false)
@@ -2195,9 +2201,8 @@ get_text_sections(context: Context) {
 	# Store the number of assembled functions
 	assembled_functions = 0
 
-	loop iterator in implementations {
+	loop file in files {
 		builder = AssemblyBuilder()
-		file = iterator.key
 
 		# Add the debug label, which indicates the start of debuggable code
 		if settings.is_debugging_enabled {
@@ -2206,23 +2211,25 @@ get_text_sections(context: Context) {
 			builder.add(file, LabelInstruction(none as Unit, Label(label)))
 		}
 
-		loop implementation in iterator.value {
-			if implementation.is_imported continue
+		if implementations.contains_key(file) {
+			loop implementation in implementations[file] {
+				if implementation.is_imported continue
 
-			if settings.is_verbose_output_enabled {
-				console.put(`[`)
-				console.write(assembled_functions + 1)
-				console.put(`/`)
-				console.write(all.size)
-				console.put(`]`)
-				console.write(' Assembling ')
-				console.write_line(implementation.string())
+				if settings.is_verbose_output_enabled {
+					console.put(`[`)
+					console.write(assembled_functions + 1)
+					console.put(`/`)
+					console.write(all.size)
+					console.put(`]`)
+					console.write(' Assembling ')
+					console.write_line(implementation.string())
+				}
+
+				builder.add(get_text_section(implementation))
+				builder.write('\n\n')
+
+				assembled_functions++ # Increment the number of assembled functions
 			}
-
-			builder.add(get_text_section(implementation))
-			builder.write('\n\n')
-
-			assembled_functions++ # Increment the number of assembled functions
 		}
 
 		# Add the debug label, which indicates the end of debuggable code
@@ -2348,7 +2355,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 
 	Keywords.all.clear() # Remove all keywords for parsing assembly
 
-	text_sections = get_text_sections(context)
+	text_sections = get_text_sections(files, context)
 	data_sections = get_data_sections(context)
 	debug_sections = get_debug_sections(context, files)
 

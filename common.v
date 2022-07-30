@@ -839,6 +839,11 @@ is_condition(node: Node) {
 	}
 }
 
+# Summary: Returns whether the specified node represents a local variable
+is_local_variable(node: Node) {
+	return node.instance == NODE_VARIABLE and node.(VariableNode).variable.is_predictable
+}
+
 # Summary: Returns whether a value is expected to return from the specified node
 is_value_used(value: Node) {
 	return value.parent.match(NODE_CALL | NODE_CAST | NODE_PARENTHESIS | NODE_CONSTRUCTION | NODE_DECREMENT | NODE_FUNCTION | NODE_INCREMENT | NODE_LINK | NODE_NEGATE | NODE_NOT | NODE_ACCESSOR | NODE_OPERATOR | NODE_RETURN)

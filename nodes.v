@@ -2331,7 +2331,7 @@ Node PackConstructionNode {
 	# Summary:
 	# Returns whether the values for all the required members are present.
 	# If a value for a member is missing, this function returns the member.
-	# Otherwise, this function returns null.
+	# Otherwise, this function returns none.
 	capture_missing_member() {
 		loop iterator in type.variables {
 			member = iterator.value

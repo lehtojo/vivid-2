@@ -29,10 +29,9 @@ Number Link {
 		return link
 	}
 
-	init(accessor_type: Type) {
+	init(element: Type) {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
-		this.template_arguments = List<Type>(1, true)
-		this.template_arguments[] = accessor_type
+		this.template_arguments = [ element ]
 		this.identifier = String(primitives.LINK_IDENTIFIER)
 		this.modifiers |= MODIFIER_TEMPLATE_TYPE
 	}
@@ -75,10 +74,6 @@ namespace primitives {
 	constant U32 = 'u32'
 	constant U16 = 'u16'
 	constant U8 = 'u8'
-	constant L64 = 'l64'
-	constant L32 = 'l32'
-	constant L16 = 'l16'
-	constant L8 = 'l8'
 	constant CHAR = 'char'
 	constant BYTE = 'byte'
 
@@ -223,11 +218,6 @@ namespace primitives {
 		context.declare_type_alias(String(BYTE), unsigned_integer_8)
 
 		context.declare(create_number(DECIMAL, FORMAT_DECIMAL))
-
-		context.declare(Link.get_variant(create_number(U8, FORMAT_UINT8), String(L8)))
-		context.declare(Link.get_variant(create_number(U16, FORMAT_UINT16), String(L16)))
-		context.declare(Link.get_variant(create_number(U32, FORMAT_UINT32), String(L32)))
-		context.declare(Link.get_variant(create_number(U64, FORMAT_UINT64), String(L64)))
 	}
 }
 

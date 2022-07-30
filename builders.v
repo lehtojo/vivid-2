@@ -135,10 +135,32 @@ build_negate(unit: Unit, node: NegateNode) {
 	return SingleParameterInstruction.create_negate(unit, references.get(unit, node.first, ACCESS_READ), is_decimal).add()
 }
 
-build_assign_operator(unit: Unit, node: OperatorNode) {
-	# TODO: Support conditions
+build_debug_assign_operator(unit: Unit, node: OperatorNode) {
+	left = references.get(unit, node.first, ACCESS_WRITE)
+	right = references.get(unit, node.last, ACCESS_READ)
 
-	if node.first.instance == NODE_VARIABLE and node.first.(VariableNode).variable.is_predictable {
+	# If the destination is a local variable, extract the local variable
+	local = none as Variable
+
+	if common.is_local_variable(node.first) {
+		local = node.first.(VariableNode).variable
+	}
+	else {
+		local = try_get_local_variable(unit, left)
+	}
+
+	if local !== none and right.value.instance === INSTANCE_DISPOSABLE_PACK {
+		return SetVariableInstruction(unit, local, right).add()
+	}
+
+	return MoveInstruction(unit, left, right).add()
+}
+
+build_assign_operator(unit: Unit, node: OperatorNode) {
+	if settings.is_debugging_enabled return build_debug_assign_operator(unit, node)
+
+	# TODO: Support conditions
+	if common.is_local_variable(node.first) {
 		local = node.first.(VariableNode).variable
 		right = references.get(unit, node.last, ACCESS_READ)
 
@@ -150,11 +172,10 @@ build_assign_operator(unit: Unit, node: OperatorNode) {
 
 	local = try_get_local_variable(unit, left)
 
-	if local != none and not settings.is_debugging_enabled {
+	if local !== none {
 		return SetVariableInstruction(unit, local, right).add()
 	}
 
-	# Externally used variables need an immediate update
 	return MoveInstruction(unit, left, right).add()
 }
 

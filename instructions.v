@@ -2318,6 +2318,9 @@ Instruction LabelMergeInstruction {
 		state: List<VariableState> = List<VariableState>()
 
 		loop variable in variables {
+			# Packs variables are not merged, their members are instead
+			if variable.type.is_pack continue
+
 			state.add(VariableState.create(variable, unit.get_variable_value(variable)))
 		}
 

@@ -34,8 +34,16 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 	abort('Unsupported variable category')
 }
 
+get_variable_debug(unit: Unit, variable: Variable, mode: large) {
+	if variable.type.is_pack return unit.get_variable_value(variable)
+
+	return GetVariableInstruction(unit, variable, mode).add()
+}
+
 get_variable(unit: Unit, variable: Variable, mode: large) {
-	if settings.is_debugging_enabled or variable.is_static or variable.is_inlined {
+	if settings.is_debugging_enabled return get_variable_debug(unit, variable, mode)
+
+	if variable.is_static or variable.is_inlined {
 		return GetVariableInstruction(unit, variable, mode).add()
 	}
 

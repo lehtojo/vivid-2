@@ -251,7 +251,7 @@ Debug {
 	constant DEBUG_LINE_TABLE = 'debug_line'
 
 	constant STRING_TYPE_IDENTIFIER = 'String'
-	constant STRING_TYPE_DATA_VARIABLE = 'text'
+	constant STRING_TYPE_DATA_VARIABLE = 'data'
 
 	constant ARRAY_TYPE_POSTFIX = '_array'
 	constant ARRAY_TYPE_ELEMENTS: small = 10000
@@ -342,7 +342,7 @@ Debug {
 	start: TableLabel
 	end: TableLabel
 
-	index: byte = 1
+	index: large = 1
 
 	file_abbreviation: byte = 0
 	object_type_with_members_abbreviation: byte = 0
@@ -377,7 +377,8 @@ Debug {
 		working_folder = io.get_process_working_folder().replace(`\\`, `/`)
 
 		if fullname.starts_with(working_folder) {
-			fullname = fullname.slice(working_folder.length).insert(0, './')
+			local_path = fullname.slice(working_folder.length)
+			fullname = io.path.join("./", local_path)
 		}
 
 		information.add(fullname) # DW_AT_name
@@ -431,8 +432,7 @@ Debug {
 		if primitives.is_primitive(type, primitives.LINK) return type.get_fullname()
 
 		if type.is_primitive {
-			if pointer abort('Pointer of a primitive type required, but it was not requested using a link type')
-
+			require(not pointer, 'Debug information label to primitive link type must be requested with a link type')
 			return String(Mangle.VIVID_LANGUAGE_TAG) + type.identifier
 		}
 
@@ -448,8 +448,10 @@ Debug {
 	}
 
 	static get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
-		types[type.identity] = type
-		return TableLabel(get_type_label_name(type, pointer), 8, false)
+		label = get_type_label_name(type, pointer)
+		types[label] = type
+
+		return TableLabel(label, 8, false)
 	}
 
 	add_operation(command: byte) {
@@ -573,7 +575,7 @@ Debug {
 	}
 
 	add_file_abbreviation() {
-		abbreviation.add(index) # Define the current abbreviation code
+		abbreviation.add(index as byte) # Define the current abbreviation code
 
 		abbreviation.add(DWARF_TAG_COMPILE_UNIT) # This is a compile unit and it has children
 		abbreviation.add(DWARF_HAS_CHILDREN)
@@ -606,7 +608,7 @@ Debug {
 	}
 
 	add_object_type_with_members_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_CHILDREN)
 
@@ -632,7 +634,7 @@ Debug {
 	}
 
 	add_object_type_without_members_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -658,7 +660,7 @@ Debug {
 	}
 
 	add_base_type_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_BASE_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -678,7 +680,7 @@ Debug {
 	}
 
 	add_pointer_type_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_POINTER_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -692,7 +694,7 @@ Debug {
 	}
 
 	add_member_variable_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_MEMBER_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -721,7 +723,7 @@ Debug {
 	}
 
 	add_local_variable_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_VARIABLE)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -747,7 +749,7 @@ Debug {
 	}
 
 	add_parameter_variable_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_PARAMETER)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -773,7 +775,7 @@ Debug {
 	}
 
 	add_array_type_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_ARRAY_TYPE)
 		abbreviation.add(DWARF_HAS_CHILDREN)
 
@@ -787,7 +789,7 @@ Debug {
 	}
 
 	add_subrange_type_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_SUBRANGE_TYPE)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
 
@@ -804,7 +806,7 @@ Debug {
 	}
 
 	add_inheritance_abbreviation() {
-		abbreviation.add(index)
+		abbreviation.add(index as byte)
 
 		abbreviation.add(DWARF_INHERITANCE)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)

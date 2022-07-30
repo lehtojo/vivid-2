@@ -744,6 +744,9 @@ Context Type {
 
 	init(identity: String) {
 		Context.init(identity, TYPE_CONTEXT)
+
+		this.virtuals = Map<String, FunctionList>()
+		this.overrides = Map<String, FunctionList>()
 	}
 
 	init(context: Context, name: String, modifiers: normal, position: Position) {
@@ -753,7 +756,6 @@ Context Type {
 		this.identifier = name
 		this.modifiers = modifiers
 		this.position = position
-		this.supertypes = List<Type>()
 		this.virtuals = Map<String, FunctionList>()
 		this.overrides = Map<String, FunctionList>()
 
@@ -2165,8 +2167,7 @@ Type UnresolvedType {
 
 	init(identifier: String) {
 		Type.init(String.empty, MODIFIER_DEFAULT)
-		this.components = List<UnresolvedTypeComponent>()
-		this.components.add(UnresolvedTypeComponent(identifier))
+		this.components = [ UnresolvedTypeComponent(identifier) ]
 		this.is_resolved = false
 	}
 
