@@ -140,6 +140,18 @@
 			}
 		},
 		{
+			"label": "Verify (Debug)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify -d",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
 			"label": "Verify",
 			"type": "shell",
 			"options": {

@@ -114,7 +114,7 @@ get_expression_root(node: Node) {
 }
 
 extract_calls(root: Node) {
-	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
+	nodes = root.find_every(NODE_ACCESSOR | NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LINK | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
 	nodes.add_all(find_bool_values(root))
 
 	loop (i = 0, i < nodes.size, i++) {
@@ -123,6 +123,9 @@ extract_calls(root: Node) {
 
 		# Calls should always have a parent node
 		if parent == none continue
+
+		# Do not extract accessors or links that are destinations or packs
+		if node.match(NODE_ACCESSOR | NODE_LINK) and (common.is_edited(node) or node.get_type().is_pack) continue
 
 		# Skip values which are assigned to hidden local variables
 		if parent.match(Operators.ASSIGN) and parent.last == node and parent.first.match(NODE_VARIABLE) and parent.first.(VariableNode).variable.is_predictable continue
@@ -1350,6 +1353,51 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 	return result
 }
 
+# Summary:
+# Load the destination address as follows:
+# destination[index] = ...
+# =>
+# local = destination + index * sizeof(destination)
+# local[0] = ...
+prepare_accessor_destination_for_duplication(context: Context, destination: AccessorNode, interphases: Node, position: Position) {
+	accessor_base = destination.first
+	accessor_index = destination.last.first
+	accessor_stride = destination.get_stride()
+
+	local_type = accessor_base.get_type()
+	local = context.declare_hidden(local_type)
+
+	accessor_base.replace(VariableNode(local, position))
+	accessor_index.replace(NumberNode(SYSTEM_FORMAT, 0, position))
+
+	local_value = OperatorNode(Operators.ADD, position).set_operands(
+		accessor_base,
+		OperatorNode(Operators.MULTIPLY).set_operands(
+			accessor_index,
+			NumberNode(SYSTEM_FORMAT, accessor_stride, position)
+		)
+	)
+
+	local_initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(local, position),
+		local_value
+	)
+
+	interphases.insert(local_initialization)
+}
+
+# Summary:
+# Reduces the number of steps in the specified destination node by extracting expressions from it.
+# When the destination node is duplicated, this function should reduce duplicated work.
+# The function will add all the produced steps before the 'interphases' position.
+prepare_destination_for_duplication(context: Context, destination: Node, interphases: Node) {
+	position = destination.start
+
+	if destination.instance == NODE_ACCESSOR {
+		prepare_accessor_destination_for_duplication(context, destination as AccessorNode, interphases, position)
+	}
+}
+
 # <summary>
 # Finds all usages of packs and rewrites them to be more suitable for compilation
 # Example (Here $-prefixes indicate generated hidden variables):
@@ -1406,13 +1454,27 @@ rewrite_pack_usages(environment: Context, root: Node) {
 		container = assignment.parent
 		position = assignment.start
 
+		prepare_destination_for_duplication(environment, destination, assignment)
+
 		destinations = create_pack_member_accessors(destination, type, position)
 		sources = none as List<Node>
 
 		is_function_assignment = common.is_function_call(assignment.last)
+		is_memory_accessed = common.is_memory_accessed(assignment.last)
+		use_handle = is_function_assignment or is_memory_accessed
 
 		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local proxies of the members
-		if is_function_assignment {
+		if use_handle {
+			if destination.instance != NODE_VARIABLE {
+				context = assignment.get_parent_context()
+				temporary_handle = context.declare_hidden(type)
+
+				# Replace the destination with the temporary handle
+				temporary_handle_destination = VariableNode(temporary_handle)
+				destination.replace(temporary_handle_destination)
+				destination = temporary_handle_destination
+			}
+
 			loads = create_pack_member_accessors(destination, type, position)
 			sources = List<Node>()
 			
@@ -1433,7 +1495,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 		# The assignment must be removed, if its source is not a function call
 		# NOTE: The function call assignment must be left intact, because it must assign the disposable pack handle, whose usage is demonstrated above
-		if not is_function_assignment { assignment.remove() }
+		if not use_handle { assignment.remove() }
 
 		assignments.remove_at(i)
 	}

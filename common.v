@@ -192,6 +192,12 @@ is_function_call(node: Node) {
 	return node.instance == NODE_CALL or node.instance == NODE_FUNCTION
 }
 
+# Summary: Returns whether the specified node tree contains a memory load
+is_memory_accessed(node: Node) {
+	instances = NODE_ACCESSOR | NODE_LINK
+	return node.match(instances) or node.find(instances) !== none
+}
+
 # Summary: Returns whether the specified node accesses any member of the specified type and the access requires self pointer
 is_self_pointer_required(node: Node) {
 	if node.instance != NODE_FUNCTION and node.instance != NODE_VARIABLE return false

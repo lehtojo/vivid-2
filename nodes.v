@@ -275,7 +275,13 @@ Node VariableNode {
 	}
 
 	override try_get_type() {
-		return variable.type
+		type = variable.type
+
+		if type !== none and type.is_array_type {
+			return type.(ArrayType).usage_type
+		}
+
+		return type
 	}
 
 	override copy() {
@@ -1385,7 +1391,6 @@ Node NotNode {
 }
 
 Node AccessorNode {
-	stride => get_type().reference_size
 	format => get_type().format
 
 	init(object: Node, arguments: Node, position: Position) {

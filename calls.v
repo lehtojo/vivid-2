@@ -243,7 +243,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 		register = none as Register
 		source = none as Result
 
-		if parameter.type.format == FORMAT_DECIMAL {
+		if proxy.type.format == FORMAT_DECIMAL {
 			register = decimal_parameter_registers.pop_or(none as Register)
 		}
 		else {
@@ -257,7 +257,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 			source = Result(stack_position.finalize(), proxy.type.get_register_format())
 		}
 
-		destination = Result(references.create_variable_handle(unit, parameter, ACCESS_READ), parameter.type.format)
+		destination = Result(references.create_variable_handle(unit, proxy, ACCESS_TYPE_WRITE), proxy.type.format)
 
 		instruction = MoveInstruction(unit, destination, source)
 		instruction.type = MOVE_RELOCATE

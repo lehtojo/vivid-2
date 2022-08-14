@@ -316,12 +316,15 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 }
 
 build_accessor(unit: Unit, node: AccessorNode, mode: large) {
-	start = references.get(unit, node.first, mode) as Result
-	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
+	accessor_base = node.first
+	accessor_index = node.last.first
+
+	start = references.get(unit, accessor_base, mode) as Result
+	offset = references.get(unit, accessor_index, ACCESS_READ) as Result
 	stride = node.get_stride()
 
 	# The memory address of the accessor must be created is multiple steps, if the stride is too large and it can not be combined with the offset
-	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER {
+	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER and accessor_index.instance != NODE_NUMBER {
 		# Pattern:
 		# index = offset * stride
 		# return [start + index]
@@ -330,7 +333,7 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 		return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, index, 1, mode).add()
 	}
 
-	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
+	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, stride, mode).add()
 }
 
 build_call(unit: Unit, node: CallNode) {

@@ -2346,6 +2346,7 @@ Function VirtualFunction {
 
 Number ArrayType {
 	element: Type
+	usage_type: Type
 	tokens: List<Token>
 	expression: Node
 	size => expression.(NumberNode).value
@@ -2354,6 +2355,7 @@ Number ArrayType {
 		Number.init(SYSTEM_FORMAT, 64, element.string() + '[]')
 		this.modifiers = MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_INLINE | MODIFIER_ARRAY_TYPE
 		this.element = element
+		this.usage_type = Link(element)
 		this.tokens = count.tokens
 		this.position = position
 		this.template_arguments = [ element ]
