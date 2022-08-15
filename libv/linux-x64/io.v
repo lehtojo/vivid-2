@@ -419,7 +419,7 @@ shell(command: String) {
 # Summary: Waits for the specified process to exit
 wait_for_exit(pid: large) {
 	information = inline internal.SignalInformation()
-	internal.system_wait_id(internal.ID_TYPE_PID, pid, information, internal.WAIT_OPTIONS_EXITED, none)
+	internal.system_wait_id(internal.ID_TYPE_PID, pid, information, internal.WAIT_OPTIONS_EXITED, none as link)
 	return information.status
 }
 

@@ -33,18 +33,22 @@ Number Link {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = [ element ]
 		this.identifier = String(primitives.LINK_IDENTIFIER)
-		this.modifiers |= MODIFIER_TEMPLATE_TYPE
+		this.modifiers |= MODIFIER_TEMPLATE_TYPE | MODIFIER_LINK
 	}
 
 	init() {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = List<Type>(0, false)
 		this.identifier = String(primitives.LINK_IDENTIFIER)
-		this.modifiers |= MODIFIER_TEMPLATE_TYPE
+		this.modifiers |= MODIFIER_TEMPLATE_TYPE | MODIFIER_LINK
 	}
 
 	override match(other: Type) {
-		return this.name == other.name and this.identifier == other.identifier and get_accessor_type().match(other.(Link).get_accessor_type())
+		if (other.modifiers & MODIFIER_LINK) == 0 return false
+
+		accessor_type = get_accessor_type()
+		other_accessor_type = other.(Link).get_accessor_type()
+		return accessor_type.match(other_accessor_type)
 	}
 
 	override clone() {
@@ -54,6 +58,10 @@ Number Link {
 	override get_accessor_type() {
 		if template_arguments.size > 0 return template_arguments[]
 		return primitives.create_number(primitives.U8, FORMAT_UINT8)
+	}
+
+	override string() {
+		return get_accessor_type().string() + `*`
 	}
 }
 

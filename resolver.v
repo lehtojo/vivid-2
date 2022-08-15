@@ -4,6 +4,9 @@ get_shared_type(expected: Type, actual: Type) {
 	if expected == none or actual == none return none as Type
 	if expected == actual or expected.match(actual) return expected
 
+	# Do not allow implicit conversions between links and non-links
+	if (expected.is_link ¤ actual.is_link) != 0 return none as Type
+
 	if expected.is_number and actual.is_number {
 		bits = max(expected.reference_size * 8, actual.reference_size * 8)
 		signed = not expected.(Number).unsigned or not actual.(Number).unsigned

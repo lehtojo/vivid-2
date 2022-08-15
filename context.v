@@ -697,6 +697,7 @@ Context Type {
 	is_array_type => has_flag(modifiers, MODIFIER_ARRAY_TYPE)
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
 	is_pack => has_flag(modifiers, MODIFIER_PACK)
+	is_link => has_flag(modifiers, MODIFIER_LINK)
 	is_unnamed_pack => is_pack and name.index_of(`.`) != -1
 	is_template_type_variant => name.index_of(`<`) != -1
 
@@ -1277,7 +1278,7 @@ FunctionList {
 		if candidates.size == 0 return none as Function
 		if candidates.size == 1 return candidates[]
 
-		minimum_candidate =  candidates[]
+		minimum_candidate = candidates[]
 		minimum_casts = get_cast_count(minimum_candidate, parameter_types)
 
 		loop (i = 1, i < candidates.size, i++) {
@@ -1573,7 +1574,7 @@ Type TemplateType {
 		# Create an empty type with the specified name using tokens
 		blueprint = List<Token>()
 		blueprint.add(IdentifierToken(name))
-		blueprint.add(ParenthesisToken(`{`, none, none, List<Token>()))
+		blueprint.add(ParenthesisToken(`{`, none as Position, none as Position, List<Token>()))
 
 		# Generate the template arguments
 		loop (i = 0, i < argument_count, i++) {

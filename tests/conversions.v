@@ -278,7 +278,7 @@ init() {
 	are_equal(baz as Bar as link, casts_6(baz) as link)
 
 	baz.e = -3.0
-	are_not_equal(baz as Bar as link, automatic_cast_1(baz) as link)
+	are_not_equal(baz as Bar as large, automatic_cast_1(baz) as large)
 
 	baz.e = 2.5
 	are_equal(baz as Bar as link, automatic_cast_1(baz) as link)

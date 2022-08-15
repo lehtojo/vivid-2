@@ -144,7 +144,7 @@ namespace pe_format {
 	# Ensure the specified name is exactly eight characters long, padded with none characters if necessary.
 	find_section(module: PeMetadata, name: String) {
 		encoded_name = encode_integer_name(name)
-		return module.sections.find_or(i -> i.name == encoded_name, none)
+		return module.sections.find_or(i -> i.name == encoded_name, none as BinarySection)
 	}
 
 	# Summary:
