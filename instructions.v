@@ -571,7 +571,7 @@ DualParameterInstruction MoveInstruction {
 
 				first.value = MemoryHandle(unit, address, offset)
 
-				instruction = MoveInstruction(Unit, first, second)
+				instruction = MoveInstruction(unit, first, second)
 				instruction.type = type
 				unit.add(instruction, true)
 				return

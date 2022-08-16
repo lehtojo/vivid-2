@@ -340,6 +340,10 @@ get_tree_report(root: Node) {
 get_type_report(type: Type) {
 	errors = List<Status>()
 
+	if not (type.parent.is_global or type.parent.is_namespace) {
+		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
+	}
+
 	loop iterator in type.variables {
 		variable = iterator.value
 		if variable.is_resolved continue

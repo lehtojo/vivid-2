@@ -2199,7 +2199,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
 
 	# Store the number of assembled functions
-	assembled_functions = 0
+	index = 0
 
 	loop file in files {
 		builder = AssemblyBuilder()
@@ -2217,7 +2217,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 
 				if settings.is_verbose_output_enabled {
 					console.put(`[`)
-					console.write(assembled_functions + 1)
+					console.write(index + 1)
 					console.put(`/`)
 					console.write(all.size)
 					console.put(`]`)
@@ -2228,7 +2228,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 				builder.add(get_text_section(implementation))
 				builder.write('\n\n')
 
-				assembled_functions++ # Increment the number of assembled functions
+				index++ # Increment the number of assembled functions
 			}
 		}
 

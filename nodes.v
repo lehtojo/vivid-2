@@ -676,6 +676,14 @@ Node TypeNode {
 		return type
 	}
 
+	override get_status() {
+		if parent.match(NODE_COMPILES | NODE_INSPECTION | NODE_LINK) or (parent.instance == NODE_CAST and next === none) {
+			return none as Status
+		}
+
+		return Status(start, 'Can not understand')
+	}
+
 	override copy() {
 		return TypeNode(type, start)
 	}

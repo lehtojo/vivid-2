@@ -207,7 +207,7 @@ AssemblyParser {
 
 			offset = tokens[2].(NumberToken).data
 
-			instruction = Instruction(Unit, INSTRUCTION_DEBUG_FRAME_OFFSET)
+			instruction = Instruction(unit, INSTRUCTION_DEBUG_FRAME_OFFSET)
 			handle = ConstantHandle(offset)
 			instruction.parameters.add(InstructionParameter(handle, FLAG_NONE))
 			instructions.add(instruction)
