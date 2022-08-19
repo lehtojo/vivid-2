@@ -356,6 +356,8 @@ Debug {
 	subrange_type_abbreviation: byte = 0
 	inheritance_abbreviation: byte = 0
 
+	string_type: Type
+
 	static get_debug_file_start_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_start'
 	}
@@ -1027,12 +1029,6 @@ Debug {
 		return bytes
 	}
 
-	# Summary:
-	# Returns whether specified variable is a string
-	is_string_type(variable: Variable) {
-		return variable.type != none and variable.type.name == STRING_TYPE_IDENTIFIER and variable.type.parent.is_global
-	}
-
 	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
 		if variable.is_generated or variable.type.is_array_type return
 
@@ -1045,10 +1041,9 @@ Debug {
 		type = variable.type
 		local_variable_alignment = to_sleb128(local_memory_size + alignment)
 
-		if is_string_type(variable) {
-			# Get the member variable which points to the actual data in the type
+		if variable.type === string_type {
+			# Get the member variable that points to the actual characters
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
-			if data == none abort('Missing data variable')
 
 			alignment = data.alignment
 			type = data.type
@@ -1087,7 +1082,7 @@ Debug {
 		type = variable.type
 		parameter_alignment = to_sleb128(local_memory_size + alignment)
 
-		if is_string_type(variable) {
+		if variable.type === string_type {
 			# Get the member variable which points to the actual data in the type
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
 			if data == none abort('Missing data variable')
@@ -1116,7 +1111,7 @@ Debug {
 		information.add(get_offset(start, get_type_label(type, types, is_pointer_type(type)))) # DW_AT_type
 	}
 
-	init() {
+	init(context: Context) {
 		abbreviation = Table(String(DEBUG_ABBREVIATION_TABLE))
 		information = Table(String(DEBUG_INFORMATION_TABLE))
 		abbreviation.is_section = true
@@ -1149,6 +1144,20 @@ Debug {
 		add_array_type_abbreviation()
 		add_subrange_type_abbreviation()
 		add_inheritance_abbreviation()
+
+		register_default_string_type(context)
+	}
+
+	register_default_string_type(context: Context) {
+		type = context.get_type(String(STRING_TYPE_IDENTIFIER))
+		if type === none or not type.parent.is_global return
+
+		# Verify the type has an internal data pointer
+		data_pointer = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
+		if data_pointer === none or data_pointer.type === none or not data_pointer.type.is_link return
+
+		# Register the found type as the default string type
+		string_type = type
 	}
 
 	end_file() {

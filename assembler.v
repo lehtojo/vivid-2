@@ -2052,7 +2052,7 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
 
 	loop file in files {
-		debug = Debug()
+		debug = Debug(context)
 		debug.begin_file(file)
 
 		types = Map<String, Type>()
