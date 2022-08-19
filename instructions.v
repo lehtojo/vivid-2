@@ -864,6 +864,9 @@ Instruction InitializeInstruction {
 			additional_memory += padding
 		}
 
+		# Verify the size of the allocated stack memory does not exceed the maximum signed 32-bit integer
+		require(additional_memory <= NORMAL_MAX, "Function allocates too much stack memory at " + unit.function.metadata.start.string())
+
 		if additional_memory > 0 {
 			stack_pointer = unit.get_stack_pointer()
 
