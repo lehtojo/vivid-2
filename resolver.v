@@ -168,10 +168,8 @@ resolve_return_type(implementation: FunctionImplementation) {
 	# Do not resolve the return type if it is already resolved.
 	# This also prevents virtual function overrides from overriding the return type, enforced by the virtual function declaration
 	if implementation.return_type != none {
-		if implementation.return_type.is_resolved return
-
 		# Try to resolve the return type
-		resolved = implementation.return_type.(UnresolvedType).resolve_or_none(implementation)
+		resolved = resolve(implementation, implementation.return_type)
 		if resolved === none return
 
 		# Update the return type, since we resolved it
@@ -370,8 +368,11 @@ get_function_report(implementation: FunctionImplementation) {
 		errors.add(Status(variable.position, 'Can not resolve the type of the variable'))
 	}
 
-	if implementation.return_type == none or implementation.return_type.is_unresolved {
+	if implementation.return_type === none or implementation.return_type.is_unresolved {
 		errors.add(Status(implementation.metadata.start, 'Can not resolve the return type'))
+	}
+	else implementation.return_type.is_array_type {
+		errors.add(Status(implementation.metadata.start, 'Array type is not allowed as a return type'))
 	}
 
 	errors.add_all(get_tree_report(implementation.node))
