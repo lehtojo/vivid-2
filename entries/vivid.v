@@ -54,6 +54,8 @@ init() {
 
 	analysis.analyze()
 
+	warnings.report()
+
 	platform.x64.initialize()
 	assembler.assemble()
 	if result.problematic complain(result)

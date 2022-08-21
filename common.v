@@ -36,19 +36,19 @@ read_template_arguments(context: Context, tokens: List<Token>, offset: large) {
 	return read_template_arguments(context, tokens.slice(offset, tokens.size))
 }
 
-# Summary: Reads template parameters from the next tokens inside the specified queue
+# Summary: Reads template arguments from the next tokens inside the specified queue
 # Pattern: <$1, $2, ... $n>
 read_template_arguments(context: Context, tokens: List<Token>) {
 	opening = tokens.pop_or(none as Token) as OperatorToken
 	if opening.operator != Operators.LESS_THAN abort('Can not understand the template arguments')
 
-	parameters = List<Type>()
+	arguments = List<Type>()
 
 	loop {
-		parameter = read_type(context, tokens)
-		if parameter == none stop
+		argument = read_type(context, tokens)
+		if argument === none stop
 
-		parameters.add(parameter)
+		arguments.add(argument)
 
 		# Consume the next token, if it is a comma
 		if tokens[].match(Operators.COMMA) tokens.pop_or(none as Token)
@@ -57,7 +57,7 @@ read_template_arguments(context: Context, tokens: List<Token>) {
 	next = tokens.pop_or(none as Token)
 	if not next.match(Operators.GREATER_THAN) abort('Can not understand the template arguments')
 
-	return parameters
+	return arguments
 }
 
 # Summary: Reads a type component from the tokens and returns it
@@ -220,18 +220,29 @@ consume_template_arguments(state: ParserState) {
 	if next == none or not next.match(Operators.LESS_THAN) return false
 	state.consume()
 
-	loop {
-		backup = state.save()
-		if not consume_type(state) state.restore(backup)
+	# Keep track whether at least one argument has been consumed
+	is_argument_consumed = false
 
+	loop {
 		next = state.peek()
-		if not state.consume(TOKEN_TYPE_OPERATOR) return false
+		if next === none return false
 
 		# If the consumed operator is a greater than operator, it means the template arguments have ended
-		if next.match(Operators.GREATER_THAN) return true
+		if next.match(Operators.GREATER_THAN) {
+			state.consume()
+			return is_argument_consumed
+		}
 
 		# If the operator is a comma, it means the template arguments have not ended
-		if next.match(Operators.COMMA) continue
+		if next.match(Operators.COMMA) {
+			state.consume()
+			continue
+		}
+
+		if consume_type(state) {
+			is_argument_consumed = true
+			continue
+		}
 
 		# The template arguments must be invalid
 		return false
