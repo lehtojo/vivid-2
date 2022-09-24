@@ -1,8 +1,3 @@
-OPERATING_SYSTEM_WINDOWS = 0
-OPERATING_SYSTEM_LINUX = 1
-
-OS = 0
-
 # All possible output binary types
 BINARY_TYPE_SHARED_LIBRARY = 0
 BINARY_TYPE_STATIC_LIBRARY = 1
@@ -30,19 +25,13 @@ DEFAULT_OUTPUT_NAME = 'v'
 
 # Summary: Returns the extension of a static library file
 static_library_extension() {
-	if OS == OPERATING_SYSTEM_WINDOWS {
-		return '.lib'
-	}
-
+	if settings.is_target_windows return '.lib'
 	return '.a'
 }
 
 # Summary: Returns the extension of a static library file
 shared_library_extension() {
-	if OS == OPERATING_SYSTEM_WINDOWS {
-		return '.dll'
-	}
-
+	if settings.is_target_windows return '.dll'
 	return '.so'
 }
 
@@ -68,12 +57,13 @@ initialize_configuration() {
 	settings.included_folders = List<String>()
 	settings.included_folders.add(io.get_process_folder())
 
+	# Load the path environment variable and include folders from it
+	path = io.get_environment_variable('PATH')
+	if path === none { path = String.empty }
+
 	folders = none as List<String>
 
-	if OS == OPERATING_SYSTEM_WINDOWS {
-		path = io.get_environment_variable('PATH')
-		if path === none { path = String.empty }
-
+	if settings.is_target_windows {
 		folders = path.split(`;`)
 
 		# Ensure all the separators are the same
@@ -82,9 +72,6 @@ initialize_configuration() {
 		}
 	}
 	else {
-		path = io.get_environment_variable('Path')
-		if path === none { path = String.empty }
-
 		folders = path.split(`:`)
 	}
 
