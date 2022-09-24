@@ -9,6 +9,7 @@ constant ELF_MACHINE_TYPE_ARM64 = 0xB7
 
 constant ELF_SEGMENT_TYPE_LOADABLE = 1
 constant ELF_SEGMENT_TYPE_DYNAMIC = 2
+constant ELF_SEGMENT_TYPE_INTERPRETER = 3
 constant ELF_SEGMENT_TYPE_PROGRAM_HEADER = 6
 
 constant ELF_SEGMENT_FLAG_EXECUTE = 1
@@ -100,8 +101,9 @@ plain ElfSymbolEntry {
 constant ELF_SYMBOL_TYPE_NONE = 0x00
 constant ELF_SYMBOL_TYPE_ABSOLUTE64 = 0x01
 constant ELF_SYMBOL_TYPE_PROGRAM_COUNTER_RELATIVE = 0x02
-constant ELF_SYMBOL_TYPE_ABSOLUTE32 = 0x0A
+constant ELF_SYMBOL_TYPE_JUMP_SLOT = 0x07
 constant ELF_SYMBOL_TYPE_BASE_RELATIVE_64 = 0x08
+constant ELF_SYMBOL_TYPE_ABSOLUTE32 = 0x0A
 
 plain ElfRelocationEntry {
 	offset: u64
@@ -118,11 +120,14 @@ plain ElfRelocationEntry {
 		this.addend = addend
 	}
 
-	set_info(symbol: u32, type: u32) {
-		info = (symbol.(u64) <| 32) | type.(u64)
+	set_info(symbol: u64, type: u64) {
+		info = (symbol <| 32) | type
 	}
 }
 
+constant ELF_DYNAMIC_SECTION_TAG_NEEDED = 0x01
+constant ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_BYTES = 0x02
+constant ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_GLOBAL_OFFSET_TABLE = 0x03
 constant ELF_DYNAMIC_SECTION_TAG_HASH_TABLE = 0x04
 constant ELF_DYNAMIC_SECTION_TAG_STRING_TABLE = 0x05
 constant ELF_DYNAMIC_SECTION_TAG_SYMBOL_TABLE = 0x06
@@ -131,6 +136,9 @@ constant ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE_SIZE = 0x08
 constant ELF_DYNAMIC_SECTION_TAG_RELOCATION_ENTRY_SIZE = 0x09
 constant ELF_DYNAMIC_SECTION_TAG_STRING_TABLE_SIZE = 0x0A
 constant ELF_DYNAMIC_SECTION_TAG_SYMBOL_ENTRY_SIZE = 0x0B
+constant ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_TYPE = 0x14
+constant ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_TABLE = 0x17
+constant ELF_DYNAMIC_SECTION_TAG_BIND_NOW = 0x18
 constant ELF_DYNAMIC_SECTION_TAG_RELOCATION_COUNT = 0x6ffffff9
 
 plain ElfDynamicEntry {
@@ -156,7 +164,14 @@ constant DYNAMIC_STRING_TABLE_SECTION = '.dynstr'
 constant HASH_SECTION = '.hash'
 constant RELOCATION_TABLE_SECTION_PREFIX = '.rela'
 constant DYNAMIC_RELOCATIONS_SECTION = '.rela.dyn'
+constant GLOBAL_OFFSET_TABLE_SECTION = '.got'
+constant FUNCTION_LINKAGE_TABLE_SECTION = '.plt'
+constant INTERPRETER_SECTION = '.interp'
 constant DYNAMIC_SECTION_START = '_DYNAMIC'
+constant DEFAULT_INTERPRETER = '/lib/ld64.so.1'
+
+constant GLOBAL_OFFSET_TABLE_SYMBOL_NAME = '_GLOBAL_OFFSET_TABLE_'
+constant GLOBAL_OFFSET_TABLE_RESERVED_COUNT = 3
 
 plain DynamicLinkingInformation {
 	dynamic_section: BinarySection
@@ -169,6 +184,80 @@ plain DynamicLinkingInformation {
 		this.dynamic_section = section
 		this.entries = entries
 		this.symbols = symbols
+	}
+}
+
+plain DynamicSectionBuilder {
+	entries: List<ElfDynamicEntry> = List<ElfDynamicEntry>()
+	relocations: List<BinaryRelocation> = List<BinaryRelocation>()
+	symbols: List<BinarySymbol> = List<BinarySymbol>()
+	symbol_entries: List<ElfSymbolEntry> = List<ElfSymbolEntry>()
+	symbol_name_table: BinaryStringTable = BinaryStringTable()
+
+	init() {
+		# Add the none-entry
+		symbols.add(BinarySymbol(String.empty, 0, false))
+		symbol_name_table.add(String.empty)
+		symbol_entries.add(ElfSymbolEntry())
+	}
+
+	add(tag: u64, value: u64) {
+		entries.add(ElfDynamicEntry(tag, value))
+	}
+
+	add_symbol(name: String, section: BinarySection) {
+		symbol = BinarySymbol(name, 0, false, section)
+		symbol.exported = true
+
+		# Add the symbol into its section, if it is not external
+		if section !== none {
+			section.symbols.add(symbol.name, symbol)
+		}
+
+		entry = ElfSymbolEntry()
+		entry.name = symbol_name_table.add(symbol.name)
+		entry.set_info(ELF_SYMBOL_BINDING_GLOBAL, 0)
+
+		symbol.index = symbol_entries.size
+
+		symbols.add(symbol)
+		symbol_entries.add(entry)
+
+		return symbol
+	}
+
+	add_symbols(symbols: List<BinarySymbol>) {
+		loop symbol in symbols {
+			entry = ElfSymbolEntry()
+			entry.name = symbol_name_table.add(symbol.name)
+			entry.set_info(ELF_SYMBOL_BINDING_GLOBAL, 0)
+
+			symbol.index = symbol_entries.size
+
+			this.symbols.add(symbol)
+			this.symbol_entries.add(entry)
+		}
+	}
+
+	set(tag: u64, symbol: BinarySymbol, relocation_type: large) {
+		loop (i = 0, i < entries.size, i++) {
+			if entries[i].tag !== tag continue
+
+			relocations.add(BinaryRelocation(symbol, capacityof(ElfDynamicEntry) * i + ElfDynamicEntry.POINTER_OFFSET, 0, relocation_type))
+			return
+		}
+
+		panic('Failed to add relocation for a dynamic section entry')
+	}
+
+	connect(section: BinarySection, relocations: List<BinaryRelocation>) {
+		# Connect the relocations to the specified section
+		loop relocation in this.relocations {
+			if relocation.section !== none continue
+			relocation.section = section
+		}
+
+		relocations.add_all(this.relocations)
 	}
 }
 
@@ -204,7 +293,7 @@ get_section_flags(section: BinarySection) {
 # Hashes the specified symbol name.
 # Implementation is provided by the ELF specification.
 get_symbol_hash(name: String) {
-	h = 0
+	h = 0 as u64
 
 	loop (i = 0, i < name.length, i++) {
 		h = (h <| 4) + name[i]
@@ -220,9 +309,9 @@ get_symbol_hash(name: String) {
 # Generates a hash section from the specified symbols
 create_hash_section(symbols: List<BinarySymbol>) {
 	number_of_symbols = symbols.size
-	buckets = allocate(number_of_symbols * sizeof(normal))
-	chains = allocate(number_of_symbols * sizeof(normal))
-	ends = allocate(number_of_symbols * sizeof(normal))
+	buckets = allocate<normal>(number_of_symbols)
+	chains = allocate<normal>(number_of_symbols)
+	ends = allocate<normal>(number_of_symbols)
 
 	# Initialize the chain end indices to match the beginning of the chain
 	loop (i = 0, i < number_of_symbols, i++) { ends[i] = i }
@@ -508,7 +597,7 @@ create_object_file(name: String, sections: List<BinarySection>, exports: Set<Str
 build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	if sections.size === 0 or sections[].type !== BINARY_SECTION_TYPE_NONE {
 		# Create an empty section, so that it is possible to leave section index unspecified in symbols for example
-		none_section = BinarySection(String.Empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
+		none_section = BinarySection(String.empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
 		sections.insert(0, none_section)
 	}
 
@@ -534,7 +623,8 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	# Now that section positions are set, compute offsets
 	binary_utility.compute_offsets(sections, symbols)
 
-	section_bytes = sections.sum(i -> i.data.size)
+	section_bytes = 0
+	loop section in sections { section_bytes += section.data.size }
 
 	# Save the location of the section header table
 	header.section_header_offset = capacityof(ElfFileHeader) + section_bytes
@@ -543,10 +633,10 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	header.section_name_entry_index = section_headers.size - 1
 
 	bytes = capacityof(ElfFileHeader) + section_bytes + section_headers.size * capacityof(ElfSectionHeader)
-	result = byte[bytes]
+	result = Array<byte>(bytes)
 
 	# Write the file header
-	binary_utility.write(result, 0, header)
+	binary_utility.write<ElfFileHeader>(result, 0, header)
 
 	# Write the actual program data
 	loop section in sections {
@@ -557,7 +647,7 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	position = header.section_header_offset
 
 	loop section_header in section_headers {
-		binary_utility.write(result, position, section_header)
+		binary_utility.write<ElfSectionHeader>(result, position, section_header)
 		position += capacityof(ElfSectionHeader)
 	}
 
@@ -735,6 +825,7 @@ import_object_file(path: String) {
 # Summary:
 # Creates the program headers, meaning the specified section will get their own virtual addresses and be loaded into memory when the created executable is loaded
 create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64) {
+	# Create the program header load segment
 	header = ElfProgramHeader()
 	header.type = ELF_SEGMENT_TYPE_LOADABLE
 	header.flags = ELF_SEGMENT_FLAG_READ
@@ -744,8 +835,20 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 	header.segment_file_size = linker.SEGMENT_ALIGNMENT
 	header.segment_memory_size = linker.SEGMENT_ALIGNMENT
 	header.alignment = linker.SEGMENT_ALIGNMENT
-
 	headers.add(header)
+
+	# Create an explicit header for the program header segment
+	header = ElfProgramHeader()
+	header.type = ELF_SEGMENT_TYPE_PROGRAM_HEADER
+	header.flags = ELF_SEGMENT_FLAG_READ
+	header.offset = 0
+	header.virtual_address = virtual_address
+	header.physical_address = virtual_address
+	header.segment_file_size = linker.SEGMENT_ALIGNMENT
+	header.segment_memory_size = linker.SEGMENT_ALIGNMENT
+	header.alignment = linker.SEGMENT_ALIGNMENT
+
+	explicits = [ header ]
 
 	file_position = linker.SEGMENT_ALIGNMENT
 	virtual_address += linker.SEGMENT_ALIGNMENT
@@ -784,6 +887,8 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 			DATA_SECTION => ELF_SEGMENT_FLAG_WRITE | ELF_SEGMENT_FLAG_READ,
 			TEXT_SECTION => ELF_SEGMENT_FLAG_EXECUTE | ELF_SEGMENT_FLAG_READ,
 			DYNAMIC_SECTION => ELF_SEGMENT_FLAG_WRITE | ELF_SEGMENT_FLAG_READ,
+			FUNCTION_LINKAGE_TABLE_SECTION => ELF_SEGMENT_FLAG_EXECUTE | ELF_SEGMENT_FLAG_READ,
+			GLOBAL_OFFSET_TABLE_SECTION => ELF_SEGMENT_FLAG_WRITE | ELF_SEGMENT_FLAG_READ,
 			else => ELF_SEGMENT_FLAG_READ
 		}
 
@@ -798,11 +903,9 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 		header.alignment = linker.SEGMENT_ALIGNMENT
 		headers.add(header)
 
-		# Dynamic sections also need a duplicate section, which is marked as dynamic...
-		if section.name == DYNAMIC_SECTION {
-			# Add the dynamic section header
+		# Dynamic and interpreter sections also need explicit headers
+		if section.name == DYNAMIC_SECTION or section.name == INTERPRETER_SECTION {
 			header = ElfProgramHeader()
-			header.type = ELF_SEGMENT_TYPE_DYNAMIC
 			header.flags = flags
 			header.offset = file_position
 			header.virtual_address = virtual_address
@@ -810,8 +913,13 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 			header.segment_file_size = section.virtual_size
 			header.segment_memory_size = section.virtual_size
 			header.alignment = 8
+			header.type = when(section.name) {
+				DYNAMIC_SECTION => ELF_SEGMENT_TYPE_DYNAMIC,
+				INTERPRETER_SECTION => ELF_SEGMENT_TYPE_INTERPRETER,
+				else => panic('Unhandled section type') as normal
+			}
 
-			headers.add(header)
+			explicits.add(header)
 		}
 
 		section.offset = file_position
@@ -831,6 +939,7 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 		}
 	}
 
+	headers.insert_all(0, explicits)
 	return file_position
 }
 
@@ -874,14 +983,19 @@ create_dynamic_relocations(sections: List<BinarySection>, relocations: List<Bina
 # Summary:
 # Creates all the required dynamic sections needed in a shared library. This includes the dynamic section, the dynamic symbol table, the dynamic string table.
 # The dynamic symbol table created by this function will only exported symbols.
-create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, relocations: List<BinaryRelocation>) {
+create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, relocations: List<BinaryRelocation>, dependencies: List<String>) {
 	# Build the dynamic section data
-	dynamic_section_entries = List<ElfDynamicEntry>()
-	dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_HASH_TABLE, 0)) # The address is filled in later using a relocation
-	dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE, 0))  # The address is filled in later using a relocation
-	dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_SYMBOL_TABLE, 0))  # The address is filled in later using a relocation
-	dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_SYMBOL_ENTRY_SIZE, capacityof(ElfSymbolEntry)))
-	dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE_SIZE, 1))
+	builder = DynamicSectionBuilder()
+
+	# Add runtime library dependencies
+	loop dependency in dependencies {
+		builder.add(ELF_DYNAMIC_SECTION_TAG_NEEDED, builder.symbol_name_table.add(dependency))
+	}
+
+	builder.add(ELF_DYNAMIC_SECTION_TAG_HASH_TABLE, 0) # The address is filled in later using a relocation
+	builder.add(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE, 0)  # The address is filled in later using a relocation
+	builder.add(ELF_DYNAMIC_SECTION_TAG_SYMBOL_TABLE, 0)  # The address is filled in later using a relocation
+	builder.add(ELF_DYNAMIC_SECTION_TAG_SYMBOL_ENTRY_SIZE, capacityof(ElfSymbolEntry))
 
 	# Dynamic section:
 	dynamic_section = BinarySection(String(DYNAMIC_SECTION), BINARY_SECTION_TYPE_DYNAMIC, Array<byte>())
@@ -889,73 +1003,49 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 	dynamic_section.flags = BINARY_SECTION_FLAGS_WRITE | BINARY_SECTION_FLAGS_ALLOCATE
 
 	# Create a symbol, which represents the start of the dynamic section
-	dynamic_section_start = BinarySymbol(String(DYNAMIC_SECTION_START), 0, false)
-	dynamic_section_start.exported = true
-	dynamic_section_start.section = dynamic_section
-	dynamic_section.symbols.add(dynamic_section_start.name, dynamic_section_start)
-	symbols.add(dynamic_section_start.name, dynamic_section_start)
+	builder.add_symbol(String(DYNAMIC_SECTION_START), dynamic_section)
 
-	# Symbol name table:
-	exported_symbol_name_table = BinaryStringTable()
-	exported_symbol_entries = List<ElfSymbolEntry>()
-	exported_symbols = symbols.get_values().filter(i -> i.exported)
-	exported_symbols.insert(0, BinarySymbol(String.empty, 0, false))
+	# Add all exported symbols to the dynamic symbol table
+	builder.add_symbols(symbols.get_values().filter(i -> i.exported))
 
-	# Create symbol entries for each exported symbol without correct section indices, since they will need to be filled in later
-	loop symbol in exported_symbols {
-		symbol_entry = ElfSymbolEntry()
-		symbol_entry.name = exported_symbol_name_table.add(symbol.name)
-
-		if symbol.external or symbol.exported {
-			symbol_entry.set_info(ELF_SYMBOL_BINDING_GLOBAL, 0)
-		}
-		else {
-			symbol_entry.set_info(ELF_SYMBOL_BINDING_LOCAL, 0)
-		}
-
-		symbol.index = exported_symbol_entries.size
-		exported_symbol_entries.add(symbol_entry)
-	}
+	# Function linkage table:
+	add_function_linkage_table(sections, relocations, builder)
 
 	# Dynamic symbol table:
-	dynamic_symbol_table = BinarySection(String(DYNAMIC_SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(capacityof(ElfSymbolEntry) * exported_symbol_entries.size))
+	dynamic_symbol_table = BinarySection(String(DYNAMIC_SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(capacityof(ElfSymbolEntry) * builder.symbol_entries.size))
 	dynamic_symbol_table.alignment = 8
 	dynamic_symbol_table.flags = BINARY_SECTION_FLAGS_ALLOCATE
 
 	# Create a symbol, which represents the start of the dynamic symbol table
 	# This symbol is used to fill the file offset of the dynamic symbol table in the dynamic section
-	dynamic_symbol_table_start = BinarySymbol(dynamic_symbol_table.name, 0, false)
-	dynamic_symbol_table_start.section = dynamic_symbol_table
-	dynamic_symbol_table.symbols.add(dynamic_symbol_table.name, dynamic_symbol_table_start)
+	dynamic_symbol_table_start = BinarySymbol(dynamic_symbol_table.name, 0, false, dynamic_symbol_table)
 
 	# Dynamic string table:
-	dynamic_string_table = BinarySection(String(DYNAMIC_STRING_TABLE_SECTION), BINARY_SECTION_TYPE_STRING_TABLE, exported_symbol_name_table.build())
+	dynamic_string_table = BinarySection(String(DYNAMIC_STRING_TABLE_SECTION), BINARY_SECTION_TYPE_STRING_TABLE, builder.symbol_name_table.build())
 	dynamic_string_table.flags = BINARY_SECTION_FLAGS_ALLOCATE
+
+	builder.add(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE_SIZE, dynamic_string_table.data.size)
 
 	# Create a symbol, which represents the start of the dynamic string table
 	# This symbol is used to fill the file offset of the dynamic string table in the dynamic section
-	dynamic_string_table_start = BinarySymbol(dynamic_string_table.name, 0, false)
-	dynamic_string_table_start.section = dynamic_string_table
-	dynamic_string_table.symbols.add(dynamic_string_table_start.name, dynamic_string_table_start)
+	dynamic_string_table_start = BinarySymbol(dynamic_string_table.name, 0, false, dynamic_string_table)
 
 	# Hash section:
 	# This section can be used to check efficiently whether a specific symbol exists in the dynamic symbol table
-	hash_section = create_hash_section(exported_symbols)
+	hash_section = create_hash_section(builder.symbols)
 	hash_section.alignment = 8
 	hash_section.flags = BINARY_SECTION_FLAGS_ALLOCATE
 
-	hash_section_start = BinarySymbol(hash_section.name, 0, false)
-	hash_section_start.section = hash_section
-	hash_section.symbols.add(hash_section_start.name, hash_section_start)
+	# Represent the start of the hash section with a symbol
+	hash_section_start = BinarySymbol(hash_section.name, 0, false, hash_section)
 
-	dynamic_linking_information = DynamicLinkingInformation(dynamic_symbol_table, exported_symbol_entries, exported_symbols)
+	dynamic_linking_information = DynamicLinkingInformation(dynamic_symbol_table, builder.symbol_entries, builder.symbols)
 	create_dynamic_relocations(sections, relocations, dynamic_linking_information)
 
 	# Add relocations for hash, symbol and string tables in the dynamic section
-	additional_relocations = List<BinaryRelocation>()
-	additional_relocations.add(BinaryRelocation(hash_section_start, capacityof(ElfDynamicEntry) * 0 + ElfDynamicEntry.POINTER_OFFSET, 0, BINARY_RELOCATION_TYPE_FILE_OFFSET_64))
-	additional_relocations.add(BinaryRelocation(dynamic_string_table_start, capacityof(ElfDynamicEntry) * 1 + ElfDynamicEntry.POINTER_OFFSET, 0, BINARY_RELOCATION_TYPE_FILE_OFFSET_64))
-	additional_relocations.add(BinaryRelocation(dynamic_symbol_table_start, capacityof(ElfDynamicEntry) * 2 + ElfDynamicEntry.POINTER_OFFSET, 0, BINARY_RELOCATION_TYPE_FILE_OFFSET_64))
+	builder.set(ELF_DYNAMIC_SECTION_TAG_HASH_TABLE, hash_section_start, BINARY_RELOCATION_TYPE_ABSOLUTE64) # BINARY_RELOCATION_TYPE_FILE_OFFSET_64
+	builder.set(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE, dynamic_string_table_start, BINARY_RELOCATION_TYPE_ABSOLUTE64)
+	builder.set(ELF_DYNAMIC_SECTION_TAG_SYMBOL_TABLE, dynamic_symbol_table_start, BINARY_RELOCATION_TYPE_ABSOLUTE64)
 
 	if dynamic_linking_information.relocation_section !== none {
 		# Create a symbol, which represents the start of the dynamic relocation table
@@ -963,22 +1053,17 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 		dynamic_relocations_section_start.section = dynamic_linking_information.relocation_section
 		dynamic_linking_information.relocation_section.symbols.add(dynamic_relocations_section_start.name, dynamic_relocations_section_start)
 
-		# Save the index where the relocation table entry will be placed
-		relocation_table_entry_index = dynamic_section_entries.size
-
 		# Add a relocation table entry to the dynamic section entries so that the dynamic linker knows where to find the relocation table
-		dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE, 0))  # The address is filled in later using a relocation
-		dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE_SIZE, dynamic_linking_information.relocation_section.data.size))
-		dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_RELOCATION_ENTRY_SIZE, capacityof(ElfRelocationEntry)))
-		dynamic_section_entries.add(ElfDynamicEntry(ELF_DYNAMIC_SECTION_TAG_RELOCATION_COUNT, dynamic_linking_information.relocations.size))
+		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE, 0)  # The address is filled in later using a relocation
+		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE_SIZE, dynamic_linking_information.relocation_section.data.size)
+		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_ENTRY_SIZE, capacityof(ElfRelocationEntry))
+		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_COUNT, dynamic_linking_information.relocations.size)
 
-		additional_relocations.add(BinaryRelocation(dynamic_relocations_section_start, capacityof(ElfDynamicEntry) * relocation_table_entry_index + ElfDynamicEntry.POINTER_OFFSET, 0, BINARY_RELOCATION_TYPE_FILE_OFFSET_64))
+		builder.set(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE, dynamic_relocations_section_start, BINARY_RELOCATION_TYPE_ABSOLUTE64)
 	}
 
 	# Connect the relocations to the dynamic section
-	loop relocation in additional_relocations { relocation.section = dynamic_section }
-
-	relocations.add_all(additional_relocations)
+	builder.connect(dynamic_section, relocations)
 
 	# Add the created sections
 	sections.add(hash_section)
@@ -987,10 +1072,189 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 	sections.add(dynamic_string_table)
 
 	# Output the dynamic section entries into the dynamic section
-	dynamic_section.data = Array<byte>(capacityof(ElfDynamicEntry) * (dynamic_section_entries.size + 1)) # Allocate one more entry so that the last entry is a none-entry
-	binary_utility.write_all<ElfDynamicEntry>(dynamic_section.data, 0, dynamic_section_entries)
+	dynamic_section.data = Array<byte>(capacityof(ElfDynamicEntry) * (builder.entries.size + 1)) # Allocate one more entry so that the last entry is a none-entry
+	binary_utility.write_all<ElfDynamicEntry>(dynamic_section.data, 0, builder.entries)
 
 	return dynamic_linking_information
+}
+
+# Summary:
+# Adds an interpreter section that specifies the runtime linker that should be used
+add_interpreter_section(sections: List<BinarySection>) {
+	interpreter = String(DEFAULT_INTERPRETER)
+
+	# Interpreter section must be the first one
+	section = BinarySection(String(INTERPRETER_SECTION), BINARY_SECTION_TYPE_DATA, Array<byte>(interpreter.data, interpreter.length + 1))
+	section.alignment = 8
+	section.flags |= BINARY_SECTION_FLAGS_ALLOCATE
+
+	sections.insert(0, section)
+}
+
+# Summary:
+# Adds a section that contains relocations for the global offset table.
+# These relocations define which symbols correspond to which GOT entries.
+add_relocations_for_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder, global_offset_table: BinarySymbol) {
+	relocations = List<ElfRelocationEntry>(externals.size, false)
+
+	loop (i = 0, i < externals.size, i++) {
+		# Create a relocation that will write the address of the imported function into the global offset table.
+		# Leave the offset to zero as it will be corrected with the actual virtual address later using another relocation.
+		relocation = ElfRelocationEntry(0, 0)
+		relocation.set_info(builder.symbols.size, ELF_SYMBOL_TYPE_JUMP_SLOT)
+		relocations.add(relocation)
+
+		# Add an entry for the imported function
+		builder.add_symbol(externals[i], none as BinarySection)
+	}
+
+	data = Array<byte>(capacityof(ElfRelocationEntry) * relocations.size)
+	binary_utility.write_all<ElfRelocationEntry>(data, 0, relocations)
+
+	section = BinarySection(String(RELOCATION_TABLE_SECTION_PREFIX) + FUNCTION_LINKAGE_TABLE_SECTION, BINARY_SECTION_TYPE_DATA, data)
+	section.alignment = 8
+	section.flags |= BINARY_SECTION_FLAGS_ALLOCATE
+	sections.add(section)
+
+	# Create the relocations that will fill in the offsets of the dynamic relocations.
+	# We must use relocations, because we do not know the virtual address of the global offset table yet.
+	loop (i = 0, i < externals.size, i++) {
+		offset = i * capacityof(ElfRelocationEntry)
+		addend = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * sizeof(link)
+		relocation = BinaryRelocation(global_offset_table, offset, addend, BINARY_RELOCATION_TYPE_ABSOLUTE64, section)
+
+		builder.relocations.add(relocation)
+	}
+
+	section_symbol = BinarySymbol(section.name, 0, false, section)
+
+	builder.add(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_BYTES, data.size)
+	builder.add(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_TYPE, 7)
+	builder.add(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_TABLE, 0)
+
+	builder.set(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_RELOCATION_TABLE, section_symbol, BINARY_RELOCATION_TYPE_ABSOLUTE64)
+}
+
+# Summary:
+# Adds the global offset table (GOT) that contains addresses of dynamic functions
+add_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder) {
+	data = Array<byte>((externals.size + GLOBAL_OFFSET_TABLE_RESERVED_COUNT) * sizeof(link))
+
+	section = BinarySection(String(GLOBAL_OFFSET_TABLE_SECTION), BINARY_SECTION_TYPE_DATA, data)
+	section.alignment = 8
+	section.flags |= BINARY_SECTION_FLAGS_ALLOCATE | BINARY_SECTION_FLAGS_WRITE
+	sections.add(section)
+
+	# Create a symbol for the global offset table, so that it can be found
+	global_offset_table = builder.add_symbol(String(GLOBAL_OFFSET_TABLE_SYMBOL_NAME), section)
+
+	add_relocations_for_global_offset_table(sections, externals, builder, global_offset_table)
+
+	builder.add(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_GLOBAL_OFFSET_TABLE, 0)
+	builder.add(ELF_DYNAMIC_SECTION_TAG_BIND_NOW, 0)
+
+	builder.set(ELF_DYNAMIC_SECTION_TAG_FUNCTION_LINKAGE_TABLE_GLOBAL_OFFSET_TABLE, global_offset_table, BINARY_RELOCATION_TYPE_ABSOLUTE64)
+
+	return global_offset_table
+}
+
+# Summary:
+# Adds the function linkage table that supports calling dynamic functions.
+# Dynamic functions mean functions that are inside shared objects.
+add_function_linkage_table(sections: List<BinarySection>, relocations: List<BinaryRelocation>, builder: DynamicSectionBuilder) {
+	external_relocations = relocations.filter(i -> i.symbol.external)
+	externals = external_relocations
+		.map<String>((i: BinaryRelocation) -> i.symbol.name)
+		.distinct()
+
+	# If there are no external symbols, no need create anything
+	if externals.size == 0 return
+
+	# Insert an interpreter section
+	add_interpreter_section(sections)
+
+	# Create the global offset table (GOT) that will store the addresses of the dynamic functions
+	global_offset_table = add_global_offset_table(sections, externals, builder)
+
+	instructions = List<Instruction>()
+
+	###
+	Function linkage table:
+	push qword [rip+GOT+8]
+	jmp qword [rip+GOT+16]
+	nop
+	nop
+
+	.import.<Function 0>: jmp qword [rip+GOT+24+0]; nop x 10
+	.import.<Function 1>: jmp qword [rip+GOT+24+8]; nop x 10
+	.import.<Function 2>: jmp qword [rip+GOT+24+16]; nop x 10
+
+	.
+	.
+	.
+	###
+
+	# Add: push qword [rip+GOT+8]
+	global_offset_table_handle = DataSectionHandle(String(GLOBAL_OFFSET_TABLE_SYMBOL_NAME), 8, false, DATA_SECTION_MODIFIER_NONE)
+
+	instruction = Instruction(String(platform.x64.PUSH), INSTRUCTION_NORMAL)
+	instruction.parameters.add(InstructionParameter(global_offset_table_handle, FLAG_NONE))
+	instructions.add(instruction)
+
+	# Add: jmp qword [rip+GOT+16]
+	global_offset_table_handle = DataSectionHandle(String(GLOBAL_OFFSET_TABLE_SYMBOL_NAME), 16, false, DATA_SECTION_MODIFIER_NONE)
+
+	instruction = Instruction(String(platform.x64.JUMP), INSTRUCTION_JUMP)
+	instruction.parameters.add(InstructionParameter(global_offset_table_handle, FLAG_NONE))
+	instructions.add(instruction)
+
+	# Pad the runtime linker entry to 16-byte boundary
+	instructions.add(NoOperationInstruction(none as Unit))
+	instructions.add(NoOperationInstruction(none as Unit))
+	instructions.add(NoOperationInstruction(none as Unit))
+	instructions.add(NoOperationInstruction(none as Unit))
+
+	loop (i = 0, i < externals.size, i++) {
+		import_name = ".import." + externals[i]
+
+		# Load and jump to the address of the imported function using the global offset table as follows:
+		# jmp qword [rip+GOT+(i+3)*8]
+		global_offset_table_offset = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * sizeof(link)
+		global_offset_table_handle = DataSectionHandle(String(GLOBAL_OFFSET_TABLE_SYMBOL_NAME), global_offset_table_offset, false, DATA_SECTION_MODIFIER_NONE)
+
+		# Create the jump and mark it with a label, so the imported function can be accessed
+		instructions.add(LabelInstruction(none as Unit, Label(import_name)))
+
+		instruction = Instruction(String(platform.x64.JUMP), INSTRUCTION_JUMP)
+		instruction.parameters.add(InstructionParameter(global_offset_table_handle, FLAG_NONE))
+		instructions.add(instruction)
+
+		# Pad the data to 16-byte boundary with 10 no-operation instructions
+		loop (j = 0, j < 10, j++) { instructions.add(NoOperationInstruction(none as Unit)) }
+	}
+
+	# Encode the function linkage table
+	function_linkage_table_build = instruction_encoder.encode(instructions, none as String)
+
+	function_linkage_table = function_linkage_table_build.section
+	function_linkage_table.alignment = 8
+	function_linkage_table.name = String(FUNCTION_LINKAGE_TABLE_SECTION)
+
+	# Connect the relocations inside the function linkage table section to the global offset table
+	loop relocation in function_linkage_table.relocations {
+		relocation.symbol = global_offset_table
+	}
+
+	# Connect the external relocations to the function linkage table entries that call the actual function using GOT
+	loop relocation in external_relocations {
+		import_name = ".import." + relocation.symbol.name
+		relocation.symbol = function_linkage_table.symbols[import_name]
+	}
+
+	# Resolve all relocations inside the function linkage table as well
+	relocations.add_all(function_linkage_table.relocations)
+
+	sections.add(function_linkage_table)
 }
 
 # Summary:
@@ -1043,7 +1307,7 @@ finish_dynamic_linking_information(information: DynamicLinkingInformation) {
 	binary_utility.write_all<ElfRelocationEntry>(information.relocation_section.data, 0, relocations_entries)
 }
 
-link(objects: List<BinaryObjectFile>, entry: String, executable: bool) {
+link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, executable: bool) {
 	# Index all the specified object files
 	loop (i = 0, i < objects.size, i++) { objects[i].index = i }
 
@@ -1075,17 +1339,14 @@ link(objects: List<BinaryObjectFile>, entry: String, executable: bool) {
 	# Load all the relocations from all the sections
 	relocations = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections).flatten<BinaryRelocation>((i: BinarySection) -> i.relocations)
 
-	# Ensure are relocations are resolved
-	loop relocation in relocations {
-		if not relocation.symbol.external continue
-		abort("Symbol " + relocation.symbol.name + " is not defined locally or externally")
-	}
-
 	# Add dynamic sections if needed
 	dynamic_linking_information = none as DynamicLinkingInformation
 
-	if not executable {
-		dynamic_linking_information = create_dynamic_sections(fragments, symbols, relocations)
+	# 1. Add dynamic information if we have runtime imported symbols
+	# 2. Runtime shared library dependencies require dynamic information
+	# 3. Shared libraries must have dynamic information
+	if relocations.any(i -> i.symbol.external) or imports.size > 0 or not executable {
+		dynamic_linking_information = create_dynamic_sections(fragments, symbols, relocations, imports)
 	}
 
 	# Order the fragments so that allocated fragments come first

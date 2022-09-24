@@ -57,7 +57,6 @@ namespace linker {
 					if not symbol.external continue
 
 					# Try to find the actual symbol
-					#warning Add dynamic symbols for Linux
 					if not definitions.contains_key(symbol.name) continue
 
 					relocation.symbol = definitions[symbol.name]
@@ -150,36 +149,44 @@ namespace linker {
 	compute_relocations(relocations: List<BinaryRelocation>, base_address: large) {
 		loop relocation in relocations {
 			symbol = relocation.symbol
-			symbol_section = symbol.section # ?? throw ApplicationException("Missing symbol definition section")
-			relocation_section = relocation.section # ?? throw ApplicationException("Missing relocation section")
+			symbol_section = symbol.section
+			relocation_section = relocation.section
 
 			if symbol_section == none or relocation_section == none continue
 
 			if relocation.type == BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE {
 				from = relocation_section.virtual_address + relocation.offset
 				to = symbol_section.virtual_address + symbol.offset
-				binary_utility.write_int32(relocation_section.data, relocation.offset, to - from + relocation.addend)
+				value = to - from
+				binary_utility.write_int32(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_ABSOLUTE64 {
-				binary_utility.write_int64(relocation_section.data, relocation.offset, (symbol_section.virtual_address + symbol.offset) + base_address)
+				value = (symbol_section.virtual_address + symbol.offset) + base_address
+				binary_utility.write_int64(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_ABSOLUTE32 {
-				binary_utility.write_int32(relocation_section.data, relocation.offset, (symbol_section.virtual_address + symbol.offset) + base_address)
+				value = (symbol_section.virtual_address + symbol.offset) + base_address
+				binary_utility.write_int32(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_SECTION_RELATIVE_64 {
-				binary_utility.write_int64(relocation_section.data, relocation.offset, (symbol_section.virtual_address + symbol.offset) - symbol_section.base_virtual_address)
+				value = (symbol_section.virtual_address + symbol.offset) - symbol_section.base_virtual_address
+				binary_utility.write_int64(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_SECTION_RELATIVE_32 {
-				binary_utility.write_int32(relocation_section.data, relocation.offset, (symbol_section.virtual_address + symbol.offset) - symbol_section.base_virtual_address)
+				value = (symbol_section.virtual_address + symbol.offset) - symbol_section.base_virtual_address
+				binary_utility.write_int32(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_FILE_OFFSET_64 {
-				binary_utility.write_int64(relocation_section.data, relocation.offset, symbol_section.offset + symbol.offset)
+				value = symbol_section.offset + symbol.offset
+				binary_utility.write_int64(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_BASE_RELATIVE_64 {
-				binary_utility.write_int64(relocation_section.data, relocation.offset, symbol_section.virtual_address + symbol.offset)
+				value = symbol_section.virtual_address + symbol.offset
+				binary_utility.write_int64(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else relocation.type == BINARY_RELOCATION_TYPE_BASE_RELATIVE_32 {
-				binary_utility.write_int32(relocation_section.data, relocation.offset, symbol_section.virtual_address + symbol.offset)
+				value = symbol_section.virtual_address + symbol.offset
+				binary_utility.write_int32(relocation_section.data, relocation.offset, value + relocation.addend)
 			}
 			else {
 				abort('Unsupported relocation type')

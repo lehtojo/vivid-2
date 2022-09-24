@@ -2474,7 +2474,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)
 	}
 	else {
-		binary = elf_format.link(object_files.get_values(), get_default_entry_point(), output_type == BINARY_TYPE_EXECUTABLE)
+		binary = elf_format.link(object_files.get_values(), imports, get_default_entry_point(), output_type == BINARY_TYPE_EXECUTABLE)
 	}
 
 	io.write_file(output_filename, binary)
