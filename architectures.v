@@ -352,6 +352,10 @@ namespace x64 {
 			# push r64, push r16
 			InstructionEncoding(0x50, 0, ENCODING_ROUTE_O, false, ENCODING_FILTER_TYPE_REGISTER, 0, 2, instruction_encoder.OPERAND_SIZE_OVERRIDE),
 			InstructionEncoding(0x50, 0, ENCODING_ROUTE_O, false, ENCODING_FILTER_TYPE_REGISTER, 0, 8),
+
+			# push m64, push m16
+			InstructionEncoding(0xff, 6, ENCODING_ROUTE_M, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 2, instruction_encoder.OPERAND_SIZE_OVERRIDE),
+			InstructionEncoding(0xff, 6, ENCODING_ROUTE_M, false, ENCODING_FILTER_TYPE_MEMORY_ADDRESS, 0, 8),
 		]
 
 		single_parameter_encodings[_POP] = [

@@ -206,6 +206,15 @@ Instruction {
 		this.dependencies.add(result)
 	}
 
+	init(operation: String, type: large) {
+		this.unit = none as Unit
+		this.type = type
+		this.operation = operation
+		this.result = Result()
+		this.dependencies = List<Result>()
+		this.dependencies.add(result)
+	}
+
 	match(type: large) {
 		return this.type == type
 	}

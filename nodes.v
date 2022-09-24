@@ -1586,7 +1586,7 @@ Node StackAddressNode {
 	}
 
 	override is_equal(other: Node) {
-		return instance == other.instance and type == other.(DataPointerNode).type
+		return instance == other.instance and type == other.(StackAddressNode).type
 	}
 
 	override try_get_type() {
