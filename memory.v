@@ -15,6 +15,9 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 				current = result[i]
 				other = result[j]
 
+				# Can not exchange non-integer values
+				if current.first.value.format == FORMAT_DECIMAL or current.second.value.format == FORMAT_DECIMAL continue
+
 				if current.first.value.equals(other.second.value) and current.second.value.equals(other.first.value) {
 					exchanges.add(ExchangeInstruction(unit, current.second, other.second))
 					exchanged_indices.add(i)
