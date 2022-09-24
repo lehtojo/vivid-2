@@ -231,7 +231,7 @@ return_pack(unit: Unit, value: Result, type: Type) {
 	if settings.is_x64 { offset = SYSTEM_BYTES }
 
 	position = StackMemoryHandle(unit, offset, true)
-	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, SYSTEM_FORMAT)
+	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, SYSTEM_FORMAT, false)
 
 	unit.add(ReorderInstruction(unit, destinations, sources, unit.function.return_type))
 }
@@ -251,7 +251,11 @@ build_return(unit: Unit, node: ReturnNode) {
 
 		unit.add_debug_position(scope.end)
 
-		if to.is_pack return_pack(unit, value, to)
+		if to.is_pack {
+			return_pack(unit, value, to)
+			return ReturnInstruction(unit, none as Result, unit.function.return_type).add()
+		}
+
 		return ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
 

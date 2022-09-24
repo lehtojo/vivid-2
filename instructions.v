@@ -1280,7 +1280,7 @@ Instruction ReorderInstruction {
 	}
 
 	override on_build() {
-		if return_type != none and return_type.is_pack evacuate_overflow_zone(return_type)
+		if return_type != none evacuate_overflow_zone(return_type)
 
 		instructions = List<MoveInstruction>()
 
@@ -2166,7 +2166,7 @@ Instruction ConvertInstruction {
 	}
 
 	override on_build() {
-		memory.get_register_for(unit, result, is_unsigned(format), format == FORMAT_DECIMAL)
+		memory.get_result_register_for(unit, result, is_unsigned(format), format == FORMAT_DECIMAL)
 
 		instruction = MoveInstruction(unit, result, number)
 		instruction.type = MOVE_LOAD
