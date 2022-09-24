@@ -43,8 +43,9 @@ report_unused_variables(diagnostics: List<Status>, implementation: FunctionImple
 	loop variable in implementation.all_variables {
 		if variable.usages.size > 0 or captures.contains_key(variable) continue
 
-		# Skip the self pointer parameter and hidden variables
-		if variable.is_self_pointer or variable.is_hidden continue
+		# 1. Skip self pointers and hidden variables, because the user can do nothing about them
+		# 2. Pack variables are accessed through their proxies, so they are always 'unused'
+		if variable.is_self_pointer or variable.is_hidden or variable.type.is_pack continue
 
 		# Do not complain about unused parameters in virtual function overrides
 		if variable.is_parameter and implementation.virtual_function !== none continue
