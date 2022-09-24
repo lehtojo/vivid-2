@@ -87,12 +87,10 @@ import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibra
 # Iterates through the specified file headers and imports all object files by adding them to the specified object file list.
 # Object files are determined using filenames stored in the file headers.
 import_object_files_from_static_library(file: String, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>, object_files: Map<SourceFile, BinaryObjectFile>) {
-	object_file_extension = '.o'
-	if settings.is_target_windows { object_file_extension = '.obj' }
-
 	loop header in headers {
-		# Ensure the file ends with the extension of this language
-		if not header.filename.ends_with(object_file_extension) continue
+		# Find object files only
+		is_object_file = header.filename.ends_with('.o') or header.filename.ends_with('.obj') or header.filename.ends_with('.o/') or header.filename.ends_with('.obj/')
+		if not is_object_file continue
 
 		object_file_name = file + `/` + header.filename
 		object_file_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
