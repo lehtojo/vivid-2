@@ -356,11 +356,12 @@ namespace data_encoder {
 	# Summary:
 	# Ensures the specified module is aligned as requested
 	align(module: DataEncoderModule, alignment: large) {
+		# By choosing the largest alignment, it is guaranteed that all the alignments are correct even after the linker relocates all sections
+		module.alignment = max(module.alignment, alignment)
+
 		padding = alignment - module.position % alignment
 		if padding == alignment return
 
-		# By choosing the largest alignment, it is guaranteed that all the alignments are correct even after the linker relocates all sections
-		module.alignment = max(module.alignment, alignment)
 		module.zero(padding)
 	}
 
