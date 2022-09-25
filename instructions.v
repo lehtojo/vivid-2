@@ -31,12 +31,12 @@ DualParameterInstruction AdditionInstruction {
 
 		if assigns {
 			# Example: add r/[...], c/r
-			return build(platform.shared.ADD, first.size, InstructionParameter(first, FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH | FLAG_READS, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
+			return build(platform.all.ADD, first.size, InstructionParameter(first, FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH | FLAG_READS, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 
 		if first.is_deactivating() {
 			# Example: add r, c/r/m
-			return build(platform.shared.ADD, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+			return build(platform.all.ADD, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 
 		# Example: lea r, [...]
@@ -76,11 +76,11 @@ DualParameterInstruction SubtractionInstruction {
 
 		if assigns {
 			# Example: sub r/[...], c/r
-			return build(platform.shared.SUBTRACT, first.size, InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
+			return build(platform.all.SUBTRACT, first.size, InstructionParameter(first, FLAG_READS | flags, HANDLE_REGISTER | HANDLE_MEMORY), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 
 		# Example: sub r, c/r/[...]
-		build(platform.shared.SUBTRACT, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+		build(platform.all.SUBTRACT, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 	}
 
 	on_build_arm64() {
@@ -295,14 +295,14 @@ Instruction ReturnInstruction {
 			stack_pointer = unit.get_stack_pointer()
 
 			if settings.is_x64 {
-				builder.append(platform.shared.ADD)
+				builder.append(platform.all.ADD)
 				builder.append(` `)
 				builder.append(stack_pointer[SYSTEM_BYTES])
 				builder.append(', ')
 				builder.append_line(allocated_local_memory)
 			}
 			else {
-				builder.append(platform.shared.ADD)
+				builder.append(platform.all.ADD)
 				builder.append(` `)
 				builder.append(stack_pointer[SYSTEM_BYTES])
 				builder.append(', ')
@@ -316,7 +316,7 @@ Instruction ReturnInstruction {
 		if settings.is_x64 { restore_registers_x64(builder, recover_registers) }
 		else { restore_registers_arm64(builder, recover_registers) }
 
-		builder.append(platform.shared.RETURN)
+		builder.append(platform.all.RETURN)
 		Instruction.build(builder.string())
 	}
 }
@@ -374,7 +374,7 @@ DualParameterInstruction MoveInstruction {
 
 	build_decimal_constant_move_x64(flags_first, flags_second) {
 		instruction = platform.x64.RAW_MEDIA_REGISTER_MOVE
-		if first.is_memory_address { instruction = platform.shared.MOVE }
+		if first.is_memory_address { instruction = platform.all.MOVE }
 
 		if type == MOVE_RELOCATE {
 			handle = second.value as ConstantHandle
@@ -440,7 +440,7 @@ DualParameterInstruction MoveInstruction {
 			second.format = SYSTEM_SIGNED
 
 			# Example: mov r/[...], r/c
-			return build(platform.shared.MOVE, 0,
+			return build(platform.all.MOVE, 0,
 				InstructionParameter(first, flags_first, first_parameter_type),
 				InstructionParameter(second, flags_second, HANDLE_REGISTER | HANDLE_CONSTANT)
 			)
@@ -454,7 +454,7 @@ DualParameterInstruction MoveInstruction {
 		second_parameter = Result(second_value, SYSTEM_SIGNED)
 
 		# Example: mov r/[...], r/c
-		build(platform.shared.MOVE, 0,
+		build(platform.all.MOVE, 0,
 			InstructionParameter(first, flags_first, first_parameter_type),
 			InstructionParameter(second_parameter, flags_second, HANDLE_REGISTER | HANDLE_CONSTANT)
 		)
@@ -497,7 +497,7 @@ DualParameterInstruction MoveInstruction {
 				if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 				# Example: mov [...], r
-				return build(platform.shared.MOVE, 0,
+				return build(platform.all.MOVE, 0,
 					InstructionParameter(first, flags_first, HANDLE_MEMORY),
 					InstructionParameter(second, flags_second, HANDLE_REGISTER)
 				)
@@ -564,7 +564,7 @@ DualParameterInstruction MoveInstruction {
 				# mov rax, [rip+x@GOTPCREL]
 				# mov qword ptr [rax+8], 1
 				build(
-					platform.shared.MOVE, 0,
+					platform.all.MOVE, 0,
 					InstructionParameter(address, FLAG_DESTINATION | FLAG_RELOCATE_TO_DESTINATION | FLAG_WRITE_ACCESS, HANDLE_REGISTER),
 					InstructionParameter(first, FLAG_NONE, HANDLE_MEMORY)
 				)
@@ -581,7 +581,7 @@ DualParameterInstruction MoveInstruction {
 			if second.is_memory_address memory.move_to_register(unit, second, SYSTEM_BYTES, false, trace.for(unit, second))
 
 			# Examples: mov [...], c / mov [...], r
-			build(platform.shared.MOVE, first.size, InstructionParameter(first, flags_first, HANDLE_MEMORY), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER))
+			build(platform.all.MOVE, first.size, InstructionParameter(first, flags_first, HANDLE_MEMORY), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER))
 		}
 		else second.is_data_section_handle and second.value.(DataSectionHandle).address {
 			# Disable the address flag while building
@@ -597,11 +597,11 @@ DualParameterInstruction MoveInstruction {
 		}
 		else second.is_memory_address {
 			# Examples: mov r, c / mov r, r / mov r, [...]
-			build(platform.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+			build(platform.all.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 		else {
 			# Examples: mov r, c / mov r, r
-			build(platform.shared.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+			build(platform.all.MOVE, 0, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_BIT_LIMIT_64, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 		}
 	}
 
@@ -642,7 +642,7 @@ DualParameterInstruction MoveInstruction {
 
 	is_move_instruction_x64() {
 		if operation === none return false
-		return operation == platform.shared.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
+		return operation == platform.all.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
 	}
 
 	on_post_build_x64() {
@@ -659,7 +659,7 @@ DualParameterInstruction MoveInstruction {
 
 		# Return if no conversion is needed
 		if source.value.size == destination.value.size or source.value.type == HANDLE_CONSTANT {
-			operation = String(platform.shared.MOVE)
+			operation = String(platform.all.MOVE)
 			return
 		}
 
@@ -871,14 +871,14 @@ Instruction InitializeInstruction {
 			stack_pointer = unit.get_stack_pointer()
 
 			if settings.is_x64 {
-				builder.append(platform.shared.SUBTRACT)
+				builder.append(platform.all.SUBTRACT)
 				builder.append(` `)
 				builder.append(stack_pointer[SYSTEM_BYTES])
 				builder.append(', ')
 				builder.append_line(additional_memory)
 			}
 			else {
-				builder.append(platform.shared.SUBTRACT)
+				builder.append(platform.all.SUBTRACT)
 				builder.append(` `)
 				builder.append(stack_pointer[SYSTEM_BYTES])
 				builder.append(', ')
@@ -1628,9 +1628,9 @@ JumpOperatorBinding {
 # Jumps to the specified label and optionally checks a condition
 # This instruction works on all architectures
 Instruction JumpInstruction {
-	static jumps: Map<ComparisonOperator, JumpOperatorBinding>
+	shared jumps: Map<ComparisonOperator, JumpOperatorBinding>
 
-	static initialize() {
+	shared initialize() {
 		jumps = Map<ComparisonOperator, JumpOperatorBinding>()
 
 		if settings.is_x64 {
@@ -1722,7 +1722,7 @@ DualParameterInstruction CompareInstruction {
 		}
 
 		# Example: cmp r, c/r/[...]
-		build(platform.shared.COMPARE, min(first.size, second.size), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
+		build(platform.all.COMPARE, min(first.size, second.size), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 	}
 
 	override on_build() {
@@ -1972,26 +1972,26 @@ DualParameterInstruction BitwiseInstruction {
 	instruction: String
 	assigns: bool
 
-	static create_and(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
-		return BitwiseInstruction(unit, platform.shared.AND, first, second, format, assigns)
+	shared create_and(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+		return BitwiseInstruction(unit, platform.all.AND, first, second, format, assigns)
 	}
 
-	static create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+	shared create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
 		if settings.is_x64 {
 			if format == FORMAT_DECIMAL return BitwiseInstruction(unit, platform.x64.DOUBLE_PRECISION_XOR, first, second, format, assigns)
 			return BitwiseInstruction(unit, platform.x64.XOR, first, second, format, assigns)
 		}
 	}
 
-	static create_or(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+	shared create_or(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.OR, first, second, format, assigns)
 	}
 
-	static create_shift_left(unit: Unit, first: Result, second: Result, format: large) {
+	shared create_shift_left(unit: Unit, first: Result, second: Result, format: large) {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_LEFT, first, second, format, false)
 	}
 
-	static create_shift_right(unit: Unit, first: Result, second: Result, format: large) {
+	shared create_shift_right(unit: Unit, first: Result, second: Result, format: large) {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_RIGHT, first, second, format, false)
 	}
 
@@ -2087,7 +2087,7 @@ Instruction SingleParameterInstruction {
 	instruction: link
 	first: Result
 
-	static create_not(unit: Unit, first: Result) {
+	shared create_not(unit: Unit, first: Result) {
 		instruction: Instruction = none as Instruction
 
 		if settings.is_x64 { instruction = SingleParameterInstruction(unit, platform.x64.NOT, first) }
@@ -2097,13 +2097,13 @@ Instruction SingleParameterInstruction {
 		return instruction
 	}
 
-	static create_negate(unit: Unit, first: Result, is_decimal: bool) {
+	shared create_negate(unit: Unit, first: Result, is_decimal: bool) {
 		if is_decimal and settings.is_x64 abort('Negating decimal value using single parameter instruction on architecture x64 is not allowed')
 
 		instruction: Instruction = none as Instruction
 
 		if is_decimal { instruction = SingleParameterInstruction(unit, platform.arm64.DECIMAL_NEGATE, first) }
-		else { instruction = SingleParameterInstruction(unit, platform.shared.NEGATE, first) }
+		else { instruction = SingleParameterInstruction(unit, platform.all.NEGATE, first) }
 
 		instruction.description = "Negates the operand"
 		return instruction
@@ -2133,7 +2133,7 @@ Instruction DebugBreakInstruction {
 
 	position: Position
 
-	static get_position_instruction(position: Position) {
+	shared get_position_instruction(position: Position) {
 		return String(INSTRUCTION) + ' 1 ' + to_string(position.friendly_line) + ' ' + to_string(position.friendly_character)
 	}
 
@@ -2201,7 +2201,7 @@ Instruction AllocateStackInstruction {
 Instruction NoOperationInstruction {
 	init(unit: Unit) {
 		Instruction.init(unit, INSTRUCTION_NO_OPERATION)
-		this.operation = String(platform.shared.NOP)
+		this.operation = String(platform.all.NOP)
 		this.description = "No operation"
 	}
 }

@@ -17,13 +17,13 @@ Type Number {
 
 Number Link {
 	# Summary: Creates a link type which has the specified offset type
-	static get_variant(argument: Type) {
+	shared get_variant(argument: Type) {
 		link = Link(argument)
 		return link
 	}
 
 	# Summary: Creates a link type which has the specified offset type and the specified name
-	static get_variant(argument: Type, name: String) {
+	shared get_variant(argument: Type, name: String) {
 		link = Link(argument)
 		link.name = name
 		return link
@@ -66,6 +66,8 @@ Number Link {
 }
 
 namespace primitives {
+	shared SELF: Type
+
 	constant UNIT = '_'
 	constant LINK = 'link'
 	constant BOOL = 'bool'
@@ -102,6 +104,10 @@ namespace primitives {
 	constant U8_IDENTIFIER = 'h'
 	constant BYTE_IDENTIFIER = 'h'
 	constant CHAR_IDENTIFIER = 'c'
+
+	shared initialize() {
+		SELF = Type(String(SELF_POINTER_IDENTIFIER), MODIFIER_SELF)
+	}
 
 	create_number(primitive: link, format: large) {
 		return create_number(String(primitive), format)

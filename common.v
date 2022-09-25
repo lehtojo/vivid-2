@@ -138,6 +138,9 @@ read_type(context: Context, tokens: List<Token>) {
 
 	if not next.match(TOKEN_TYPE_IDENTIFIER) return none as Type
 
+	# Self return type:
+	if next.(IdentifierToken).value == SELF_POINTER_IDENTIFIER return primitives.SELF
+
 	components = List<UnresolvedTypeComponent>()
 
 	loop {

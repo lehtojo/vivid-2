@@ -322,7 +322,7 @@ Node {
 		last = none
 	}
 
-	private static get_nodes_under_shared_parent(a: Node, b: Node) {
+	private shared get_nodes_under_shared_parent(a: Node, b: Node) {
 		path_a = List<Node>()
 		path_b = List<Node>()
 
@@ -427,28 +427,28 @@ Node {
 		}
 	}
 
-	virtual is_equal(other: Node) {
+	open is_equal(other: Node) {
 		return is_tree_equal(other)
 	}
 
 	# Summary: Tries to resolve the potential error state of the node
-	virtual resolve(context: Context) {
+	open resolve(context: Context) {
 		return none as Node
 	}
 
-	virtual get_status() {
+	open get_status() {
 		return none as Status
 	}
 
-	virtual try_get_type() {
+	open try_get_type() {
 		return none as Type
 	}
 
-	virtual copy() {
+	open copy() {
 		return Node()
 	}
 
-	virtual string() {
+	open string() {
 		return "Node"
 	}
 }

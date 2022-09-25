@@ -158,10 +158,10 @@ Context {
 		return mangle.value
 	}
 
-	virtual on_mangle(mangle: Mangle) {}
+	open on_mangle(mangle: Mangle) {}
 
 	# Summary: Tries to find the self pointer variable
-	virtual get_self_pointer() {
+	open get_self_pointer() {
 		if parent != none return parent.get_self_pointer() as Variable
 		return none as Variable
 	}
@@ -294,7 +294,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context
-	virtual is_local_function_declared(name: String) {
+	open is_local_function_declared(name: String) {
 		return is_local_function_declared_default(name)
 	}
 
@@ -304,7 +304,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context
-	virtual is_local_variable_declared(name: String) {
+	open is_local_variable_declared(name: String) {
 		return is_local_variable_declared_default(name)
 	}
 
@@ -336,7 +336,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts
-	virtual is_function_declared(name: String) {
+	open is_function_declared(name: String) {
 		return is_function_declared_default(name)
 	}
 
@@ -352,7 +352,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
-	virtual is_variable_declared(name: String) {
+	open is_variable_declared(name: String) {
 		return is_variable_declared_default(name)
 	}
 
@@ -414,7 +414,7 @@ Context {
 	}
 
 	# Summary: Returns the specified function by searching it from the local types, imports and parent types
-	virtual get_function(name: String) {
+	open get_function(name: String) {
 		return get_function_default(name)
 	}
 
@@ -433,7 +433,7 @@ Context {
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
-	virtual get_variable(name: String) {
+	open get_variable(name: String) {
 		return get_variable_default(name)
 	}
 
@@ -535,11 +535,11 @@ Context {
 		subcontexts.clear()
 	}
 
-	virtual dispose() {
+	open dispose() {
 		default_dispose()
 	}
 
-	virtual string() {
+	open string() {
 		return String.empty
 	}
 }
@@ -547,7 +547,7 @@ Context {
 Function Constructor {
 	is_default: bool
 
-	static empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position) {
 		constructor = Constructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -609,7 +609,7 @@ Function Constructor {
 Function Destructor {
 	is_default: bool
 
-	static empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position) {
 		constructor = Destructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -698,13 +698,14 @@ Context Type {
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
 	is_pack => has_flag(modifiers, MODIFIER_PACK)
 	is_link => has_flag(modifiers, MODIFIER_LINK)
+	is_self => has_flag(modifiers, MODIFIER_SELF)
 	is_unnamed_pack => is_pack and name.index_of(`.`) != -1
 	is_template_type_variant => name.index_of(`<`) != -1
 
 	reference_size: large = SYSTEM_BYTES
 	allocation_size => get_allocation_size()
 
-	virtual get_allocation_size() {
+	open get_allocation_size() {
 		if is_pack {
 			result = 0
 
@@ -789,12 +790,12 @@ Context Type {
 		configuration = RuntimeConfiguration(this)
 	}
 
-	virtual clone() {
+	open clone() {
 		abort('Type did not support cloning')
 		return none as Type
 	}
 
-	virtual get_accessor_type() {
+	open get_accessor_type() {
 		return none as Type
 	}
 
@@ -1047,7 +1048,7 @@ Context Type {
 		mangle.add(this, 0, true)
 	}
 
-	virtual match(other: Type) {
+	open match(other: Type) {
 		if is_pack {
 			# The other type should also be a pack
 			if not other.is_pack return false
@@ -1439,7 +1440,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	virtual implement(parameter_types: List<Type>) {
+	open implement(parameter_types: List<Type>) {
 		return implement_default(parameter_types)
 	}
 
@@ -1851,6 +1852,7 @@ Context FunctionImplementation {
 
 	virtual_function: VirtualFunction = none
 	is_imported: bool = false
+	is_self_returning: bool = false
 
 	is_constructor => metadata.is_constructor
 	is_destructor => metadata.is_destructor
@@ -1907,7 +1909,7 @@ Context FunctionImplementation {
 	}
 
 	# Summary: Implements the function using the given blueprint
-	virtual implement(blueprint: List<Token>) {
+	open implement(blueprint: List<Token>) {
 		if metadata.is_member and not metadata.is_static {
 			self = Variable(this, metadata.find_type_parent(), VARIABLE_CATEGORY_PARAMETER, String(SELF_POINTER_IDENTIFIER), MODIFIER_DEFAULT)
 			self.is_self_pointer = true
@@ -1955,7 +1957,7 @@ Context FunctionImplementation {
 		}
 	}
 
-	virtual get_header() {
+	open get_header() {
 		start: String = String.empty
 		if parent != none and parent.is_type { start = parent.string() + `.` }
 
@@ -2178,7 +2180,7 @@ Type UnresolvedType {
 		this.is_resolved = false
 	}
 
-	virtual resolve(context: Context) {
+	open resolve(context: Context) {
 		environment = context
 
 		loop component in components {

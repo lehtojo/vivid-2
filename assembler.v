@@ -556,7 +556,7 @@ pack VariableState {
 	variable: Variable
 	handle: Handle
 
-	static create(variable: Variable, result: Result) {
+	shared create(variable: Variable, result: Result) {
 		copy = result.value.finalize()
 		copy.format = result.format
 

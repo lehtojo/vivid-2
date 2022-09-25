@@ -112,12 +112,12 @@ Pattern {
 	id: large
 	is_consumable: bool = true
 
-	virtual passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny): bool
-	virtual build(context: Context, state: ParserState, tokens: List<Token>): Node
+	open passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny): bool
+	open build(context: Context, state: ParserState, tokens: List<Token>): Node
 }
 
 Token DynamicToken {
-	readonly node: Node
+	readable node: Node
 
 	init(node: Node) {
 		Token.init(TOKEN_TYPE_DYNAMIC)

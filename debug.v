@@ -358,15 +358,15 @@ Debug {
 
 	string_type: Type
 
-	static get_debug_file_start_label(file_index: large) {
+	shared get_debug_file_start_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_start'
 	}
 
-	static get_debug_file_end_label(file_index: large) {
+	shared get_debug_file_end_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_end'
 	}
 
-	static get_offset(from: TableLabel, to: TableLabel) {
+	shared get_offset(from: TableLabel, to: TableLabel) {
 		return LabelOffset(from, to)
 	}
 
@@ -398,39 +398,39 @@ Debug {
 		information.add(get_offset(file_start, file_end)) # DW_AT_high_pc
 	}
 
-	static get_end(implementation: FunctionImplementation) {
+	shared get_end(implementation: FunctionImplementation) {
 		return TableLabel(implementation.get_fullname() + '_end', 8, false)
 	}
 
-	static get_file(implementation: FunctionImplementation) {
+	shared get_file(implementation: FunctionImplementation) {
 		return implementation.metadata.start.file.index as normal
 	}
 
-	static get_line(implementation: FunctionImplementation) {
+	shared get_line(implementation: FunctionImplementation) {
 		return implementation.metadata.start.friendly_line as normal
 	}
 
-	static get_file(type: Type) {
+	shared get_file(type: Type) {
 		return type.position.file.index as normal
 	}
 
-	static get_line(type: Type) {
+	shared get_line(type: Type) {
 		return type.position.friendly_line as normal
 	}
 
-	static get_file(variable: Variable) {
+	shared get_file(variable: Variable) {
 		return variable.position.file.index as normal
 	}
 
-	static get_line(variable: Variable) {
+	shared get_line(variable: Variable) {
 		return variable.position.friendly_line as normal
 	}
 
-	static get_type_label_name(type: Type) {
+	shared get_type_label_name(type: Type) {
 		return get_type_label_name(type, false)
 	}
 
-	static get_type_label_name(type: Type, pointer: bool) {
+	shared get_type_label_name(type: Type, pointer: bool) {
 		if primitives.is_primitive(type, primitives.LINK) return type.get_fullname()
 
 		if type.is_primitive {
@@ -445,11 +445,11 @@ Debug {
 		return fullname
 	}
 
-	static get_type_label(type: Type, types: Map<String, Type>) {
+	shared get_type_label(type: Type, types: Map<String, Type>) {
 		return get_type_label(type, types, false)
 	}
 
-	static get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
+	shared get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
 		label = get_type_label_name(type, pointer)
 		types[label] = type
 
@@ -828,7 +828,7 @@ Debug {
 		inheritance_abbreviation = index++
 	}
 
-	static is_pointer_type(type: Type) {
+	shared is_pointer_type(type: Type) {
 		return not type.is_primitive and not type.is_pack
 	}
 
@@ -986,7 +986,7 @@ Debug {
 		information.add(type.allocation_size as normal)
 	}
 
-	static to_uleb128(value: large) {
+	shared to_uleb128(value: large) {
 		bytes = List<byte>()
 
 		loop {
@@ -1005,7 +1005,7 @@ Debug {
 		return bytes
 	}
 
-	static to_sleb128(value: large) {
+	shared to_sleb128(value: large) {
 		bytes = List<byte>()
 
 		more = true

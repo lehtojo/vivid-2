@@ -267,6 +267,14 @@ analyze() {
 
 	implementations = common.get_all_function_implementations(context)
 
+	# Rewrite self returning functions, so that they return the modified version of the self argument
+	loop implementation in implementations {
+		# Process only self returning functions
+		if not implementation.return_type.is_self or not implementation.is_member continue
+
+		reconstruction.complete_self_returning_function(implementation)
+	}
+
 	#resolver.debug_print(context)
 
 	loop (i = 0, i < implementations.size, i++) {

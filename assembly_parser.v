@@ -553,7 +553,7 @@ AssemblyParser {
 
 	# Summary:
 	# Returns whether the specified operation represents a jump instruction
-	static is_jump(operation) {
+	shared is_jump(operation) {
 		return operation == platform.x64.JUMP or
 			operation == platform.x64.JUMP_ABOVE or
 			operation == platform.x64.JUMP_ABOVE_OR_EQUALS or

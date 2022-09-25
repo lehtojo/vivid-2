@@ -3,6 +3,24 @@ namespace reconstruction
 constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
 constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
 
+# Summary: Completes the specified self returning function by adding the necessary statements and by modifying the function information
+complete_self_returning_function(implementation: FunctionImplementation) {
+	position = implementation.metadata.start
+
+	implementation.return_type = implementation.parent as Type
+	implementation.is_self_returning = true
+	implementation.node.add(ReturnNode(none as Node, position))
+
+	self = implementation.get_self_pointer()
+	require(self !== none, 'Missing self parameter')
+
+	statements = implementation.node.find_all(NODE_RETURN)
+
+	loop statement in statements {
+		statement.add(VariableNode(self, position))
+	}
+}
+
 # Summary: Removes redundant parentheses in the specified node tree
 # Example: x = x * (((x + 1))) => x = x * (x + 1)
 remove_redundant_parentheses(node: Node) {
@@ -326,6 +344,56 @@ extract_increments(root: Node) {
 extract_expressions(root: Node) {
 	extract_calls(root)
 	extract_increments(root)
+}
+
+# Summary:
+# Rewrites self returning functions, so that the self argument is modified after the call:
+# Case 1:
+# local.modify(...)
+# =>
+# local = local.modify(...)
+# Case 2:
+# a[i].b.f(...)
+# =>
+# t = a[i].b.f(...)
+# a[i].b = t
+rewrite_self_returning_functions(root: Node) {
+	calls = root.find_all(NODE_FUNCTION)
+
+	loop call in calls {
+		# Process only self returning functions
+		function = call.(FunctionNode).function
+		if not function.is_self_returning continue
+
+		# Verify the called function is a member function
+		if not function.is_member continue
+
+		# Verify the node tree is here as follows: <self>.<call>
+		caller = call.parent
+		require(caller.instance === NODE_LINK, 'Member call is in invalid state')
+
+		# Find the self argument
+		self = call.previous
+
+		# Replace the caller with a placeholder node
+		placeholder = Node()
+		caller.replace(placeholder)
+
+		return_value = caller
+
+		if self.instance !== NODE_VARIABLE {
+			# Create a temporary variable that will store the return value
+			context = placeholder.get_parent_context()
+			temporary_variable = context.declare_hidden(function.return_type)
+
+			# Store the return value into the temporary variable
+			placeholder.insert(OperatorNode(Operators.ASSIGN, caller.start).set_operands(VariableNode(temporary_variable), caller))
+
+			return_value = VariableNode(temporary_variable)
+		}
+
+		placeholder.replace(OperatorNode(Operators.ASSIGN, caller.start).set_operands(self.clone(), return_value))
+	}
 }
 
 InlineContainer {
@@ -1720,6 +1788,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	remove_redundant_casts(root)
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
+	rewrite_self_returning_functions(root)
 	add_assignment_casts(root)
 	rewrite_super_accessors(root)
 	rewrite_when_expressions(root)

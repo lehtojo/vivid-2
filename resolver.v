@@ -30,14 +30,14 @@ get_shared_type(expected: Type, actual: Type) {
 # Summary: Returns the shared type between all the specified types
 outline get_shared_type(types: List<Type>) {
 	if types.size == 0 return none as Type
-	shared = types[]
+	shared_type = types[]
 
 	loop (i = 1, i < types.size, i++) {
-		shared = get_shared_type(shared, types[i])
-		if shared == none return none as Type
+		shared_type = get_shared_type(shared_type, types[i])
+		if shared_type == none return none as Type
 	}
 
-	return shared
+	return shared_type
 }
 
 # Summary: Returns the types of the child nodes, only if all have types
@@ -132,10 +132,10 @@ resolve(variable: Variable) {
 	}
 
 	# Get the shared type between all the assignments
-	shared = get_shared_type(types)
-	if shared == none return
+	shared_type = get_shared_type(types)
+	if shared_type == none return
 
-	variable.type = shared
+	variable.type = shared_type
 }
 
 # Summary: Resolves the parameters of the specified function

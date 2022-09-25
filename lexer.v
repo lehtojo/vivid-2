@@ -51,6 +51,7 @@ MODIFIER_ARRAY_TYPE = 1 <| 15
 MODIFIER_PLAIN = 1 <| 16
 MODIFIER_PACK = (1 <| 17) | MODIFIER_PLAIN
 MODIFIER_LINK = 1 <| 18
+MODIFIER_SELF = 1 <| 19
 
 MODIFIER_DEFAULT = MODIFIER_PUBLIC
 
@@ -99,9 +100,9 @@ POSITIVE_INFINITY_CONSTANT = 'POSITIVE_INFINITY'
 NEGATIVE_INFINITY_CONSTANT = 'NEGATIVE_INFINITY'
 
 Operator {
-	readonly identifier: String
-	readonly type: tiny
-	readonly priority: tiny
+	readable identifier: String
+	readable type: tiny
+	readable priority: tiny
 
 	init(identifier: String, type: tiny, priority: tiny) {
 		this.identifier = identifier
@@ -111,7 +112,7 @@ Operator {
 }
 
 Operator AssignmentOperator {
-	readonly operator: Operator
+	readable operator: Operator
 
 	init(identifier: String, operator: Operator, priority: tiny) {
 		Operator.init(identifier, OPERATOR_TYPE_ASSIGNMENT, priority)
@@ -120,11 +121,8 @@ Operator AssignmentOperator {
 }
 
 Operator ClassicOperator {
-	readonly shared: bool
-
-	init(identifier: String, priority: tiny, shared: bool) {
+	init(identifier: String, priority: tiny) {
 		Operator.init(identifier, OPERATOR_TYPE_CLASSIC, priority)
-		this.shared = shared
 	}
 }
 
@@ -151,50 +149,50 @@ namespace Operators {
 	constant ACCESSOR_SETTER_FUNCTION_IDENTIFIER = 'set'
 	constant ACCESSOR_GETTER_FUNCTION_IDENTIFIER = 'get'
 
-	readonly COLON: IndependentOperator
-	readonly POWER: ClassicOperator
-	readonly MULTIPLY: ClassicOperator
-	readonly DIVIDE: ClassicOperator
-	readonly MODULUS: ClassicOperator
-	readonly ADD: ClassicOperator
-	readonly SUBTRACT: ClassicOperator
-	readonly SHIFT_LEFT: ClassicOperator
-	readonly SHIFT_RIGHT: ClassicOperator
-	readonly GREATER_THAN: ComparisonOperator
-	readonly GREATER_OR_EQUAL: ComparisonOperator
-	readonly LESS_THAN: ComparisonOperator
-	readonly LESS_OR_EQUAL: ComparisonOperator
-	readonly EQUALS: ComparisonOperator
-	readonly NOT_EQUALS: ComparisonOperator
-	readonly ABSOLUTE_EQUALS: ComparisonOperator
-	readonly ABSOLUTE_NOT_EQUALS: ComparisonOperator
-	readonly BITWISE_AND: ClassicOperator
-	readonly BITWISE_XOR: ClassicOperator
-	readonly BITWISE_OR: ClassicOperator
-	readonly RANGE: IndependentOperator
-	readonly LOGICAL_AND: Operator
-	readonly LOGICAL_OR: Operator
-	readonly ASSIGN: AssignmentOperator
-	readonly ASSIGN_POWER: AssignmentOperator
-	readonly ASSIGN_ADD: AssignmentOperator
-	readonly ASSIGN_SUBTRACT: AssignmentOperator
-	readonly ASSIGN_MULTIPLY: AssignmentOperator
-	readonly ASSIGN_DIVIDE: AssignmentOperator
-	readonly ASSIGN_MODULUS: AssignmentOperator
-	readonly ASSIGN_BITWISE_AND: AssignmentOperator
-	readonly ASSIGN_BITWISE_XOR: AssignmentOperator
-	readonly ASSIGN_BITWISE_OR: AssignmentOperator
-	readonly EXCLAMATION: IndependentOperator
-	readonly COMMA: IndependentOperator
-	readonly DOT: IndependentOperator
-	readonly INCREMENT: IndependentOperator
-	readonly DECREMENT: IndependentOperator
-	readonly ARROW: IndependentOperator
-	readonly HEAVY_ARROW: IndependentOperator
-	readonly END: IndependentOperator
+	readable COLON: IndependentOperator
+	readable POWER: ClassicOperator
+	readable MULTIPLY: ClassicOperator
+	readable DIVIDE: ClassicOperator
+	readable MODULUS: ClassicOperator
+	readable ADD: ClassicOperator
+	readable SUBTRACT: ClassicOperator
+	readable SHIFT_LEFT: ClassicOperator
+	readable SHIFT_RIGHT: ClassicOperator
+	readable GREATER_THAN: ComparisonOperator
+	readable GREATER_OR_EQUAL: ComparisonOperator
+	readable LESS_THAN: ComparisonOperator
+	readable LESS_OR_EQUAL: ComparisonOperator
+	readable EQUALS: ComparisonOperator
+	readable NOT_EQUALS: ComparisonOperator
+	readable ABSOLUTE_EQUALS: ComparisonOperator
+	readable ABSOLUTE_NOT_EQUALS: ComparisonOperator
+	readable BITWISE_AND: ClassicOperator
+	readable BITWISE_XOR: ClassicOperator
+	readable BITWISE_OR: ClassicOperator
+	readable RANGE: IndependentOperator
+	readable LOGICAL_AND: Operator
+	readable LOGICAL_OR: Operator
+	readable ASSIGN: AssignmentOperator
+	readable ASSIGN_POWER: AssignmentOperator
+	readable ASSIGN_ADD: AssignmentOperator
+	readable ASSIGN_SUBTRACT: AssignmentOperator
+	readable ASSIGN_MULTIPLY: AssignmentOperator
+	readable ASSIGN_DIVIDE: AssignmentOperator
+	readable ASSIGN_MODULUS: AssignmentOperator
+	readable ASSIGN_BITWISE_AND: AssignmentOperator
+	readable ASSIGN_BITWISE_XOR: AssignmentOperator
+	readable ASSIGN_BITWISE_OR: AssignmentOperator
+	readable EXCLAMATION: IndependentOperator
+	readable COMMA: IndependentOperator
+	readable DOT: IndependentOperator
+	readable INCREMENT: IndependentOperator
+	readable DECREMENT: IndependentOperator
+	readable ARROW: IndependentOperator
+	readable HEAVY_ARROW: IndependentOperator
+	readable END: IndependentOperator
 	
 	# NOTE: The user should not be able to use this operator since it is meant for internal usage
-	readonly ATOMIC_EXCHANGE_ADD: ClassicOperator
+	readable ATOMIC_EXCHANGE_ADD: ClassicOperator
 
 	public all: Map<String, Operator>
 	public assignment_operators: Map<String, AssignmentOperator>
@@ -216,14 +214,14 @@ namespace Operators {
 
 	initialize() {
 		COLON = IndependentOperator(":")
-		POWER = ClassicOperator("^", 15, true)
-		MULTIPLY = ClassicOperator("*", 12, true)
-		DIVIDE = ClassicOperator("/", 12, true)
-		MODULUS = ClassicOperator("%", 12, true)
-		ADD = ClassicOperator("+", 11, true)
-		SUBTRACT = ClassicOperator("-", 11, true)
-		SHIFT_LEFT = ClassicOperator("<|", 10, true)
-		SHIFT_RIGHT = ClassicOperator("|>", 10, true)
+		POWER = ClassicOperator("^", 15)
+		MULTIPLY = ClassicOperator("*", 12)
+		DIVIDE = ClassicOperator("/", 12)
+		MODULUS = ClassicOperator("%", 12)
+		ADD = ClassicOperator("+", 11)
+		SUBTRACT = ClassicOperator("-", 11)
+		SHIFT_LEFT = ClassicOperator("<|", 10)
+		SHIFT_RIGHT = ClassicOperator("|>", 10)
 		GREATER_THAN = ComparisonOperator(">", 9)
 		GREATER_OR_EQUAL = ComparisonOperator(">=", 9)
 		LESS_THAN = ComparisonOperator("<", 9)
@@ -232,9 +230,9 @@ namespace Operators {
 		NOT_EQUALS = ComparisonOperator("!=", 8)
 		ABSOLUTE_EQUALS = ComparisonOperator("===", 8)
 		ABSOLUTE_NOT_EQUALS = ComparisonOperator("!==", 8)
-		BITWISE_AND = ClassicOperator("&", 7, true)
-		BITWISE_XOR = ClassicOperator("\xA4", 6, true)
-		BITWISE_OR = ClassicOperator("|", 5, true)
+		BITWISE_AND = ClassicOperator("&", 7)
+		BITWISE_XOR = ClassicOperator("\xA4", 6)
+		BITWISE_OR = ClassicOperator("|", 5)
 		RANGE = IndependentOperator("..")
 		LOGICAL_AND = Operator("and", OPERATOR_TYPE_LOGICAL, 4)
 		LOGICAL_OR = Operator("or", OPERATOR_TYPE_LOGICAL, 3)
@@ -256,7 +254,7 @@ namespace Operators {
 		ARROW = IndependentOperator("->")
 		HEAVY_ARROW = IndependentOperator("=>")
 		END = IndependentOperator("\n")
-		ATOMIC_EXCHANGE_ADD = ClassicOperator(String.empty, 11, true)
+		ATOMIC_EXCHANGE_ADD = ClassicOperator(String.empty, 11)
 
 		all = Map<String, Operator>()
 		assignment_operators = Map<String, AssignmentOperator>()
@@ -327,8 +325,8 @@ namespace Operators {
 }
 
 Keyword {
-	readonly type: tiny
-	readonly identifier: String
+	readable type: tiny
+	readable identifier: String
 
 	init(identifier, type) {
 		this.identifier = identifier
@@ -359,40 +357,40 @@ combine_modifiers(modifiers: large, modifier: large) {
 }
 
 namespace Keywords {
-	readonly AS: Keyword
-	readonly COMPILES: Keyword
-	readonly CONSTANT: Keyword
-	readonly CONTINUE: Keyword
-	readonly DEINIT: Keyword
-	readonly ELSE: Keyword
-	readonly EXPORT: Keyword
-	readonly HAS: Keyword
-	readonly HAS_NOT: Keyword
-	readonly IF: Keyword
-	readonly IN: Keyword
-	readonly INLINE: Keyword
-	readonly IS: Keyword
-	readonly IS_NOT: Keyword
-	readonly INIT: Keyword
-	readonly IMPORT: Keyword
-	readonly LOOP: Keyword
-	readonly NAMESPACE: Keyword
-	readonly NOT: Keyword
-	readonly OUTLINE: Keyword
-	readonly OVERRIDE: Keyword
-	readonly PACK: Keyword
-	readonly PLAIN: Keyword
-	readonly PRIVATE: Keyword
-	readonly PROTECTED: Keyword
-	readonly PUBLIC: Keyword
-	readonly READONLY: Keyword
-	readonly RETURN: Keyword
-	readonly STATIC: Keyword
-	readonly STOP: Keyword
-	readonly VIRTUAL: Keyword
-	readonly WHEN: Keyword
+	readable AS: Keyword
+	readable COMPILES: Keyword
+	readable CONSTANT: Keyword
+	readable CONTINUE: Keyword
+	readable DEINIT: Keyword
+	readable ELSE: Keyword
+	readable EXPORT: Keyword
+	readable HAS: Keyword
+	readable HAS_NOT: Keyword
+	readable IF: Keyword
+	readable IN: Keyword
+	readable INLINE: Keyword
+	readable IS: Keyword
+	readable IS_NOT: Keyword
+	readable INIT: Keyword
+	readable IMPORT: Keyword
+	readable LOOP: Keyword
+	readable NAMESPACE: Keyword
+	readable NOT: Keyword
+	readable OUTLINE: Keyword
+	readable OVERRIDE: Keyword
+	readable PACK: Keyword
+	readable PLAIN: Keyword
+	readable PRIVATE: Keyword
+	readable PROTECTED: Keyword
+	readable PUBLIC: Keyword
+	readable READABLE: Keyword
+	readable RETURN: Keyword
+	readable SHARED: Keyword
+	readable STOP: Keyword
+	readable VIRTUAL: Keyword
+	readable WHEN: Keyword
 
-	public readonly all: Map<String, Keyword>
+	public readable all: Map<String, Keyword>
 
 	private add(keyword: Keyword) {
 		all.add(keyword.identifier, keyword)
@@ -425,11 +423,11 @@ namespace Keywords {
 		PRIVATE = ModifierKeyword("private", MODIFIER_PRIVATE)
 		PROTECTED = ModifierKeyword("protected", MODIFIER_PROTECTED)
 		PUBLIC = ModifierKeyword("public", MODIFIER_PUBLIC)
-		READONLY = ModifierKeyword("readonly", MODIFIER_READONLY)
+		READABLE = ModifierKeyword("readable", MODIFIER_READONLY)
 		RETURN = Keyword("return", KEYWORD_TYPE_FLOW)
-		STATIC = ModifierKeyword("static", MODIFIER_STATIC)
+		SHARED = ModifierKeyword("shared", MODIFIER_STATIC)
 		STOP = Keyword("stop", KEYWORD_TYPE_FLOW)
-		VIRTUAL = Keyword("virtual", KEYWORD_TYPE_NORMAL)
+		VIRTUAL = Keyword("open", KEYWORD_TYPE_NORMAL)
 		WHEN = Keyword("when", KEYWORD_TYPE_FLOW)
 
 		all = Map<String, Keyword>()
@@ -458,9 +456,9 @@ namespace Keywords {
 		add(PRIVATE)
 		add(PROTECTED)
 		add(PUBLIC)
-		add(READONLY)
+		add(READABLE)
 		add(RETURN)
-		add(STATIC)
+		add(SHARED)
 		add(STOP)
 		add(VIRTUAL)
 		add(WHEN)
@@ -542,7 +540,7 @@ Position {
 }
 
 Token {
-	readonly type: small
+	readable type: small
 	position: Position
 
 	init(type: small) {
@@ -558,7 +556,7 @@ Token {
 		return String.empty
 	}
 
-	virtual clone() {
+	open clone() {
 		token = Token(type)
 		token.position = position
 		return token
@@ -771,9 +769,9 @@ Token ParenthesisToken {
 }
 
 Token FunctionToken {
-	readonly identifier: IdentifierToken
-	readonly parameters: ParenthesisToken
-	readonly node: Node
+	readable identifier: IdentifierToken
+	readable parameters: ParenthesisToken
+	readable node: Node
 
 	name => this.identifier.value
 

@@ -43,6 +43,7 @@ init() {
 	result = tokenize()
 	if result.problematic complain(result)
 
+	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()

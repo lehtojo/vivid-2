@@ -1,6 +1,6 @@
 namespace platform
 
-namespace shared {
+namespace all {
 	constant COMPARE = 'cmp'
 	constant ADD = 'add'
 	constant AND = 'and'

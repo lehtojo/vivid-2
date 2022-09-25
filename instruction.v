@@ -507,11 +507,11 @@ Instruction {
 		unit.write(builder.string())
 	}
 
-	virtual on_build() {}
-	virtual on_post_build() {}
-	virtual redirect(handle: Handle) { return false }
+	open on_build() {}
+	open on_post_build() {}
+	open redirect(handle: Handle) { return false }
 
-	virtual get_dependencies() {
+	open get_dependencies() {
 		all = List<Result>()
 		all.add(result)
 		return all
