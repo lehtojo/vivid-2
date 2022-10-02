@@ -183,7 +183,7 @@ Register {
 	}
 
 	is_deactivating() {
-		return  not is_locked and value != none and value.is_deactivating()
+		return not is_locked and value != none and value.is_deactivating()
 	}
 
 	is_releasable(unit: Unit) {
@@ -355,17 +355,6 @@ Result {
 	}
 }
 
-VariableUsageDescriptor {
-	variable: Variable
-	result: Result
-	usages: large
-
-	init(variable: Variable, usages: large) {
-		this.variable = variable
-		this.usages = usages
-	}
-}
-
 Scope {
 	constant ENTRY = '.entry'
 
@@ -486,9 +475,6 @@ Scope {
 		# Reset variable data
 		variables.clear()
 
-		# Save the outer scope so that this scope can be exited later
-		if unit.scope != this { outer = unit.scope }
-
 		# Switch the current unit scope to be this scope
 		unit.scope = this
 
@@ -522,23 +508,6 @@ Scope {
 				receive_parameter(standard_parameter_registers, decimal_parameter_registers, parameter)
 			}
 		}
-	}
-
-	# Summary: Returns the current handle of the specified variable, if one is present
-	get_variable_value(variable: Variable, recursive: bool) {
-		# Only predictable variables are allowed to be stored
-		if not variable.is_predictable return none as Result
-
-		if variables.contains_key(variable) {
-			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
-			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to individual local variables
-			value = variables[variable]
-			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK return none as Result
-			return value
-		}
-
-		abort('Missing value for variable')
-		return none as Result
 	}
 
 	exit() {
@@ -1034,7 +1003,7 @@ Unit {
 		abort('Architecture did not have return address register')
 	}
 
-	# Summary:  Returns whether a value has been assigned to the specified variable
+	# Summary: Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
 		return scope != none and scope.variables.contains_key(variable)
 	}
@@ -1523,7 +1492,7 @@ get_text_section(implementation: FunctionImplementation) {
 		add_virtual_function_header(unit, implementation, fullname)
 	}
 
-	# Append the function name to the output as a label
+	# Add the function name to the output as a label
 	unit.add(LabelInstruction(unit, Label(fullname)))
 
 	# Initialize this function

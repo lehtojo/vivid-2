@@ -49,7 +49,7 @@ build_command(unit: Unit, node: CommandNode) {
 
 # Summary: Builds the body of the specified loop without any of the steps
 build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
-	# Append the label where the loop will start
+	# Add the label where the loop will start
 	unit.add(start)
 
 	# Build the loop body
@@ -61,7 +61,7 @@ build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction
 
 # Summary: Builds the body of the specified loop with its steps
 build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
-	# Append the label where the loop will start
+	# Add the label where the loop will start
 	unit.add(start)
 
 	# Build the loop body
@@ -98,7 +98,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 	statement.start_label = unit.get_next_label()
 	statement.exit_label = unit.get_next_label()
 
-	# Append the start label
+	# Add the start label
 	unit.add(LabelInstruction(unit, statement.start_label))
 
 	# Build the loop body
@@ -107,7 +107,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 	# Jump to the start of the loop
 	unit.add(JumpInstruction(unit, start))
 
-	# Append the exit label
+	# Add the exit label
 	unit.add(LabelInstruction(unit, statement.exit_label))
 
 	return result
@@ -144,7 +144,7 @@ build(unit: Unit, statement: LoopNode) {
 	# Build the loop body
 	result = build_loop_body(unit, statement, LabelInstruction(unit, start))
 
-	# Append the label where the loop ends
+	# Add the label where the loop ends
 	unit.add(LabelInstruction(unit, end))
 
 	return result

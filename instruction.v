@@ -23,7 +23,7 @@ INSTRUCTION_JUMP = 22
 INSTRUCTION_LABEL = 23
 INSTRUCTION_LABEL_MERGE = 24
 INSTRUCTION_LOAD_SHIFTED_CONSTANT = 25
-INSTRUCTION_SET_MODIFIABLE = 26
+# Free: 26
 INSTRUCTION_LONG_MULTIPLICATION = 27
 INSTRUCTION_MERGE_SCOPE = 28
 INSTRUCTION_MOVE = 29
@@ -418,7 +418,7 @@ Instruction {
 		this.operation = String(operation)
 		on_post_build()
 
-		# Unlock the register locks since the instruction has been executed
+		# Unlock the registers since the instruction has been executed
 		loop register in locked { register.unlock() }
 	}
 

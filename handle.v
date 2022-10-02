@@ -589,7 +589,7 @@ Handle ComplexMemoryHandle {
 
 		if index != none {
 			# Add a plus-operator to separate the base from the index if needed
-			if result.length > 2 { result = result + String(`+`) }
+			if result.length > 1 { result = result + String(`+`) }
 			result = result + index.string()
 
 			# Multiply the index register, if the stride is not one
@@ -597,7 +597,7 @@ Handle ComplexMemoryHandle {
 		}
 
 		# Finally, add the offset. Add the sign always, if something has been added to the result.
-		if result.length > 2 {
+		if result.length > 1 {
 			if offset > 0 { result = result + String(`+`) + to_string(offset) }
 			else offset < 0 { result = result + to_string(offset) }
 		}
@@ -610,8 +610,7 @@ Handle ComplexMemoryHandle {
 
 	override get_register_dependent_results() {
 		all = List<Result>()
-		all.add(start)
-
+		if not start.is_constant all.add(start)
 		if not index.is_constant and not index.is_modifier all.add(index)
 
 		return all

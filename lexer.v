@@ -78,6 +78,7 @@ STRING = `\'`
 STRING_OBJECT = `\"`
 MULTILINE_COMMENT = '###'
 CHARACTER = `\x60`
+ESCAPER = `\\`
 DECIMAL_SEPARATOR = `.`
 EXPONENT_SEPARATOR = `e`
 SIGNED_TYPE_SEPARATOR = `i`
@@ -1032,7 +1033,7 @@ get_closing(opening: char) {
 	return opening + 2
 }
 
-# Returns whether the specified character is an operator
+# Summary: Returns whether the specified character is an operator
 is_operator(i: char) {
 	return (i >= `*` and i <= `/`) or (i >= `:` and i <= `?`) or i == `&` or i == `%` or i == `!` or i == `^` or i == `|` or i == -92 # 0xA4 = 164 => -92 as char
 }
@@ -1159,6 +1160,10 @@ skip_parenthesis(text: String, start: Position) {
 		else i == STRING_OBJECT {
 			position = skip_closures(STRING_OBJECT, text, position)
 		}
+		else i == ESCAPER {
+			position.next_character()
+			position.next_character()
+		}
 		else i == CHARACTER {
 			position = skip_character_value(text, position)
 		}
@@ -1222,13 +1227,23 @@ skip_comment(text: String, start: Position) {
 
 # Summary: Skips closures which has the same character in both ends
 skip_closures(closure: char, text: String, start: Position) {
-	i = text.index_of(closure, start.local + 1)
-	j = text.index_of(LINE_ENDING, start.local + 1)
+	loop (i = start.local + 1, i < text.length, i++) {
+		current = text[i]
 
-	if i == -1 or j != -1 and j < i return none as Position
+		if current == closure {
+			length = (i + 1) - start.local
+			return Position(start.line, start.character + length, start.local + length, start.absolute + length)
+		}
 
-	length = i + 1 - start.local
-	return Position(start.line, start.character + length, start.local + length, start.absolute + length)
+		if current == ESCAPER {
+			i++ # Skip the escaper character
+			continue # NOTE: Escaped character will be skipped as well
+		}
+
+		if current == LINE_ENDING return none as Position
+	}
+
+	return none as Position
 }
 
 # Summary: Skips the current character value and returns the position

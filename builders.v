@@ -74,7 +74,7 @@ build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assig
 	return DivisionInstruction(unit, modulus, left, right, type, assigns, unsigned).add()
 }
 
-# Summary:  Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
+# Summary: Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
 build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
@@ -103,7 +103,7 @@ build_shift_left(unit: Unit, shift: OperatorNode) {
 build_shift_right(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
-	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format).add()
+	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format, is_unsigned(shift.first.get_type().format)).add()
 }
 
 # Summary: Builds a not operation which can not assign and work with booleans as well

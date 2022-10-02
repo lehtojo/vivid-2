@@ -716,7 +716,7 @@ Instruction GetConstantInstruction {
 	value: large
 	format: large
 
-	init(unit: Unit, value: large, is_unsigned: bool, is_decimal: bool) {
+	init(unit: Unit, value: large, unsigned: bool, is_decimal: bool) {
 		Instruction.init(unit, INSTRUCTION_GET_CONSTANT)
 		
 		this.value = value
@@ -727,7 +727,7 @@ Instruction GetConstantInstruction {
 			this.description = "Load constant " + to_string(bits_to_decimal(value))
 		}
 		else {
-			this.format = get_system_format(is_unsigned)
+			this.format = get_system_format(unsigned)
 			this.description = "Load constant " + to_string(value)
 		}
 
@@ -1044,7 +1044,7 @@ Instruction CallInstruction {
 	# Returns: Returns a list of register locks which must be active while the handle is in use
 	validate_memory_handle(handle: Handle) {
 		results = handle.get_register_dependent_results()
-		locks = List<Register>()
+		locked = List<Register>()
 
 		loop iterator in results {
 			# 1. If the function handle lifetime extends over this instruction, all the inner handles must extend over this instruction as well, therefore a non-volatile register is needed
@@ -1067,10 +1067,10 @@ Instruction CallInstruction {
 			instruction.type = MOVE_RELOCATE
 
 			unit.add(instruction)
-			locks.add(iterator.register)
+			locked.add(iterator.register)
 		}
 
-		return locks
+		return locked
 	}
 
 	output_pack(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
@@ -1716,7 +1716,7 @@ DualParameterInstruction CompareInstruction {
 			)
 		}
 
-		if settings.is_x64 and second.is_constant and second.value.(ConstantHandle).value == 0 {
+		if second.is_constant and second.value.(ConstantHandle).value == 0 {
 			# Example: test r, r
 			return build(platform.x64.TEST, first.size, InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER))
 		}
@@ -1727,47 +1727,6 @@ DualParameterInstruction CompareInstruction {
 
 	override on_build() {
 		if settings.is_x64 return on_build_x64()
-	}
-}
-
-# Summary:
-# Loads the specified variable into a modifiable location if it is constant
-# This instruction works on all architectures
-Instruction SetModifiableInstruction {
-	variable: Variable
-
-	init(unit: Unit, variable: Variable) {
-		Instruction.init(unit, INSTRUCTION_SET_MODIFIABLE)
-		this.variable = variable
-		this.description = "Ensures the variable is in a modifiable location"
-		this.is_abstract = true
-
-		this.result.format = variable.type.get_register_format()
-	}
-
-	override on_build() {
-		handle = unit.get_variable_value(variable)
-		if handle == none or not handle.is_constant return
-
-		directives = trace.for(unit, handle)
-		is_media_register = handle.format == FORMAT_DECIMAL
-
-		# Try to use the directives to decide the destination register for the variable
-		register = memory.consider(unit, directives, is_media_register)
-
-		# If the directives did not determine the register, try to determine the register manually
-		if register == none {
-			if is_media_register { register = unit.get_next_media_register_without_releasing() }
-			else { register = unit.get_next_register_without_releasing() }
-		}
-
-		# If register could not be determined, the variable must be moved into memory
-		if register == none { result.value = references.create_variable_handle(unit, variable, ACCESS_WRITE) }
-		else { result.value = RegisterHandle(register) }
-
-		instruction = MoveInstruction(unit, result, handle)
-		instruction.type = MOVE_RELOCATE
-		unit.add(instruction)
 	}
 }
 
@@ -1856,9 +1815,12 @@ DualParameterInstruction DivisionInstruction {
 		flags = FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_WRITES | FLAG_READS | FLAG_LOCKED
 		if assigns { flags = flags | FLAG_RELOCATE_TO_DESTINATION }
 
-		# Example: idiv r, r/[...]
+		instruction = platform.x64.SIGNED_DIVIDE
+		if unsigned { instruction = platform.x64.UNSIGNED_DIVIDE }
+
+		# Example: idiv/div r, r/[...]
 		build(
-			platform.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
+			instruction, SYSTEM_BYTES,
 			InstructionParameter(numerator, flags, HANDLE_REGISTER),
 			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
 			InstructionParameter(Result(remainder, get_system_format(unsigned)), flags | FLAG_DESTINATION, HANDLE_REGISTER)
@@ -1871,8 +1833,11 @@ DualParameterInstruction DivisionInstruction {
 		flags = FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_READS | FLAG_LOCKED
 		if assigns { flags = flags | FLAG_NO_ATTACH }
 
-		# Example: idiv r, r/[...]
-		build(platform.x64.SIGNED_DIVIDE, SYSTEM_BYTES,
+		instruction = platform.x64.SIGNED_DIVIDE
+		if unsigned { instruction = platform.x64.UNSIGNED_DIVIDE }
+
+		# Example: idiv/div r, r/[...]
+		build(instruction, SYSTEM_BYTES,
 			InstructionParameter(numerator, flags, HANDLE_REGISTER),
 			InstructionParameter(second, FLAG_NONE, HANDLE_REGISTER | HANDLE_MEMORY),
 			InstructionParameter(Result(remainder, get_system_format(unsigned)), FLAG_HIDDEN | FLAG_LOCKED | FLAG_WRITES, HANDLE_REGISTER)
@@ -1909,10 +1874,13 @@ DualParameterInstruction DivisionInstruction {
 				flags = FLAG_NONE
 				if assigns { flags = FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
 
+				instruction = platform.x64.SHIFT_RIGHT
+				if unsigned { instruction = platform.x64.SHIFT_RIGHT_UNSIGNED }
+
 				operand = memory.load_operand(unit, division.dividend, false, assigns)
 
 				# Example: sar r, c
-				return build(platform.x64.SHIFT_RIGHT, SYSTEM_BYTES,
+				return build(instruction, SYSTEM_BYTES,
 					InstructionParameter(operand, FLAG_DESTINATION | FLAG_READS | flags, HANDLE_REGISTER),
 					InstructionParameter(Result(count, SYSTEM_FORMAT), FLAG_NONE, HANDLE_CONSTANT)
 				)
@@ -1991,8 +1959,13 @@ DualParameterInstruction BitwiseInstruction {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_LEFT, first, second, format, false)
 	}
 
-	shared create_shift_right(unit: Unit, first: Result, second: Result, format: large) {
-		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_RIGHT, first, second, format, false)
+	shared create_shift_right(unit: Unit, first: Result, second: Result, format: large, unsigned: bool) {
+		if settings.is_x64 {
+			instruction: link = platform.x64.SHIFT_RIGHT
+			if unsigned { instruction = platform.x64.SHIFT_RIGHT_UNSIGNED }
+
+			return BitwiseInstruction(unit, instruction, first, second, format, false)
+		}
 	}
 
 	init(unit: Unit, instruction: link, first: Result, second: Result, format: large, assigns: bool) {
@@ -2057,9 +2030,8 @@ DualParameterInstruction BitwiseInstruction {
 			)
 		}
 
-		# TODO: Add unsigned versions
-		if instruction == platform.x64.SHIFT_LEFT or instruction == platform.x64.SHIFT_RIGHT return build_shift_x64()
-		
+		if instruction == platform.x64.SHIFT_LEFT or instruction == platform.x64.SHIFT_RIGHT or instruction == platform.x64.SHIFT_RIGHT_UNSIGNED return build_shift_x64()
+
 		flags = FLAG_DESTINATION
 		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
 

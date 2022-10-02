@@ -504,7 +504,7 @@ compatible(expected: Type, actual: Type) {
 	return true
 }
 
-# Summary:  Returns whether the specified actual types are compatible with the specified expected types, that is whether the actual types can be casted to match the expected types. This function also requires that the actual parameters are all resolved, otherwise this function returns false.
+# Summary: Returns whether the specified actual types are compatible with the specified expected types, that is whether the actual types can be casted to match the expected types. This function also requires that the actual parameters are all resolved, otherwise this function returns false.
 compatible(expected_types: List<Type>, actual_types: List<Type>) {
 	if expected_types.size != actual_types.size return false
 
