@@ -94,7 +94,7 @@ Parse {
 namespace parser
 
 # NOTE: Patterns all sorted so that the longest pattern is first, so if it passes, it takes priority over all the other patterns
-patterns: Array<List<Pattern>>
+patterns: List<List<Pattern>>
 
 constant MIN_PRIORITY = 0
 constant MAX_FUNCTION_BODY_PRIORITY = 19
@@ -137,12 +137,7 @@ Token DynamicToken {
 
 # Summary: Returns the patterns which have the specified priority
 get_patterns(priority: large) {
-	all = patterns[priority]
-	if all != none return all
-
-	all = List<Pattern>()
-	patterns[priority] = all
-	return all
+	return patterns[priority]
 }
 
 # Summary: Adds the specified pattern to the pattern list
@@ -158,8 +153,9 @@ add_pattern(pattern: Pattern) {
 }
 
 initialize() {
-	patterns = Array<List<Pattern>>(MAX_PRIORITY + 1)
-	
+	patterns = List<List<Pattern>>(MAX_PRIORITY + 1, false)
+	loop (i = 0, i < MAX_PRIORITY + 1, i++) { patterns.add(List<Pattern>()) }
+
 	add_pattern(CommandPattern())
 	add_pattern(AssignPattern())
 	add_pattern(FunctionPattern())

@@ -406,7 +406,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large) {
 	state.all = tokens
 
 	consumptions = List<Pair<parser.DynamicToken, large>>()
-	context = Context("0", NORMAL_CONTEXT)
+	context = Context("0", NORMAL_CONTEXT | LAMBDA_CONTAINER_CONTEXT_MODIFIER)
 
 	loop (priority = parser.MAX_FUNCTION_BODY_PRIORITY, priority >= parser.MIN_PRIORITY, priority--) {
 		loop {
@@ -510,14 +510,16 @@ compatible(expected_types: List<Type>, actual_types: List<Type>) {
 
 	loop (i = 0, i < expected_types.size, i++) {
 		expected = expected_types[i]
-		if expected == none continue
+		if expected === none continue
 
 		actual = actual_types[i]
+		if actual === none return false
+
 		if expected.match(actual) continue
 
 		if not expected.is_primitive or not actual.is_primitive {
 			if not expected.is_type_inherited(actual) and not actual.is_type_inherited(expected) return false
-		} 
+		}
 		else resolver.get_shared_type(expected, actual) == none return false
 	}
 

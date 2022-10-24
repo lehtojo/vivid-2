@@ -37,7 +37,7 @@ MODIFIER_PRIVATE = 1 <| 1
 MODIFIER_PROTECTED = 1 <| 2
 MODIFIER_STATIC = 1 <| 3
 MODIFIER_IMPORTED = 1 <| 4
-MODIFIER_READONLY = 1 <| 5
+MODIFIER_READABLE = 1 <| 5
 MODIFIER_EXPORTED = 1 <| 6
 MODIFIER_CONSTANT = 1 <| 7
 MODIFIER_TEMPLATE_TYPE = 1 <| 8
@@ -196,20 +196,20 @@ namespace Operators {
 	readable ATOMIC_EXCHANGE_ADD: ClassicOperator
 
 	public all: Map<String, Operator>
-	public assignment_operators: Map<String, AssignmentOperator>
+	public assignments: Map<String, AssignmentOperator>
 	
-	public operator_overloads: Map<Operator, String>
+	public overloads: Map<Operator, String>
 
 	private add(operator: Operator) {
 		all.add(operator.identifier, operator)
 
 		if operator.type == OPERATOR_TYPE_ASSIGNMENT and operator.(AssignmentOperator).operator != none and operator.(AssignmentOperator).operator.identifier.length > 0 {
-			assignment_operators.add(operator.(AssignmentOperator).operator.identifier, operator.(AssignmentOperator))
+			assignments.add(operator.(AssignmentOperator).operator.identifier, operator.(AssignmentOperator))
 		}
 	}
 
 	get_assignment_operator(operator: Operator) {
-		if assignment_operators.contains_key(operator.identifier) return assignment_operators[operator.identifier]
+		if assignments.contains_key(operator.identifier) return assignments[operator.identifier]
 		return none as Operator
 	}
 
@@ -258,8 +258,8 @@ namespace Operators {
 		ATOMIC_EXCHANGE_ADD = ClassicOperator(String.empty, 11)
 
 		all = Map<String, Operator>()
-		assignment_operators = Map<String, AssignmentOperator>()
-		operator_overloads = Map<Operator, String>()
+		assignments = Map<String, AssignmentOperator>()
+		overloads = Map<Operator, String>()
 
 		add(COLON)
 		add(POWER)
@@ -303,17 +303,17 @@ namespace Operators {
 		add(HEAVY_ARROW)
 		add(END)
 
-		operator_overloads.add(ADD, "plus")
-		operator_overloads.add(SUBTRACT, "minus")
-		operator_overloads.add(MULTIPLY, "times")
-		operator_overloads.add(DIVIDE, "divide")
-		operator_overloads.add(MODULUS, "remainder")
-		operator_overloads.add(ASSIGN_ADD, "assign_plus")
-		operator_overloads.add(ASSIGN_SUBTRACT, "assign_minus")
-		operator_overloads.add(ASSIGN_MULTIPLY, "assign_times")
-		operator_overloads.add(ASSIGN_DIVIDE, "assign_divide")
-		operator_overloads.add(ASSIGN_MODULUS, "assign_remainder")
-		operator_overloads.add(EQUALS, "equals")
+		overloads.add(ADD, "plus")
+		overloads.add(SUBTRACT, "minus")
+		overloads.add(MULTIPLY, "times")
+		overloads.add(DIVIDE, "divide")
+		overloads.add(MODULUS, "remainder")
+		overloads.add(ASSIGN_ADD, "assign_plus")
+		overloads.add(ASSIGN_SUBTRACT, "assign_minus")
+		overloads.add(ASSIGN_MULTIPLY, "assign_times")
+		overloads.add(ASSIGN_DIVIDE, "assign_divide")
+		overloads.add(ASSIGN_MODULUS, "assign_remainder")
+		overloads.add(EQUALS, "equals")
 	}
 
 	exists(identifier: String) {
@@ -424,7 +424,7 @@ namespace Keywords {
 		PRIVATE = ModifierKeyword("private", MODIFIER_PRIVATE)
 		PROTECTED = ModifierKeyword("protected", MODIFIER_PROTECTED)
 		PUBLIC = ModifierKeyword("public", MODIFIER_PUBLIC)
-		READABLE = ModifierKeyword("readable", MODIFIER_READONLY)
+		READABLE = ModifierKeyword("readable", MODIFIER_READABLE)
 		RETURN = Keyword("return", KEYWORD_TYPE_FLOW)
 		SHARED = ModifierKeyword("shared", MODIFIER_STATIC)
 		STOP = Keyword("stop", KEYWORD_TYPE_FLOW)

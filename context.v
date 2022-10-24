@@ -11,6 +11,7 @@ IMPLEMENTATION_CONTEXT = 1 <| 3
 LAMBDA_CONTEXT_MODIFIER = 1 <| 4
 CONSTRUCTOR_CONTEXT_MODIFIER = 1 <| 5
 DESTRUCTOR_CONTEXT_MODIFIER = 1 <| 6
+LAMBDA_CONTAINER_CONTEXT_MODIFIER = 1 <| 7
 
 LANGUAGE_OTHER = 0
 LANGUAGE_CPP = 1
@@ -264,6 +265,20 @@ Context {
 		return none as FunctionImplementation
 	}
 
+	# Summary: Tries to find the first parent context which can contain a lambda
+	find_lambda_container_parent() {
+		if has_flag(type, LAMBDA_CONTAINER_CONTEXT_MODIFIER) return this
+
+		iterator = parent
+
+		loop (iterator != none) {
+			if has_flag(iterator.type, LAMBDA_CONTAINER_CONTEXT_MODIFIER) return iterator
+			iterator = iterator.parent
+		}
+
+		return none as Context
+	}
+
 	# Summary: Returns all parent contexts, which represent types
 	get_parent_types() {
 		result = List<Type>()
@@ -508,11 +523,8 @@ Context {
 			subcontexts.add(subcontext)
 		}
 
-		update()
 		context.destroy()
 	}
-
-	update() {}
 
 	destroy() {
 		if parent != none parent.subcontexts.remove(this)
@@ -901,8 +913,8 @@ Context Type {
 
 	# Summary: Returns whether the type contains a function, which overloads the specified operator
 	is_operator_overloaded(operator: Operator) {
-		if not Operators.operator_overloads.contains_key(operator) return false
-		overload = Operators.operator_overloads[operator]
+		if not Operators.overloads.contains_key(operator) return false
+		overload = Operators.overloads[operator]
 		return is_local_function_declared(overload) or is_super_function_declared(overload)
 	}
 
@@ -1009,8 +1021,8 @@ Context Type {
 
 		# Deny the inheritance if supertypes already contain the inheritant or if any supertype would be duplicated
 		inheritor_supertypes = get_all_supertypes()
-		
-		# The inheritor can inherit the same type multiple times
+
+		# The inheritor may not inherit the same type multiple times
 		if inheritor_supertypes.contains(inheritant) return false
 
 		# Look for conflicts between the supertypes of the inheritor and the inheritant
@@ -1128,16 +1140,13 @@ Variable {
 	is_protected => has_flag(modifiers, MODIFIER_PROTECTED)
 	is_private => has_flag(modifiers, MODIFIER_PRIVATE)
 	is_static => has_flag(modifiers, MODIFIER_STATIC)
-	
 	is_global => category == VARIABLE_CATEGORY_GLOBAL
 	is_local => category == VARIABLE_CATEGORY_LOCAL
 	is_parameter => category == VARIABLE_CATEGORY_PARAMETER
 	is_member => category == VARIABLE_CATEGORY_MEMBER
 	is_predictable => category == VARIABLE_CATEGORY_LOCAL or category == VARIABLE_CATEGORY_PARAMETER
-
 	is_hidden => name.index_of(`.`) != -1
 	is_generated => position === none
-
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
 
@@ -1164,18 +1173,6 @@ Variable {
 		mangle.add(Mangle.END_COMMAND)
 
 		return mangle.value
-	}
-
-	# Summary: Returns whether this variable is edited inside the specified node
-	is_edited_inside(node: Node) {
-		loop write in writes {
-			# If one of the parent nodes of the current write is the specified node, then this variable is edited inside the specified node
-			loop (iterator = write.parent, iterator != none, iterator = iterator.parent) {
-				if iterator == node return true
-			}
-		}
-
-		return false
 	}
 
 	# Summary: Returns the alignment compared to the specified parent type
@@ -1429,6 +1426,7 @@ Context Function {
 		# Create a function implementation
 		implementation = FunctionImplementation(this, none as Type, parent)
 		implementation.set_parameters(implementation_parameters)
+		implementation.is_imported = is_imported
 		implementation.return_type = return_type # Force the return type, if user added it
 
 		# Add the created implementation to the list
@@ -1569,20 +1567,6 @@ Type TemplateType {
 		this.template_parameters = template_parameters
 	}
 
-	init(context: Context, name: String, modifiers: normal, argument_count: large) {
-		Type.init(context, name, modifiers | MODIFIER_TEMPLATE_TYPE)
-		
-		# Create an empty type with the specified name using tokens
-		blueprint = List<Token>()
-		blueprint.add(IdentifierToken(name))
-		blueprint.add(ParenthesisToken(`{`, none as Position, none as Position, List<Token>()))
-
-		# Generate the template arguments
-		loop (i = 0, i < argument_count, i++) {
-			template_arguments.add(String(`T`) + to_string(i))
-		}
-	}
-
 	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
 		loop (i = 0, i < tokens.size, i++) {
 			token = tokens[i]
@@ -1658,7 +1642,7 @@ Type TemplateType {
 		if arguments.size < template_parameters.size return none as Type
 		variant = try_get_variant(arguments)
 		if variant != none return variant
-		return create_variant(arguments) 
+		return create_variant(arguments)
 	}
 }
 
@@ -1808,8 +1792,8 @@ Function Lambda {
 		connect(context)
 
 		# Add import modifier if this lambda is inside an imported function
-		implementation = context.find_implementation_parent()
-		if implementation.metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
+		container = context.find_lambda_container_parent()
+		if container.is_implementation and container.(FunctionImplementation).metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
 	}
 
 	# Summary: Implements the lambda using the specified parameter types
@@ -1878,7 +1862,7 @@ Context FunctionImplementation {
 	}
 
 	init(metadata: Function, return_type: Type, parent: Context) {
-		Context.init(parent, IMPLEMENTATION_CONTEXT)
+		Context.init(parent, IMPLEMENTATION_CONTEXT | LAMBDA_CONTAINER_CONTEXT_MODIFIER)
 
 		this.metadata = metadata
 		this.return_type = return_type
@@ -2091,8 +2075,7 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override on_mangle(mangle: Mangle) {
-		function_parent = parent.find_implementation_parent()
-		function_parent.on_mangle(mangle)
+		parent.find_lambda_container_parent().on_mangle(mangle)
 
 		mangle.add(`_`)
 		mangle.add(name)
@@ -2110,8 +2093,7 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override get_header() {
-		parent_implementation = parent.find_implementation_parent()
-		return parent_implementation.string() + ' Lambda #' + name
+		return parent.find_lambda_container_parent().string() + ' Lambda #' + name
 	}
 }
 
@@ -2287,21 +2269,14 @@ UnresolvedType FunctionType {
 	}
 
 	override resolve(context: Context) {
-		resolved = List<Type>(parameters.size, false)
+		loop (i = 0, i < parameters.size, i++) {
+			parameter = parameters[i]
+			if parameter === none or parameter.is_resolved continue
 
-		loop parameter in parameters {
-			if parameter == none or parameter.is_resolved {
-				resolved.add(none as Type)
-				continue
-			}
+			parameter = resolver.resolve(context, parameter)
+			if parameter === none continue
 
-			resolved.add(resolver.resolve(context, parameter))
-		}
-
-		loop (i = 0, i < resolved.size, i++) {
-			iterator = resolved[i]
-			if iterator == none continue
-			parameters[i] = iterator
+			parameters[i] = parameter
 		}
 
 		update_state()

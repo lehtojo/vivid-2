@@ -275,7 +275,7 @@ Lifetime {
 
 		loop (i = 0, i < usages.size, i++) {
 			# Look for usage, which is being built
-			if INSTRUCTION_STATE_BUILDING {
+			if usages[i].state == INSTRUCTION_STATE_BUILDING {
 				building = true
 				stop
 			}

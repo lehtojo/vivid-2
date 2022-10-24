@@ -875,9 +875,6 @@ remove_redundant_inline_nodes(root: Node) {
 		else iterator.parent != none and (common.is_statement(iterator.parent) or iterator.parent.match(NODE_INLINE | NODE_NORMAL)) {
 			iterator.replace_with_children(iterator)
 		}
-		else {
-			continue
-		}
 	}
 }
 

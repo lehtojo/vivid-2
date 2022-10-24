@@ -351,8 +351,6 @@ DataEncoderModule {
 }
 
 namespace data_encoder {
-	constant SYSTEM_ADDRESS_SIZE = 8
-
 	# Summary:
 	# Ensures the specified module is aligned as requested
 	align(module: DataEncoderModule, alignment: large) {
@@ -421,7 +419,7 @@ namespace data_encoder {
 			module.create_local_symbol(table.name, module.position)
 		}
 
-		# Align tables if the platform is ARM
+		# Align tables if the platform is arm64
 		if not settings.is_x64 align(module, 8)
 
 		subtables = List<Table>()
@@ -449,7 +447,7 @@ namespace data_encoder {
 					table_item = item.(TableReferenceTableItem).value
 					table_symbol = module.get_local_or_create_external_symbol(table_item.name)
 
-					module.relocations.add(BinaryRelocation(table_symbol, module.position, 0, BINARY_RELOCATION_TYPE_ABSOLUTE64, SYSTEM_ADDRESS_SIZE))
+					module.relocations.add(BinaryRelocation(table_symbol, module.position, 0, BINARY_RELOCATION_TYPE_ABSOLUTE64, SYSTEM_BYTES))
 					module.write_int64(0)
 
 					# Add the table to the list of subtables
@@ -458,7 +456,7 @@ namespace data_encoder {
 				TABLE_ITEM_LABEL => {
 					label_item = item.(LabelTableItem).value.name
 					label_symbol = module.get_local_or_create_external_symbol(label_item)
-					module.relocations.add(BinaryRelocation(label_symbol, module.position, 0, BINARY_RELOCATION_TYPE_ABSOLUTE64, SYSTEM_ADDRESS_SIZE))
+					module.relocations.add(BinaryRelocation(label_symbol, module.position, 0, BINARY_RELOCATION_TYPE_ABSOLUTE64, SYSTEM_BYTES))
 					module.write_int64(0)
 				},
 				TABLE_ITEM_LABEL_OFFSET => {
@@ -488,7 +486,7 @@ namespace data_encoder {
 		# Define the variable as a symbol
 		module.create_local_symbol(name, module.position, true)
 
-		# Align tables if the platform is ARM
+		# Align tables if the platform is arm64
 		if not settings.is_x64 align(module, 8)
 
 		module.zero(size)

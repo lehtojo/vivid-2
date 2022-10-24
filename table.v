@@ -111,7 +111,6 @@ Table {
 	# Bool is not enough, because there can be multiple runs and we do not want to reset all the tables before each run.
 	marker: large = 0
 
-
 	is_section: bool = false
 	items: List<TableItem> = List<TableItem>()
 	subtables: large = 0
