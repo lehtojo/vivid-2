@@ -4,6 +4,7 @@ Pattern CommandPattern {
 	constant KEYWORD = 0
 
 	init() {
+		# Pattern: stop/continue
 		path.add(TOKEN_TYPE_KEYWORD)
 		priority = 2
 	}
@@ -45,7 +46,7 @@ Pattern AssignPattern {
 		if not context.is_variable_declared(name) {
 			# Ensure the name is not reserved
 			if name == SELF_POINTER_IDENTIFIER or name == LAMBDA_SELF_POINTER_IDENTIFIER {
-				state.error = Status(destination.position, "Can not declare variable with name " + name)
+				state.error = Status(destination.position, "Can not create variable with name " + name)
 				return none as Node
 			}
 
@@ -75,7 +76,7 @@ Pattern AssignPattern {
 		}
 
 		variable = context.get_variable(name)
-		
+
 		# Static variables must be accessed using their parent types
 		if variable.is_static return LinkNode(TypeNode(variable.parent as Type), VariableNode(variable, destination.position), destination.position)
 
@@ -261,7 +262,7 @@ Pattern VariableDeclarationPattern {
 		}
 
 		if name.value == SELF_POINTER_IDENTIFIER or name.value == LAMBDA_SELF_POINTER_IDENTIFIER {
-			state.error = Status(name.position, 'Can not declare variable, since the name is reserved')
+			state.error = Status(name.position, "Can not create variable with name " + name.value)
 			return none as Node
 		}
 
@@ -354,6 +355,7 @@ Pattern IfPattern {
 
 Pattern ElsePattern {
 	init() {
+		# Pattern: $if/$else-if [\n] else [\n] {...}/...
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 
@@ -612,7 +614,7 @@ Pattern LoopPattern {
 		return tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
 	}
 
-	private static get_steps(context: Context, state: ParserState, parenthesis: ParenthesisToken) {
+	private shared get_steps(context: Context, state: ParserState, parenthesis: ParenthesisToken) {
 		if parenthesis.tokens.size == 0 return none as Node
 
 		steps = none as Node
@@ -698,6 +700,7 @@ Pattern CastPattern {
 	constant TYPE = 2
 
 	init() {
+		# Pattern: $value as $type
 		path.add(TOKEN_TYPE_OBJECT)
 		path.add(TOKEN_TYPE_KEYWORD)
 
@@ -721,8 +724,10 @@ Pattern CastPattern {
 Pattern UnarySignPattern {
 	constant SIGN = 0
 	constant OBJECT = 1
-	
+
 	init() {
+		# Pattern 1: - $value
+		# Pattern 2: + $value
 		path.add(TOKEN_TYPE_OPERATOR)
 		path.add(TOKEN_TYPE_OBJECT)
 
@@ -738,16 +743,16 @@ Pattern UnarySignPattern {
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
-		object = parser.parse(context, tokens[OBJECT])
+		value = parser.parse(context, tokens[OBJECT])
 		sign = tokens[SIGN].(OperatorToken).operator
 
-		if object.match(NODE_NUMBER) {
-			if sign == Operators.SUBTRACT return object.(NumberNode).negate()
-			return object
+		if value.match(NODE_NUMBER) {
+			if sign == Operators.SUBTRACT return value.(NumberNode).negate()
+			return value
 		}
 
-		if sign == Operators.SUBTRACT return NegateNode(object, tokens[SIGN].position)
-		return object
+		if sign == Operators.SUBTRACT return NegateNode(value, tokens[SIGN].position)
+		return value
 	}
 }
 
@@ -856,6 +861,8 @@ Pattern ImportPattern {
 	constant TYPE_START = 1
 
 	init() {
+		# Pattern 1: import ['$language'] $name (...) [: $type]
+		# Pattern 2: import $1.$2. ... .$n
 		path.add(TOKEN_TYPE_KEYWORD)
 		priority = 22
 		is_consumable = false
@@ -895,12 +902,12 @@ Pattern ImportPattern {
 	}
 
 	# Summary: Return whether the captured tokens represent a function import instead of namespace import
-	private static is_function_import(tokens: List<Token>) {
+	private shared is_function_import(tokens: List<Token>) {
 		return not tokens[TYPE_START].match(TOKEN_TYPE_IDENTIFIER)
 	}
 
 	# Summary: Imports the function contained in the specified tokens
-	private static import_function(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared import_function(environment: Context, state: ParserState, tokens: List<Token>) {
 		descriptor = tokens[FUNCTION] as FunctionToken
 		language = LANGUAGE_VIVID
 
@@ -950,6 +957,8 @@ Pattern ImportPattern {
 			function = Function(environment, modifiers, descriptor.name, descriptor.position, none as Position)
 		}
 
+		function.modifiers |= MODIFIER_IMPORTED
+		function.return_type = return_type
 		function.language = language
 
 		result = descriptor.get_parameters(function)
@@ -960,20 +969,6 @@ Pattern ImportPattern {
 		}
 
 		function.parameters = parameters
-
-		implementation = FunctionImplementation(function, return_type, environment)
-		implementation.is_imported = true
-		
-		# Try to set the parsed parameters
-		status = implementation.set_parameters(parameters)
-
-		if status.problematic {
-			state.error = status
-			return none as Node
-		}
-		
-		function.implementations.add(implementation)
-		implementation.implement(function.blueprint)
 
 		# Declare the function in the environment
 		if descriptor.name == Keywords.INIT.identifier and environment.is_type {
@@ -990,7 +985,7 @@ Pattern ImportPattern {
 	}
 
 	# Summary: Imports the namespace contained in the specified tokens
-	private static import_namespace(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared import_namespace(environment: Context, state: ParserState, tokens: List<Token>) {
 		imported_namespace = common.read_type(environment, tokens, 1)
 		
 		if imported_namespace == none {
@@ -1012,6 +1007,7 @@ Pattern ConstructorPattern {
 	constant HEADER = 0
 
 	init() {
+		# Pattern: init/deinit (...) [\n] {...}
 		path.add(TOKEN_TYPE_FUNCTION)
 		priority = 23
 		is_consumable = false
@@ -1067,6 +1063,7 @@ Pattern ExpressionVariablePattern {
 	constant ARROW = 1
 
 	init() {
+		# Pattern: $name => ...
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		path.add(TOKEN_TYPE_OPERATOR)
 
@@ -1084,7 +1081,6 @@ Pattern ExpressionVariablePattern {
 		# Create function which has the name of the property but has no parameters
 		function = Function(type, MODIFIER_DEFAULT, name.value, name.position, none as Position)
 
-		# Add the heavy arrow operator token to the start of the blueprint to represent a return statement
 		blueprint = List<Token>()
 		blueprint.add(KeywordToken(Keywords.RETURN, tokens[ARROW].position))
 
@@ -1112,7 +1108,7 @@ Pattern InheritancePattern {
 	constant TEMPLATE_ARGUMENTS = 1
 	constant INHERITOR = 2
 
-	# Pattern: Pattern: $type [<$1, $2, ..., $n>] $type_definition
+	# Pattern: $type [<$1, $2, ..., $n>] $type_definition
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 21
@@ -1139,11 +1135,7 @@ Pattern InheritancePattern {
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
 		# Load all inheritant tokens
-		inheritant_tokens = List<Token>(tokens.size - 1, false)
-
-		loop (i = 0, i < tokens.size - 1, i++) {
-			inheritant_tokens.add(tokens[i])
-		}
+		inheritant_tokens = tokens.slice(0, tokens.size - 1)
 
 		inheritor_node = tokens[tokens.size - 1].(DynamicToken).node
 		inheritor = inheritor_node.(TypeNode).type
@@ -1277,7 +1269,7 @@ Pattern SectionModificationPattern {
 }
 
 Pattern NamespacePattern {
-	# Pattern: $1.$2. ... .$n [\n] [{...}]
+	# Pattern: namespace $1.$2. ... .$n [\n] [{...}]
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_IDENTIFIER)
@@ -1612,8 +1604,7 @@ Pattern TemplateTypePattern {
 		state.consume_optional(TOKEN_TYPE_END)
 
 		# Consume the body of the template type
-		next = state.peek()
-		return state.consume(TOKEN_TYPE_PARENTHESIS) and next.(ParenthesisToken).match(`{`)
+		return state.consume_parenthesis(`{`)
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -1903,6 +1894,7 @@ Pattern CompilesPattern {
 	constant CONDITIONS = 2
 
 	init() {
+		# Pattern: compiles [\n] {...}
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
 		path.add(TOKEN_TYPE_PARENTHESIS)
@@ -1925,7 +1917,7 @@ Pattern IsPattern {
 	constant KEYWORD = 1
 	constant TYPE = 2
 
-	# Pattern $object is [not] $type [$name]
+	# Pattern: $object is [not] $type [$name]
 	init() {
 		path.add(TOKEN_TYPE_DYNAMIC | TOKEN_TYPE_IDENTIFIER | TOKEN_TYPE_FUNCTION)
 		path.add(TOKEN_TYPE_KEYWORD)
@@ -1978,7 +1970,7 @@ Pattern OverrideFunctionPattern {
 	constant OVERRIDE = 0
 	constant FUNCTION = 1
 
-	# Pattern 1: override $name (...) [\n] {...}
+	# Pattern: override $name (...) [\n] {...}
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_FUNCTION)
@@ -2040,18 +2032,16 @@ Pattern LambdaPattern {
 
 		# Try to consume normal curly parenthesis as the body blueprint
 		next = state.peek()
-		if next.match(`{`) state.consume()
+		if next !== none and next.match(`{`) state.consume()
 
 		return true
 	}
 
-	private static get_parameter_tokens(tokens: List<Token>) {
-		if tokens[PARAMETERS].type == TOKEN_TYPE_PARENTHESIS return tokens[PARAMETERS] as ParenthesisToken
-
+	private shared get_parameter_tokens(tokens: List<Token>) {
 		parameter = tokens[PARAMETERS]
-		parameter_tokens = List<Token>(1, false)
-		parameter_tokens.add(parameter)
-		return ParenthesisToken(`(`, parameter.position, common.get_end_of_token(parameter), parameter_tokens)
+		if parameter.type == TOKEN_TYPE_PARENTHESIS return parameter as ParenthesisToken
+
+		return ParenthesisToken(`(`, parameter.position, common.get_end_of_token(parameter), [ parameter ])
 	}
 
 	override build(context: Context, state: ParserState, tokens: List<Token>) {
@@ -2080,9 +2070,10 @@ Pattern LambdaPattern {
 			if blueprint.size > 0 { end = common.get_end_of_token(blueprint[blueprint.size - 1]) }
 		}
 
-		environment = context.find_implementation_parent()
-		if environment == none {
-			state.error = Status(start, 'Lambdas must be created inside functions')
+		environment = context.find_lambda_container_parent()
+
+		if environment === none {
+			state.error = Status(start, 'Can not create a lambda here')
 			return none as Node
 		}
 
@@ -2202,7 +2193,7 @@ Pattern ExtensionFunctionPattern {
 	constant TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET = 3
 	constant STANDARD_FUNCTION_EXTENSION_LAST_DOT_OFFSET = 3
 
-	# Pattern 1: $T1.$T2. ... .$Tn.$name [<$T1, $T2, ..., $Tn>] () [\n] {...}
+	# Pattern: $T1.$T2. ... .$Tn.$name [<$T1, $T2, ..., $Tn>] () [\n] {...}
 	init() {
 		path.add(TOKEN_TYPE_IDENTIFIER)
 		priority = 23
@@ -2261,11 +2252,11 @@ Pattern ExtensionFunctionPattern {
 		return true
 	}
 
-	private static is_template_function(tokens: List<Token>) {
+	private shared is_template_function(tokens: List<Token>) {
 		return tokens[tokens.size - 1 - PARAMETERS_OFFSET].type != TOKEN_TYPE_FUNCTION
 	}
 
-	private static find_template_arguments_start(tokens: List<Token>) {
+	private shared find_template_arguments_start(tokens: List<Token>) {
 		i = tokens.size - 1 - TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET
 		j = 0
 
@@ -2283,7 +2274,7 @@ Pattern ExtensionFunctionPattern {
 		return i
 	}
 
-	private static create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
 		# Find the starting index of the template arguments
 		i = find_template_arguments_start(tokens)
 		if i < 0 {
@@ -2314,7 +2305,7 @@ Pattern ExtensionFunctionPattern {
 		return ExtensionFunctionNode(destination, descriptor, template_parameters, body.tokens, descriptor.position, body.end)
 	}
 
-	private static create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
 		destination = common.read_type(environment, tokens.slice(0, tokens.size - 1 - STANDARD_FUNCTION_EXTENSION_LAST_DOT_OFFSET))
 
 		if destination == none {

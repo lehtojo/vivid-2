@@ -762,7 +762,7 @@ namespace instruction_encoder {
 		if instruction.type == INSTRUCTION_LABEL return platform.x64._LABEL
 
 		# Parameterless instructions
-		if operation == platform.shared.RETURN return platform.x64._RET
+		if operation == platform.all.RETURN return platform.x64._RET
 		if operation == platform.x64.EXTEND_QWORD return platform.x64._CQO
 		if operation == platform.x64.SYSTEM_CALL return platform.x64._SYSCALL
 		if operation == 'fld1' return platform.x64._FLD1
@@ -771,7 +771,7 @@ namespace instruction_encoder {
 		if operation == 'faddp' return platform.x64._FADDP
 		if operation == 'fcos' return platform.x64._FCOS
 		if operation == 'fsin' return platform.x64._FSIN
-		if operation == platform.shared.NOP return platform.x64._NOP
+		if operation == platform.all.NOP return platform.x64._NOP
 
 		# Single parameter instructions
 		if operation == platform.x64.PUSH return platform.x64._PUSH
@@ -794,7 +794,7 @@ namespace instruction_encoder {
 		if operation == 'fld' return platform.x64._FLD
 		if operation == 'fistp' return platform.x64._FISTP
 		if operation == 'fstp' return platform.x64._FSTP
-		if operation == platform.shared.NEGATE return platform.x64._NEG
+		if operation == platform.all.NEGATE return platform.x64._NEG
 		if operation == platform.x64.NOT return platform.x64._NOT
 		if operation == platform.x64.CONDITIONAL_SET_ABOVE return platform.x64._SETA
 		if operation == platform.x64.CONDITIONAL_SET_ABOVE_OR_EQUALS return platform.x64._SETAE
@@ -810,9 +810,9 @@ namespace instruction_encoder {
 		if operation == platform.x64.CONDITIONAL_SET_ZERO return platform.x64._SETZ
 
 		# Dual parameter instructions
-		if operation == platform.shared.MOVE return platform.x64._MOV
-		if operation == platform.shared.ADD return platform.x64._ADD
-		if operation == platform.shared.SUBTRACT return platform.x64._SUB
+		if operation == platform.all.MOVE return platform.x64._MOV
+		if operation == platform.all.ADD return platform.x64._ADD
+		if operation == platform.all.SUBTRACT return platform.x64._SUB
 		if operation == platform.x64.SIGNED_MULTIPLY return platform.x64._IMUL
 		if operation == platform.x64.UNSIGNED_MULTIPLY return platform.x64._MUL
 		if operation == platform.x64.SIGNED_DIVIDE return platform.x64._IDIV
@@ -823,7 +823,7 @@ namespace instruction_encoder {
 		if operation == platform.x64.SIGNED_CONVERSION_MOVE return platform.x64._MOVSX
 		if operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE return platform.x64._MOVSXD
 		if operation == platform.x64.EVALUATE return platform.x64._LEA
-		if operation == platform.shared.COMPARE return platform.x64._CMP
+		if operation == platform.all.COMPARE return platform.x64._CMP
 		if operation == platform.x64.DOUBLE_PRECISION_ADD return platform.x64._ADDSD
 		if operation == platform.x64.DOUBLE_PRECISION_SUBTRACT return platform.x64._SUBSD
 		if operation == platform.x64.DOUBLE_PRECISION_MULTIPLY return platform.x64._MULSD
@@ -832,7 +832,7 @@ namespace instruction_encoder {
 		if operation == platform.x64.RAW_MEDIA_REGISTER_MOVE return platform.x64._MOVQ
 		if operation == platform.x64.CONVERT_INTEGER_TO_DOUBLE_PRECISION return platform.x64._CVTSI2SD
 		if operation == platform.x64.CONVERT_DOUBLE_PRECISION_TO_INTEGER return platform.x64._CVTTSD2SI
-		if operation == platform.shared.AND return platform.x64._AND
+		if operation == platform.all.AND return platform.x64._AND
 		if operation == platform.x64.XOR return platform.x64._XOR
 		if operation == platform.x64.OR return platform.x64._OR
 		if operation == platform.x64.DOUBLE_PRECISION_COMPARE return platform.x64._COMISD

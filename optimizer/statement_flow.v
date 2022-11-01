@@ -1,9 +1,9 @@
 # Summary:
 # Represents a bitset that can automatically grow depending on needs
 DynamicBitset {
-	readonly data: link
-	readonly size: normal
-	readonly max_size: normal
+	readable data: link
+	readable size: normal
+	readable max_size: normal
 
 	init(size: normal, max_size: normal) {
 		require(size <= max_size, 'Maximum bitset size was exceeded')

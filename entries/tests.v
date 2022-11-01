@@ -68,6 +68,7 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	result = tokenize()
 	if result.problematic complain(result)
 
+	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()
@@ -341,7 +342,7 @@ special_multiplications(optimization: large) {
 	}
 	else {
 		are_equal(1, count_of(assembly, platform.arm64.SHIFT_LEFT, '#1'))
-		are_equal(2, count_of(assembly, platform.shared.ADD, 'lsl #'))
+		are_equal(2, count_of(assembly, platform.all.ADD, 'lsl #'))
 		are_equal(1, count_of(assembly, platform.arm64.SHIFT_RIGHT, '#2'))
 	}
 }

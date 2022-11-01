@@ -34,7 +34,6 @@
 				"${workspaceFolder}/minimum.memory.obj",
 				"${workspaceFolder}/minimum.tests.obj",
 				"-a",
-				"-f",
 				"-o",
 				"vc",
 				"-l",
@@ -81,7 +80,6 @@
 				"${workspaceFolder}/min.system.o",
 				"${workspaceFolder}/min.tests.o",
 				"-a",
-				"-f",
 				"-o",
 				"vc",
 				"-d",
@@ -134,6 +132,18 @@
 				"-d",
 				"-verbose"
 			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify (Debug)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify -d",
 			"group": {
 				"kind": "build",
 				"isDefault": true

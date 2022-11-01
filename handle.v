@@ -80,26 +80,26 @@ Handle {
 	}
 
 	# Summary: Returns all results which the handle requires to be in registers
-	virtual get_register_dependent_results() {
+	open get_register_dependent_results() {
 		return List<Result>()
 	}
 
 	# Summary: Returns all results used in the handle
-	virtual get_inner_results() {
+	open get_inner_results() {
 		return List<Result>()
 	}
 
-	virtual use(instruction: Instruction) {}
+	open use(instruction: Instruction) {}
 
-	virtual equals(other: Handle) {
+	open equals(other: Handle) {
 		return this.instance == other.instance and this.format == other.format
 	}
 
-	virtual finalize() {
+	open finalize() {
 		return Handle()
 	}
 
-	virtual string() {
+	open string() {
 		return "?"
 	}
 }
@@ -202,7 +202,7 @@ Handle MemoryHandle {
 		this.offset = offset
 	}
 
-	virtual get_absolute_offset() {
+	open get_absolute_offset() {
 		return offset
 	}
 
@@ -589,7 +589,7 @@ Handle ComplexMemoryHandle {
 
 		if index != none {
 			# Add a plus-operator to separate the base from the index if needed
-			if result.length > 2 { result = result + String(`+`) }
+			if result.length > 1 { result = result + String(`+`) }
 			result = result + index.string()
 
 			# Multiply the index register, if the stride is not one
@@ -597,7 +597,7 @@ Handle ComplexMemoryHandle {
 		}
 
 		# Finally, add the offset. Add the sign always, if something has been added to the result.
-		if result.length > 2 {
+		if result.length > 1 {
 			if offset > 0 { result = result + String(`+`) + to_string(offset) }
 			else offset < 0 { result = result + to_string(offset) }
 		}
@@ -610,8 +610,7 @@ Handle ComplexMemoryHandle {
 
 	override get_register_dependent_results() {
 		all = List<Result>()
-		all.add(start)
-
+		if not start.is_constant all.add(start)
 		if not index.is_constant and not index.is_modifier all.add(index)
 
 		return all
@@ -647,21 +646,21 @@ Handle ExpressionHandle {
 	addition: Result
 	number: large
 
-	static create_addition(left: Result, right: Result) {
+	shared create_addition(left: Result, right: Result) {
 		return ExpressionHandle(left, 1, right, 0)
 	}
 
-	static create_addition(left: Handle, right: Handle) {
+	shared create_addition(left: Handle, right: Handle) {
 		return ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
 	}
 
-	static create_memory_address(start: Result, offset: large) {
+	shared create_memory_address(start: Result, offset: large) {
 		if settings.is_x64 return ExpressionHandle(start, 1, none as Result, offset)
 
 		return ExpressionHandle(start, 1, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
 	}
 
-	static create_memory_address(start: Result, offset: Result, stride: large) {
+	shared create_memory_address(start: Result, offset: Result, stride: large) {
 		return ExpressionHandle(offset, stride, start, 0)
 	}
 

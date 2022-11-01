@@ -25,7 +25,7 @@ Component {
 		return is_number and this.(NumberComponent).value.data == 0
 	}
 
-	static add_numbers(c1: large, c2: large, is_c1_decimal: bool, is_c2_decimal: bool) {
+	shared add_numbers(c1: large, c2: large, is_c1_decimal: bool, is_c2_decimal: bool) {
 		if is_c1_decimal {
 			if is_c2_decimal return pack { data: decimal_to_bits(bits_to_decimal(c1) + bits_to_decimal(c2)), is_decimal: true }
 			return pack { data: decimal_to_bits(bits_to_decimal(c1) + c2), is_decimal: true }
@@ -35,42 +35,42 @@ Component {
 		return pack { data: c1 + c2, is_decimal: false }
 	}
 
-	virtual negation()
+	open negation()
 
-	virtual addition(other: Component): Component {
+	open addition(other: Component): Component {
 		return none as Component
 	}
 
-	virtual subtraction(other: Component): Component {
+	open subtraction(other: Component): Component {
 		return none as Component
 	}
 
-	virtual multiplication(other: Component): Component {
+	open multiplication(other: Component): Component {
 		return none as Component
 	}
 
-	virtual division(other: Component): Component {
+	open division(other: Component): Component {
 		return none as Component
 	}
 
-	virtual bitwise_and(other: Component): Component {
+	open bitwise_and(other: Component): Component {
 		return none as Component
 	}
 
-	virtual bitwise_xor(other: Component): Component {
+	open bitwise_xor(other: Component): Component {
 		return none as Component
 	}
 
-	virtual bitwise_or(other: Component): Component {
+	open bitwise_or(other: Component): Component {
 		return none as Component
 	}
 
-	virtual compare(other: Component): tiny {
+	open compare(other: Component): tiny {
 		return COMPARISON_UNKNOWN
 	}
 
-	virtual equals(other: Component): bool
-	virtual clone(): Component
+	open equals(other: Component): bool
+	open clone(): Component
 
 	plus(other: Component) {
 		return addition(other)

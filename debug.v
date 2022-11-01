@@ -356,15 +356,17 @@ Debug {
 	subrange_type_abbreviation: byte = 0
 	inheritance_abbreviation: byte = 0
 
-	static get_debug_file_start_label(file_index: large) {
+	string_type: Type
+
+	shared get_debug_file_start_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_start'
 	}
 
-	static get_debug_file_end_label(file_index: large) {
+	shared get_debug_file_end_label(file_index: large) {
 		return "debug_file_" + to_string(file_index) + '_end'
 	}
 
-	static get_offset(from: TableLabel, to: TableLabel) {
+	shared get_offset(from: TableLabel, to: TableLabel) {
 		return LabelOffset(from, to)
 	}
 
@@ -396,39 +398,39 @@ Debug {
 		information.add(get_offset(file_start, file_end)) # DW_AT_high_pc
 	}
 
-	static get_end(implementation: FunctionImplementation) {
+	shared get_end(implementation: FunctionImplementation) {
 		return TableLabel(implementation.get_fullname() + '_end', 8, false)
 	}
 
-	static get_file(implementation: FunctionImplementation) {
+	shared get_file(implementation: FunctionImplementation) {
 		return implementation.metadata.start.file.index as normal
 	}
 
-	static get_line(implementation: FunctionImplementation) {
+	shared get_line(implementation: FunctionImplementation) {
 		return implementation.metadata.start.friendly_line as normal
 	}
 
-	static get_file(type: Type) {
+	shared get_file(type: Type) {
 		return type.position.file.index as normal
 	}
 
-	static get_line(type: Type) {
+	shared get_line(type: Type) {
 		return type.position.friendly_line as normal
 	}
 
-	static get_file(variable: Variable) {
+	shared get_file(variable: Variable) {
 		return variable.position.file.index as normal
 	}
 
-	static get_line(variable: Variable) {
+	shared get_line(variable: Variable) {
 		return variable.position.friendly_line as normal
 	}
 
-	static get_type_label_name(type: Type) {
+	shared get_type_label_name(type: Type) {
 		return get_type_label_name(type, false)
 	}
 
-	static get_type_label_name(type: Type, pointer: bool) {
+	shared get_type_label_name(type: Type, pointer: bool) {
 		if primitives.is_primitive(type, primitives.LINK) return type.get_fullname()
 
 		if type.is_primitive {
@@ -443,11 +445,11 @@ Debug {
 		return fullname
 	}
 
-	static get_type_label(type: Type, types: Map<String, Type>) {
+	shared get_type_label(type: Type, types: Map<String, Type>) {
 		return get_type_label(type, types, false)
 	}
 
-	static get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
+	shared get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
 		label = get_type_label_name(type, pointer)
 		types[label] = type
 
@@ -826,7 +828,7 @@ Debug {
 		inheritance_abbreviation = index++
 	}
 
-	static is_pointer_type(type: Type) {
+	shared is_pointer_type(type: Type) {
 		return not type.is_primitive and not type.is_pack
 	}
 
@@ -984,7 +986,7 @@ Debug {
 		information.add(type.allocation_size as normal)
 	}
 
-	static to_uleb128(value: large) {
+	shared to_uleb128(value: large) {
 		bytes = List<byte>()
 
 		loop {
@@ -1003,7 +1005,7 @@ Debug {
 		return bytes
 	}
 
-	static to_sleb128(value: large) {
+	shared to_sleb128(value: large) {
 		bytes = List<byte>()
 
 		more = true
@@ -1027,12 +1029,6 @@ Debug {
 		return bytes
 	}
 
-	# Summary:
-	# Returns whether specified variable is a string
-	is_string_type(variable: Variable) {
-		return variable.type != none and variable.type.name == STRING_TYPE_IDENTIFIER and variable.type.parent.is_global
-	}
-
 	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
 		if variable.is_generated or variable.type.is_array_type return
 
@@ -1045,10 +1041,9 @@ Debug {
 		type = variable.type
 		local_variable_alignment = to_sleb128(local_memory_size + alignment)
 
-		if is_string_type(variable) {
-			# Get the member variable which points to the actual data in the type
+		if variable.type === string_type {
+			# Get the member variable that points to the actual characters
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
-			if data == none abort('Missing data variable')
 
 			alignment = data.alignment
 			type = data.type
@@ -1087,7 +1082,7 @@ Debug {
 		type = variable.type
 		parameter_alignment = to_sleb128(local_memory_size + alignment)
 
-		if is_string_type(variable) {
+		if variable.type === string_type {
 			# Get the member variable which points to the actual data in the type
 			data = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
 			if data == none abort('Missing data variable')
@@ -1116,7 +1111,7 @@ Debug {
 		information.add(get_offset(start, get_type_label(type, types, is_pointer_type(type)))) # DW_AT_type
 	}
 
-	init() {
+	init(context: Context) {
 		abbreviation = Table(String(DEBUG_ABBREVIATION_TABLE))
 		information = Table(String(DEBUG_INFORMATION_TABLE))
 		abbreviation.is_section = true
@@ -1149,6 +1144,20 @@ Debug {
 		add_array_type_abbreviation()
 		add_subrange_type_abbreviation()
 		add_inheritance_abbreviation()
+
+		register_default_string_type(context)
+	}
+
+	register_default_string_type(context: Context) {
+		type = context.get_type(String(STRING_TYPE_IDENTIFIER))
+		if type === none or not type.parent.is_global return
+
+		# Verify the type has an internal data pointer
+		data_pointer = type.get_variable(String(STRING_TYPE_DATA_VARIABLE))
+		if data_pointer === none or data_pointer.type === none or not data_pointer.type.is_link return
+
+		# Register the found type as the default string type
+		string_type = type
 	}
 
 	end_file() {

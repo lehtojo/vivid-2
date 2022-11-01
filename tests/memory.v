@@ -131,7 +131,7 @@ init() {
 	b.y = -1.0
 	previous = a.other
 	are_equal(-1.0, memory_case_7(a, b))
-	are_not_equal(previous as link, a.other as link)
+	are_not_equal(previous as large, a.other as large)
 	are_equal(-3.14159, previous.y)
 	a.other = previous
 

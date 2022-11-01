@@ -177,7 +177,10 @@ InstructionPrinter {
 
 	print(builder: InstructionPrinterBuilder, instruction: ReturnInstruction) {
 		builder.append('return ')
-		builder.append(name_of(instruction.object))
+
+		if instruction.object !== none {
+			builder.append(name_of(instruction.object))
+		}
 	}
 
 	print(builder: InstructionPrinterBuilder, instruction: MoveInstruction) {
@@ -513,17 +516,17 @@ InstructionPrinter {
 
 				lifetime = lifetimes[result]
 
-				if lifetime.key == -1 {
-					lifetime.key = i # Update the start of the lifetime
+				if lifetime.first == -1 {
+					lifetime.first = i # Update the start of the lifetime
 				}
 
-				lifetime.value = i # Update the end of the lifetime
+				lifetime.second = i # Update the end of the lifetime
 			}
 		}
 
 		loop iterator in lifetimes {
 			lifetime = iterator.value
-			builder.lifetime(lifetime.key, lifetime.value)
+			builder.lifetime(lifetime.first, lifetime.second)
 		}
 	}
 

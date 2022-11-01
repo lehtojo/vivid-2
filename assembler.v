@@ -183,7 +183,7 @@ Register {
 	}
 
 	is_deactivating() {
-		return  not is_locked and value != none and value.is_deactivating()
+		return not is_locked and value != none and value.is_deactivating()
 	}
 
 	is_releasable(unit: Unit) {
@@ -275,7 +275,7 @@ Lifetime {
 
 		loop (i = 0, i < usages.size, i++) {
 			# Look for usage, which is being built
-			if INSTRUCTION_STATE_BUILDING {
+			if usages[i].state == INSTRUCTION_STATE_BUILDING {
 				building = true
 				stop
 			}
@@ -352,17 +352,6 @@ Result {
 
 	use(instructions: List<Instruction>) {
 		loop instruction in instructions { use(instruction) }
-	}
-}
-
-VariableUsageDescriptor {
-	variable: Variable
-	result: Result
-	usages: large
-
-	init(variable: Variable, usages: large) {
-		this.variable = variable
-		this.usages = usages
 	}
 }
 
@@ -486,9 +475,6 @@ Scope {
 		# Reset variable data
 		variables.clear()
 
-		# Save the outer scope so that this scope can be exited later
-		if unit.scope != this { outer = unit.scope }
-
 		# Switch the current unit scope to be this scope
 		unit.scope = this
 
@@ -524,23 +510,6 @@ Scope {
 		}
 	}
 
-	# Summary: Returns the current handle of the specified variable, if one is present
-	get_variable_value(variable: Variable, recursive: bool) {
-		# Only predictable variables are allowed to be stored
-		if not variable.is_predictable return none as Result
-
-		if variables.contains_key(variable) {
-			# When debugging is enabled, all variables should be stored in stack, which is the default location if this function returns null
-			# NOTE: Disposable handles assigned to local variables are an exception to this rule, the values inside them must be extracted to individual local variables
-			value = variables[variable]
-			if settings.is_debugging_enabled and value.value.instance != INSTANCE_DISPOSABLE_PACK return none as Result
-			return value
-		}
-
-		abort('Missing value for variable')
-		return none as Result
-	}
-
 	exit() {
 		if unit.mode == UNIT_MODE_ADD {
 			unit.add(outputter)
@@ -556,7 +525,7 @@ pack VariableState {
 	variable: Variable
 	handle: Handle
 
-	static create(variable: Variable, result: Result) {
+	shared create(variable: Variable, result: Result) {
 		copy = result.value.finalize()
 		copy.format = result.format
 
@@ -1034,7 +1003,7 @@ Unit {
 		abort('Architecture did not have return address register')
 	}
 
-	# Summary:  Returns whether a value has been assigned to the specified variable
+	# Summary: Returns whether a value has been assigned to the specified variable
 	is_initialized(variable: Variable) {
 		return scope != none and scope.variables.contains_key(variable)
 	}
@@ -1523,7 +1492,7 @@ get_text_section(implementation: FunctionImplementation) {
 		add_virtual_function_header(unit, implementation, fullname)
 	}
 
-	# Append the function name to the output as a label
+	# Add the function name to the output as a label
 	unit.add(LabelInstruction(unit, Label(fullname)))
 
 	# Initialize this function
@@ -2052,7 +2021,7 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
 
 	loop file in files {
-		debug = Debug()
+		debug = Debug(context)
 		debug.begin_file(file)
 
 		types = Map<String, Type>()
@@ -2199,7 +2168,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
 
 	# Store the number of assembled functions
-	assembled_functions = 0
+	index = 0
 
 	loop file in files {
 		builder = AssemblyBuilder()
@@ -2217,7 +2186,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 
 				if settings.is_verbose_output_enabled {
 					console.put(`[`)
-					console.write(assembled_functions + 1)
+					console.write(index + 1)
 					console.put(`/`)
 					console.write(all.size)
 					console.put(`]`)
@@ -2228,7 +2197,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 				builder.add(get_text_section(implementation))
 				builder.write('\n\n')
 
-				assembled_functions++ # Increment the number of assembled functions
+				index++ # Increment the number of assembled functions
 			}
 		}
 
@@ -2502,7 +2471,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		binary = pe_format.link(object_files.get_values(), imports, get_default_entry_point(), output_filename, output_type == BINARY_TYPE_EXECUTABLE)
 	}
 	else {
-		binary = elf_format.link(object_files.get_values(), get_default_entry_point(), output_type == BINARY_TYPE_EXECUTABLE)
+		binary = elf_format.link(object_files.get_values(), imports, get_default_entry_point(), output_type == BINARY_TYPE_EXECUTABLE)
 	}
 
 	io.write_file(output_filename, binary)

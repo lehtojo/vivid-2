@@ -3,6 +3,24 @@ namespace reconstruction
 constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
 constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
 
+# Summary: Completes the specified self returning function by adding the necessary statements and by modifying the function information
+complete_self_returning_function(implementation: FunctionImplementation) {
+	position = implementation.metadata.start
+
+	implementation.return_type = implementation.parent as Type
+	implementation.is_self_returning = true
+	implementation.node.add(ReturnNode(none as Node, position))
+
+	self = implementation.get_self_pointer()
+	require(self !== none, 'Missing self parameter')
+
+	statements = implementation.node.find_all(NODE_RETURN)
+
+	loop statement in statements {
+		statement.add(VariableNode(self, position))
+	}
+}
+
 # Summary: Removes redundant parentheses in the specified node tree
 # Example: x = x * (((x + 1))) => x = x * (x + 1)
 remove_redundant_parentheses(node: Node) {
@@ -114,7 +132,7 @@ get_expression_root(node: Node) {
 }
 
 extract_calls(root: Node) {
-	nodes = root.find_every(NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
+	nodes = root.find_every(NODE_ACCESSOR | NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LINK | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
 	nodes.add_all(find_bool_values(root))
 
 	loop (i = 0, i < nodes.size, i++) {
@@ -123,6 +141,9 @@ extract_calls(root: Node) {
 
 		# Calls should always have a parent node
 		if parent == none continue
+
+		# Do not extract accessors or links that are destinations or packs
+		if node.match(NODE_ACCESSOR | NODE_LINK) and (common.is_edited(node) or node.get_type().is_pack) continue
 
 		# Skip values which are assigned to hidden local variables
 		if parent.match(Operators.ASSIGN) and parent.last == node and parent.first.match(NODE_VARIABLE) and parent.first.(VariableNode).variable.is_predictable continue
@@ -323,6 +344,56 @@ extract_increments(root: Node) {
 extract_expressions(root: Node) {
 	extract_calls(root)
 	extract_increments(root)
+}
+
+# Summary:
+# Rewrites self returning functions, so that the self argument is modified after the call:
+# Case 1:
+# local.modify(...)
+# =>
+# local = local.modify(...)
+# Case 2:
+# a[i].b.f(...)
+# =>
+# t = a[i].b.f(...)
+# a[i].b = t
+rewrite_self_returning_functions(root: Node) {
+	calls = root.find_all(NODE_FUNCTION)
+
+	loop call in calls {
+		# Process only self returning functions
+		function = call.(FunctionNode).function
+		if not function.is_self_returning continue
+
+		# Verify the called function is a member function
+		if not function.is_member continue
+
+		# Verify the node tree is here as follows: <self>.<call>
+		caller = call.parent
+		require(caller.instance === NODE_LINK, 'Member call is in invalid state')
+
+		# Find the self argument
+		self = call.previous
+
+		# Replace the caller with a placeholder node
+		placeholder = Node()
+		caller.replace(placeholder)
+
+		return_value = caller
+
+		if self.instance !== NODE_VARIABLE {
+			# Create a temporary variable that will store the return value
+			context = placeholder.get_parent_context()
+			temporary_variable = context.declare_hidden(function.return_type)
+
+			# Store the return value into the temporary variable
+			placeholder.insert(OperatorNode(Operators.ASSIGN, caller.start).set_operands(VariableNode(temporary_variable), caller))
+
+			return_value = VariableNode(temporary_variable)
+		}
+
+		placeholder.replace(OperatorNode(Operators.ASSIGN, caller.start).set_operands(self.clone(), return_value))
+	}
 }
 
 InlineContainer {
@@ -803,9 +874,6 @@ remove_redundant_inline_nodes(root: Node) {
 		}
 		else iterator.parent != none and (common.is_statement(iterator.parent) or iterator.parent.match(NODE_INLINE | NODE_NORMAL)) {
 			iterator.replace_with_children(iterator)
-		}
-		else {
-			continue
 		}
 	}
 }
@@ -1350,6 +1418,51 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 	return result
 }
 
+# Summary:
+# Load the destination address as follows:
+# destination[index] = ...
+# =>
+# local = destination + index * sizeof(destination)
+# local[0] = ...
+prepare_accessor_destination_for_duplication(context: Context, destination: AccessorNode, interphases: Node, position: Position) {
+	accessor_base = destination.first
+	accessor_index = destination.last.first
+	accessor_stride = destination.get_stride()
+
+	local_type = accessor_base.get_type()
+	local = context.declare_hidden(local_type)
+
+	accessor_base.replace(VariableNode(local, position))
+	accessor_index.replace(NumberNode(SYSTEM_FORMAT, 0, position))
+
+	local_value = OperatorNode(Operators.ADD, position).set_operands(
+		accessor_base,
+		OperatorNode(Operators.MULTIPLY).set_operands(
+			accessor_index,
+			NumberNode(SYSTEM_FORMAT, accessor_stride, position)
+		)
+	)
+
+	local_initialization = OperatorNode(Operators.ASSIGN, position).set_operands(
+		VariableNode(local, position),
+		local_value
+	)
+
+	interphases.insert(local_initialization)
+}
+
+# Summary:
+# Reduces the number of steps in the specified destination node by extracting expressions from it.
+# When the destination node is duplicated, this function should reduce duplicated work.
+# The function will add all the produced steps before the 'interphases' position.
+prepare_destination_for_duplication(context: Context, destination: Node, interphases: Node) {
+	position = destination.start
+
+	if destination.instance == NODE_ACCESSOR {
+		prepare_accessor_destination_for_duplication(context, destination as AccessorNode, interphases, position)
+	}
+}
+
 # <summary>
 # Finds all usages of packs and rewrites them to be more suitable for compilation
 # Example (Here $-prefixes indicate generated hidden variables):
@@ -1406,13 +1519,27 @@ rewrite_pack_usages(environment: Context, root: Node) {
 		container = assignment.parent
 		position = assignment.start
 
+		prepare_destination_for_duplication(environment, destination, assignment)
+
 		destinations = create_pack_member_accessors(destination, type, position)
 		sources = none as List<Node>
 
 		is_function_assignment = common.is_function_call(assignment.last)
+		is_memory_accessed = common.is_memory_accessed(assignment.last)
+		use_handle = is_function_assignment or is_memory_accessed
 
 		# The sources of function assignments must be replaced with placeholders, so that they do not get overridden by the local proxies of the members
-		if is_function_assignment {
+		if use_handle {
+			if destination.instance != NODE_VARIABLE {
+				context = assignment.get_parent_context()
+				temporary_handle = context.declare_hidden(type)
+
+				# Replace the destination with the temporary handle
+				temporary_handle_destination = VariableNode(temporary_handle)
+				destination.replace(temporary_handle_destination)
+				destination = temporary_handle_destination
+			}
+
 			loads = create_pack_member_accessors(destination, type, position)
 			sources = List<Node>()
 			
@@ -1433,7 +1560,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 		# The assignment must be removed, if its source is not a function call
 		# NOTE: The function call assignment must be left intact, because it must assign the disposable pack handle, whose usage is demonstrated above
-		if not is_function_assignment { assignment.remove() }
+		if not use_handle { assignment.remove() }
 
 		assignments.remove_at(i)
 	}
@@ -1658,6 +1785,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	remove_redundant_casts(root)
 	rewrite_discarded_increments(root)
 	extract_expressions(root)
+	rewrite_self_returning_functions(root)
 	add_assignment_casts(root)
 	rewrite_super_accessors(root)
 	rewrite_when_expressions(root)

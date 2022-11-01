@@ -66,12 +66,13 @@ initialize_configuration() {
 	settings.included_folders.add(io.get_process_working_folder())
 	settings.included_folders.add(io.get_process_folder())
 
+	# Load the path environment variable and include folders from it
+	path = io.get_environment_variable('PATH')
+	if path === none { path = String.empty }
+
 	folders = none as List<String>
 
 	if settings.is_target_windows {
-		path = io.get_environment_variable('PATH')
-		if path === none { path = String.empty }
-
 		folders = path.split(`;`)
 
 		# Ensure all the separators are the same
@@ -80,9 +81,6 @@ initialize_configuration() {
 		}
 	}
 	else {
-		path = io.get_environment_variable('PATH')
-		if path === none { path = String.empty }
-
 		folders = path.split(`:`)
 	}
 

@@ -17,13 +17,13 @@ Type Number {
 
 Number Link {
 	# Summary: Creates a link type which has the specified offset type
-	static get_variant(argument: Type) {
+	shared get_variant(argument: Type) {
 		link = Link(argument)
 		return link
 	}
 
 	# Summary: Creates a link type which has the specified offset type and the specified name
-	static get_variant(argument: Type, name: String) {
+	shared get_variant(argument: Type, name: String) {
 		link = Link(argument)
 		link.name = name
 		return link
@@ -33,18 +33,22 @@ Number Link {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = [ element ]
 		this.identifier = String(primitives.LINK_IDENTIFIER)
-		this.modifiers |= MODIFIER_TEMPLATE_TYPE
+		this.modifiers |= MODIFIER_TEMPLATE_TYPE | MODIFIER_LINK
 	}
 
 	init() {
 		Number.init(SYSTEM_FORMAT, SYSTEM_BITS, "link")
 		this.template_arguments = List<Type>(0, false)
 		this.identifier = String(primitives.LINK_IDENTIFIER)
-		this.modifiers |= MODIFIER_TEMPLATE_TYPE
+		this.modifiers |= MODIFIER_TEMPLATE_TYPE | MODIFIER_LINK
 	}
 
 	override match(other: Type) {
-		return this.name == other.name and this.identifier == other.identifier and get_accessor_type().match(other.(Link).get_accessor_type())
+		if (other.modifiers & MODIFIER_LINK) == 0 return false
+
+		accessor_type = get_accessor_type()
+		other_accessor_type = other.(Link).get_accessor_type()
+		return accessor_type.match(other_accessor_type)
 	}
 
 	override clone() {
@@ -55,9 +59,15 @@ Number Link {
 		if template_arguments.size > 0 return template_arguments[]
 		return primitives.create_number(primitives.U8, FORMAT_UINT8)
 	}
+
+	override string() {
+		return get_accessor_type().string() + `*`
+	}
 }
 
 namespace primitives {
+	shared SELF: Type
+
 	constant UNIT = '_'
 	constant LINK = 'link'
 	constant BOOL = 'bool'
@@ -94,6 +104,10 @@ namespace primitives {
 	constant U8_IDENTIFIER = 'h'
 	constant BYTE_IDENTIFIER = 'h'
 	constant CHAR_IDENTIFIER = 'c'
+
+	shared initialize() {
+		SELF = Type(String(SELF_POINTER_IDENTIFIER), MODIFIER_SELF)
+	}
 
 	create_number(primitive: link, format: large) {
 		return create_number(String(primitive), format)

@@ -2,8 +2,6 @@
 # Converts objects such as template functions and types to exportable formats such as mangled strings
 namespace object_exporter
 
-#warning Investigate exporting of member parameters (constructors)
-
 # Summary:
 # Creates a template name by combining the specified name and the template argument names together
 create_template_name(name: String, template_argument_names: List<String>) {
@@ -16,8 +14,8 @@ get_modifiers(modifiers: large) {
 	result = List<String>()
 	if (has_flag(modifiers, MODIFIER_PRIVATE)) result.add(Keywords.PRIVATE.identifier)
 	if (has_flag(modifiers, MODIFIER_PROTECTED)) result.add(Keywords.PROTECTED.identifier)
-	if (has_flag(modifiers, MODIFIER_STATIC)) result.add(Keywords.STATIC.identifier)
-	if (has_flag(modifiers, MODIFIER_READONLY)) result.add(Keywords.READONLY.identifier)
+	if (has_flag(modifiers, MODIFIER_STATIC)) result.add(Keywords.SHARED.identifier)
+	if (has_flag(modifiers, MODIFIER_READABLE)) result.add(Keywords.READABLE.identifier)
 	if (has_flag(modifiers, MODIFIER_EXPORTED)) result.add(Keywords.EXPORT.identifier)
 	if (has_flag(modifiers, MODIFIER_CONSTANT)) result.add(Keywords.CONSTANT.identifier)
 	if (has_flag(modifiers, MODIFIER_OUTLINE)) result.add(Keywords.OUTLINE.identifier)

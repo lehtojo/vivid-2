@@ -15,6 +15,9 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 				current = result[i]
 				other = result[j]
 
+				# Can not exchange non-integer values
+				if current.first.value.format == FORMAT_DECIMAL or current.second.value.format == FORMAT_DECIMAL continue
+
 				if current.first.value.equals(other.second.value) and current.second.value.equals(other.first.value) {
 					exchanges.add(ExchangeInstruction(unit, current.second, other.second))
 					exchanged_indices.add(i)
@@ -25,7 +28,7 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 		}
 	}
 
-	# Append the created exchanges and remove the moves which were replaced by the exchanges
+	# Add the created exchanges and remove the moves which were replaced by the exchanges
 	result.add_all(exchanges)
 	
 	loop (i = result.size - 1, i >= 0, i--) {
@@ -103,7 +106,7 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 			}
 		}
 		else {
-			abort('Unsupported instruction type found while optimizing relocation')
+			abort('Unsupported instruction type found while aligning move instructions')
 		}
 	}
 
@@ -236,22 +239,6 @@ consider(unit: Unit, directive: Directive, media_register: bool) {
 		DIRECTIVE_SPECIFIC_REGISTER => directive.(SpecificRegisterDirective).register,
 		else => abort('Unknown directive type encountered') as Register
 	}
-}
-
-# Summary: Tries to apply the most important directive
-consider(unit: Unit, directives: List<Directive>, media_register: bool) {
-	register = none as Register
-
-	loop directive in directives {
-		result = consider(unit, directive, media_register)
-
-		if result != none and media_register == result.is_media_register and result.is_available {
-			register = result
-			stop
-		}
-	}
-
-	return register
 }
 
 # Summary: Determines the next register to use

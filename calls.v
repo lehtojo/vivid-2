@@ -88,24 +88,24 @@ is_self_pointer_required(current: FunctionImplementation, other: FunctionImpleme
 }
 
 # Summary: Passes the specified disposable pack by passing its member one by one
-pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
+pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle, shadow: bool) {
 	loop iterator in disposable_pack.members {
 		member = iterator.value.member
 		value = iterator.value.value
 
 		if member.type.is_pack {
-			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
+			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, shadow)
 		}
 		else {
-			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, member.type, member.type.get_register_format())
+			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, member.type, member.type.get_register_format(), shadow)
 		}
 	}
 }
 
 # Summary: Passes the specified argument using a register or the specified stack position depending on the situation
-pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large) {
+pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large, shadow: bool) {
 	if value.value.instance == INSTANCE_DISPOSABLE_PACK {
-		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle)
+		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, shadow)
 		return
 	}
 
@@ -128,6 +128,8 @@ pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, sta
 		if not is_decimal { destination.format = get_system_format(type.format) }
 
 		destinations.add(destination)
+
+		if shadow { position.offset += SYSTEM_BYTES }
 	}
 	else {
 		# Since there is no more room for parameters in registers, this parameter must be pushed to stack
@@ -142,7 +144,7 @@ pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, sta
 
 # Summary: Passes the specified parameters to the function using the specified calling convention
 # Returns: Returns the amount of parameters moved to stack
-pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_type: Type, is_self_pointer_required: bool, parameters: List<Node>, parameter_types: List<Type>) {
+pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_type: Type, is_self_pointer_required: bool, parameters: List<Node>, parameter_types: List<Type>, shadow: bool) {
 	standard_parameter_registers = get_standard_parameter_registers(unit)
 	decimal_parameter_registers = get_decimal_parameter_registers(unit)
 
@@ -153,16 +155,11 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 
 	destinations = List<Handle>()
 	sources = List<Result>()
-
-	# On Windows x64 a 'shadow space' is allocated for the first four parameters
-	offset = 0
-	if settings.is_target_windows { offset = SHADOW_SPACE_SIZE }
-
-	position = StackMemoryHandle(unit, offset, false)
+	position = StackMemoryHandle(unit, 0, false)
 
 	if self_pointer != none {
 		if self_type == none abort('Missing self pointer type')
-		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, self_pointer, self_type, SYSTEM_FORMAT)
+		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, self_pointer, self_type, SYSTEM_FORMAT, shadow)
 	}
 
 	loop (i = 0, i < parameters.size, i++) {
@@ -171,7 +168,7 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 		type = parameter_types[i]
 
 		value = casts.cast(unit, value, parameter.get_type(), type)
-		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, type.get_register_format())
+		pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, type.get_register_format(), shadow)
 	}
 
 	call.destinations.add_all(destinations)
@@ -195,7 +192,7 @@ build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplem
 	if self != none { self_type = implementation.find_type_parent() }
 
 	# Pass the parameters to the function and then execute it
-	pass_arguments(unit, call, self, self_type, false, collect_parameters(parameters), implementation.parameter_types)
+	pass_arguments(unit, call, self, self_type, false, collect_parameters(parameters), implementation.parameter_types, settings.is_target_windows)
 
 	return call.add()
 }
@@ -204,7 +201,7 @@ build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: 
 	call = CallInstruction(unit, function, return_type)
 
 	# Pass the parameters to the function and then execute it
-	pass_arguments(unit, call, self, self_type, true, collect_parameters(parameters), parameter_types)
+	pass_arguments(unit, call, self, self_type, true, collect_parameters(parameters), parameter_types, settings.is_target_windows)
 
 	return call.add()
 }
@@ -243,7 +240,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 		register = none as Register
 		source = none as Result
 
-		if parameter.type.format == FORMAT_DECIMAL {
+		if proxy.type.format == FORMAT_DECIMAL {
 			register = decimal_parameter_registers.pop_or(none as Register)
 		}
 		else {
@@ -257,7 +254,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 			source = Result(stack_position.finalize(), proxy.type.get_register_format())
 		}
 
-		destination = Result(references.create_variable_handle(unit, parameter, ACCESS_READ), parameter.type.format)
+		destination = Result(references.create_variable_handle(unit, proxy, ACCESS_TYPE_WRITE), proxy.type.format)
 
 		instruction = MoveInstruction(unit, destination, source)
 		instruction.type = MOVE_RELOCATE

@@ -164,7 +164,7 @@ Node OperatorNode {
 		if not type.is_operator_overloaded(operator) return none as Node
 
 		# Retrieve the function name corresponding to the operator of this node
-		overload = Operators.operator_overloads[operator]
+		overload = Operators.overloads[operator]
 		arguments = Node()
 		arguments.add(last)
 
@@ -275,7 +275,13 @@ Node VariableNode {
 	}
 
 	override try_get_type() {
-		return variable.type
+		type = variable.type
+
+		if type !== none and type.is_array_type {
+			return type.(ArrayType).usage_type
+		}
+
+		return type
 	}
 
 	override copy() {
@@ -670,6 +676,14 @@ Node TypeNode {
 		return type
 	}
 
+	override get_status() {
+		if parent.match(NODE_COMPILES | NODE_INSPECTION | NODE_LINK) or (parent.instance == NODE_CAST and next === none) {
+			return none as Status
+		}
+
+		return Status(start, 'Can not understand')
+	}
+
 	override copy() {
 		return TypeNode(type, start)
 	}
@@ -817,16 +831,33 @@ Node ConstructionNode {
 	init(constructor: FunctionNode, position: Position) {
 		this.start = position
 		this.instance = NODE_CONSTRUCTION
+		this.is_resolvable = true
 		add(constructor)
 	}
 
 	init(position: Position) {
 		this.start = position
 		this.instance = NODE_CONSTRUCTION
+		this.is_resolvable = true
+	}
+
+	override resolve(context: Context) {
+		resolver.resolve(context, first)
+		return none as Node
 	}
 
 	override try_get_type() {
 		return constructor.function.find_type_parent()
+	}
+
+	override get_status() {
+		type: Type = try_get_type()
+		if type === none return none as Status
+
+		if type.is_static return Status(start, 'Namespaces can not be created as objects')
+		if type.is_template_type and not type.is_template_type_variant return Status(start, 'Can not create template type without template arguments')
+
+		return none as Status
 	}
 
 	override copy() {
@@ -1218,16 +1249,30 @@ Node NegateNode {
 	init(object: Node, position: Position) {
 		this.start = position
 		this.instance = NODE_NEGATE
+		this.is_resolvable = true
 		add(object)
 	}
 
 	init(position: Position) {
 		this.start = position
 		this.instance = NODE_NEGATE
+		this.is_resolvable = true
+	}
+
+	override resolve(context: Context) {
+		resolver.resolve(context, first)
+		return none as Node
 	}
 
 	override try_get_type() {
 		return first.try_get_type()
+	}
+
+	override get_status() {
+		type: Type = try_get_type()
+		if type === none or type.is_number return none as Status
+
+		return Status(start, 'Can not resolve the negation operation')
 	}
 
 	override copy() {
@@ -1385,7 +1430,6 @@ Node NotNode {
 }
 
 Node AccessorNode {
-	stride => get_type().reference_size
 	format => get_type().format
 
 	init(object: Node, arguments: Node, position: Position) {
@@ -1573,7 +1617,7 @@ Node StackAddressNode {
 	}
 
 	override is_equal(other: Node) {
-		return instance == other.instance and type == other.(DataPointerNode).type
+		return instance == other.instance and type == other.(StackAddressNode).type
 	}
 
 	override try_get_type() {
@@ -1688,7 +1732,7 @@ Node NamespaceNode {
 			type = context.get_type(name)
 
 			# Use the type if it was found and its parent is the current context
-			if type != none and (type.parent as link) == (context as link) {
+			if type != none and type.parent === context {
 				context = type
 				continue
 			}

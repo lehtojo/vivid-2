@@ -74,7 +74,7 @@ build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assig
 	return DivisionInstruction(unit, modulus, left, right, type, assigns, unsigned).add()
 }
 
-# Summary:  Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
+# Summary: Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
 build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
@@ -103,7 +103,7 @@ build_shift_left(unit: Unit, shift: OperatorNode) {
 build_shift_right(unit: Unit, shift: OperatorNode) {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
-	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format).add()
+	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format, is_unsigned(shift.first.get_type().format)).add()
 }
 
 # Summary: Builds a not operation which can not assign and work with booleans as well
@@ -231,7 +231,7 @@ return_pack(unit: Unit, value: Result, type: Type) {
 	if settings.is_x64 { offset = SYSTEM_BYTES }
 
 	position = StackMemoryHandle(unit, offset, true)
-	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, SYSTEM_FORMAT)
+	calls.pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, type, SYSTEM_FORMAT, false)
 
 	unit.add(ReorderInstruction(unit, destinations, sources, unit.function.return_type))
 }
@@ -251,7 +251,11 @@ build_return(unit: Unit, node: ReturnNode) {
 
 		unit.add_debug_position(scope.end)
 
-		if to.is_pack return_pack(unit, value, to)
+		if to.is_pack {
+			return_pack(unit, value, to)
+			return ReturnInstruction(unit, none as Result, unit.function.return_type).add()
+		}
+
 		return ReturnInstruction(unit, value, unit.function.return_type).add()
 	}
 
@@ -316,12 +320,15 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 }
 
 build_accessor(unit: Unit, node: AccessorNode, mode: large) {
-	start = references.get(unit, node.first, mode) as Result
-	offset = references.get(unit, node.last.first, ACCESS_READ) as Result
+	accessor_base = node.first
+	accessor_index = node.last.first
+
+	start = references.get(unit, accessor_base, mode) as Result
+	offset = references.get(unit, accessor_index, ACCESS_READ) as Result
 	stride = node.get_stride()
 
 	# The memory address of the accessor must be created is multiple steps, if the stride is too large and it can not be combined with the offset
-	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER {
+	if stride > platform.x64.EVALUATE_MAX_MULTIPLIER and accessor_index.instance != NODE_NUMBER {
 		# Pattern:
 		# index = offset * stride
 		# return [start + index]
@@ -330,7 +337,7 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 		return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, index, 1, mode).add()
 	}
 
-	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, node.stride, mode).add()
+	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, stride, mode).add()
 }
 
 build_call(unit: Unit, node: CallNode) {

@@ -4,6 +4,9 @@ get_shared_type(expected: Type, actual: Type) {
 	if expected == none or actual == none return none as Type
 	if expected == actual or expected.match(actual) return expected
 
+	# Do not allow implicit conversions between links and non-links
+	if (expected.is_link ¤ actual.is_link) != 0 return none as Type
+
 	if expected.is_number and actual.is_number {
 		bits = max(expected.reference_size * 8, actual.reference_size * 8)
 		signed = not expected.(Number).unsigned or not actual.(Number).unsigned
@@ -27,14 +30,14 @@ get_shared_type(expected: Type, actual: Type) {
 # Summary: Returns the shared type between all the specified types
 outline get_shared_type(types: List<Type>) {
 	if types.size == 0 return none as Type
-	shared = types[]
+	shared_type = types[]
 
 	loop (i = 1, i < types.size, i++) {
-		shared = get_shared_type(shared, types[i])
-		if shared == none return none as Type
+		shared_type = get_shared_type(shared_type, types[i])
+		if shared_type == none return none as Type
 	}
 
-	return shared
+	return shared_type
 }
 
 # Summary: Returns the types of the child nodes, only if all have types
@@ -129,10 +132,10 @@ resolve(variable: Variable) {
 	}
 
 	# Get the shared type between all the assignments
-	shared = get_shared_type(types)
-	if shared == none return
+	shared_type = get_shared_type(types)
+	if shared_type == none return
 
-	variable.type = shared
+	variable.type = shared_type
 }
 
 # Summary: Resolves the parameters of the specified function
@@ -165,10 +168,8 @@ resolve_return_type(implementation: FunctionImplementation) {
 	# Do not resolve the return type if it is already resolved.
 	# This also prevents virtual function overrides from overriding the return type, enforced by the virtual function declaration
 	if implementation.return_type != none {
-		if implementation.return_type.is_resolved return
-
 		# Try to resolve the return type
-		resolved = implementation.return_type.(UnresolvedType).resolve_or_none(implementation)
+		resolved = resolve(implementation, implementation.return_type)
 		if resolved === none return
 
 		# Update the return type, since we resolved it
@@ -337,6 +338,10 @@ get_tree_report(root: Node) {
 get_type_report(type: Type) {
 	errors = List<Status>()
 
+	if not (type.parent.is_global or type.parent.is_namespace) {
+		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
+	}
+
 	loop iterator in type.variables {
 		variable = iterator.value
 		if variable.is_resolved continue
@@ -363,8 +368,11 @@ get_function_report(implementation: FunctionImplementation) {
 		errors.add(Status(variable.position, 'Can not resolve the type of the variable'))
 	}
 
-	if implementation.return_type == none or implementation.return_type.is_unresolved {
+	if implementation.return_type === none or implementation.return_type.is_unresolved {
 		errors.add(Status(implementation.metadata.start, 'Can not resolve the return type'))
+	}
+	else implementation.return_type.is_array_type {
+		errors.add(Status(implementation.metadata.start, 'Array type is not allowed as a return type'))
 	}
 
 	errors.add_all(get_tree_report(implementation.node))

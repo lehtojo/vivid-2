@@ -144,7 +144,7 @@ namespace pe_format {
 	# Ensure the specified name is exactly eight characters long, padded with none characters if necessary.
 	find_section(module: PeMetadata, name: String) {
 		encoded_name = encode_integer_name(name)
-		return module.sections.find_or(i -> i.name == encoded_name, none)
+		return module.sections.find_or(i -> i.name == encoded_name, none as BinarySection)
 	}
 
 	# Summary:
@@ -205,12 +205,17 @@ namespace pe_format {
 
 		start = export_data_directory_file_offset + export_directory_table_size + export_address_table_size + name_pointer_table_size + ordinal_table_size
 
-		# Load one string more since the first name is the name of the module and it is not counted
-		# TODO: Load the exported names from the name pointer table, since it is faster and more accurate
-		strings = load_strings_until(module.bytes, start, export_data_directory_file_offset + export_data_directory.physical_size)
+		# Load the exported symbols from the name pointer table
+		strings = List<String>()
+		name_pointer_table_start = relative_virtual_address_to_file_offset(module, export_directory_table.name_pointer_relative_virtual_address)
 
-		# Skip the name of the module if the load was successful
-		return strings.slice(1)
+		loop (i = 0, i < export_directory_table.number_of_name_pointers, i++) {
+			name_pointer = (module.bytes.data + name_pointer_table_start + i * sizeof(normal)).(i32*)[]
+			name_pointer_file_offset = relative_virtual_address_to_file_offset(module, name_pointer)
+			strings.add(String(module.bytes.data + name_pointer_file_offset))
+		}
+
+		return strings
 	}
 
 	# Summary:
@@ -256,7 +261,8 @@ namespace pe_format {
 		#                          .
 		#                          .
 		# 8192-byte alignment: 0x00E00000
-		characteristics |= (PE_SECTION_CHARACTERISTICS_ALIGN_1 + common.integer_log2(section.alignment)) <| 20
+		exponent = common.integer_log2(section.alignment)
+		characteristics |= (PE_SECTION_CHARACTERISTICS_ALIGN_1 * (exponent + 1)) <| 20
 
 		return characteristics
 	}

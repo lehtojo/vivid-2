@@ -6,7 +6,7 @@ AssemblyParser {
 	constant DWORD_SPECIFIER = 'dword'
 	constant QWORD_SPECIFIER = 'qword'
 	constant XWORD_SPECIFIER = 'xword'
-	constant OWORD_SPECIFIER = 'oword'
+	constant YWORD_SPECIFIER = 'yword'
 	constant SECTION_RELATIVE_SPECIFIER = 'section_relative'
 
 	constant ALIGN_DIRECTIVE = 'align'
@@ -70,7 +70,7 @@ AssemblyParser {
 			DWORD_SPECIFIER => 4, # Pattern: .dword $to - $from
 			QWORD_SPECIFIER => 8, # Pattern: .qword $to - $from
 			XWORD_SPECIFIER => abort('Please use smaller allocators') as large,
-			OWORD_SPECIFIER => abort('Please use smaller allocators') as large,
+			YWORD_SPECIFIER => abort('Please use smaller allocators') as large,
 			else => abort('Unknown allocator') as large
 		}
 
@@ -96,7 +96,7 @@ AssemblyParser {
 			DWORD_SPECIFIER => 4, # Pattern: .dword $symbol
 			QWORD_SPECIFIER => 8, # Pattern: .qword $symbol
 			XWORD_SPECIFIER => abort('Only 32-bit and 64-bit symbol references are currently supported') as large,
-			OWORD_SPECIFIER => abort('Only 32-bit and 64-bit symbol references are currently supported') as large,
+			YWORD_SPECIFIER => abort('Only 32-bit and 64-bit symbol references are currently supported') as large,
 			else => abort('Unknown allocator') as large
 		}
 
@@ -207,7 +207,7 @@ AssemblyParser {
 
 			offset = tokens[2].(NumberToken).data
 
-			instruction = Instruction(Unit, INSTRUCTION_DEBUG_FRAME_OFFSET)
+			instruction = Instruction(unit, INSTRUCTION_DEBUG_FRAME_OFFSET)
 			handle = ConstantHandle(offset)
 			instruction.parameters.add(InstructionParameter(handle, FLAG_NONE))
 			instructions.add(instruction)
@@ -235,7 +235,7 @@ AssemblyParser {
 		else directive == WORD_SPECIFIER data.write_int16(value) # Pattern: .word $value
 		else directive == DWORD_SPECIFIER data.write_int32(value) # Pattern: .dword $value
 		else directive == QWORD_SPECIFIER data.write_int64(value) # Pattern: .qword $value
-		else directive == XWORD_SPECIFIER or directive == OWORD_SPECIFIER abort('Please use smaller allocators')
+		else directive == XWORD_SPECIFIER or directive == YWORD_SPECIFIER abort('Please use smaller allocators')
 		else {
 			return false
 		}
@@ -344,7 +344,7 @@ AssemblyParser {
 				DWORD_SPECIFIER => 4,
 				QWORD_SPECIFIER => 8,
 				XWORD_SPECIFIER => 16,
-				OWORD_SPECIFIER => 32,
+				YWORD_SPECIFIER => 32,
 				else => 0
 			}
 
@@ -553,7 +553,7 @@ AssemblyParser {
 
 	# Summary:
 	# Returns whether the specified operation represents a jump instruction
-	static is_jump(operation) {
+	shared is_jump(operation) {
 		return operation == platform.x64.JUMP or
 			operation == platform.x64.JUMP_ABOVE or
 			operation == platform.x64.JUMP_ABOVE_OR_EQUALS or

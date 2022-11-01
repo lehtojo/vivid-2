@@ -11,6 +11,7 @@ IMPLEMENTATION_CONTEXT = 1 <| 3
 LAMBDA_CONTEXT_MODIFIER = 1 <| 4
 CONSTRUCTOR_CONTEXT_MODIFIER = 1 <| 5
 DESTRUCTOR_CONTEXT_MODIFIER = 1 <| 6
+LAMBDA_CONTAINER_CONTEXT_MODIFIER = 1 <| 7
 
 LANGUAGE_OTHER = 0
 LANGUAGE_CPP = 1
@@ -158,10 +159,10 @@ Context {
 		return mangle.value
 	}
 
-	virtual on_mangle(mangle: Mangle) {}
+	open on_mangle(mangle: Mangle) {}
 
 	# Summary: Tries to find the self pointer variable
-	virtual get_self_pointer() {
+	open get_self_pointer() {
 		if parent != none return parent.get_self_pointer() as Variable
 		return none as Variable
 	}
@@ -264,6 +265,20 @@ Context {
 		return none as FunctionImplementation
 	}
 
+	# Summary: Tries to find the first parent context which can contain a lambda
+	find_lambda_container_parent() {
+		if has_flag(type, LAMBDA_CONTAINER_CONTEXT_MODIFIER) return this
+
+		iterator = parent
+
+		loop (iterator != none) {
+			if has_flag(iterator.type, LAMBDA_CONTAINER_CONTEXT_MODIFIER) return iterator
+			iterator = iterator.parent
+		}
+
+		return none as Context
+	}
+
 	# Summary: Returns all parent contexts, which represent types
 	get_parent_types() {
 		result = List<Type>()
@@ -294,7 +309,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context
-	virtual is_local_function_declared(name: String) {
+	open is_local_function_declared(name: String) {
 		return is_local_function_declared_default(name)
 	}
 
@@ -304,7 +319,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context
-	virtual is_local_variable_declared(name: String) {
+	open is_local_variable_declared(name: String) {
 		return is_local_variable_declared_default(name)
 	}
 
@@ -336,7 +351,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts
-	virtual is_function_declared(name: String) {
+	open is_function_declared(name: String) {
 		return is_function_declared_default(name)
 	}
 
@@ -352,7 +367,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
-	virtual is_variable_declared(name: String) {
+	open is_variable_declared(name: String) {
 		return is_variable_declared_default(name)
 	}
 
@@ -414,7 +429,7 @@ Context {
 	}
 
 	# Summary: Returns the specified function by searching it from the local types, imports and parent types
-	virtual get_function(name: String) {
+	open get_function(name: String) {
 		return get_function_default(name)
 	}
 
@@ -433,7 +448,7 @@ Context {
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
-	virtual get_variable(name: String) {
+	open get_variable(name: String) {
 		return get_variable_default(name)
 	}
 
@@ -508,11 +523,8 @@ Context {
 			subcontexts.add(subcontext)
 		}
 
-		update()
 		context.destroy()
 	}
-
-	update() {}
 
 	destroy() {
 		if parent != none parent.subcontexts.remove(this)
@@ -535,11 +547,11 @@ Context {
 		subcontexts.clear()
 	}
 
-	virtual dispose() {
+	open dispose() {
 		default_dispose()
 	}
 
-	virtual string() {
+	open string() {
 		return String.empty
 	}
 }
@@ -547,7 +559,7 @@ Context {
 Function Constructor {
 	is_default: bool
 
-	static empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position) {
 		constructor = Constructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -609,7 +621,7 @@ Function Constructor {
 Function Destructor {
 	is_default: bool
 
-	static empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position) {
 		constructor = Destructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -697,13 +709,15 @@ Context Type {
 	is_array_type => has_flag(modifiers, MODIFIER_ARRAY_TYPE)
 	is_number => has_flag(modifiers, MODIFIER_NUMBER)
 	is_pack => has_flag(modifiers, MODIFIER_PACK)
+	is_link => has_flag(modifiers, MODIFIER_LINK)
+	is_self => has_flag(modifiers, MODIFIER_SELF)
 	is_unnamed_pack => is_pack and name.index_of(`.`) != -1
 	is_template_type_variant => name.index_of(`<`) != -1
 
 	reference_size: large = SYSTEM_BYTES
 	allocation_size => get_allocation_size()
 
-	virtual get_allocation_size() {
+	open get_allocation_size() {
 		if is_pack {
 			result = 0
 
@@ -788,12 +802,12 @@ Context Type {
 		configuration = RuntimeConfiguration(this)
 	}
 
-	virtual clone() {
+	open clone() {
 		abort('Type did not support cloning')
 		return none as Type
 	}
 
-	virtual get_accessor_type() {
+	open get_accessor_type() {
 		return none as Type
 	}
 
@@ -899,8 +913,8 @@ Context Type {
 
 	# Summary: Returns whether the type contains a function, which overloads the specified operator
 	is_operator_overloaded(operator: Operator) {
-		if not Operators.operator_overloads.contains_key(operator) return false
-		overload = Operators.operator_overloads[operator]
+		if not Operators.overloads.contains_key(operator) return false
+		overload = Operators.overloads[operator]
 		return is_local_function_declared(overload) or is_super_function_declared(overload)
 	}
 
@@ -1007,8 +1021,8 @@ Context Type {
 
 		# Deny the inheritance if supertypes already contain the inheritant or if any supertype would be duplicated
 		inheritor_supertypes = get_all_supertypes()
-		
-		# The inheritor can inherit the same type multiple times
+
+		# The inheritor may not inherit the same type multiple times
 		if inheritor_supertypes.contains(inheritant) return false
 
 		# Look for conflicts between the supertypes of the inheritor and the inheritant
@@ -1046,7 +1060,7 @@ Context Type {
 		mangle.add(this, 0, true)
 	}
 
-	virtual match(other: Type) {
+	open match(other: Type) {
 		if is_pack {
 			# The other type should also be a pack
 			if not other.is_pack return false
@@ -1126,16 +1140,13 @@ Variable {
 	is_protected => has_flag(modifiers, MODIFIER_PROTECTED)
 	is_private => has_flag(modifiers, MODIFIER_PRIVATE)
 	is_static => has_flag(modifiers, MODIFIER_STATIC)
-	
 	is_global => category == VARIABLE_CATEGORY_GLOBAL
 	is_local => category == VARIABLE_CATEGORY_LOCAL
 	is_parameter => category == VARIABLE_CATEGORY_PARAMETER
 	is_member => category == VARIABLE_CATEGORY_MEMBER
 	is_predictable => category == VARIABLE_CATEGORY_LOCAL or category == VARIABLE_CATEGORY_PARAMETER
-
 	is_hidden => name.index_of(`.`) != -1
 	is_generated => position === none
-
 	is_unresolved => type == none or type.is_unresolved
 	is_resolved => type != none and type.is_resolved
 
@@ -1162,18 +1173,6 @@ Variable {
 		mangle.add(Mangle.END_COMMAND)
 
 		return mangle.value
-	}
-
-	# Summary: Returns whether this variable is edited inside the specified node
-	is_edited_inside(node: Node) {
-		loop write in writes {
-			# If one of the parent nodes of the current write is the specified node, then this variable is edited inside the specified node
-			loop (iterator = write.parent, iterator != none, iterator = iterator.parent) {
-				if iterator == node return true
-			}
-		}
-
-		return false
 	}
 
 	# Summary: Returns the alignment compared to the specified parent type
@@ -1277,7 +1276,7 @@ FunctionList {
 		if candidates.size == 0 return none as Function
 		if candidates.size == 1 return candidates[]
 
-		minimum_candidate =  candidates[]
+		minimum_candidate = candidates[]
 		minimum_casts = get_cast_count(minimum_candidate, parameter_types)
 
 		loop (i = 1, i < candidates.size, i++) {
@@ -1427,6 +1426,7 @@ Context Function {
 		# Create a function implementation
 		implementation = FunctionImplementation(this, none as Type, parent)
 		implementation.set_parameters(implementation_parameters)
+		implementation.is_imported = is_imported
 		implementation.return_type = return_type # Force the return type, if user added it
 
 		# Add the created implementation to the list
@@ -1438,7 +1438,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	virtual implement(parameter_types: List<Type>) {
+	open implement(parameter_types: List<Type>) {
 		return implement_default(parameter_types)
 	}
 
@@ -1567,20 +1567,6 @@ Type TemplateType {
 		this.template_parameters = template_parameters
 	}
 
-	init(context: Context, name: String, modifiers: normal, argument_count: large) {
-		Type.init(context, name, modifiers | MODIFIER_TEMPLATE_TYPE)
-		
-		# Create an empty type with the specified name using tokens
-		blueprint = List<Token>()
-		blueprint.add(IdentifierToken(name))
-		blueprint.add(ParenthesisToken(`{`, none, none, List<Token>()))
-
-		# Generate the template arguments
-		loop (i = 0, i < argument_count, i++) {
-			template_arguments.add(String(`T`) + to_string(i))
-		}
-	}
-
 	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
 		loop (i = 0, i < tokens.size, i++) {
 			token = tokens[i]
@@ -1656,7 +1642,7 @@ Type TemplateType {
 		if arguments.size < template_parameters.size return none as Type
 		variant = try_get_variant(arguments)
 		if variant != none return variant
-		return create_variant(arguments) 
+		return create_variant(arguments)
 	}
 }
 
@@ -1806,8 +1792,8 @@ Function Lambda {
 		connect(context)
 
 		# Add import modifier if this lambda is inside an imported function
-		implementation = context.find_implementation_parent()
-		if implementation.metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
+		container = context.find_lambda_container_parent()
+		if container.is_implementation and container.(FunctionImplementation).metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
 	}
 
 	# Summary: Implements the lambda using the specified parameter types
@@ -1850,6 +1836,7 @@ Context FunctionImplementation {
 
 	virtual_function: VirtualFunction = none
 	is_imported: bool = false
+	is_self_returning: bool = false
 
 	is_constructor => metadata.is_constructor
 	is_destructor => metadata.is_destructor
@@ -1875,7 +1862,7 @@ Context FunctionImplementation {
 	}
 
 	init(metadata: Function, return_type: Type, parent: Context) {
-		Context.init(parent, IMPLEMENTATION_CONTEXT)
+		Context.init(parent, IMPLEMENTATION_CONTEXT | LAMBDA_CONTAINER_CONTEXT_MODIFIER)
 
 		this.metadata = metadata
 		this.return_type = return_type
@@ -1906,7 +1893,7 @@ Context FunctionImplementation {
 	}
 
 	# Summary: Implements the function using the given blueprint
-	virtual implement(blueprint: List<Token>) {
+	open implement(blueprint: List<Token>) {
 		if metadata.is_member and not metadata.is_static {
 			self = Variable(this, metadata.find_type_parent(), VARIABLE_CATEGORY_PARAMETER, String(SELF_POINTER_IDENTIFIER), MODIFIER_DEFAULT)
 			self.is_self_pointer = true
@@ -1954,7 +1941,7 @@ Context FunctionImplementation {
 		}
 	}
 
-	virtual get_header() {
+	open get_header() {
 		start: String = String.empty
 		if parent != none and parent.is_type { start = parent.string() + `.` }
 
@@ -2088,8 +2075,7 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override on_mangle(mangle: Mangle) {
-		function_parent = parent.find_implementation_parent()
-		function_parent.on_mangle(mangle)
+		parent.find_lambda_container_parent().on_mangle(mangle)
 
 		mangle.add(`_`)
 		mangle.add(name)
@@ -2107,8 +2093,7 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	override get_header() {
-		parent_implementation = parent.find_implementation_parent()
-		return parent_implementation.string() + ' Lambda #' + name
+		return parent.find_lambda_container_parent().string() + ' Lambda #' + name
 	}
 }
 
@@ -2177,7 +2162,7 @@ Type UnresolvedType {
 		this.is_resolved = false
 	}
 
-	virtual resolve(context: Context) {
+	open resolve(context: Context) {
 		environment = context
 
 		loop component in components {
@@ -2284,21 +2269,14 @@ UnresolvedType FunctionType {
 	}
 
 	override resolve(context: Context) {
-		resolved = List<Type>(parameters.size, false)
+		loop (i = 0, i < parameters.size, i++) {
+			parameter = parameters[i]
+			if parameter === none or parameter.is_resolved continue
 
-		loop parameter in parameters {
-			if parameter == none or parameter.is_resolved {
-				resolved.add(none as Type)
-				continue
-			}
+			parameter = resolver.resolve(context, parameter)
+			if parameter === none continue
 
-			resolved.add(resolver.resolve(context, parameter))
-		}
-
-		loop (i = 0, i < resolved.size, i++) {
-			iterator = resolved[i]
-			if iterator == none continue
-			parameters[i] = iterator
+			parameters[i] = parameter
 		}
 
 		update_state()
@@ -2346,6 +2324,7 @@ Function VirtualFunction {
 
 Number ArrayType {
 	element: Type
+	usage_type: Type
 	tokens: List<Token>
 	expression: Node
 	size => expression.(NumberNode).value
@@ -2354,6 +2333,7 @@ Number ArrayType {
 		Number.init(SYSTEM_FORMAT, 64, element.string() + '[]')
 		this.modifiers = MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_INLINE | MODIFIER_ARRAY_TYPE
 		this.element = element
+		this.usage_type = Link(element)
 		this.tokens = count.tokens
 		this.position = position
 		this.template_arguments = [ element ]

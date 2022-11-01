@@ -132,7 +132,7 @@ build_condition_instructions(unit: Unit, instructions: List<Instruction>) {
 		if not used instructions.remove(label)
 	}
 
-	# Append all the instructions to the unit
+	# Add all the instructions to the unit
 	loop instruction in instructions {
 		if instruction.match(INSTRUCTION_TEMPORARY_COMPARE) {
 			instruction.(TemporaryCompareInstruction).add()
@@ -170,7 +170,7 @@ TemporaryInstruction TemporaryCompareInstruction {
 			comparison.instance = instance
 		}
 
-		# Build the body
+		# Build the comparison
 		left = references.get(unit, first, ACCESS_READ)
 		right = references.get(unit, last, ACCESS_READ)
 
