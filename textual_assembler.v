@@ -79,11 +79,7 @@ assemble() {
 				# TODO: Import linux support
 			}
 
-			# Determine the object file extension
-			extension = '.o'
-			if settings.is_target_windows { extension = '.obj' }
-
-			object_filename = output_basename + `.` + file.filename_without_extension() + extension
+			object_filename = output_basename + `.` + file.filename_without_extension() + object_file_extension
 			io.write_file(object_filename, binary)
 		}
 	}

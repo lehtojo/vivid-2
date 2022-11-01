@@ -1,12 +1,9 @@
-OPERATING_SYSTEM_WINDOWS = 0
-OPERATING_SYSTEM_LINUX = 1
-
-OS = 0
-
 # All possible output binary types
 BINARY_TYPE_SHARED_LIBRARY = 0
 BINARY_TYPE_STATIC_LIBRARY = 1
 BINARY_TYPE_EXECUTABLE = 2
+BINARY_TYPE_OBJECTS = 3
+BINARY_TYPE_RAW = 4
 
 LIBRARY_PREFIX = 'lib'
 
@@ -30,20 +27,20 @@ DEFAULT_OUTPUT_NAME = 'v'
 
 # Summary: Returns the extension of a static library file
 static_library_extension() {
-	if OS == OPERATING_SYSTEM_WINDOWS {
-		return '.lib'
-	}
-
+	if settings.is_target_windows return '.lib'
 	return '.a'
 }
 
 # Summary: Returns the extension of a static library file
 shared_library_extension() {
-	if OS == OPERATING_SYSTEM_WINDOWS {
-		return '.dll'
-	}
-
+	if settings.is_target_windows return '.dll'
 	return '.so'
+}
+
+# Summary: Returns the extension of an object file
+object_file_extension() {
+	if settings.is_target_windows return '.obj'
+	return '.o'
 }
 
 # Summary: Returns whether the element starts with '-'
@@ -66,11 +63,12 @@ collect(files: List<String>, folder: String, recursive: bool) {
 # Summary: Initializes the configuration by registering the folders which can be searched through
 initialize_configuration() {
 	settings.included_folders = List<String>()
+	settings.included_folders.add(io.get_process_working_folder())
 	settings.included_folders.add(io.get_process_folder())
 
 	folders = none as List<String>
 
-	if OS == OPERATING_SYSTEM_WINDOWS {
+	if settings.is_target_windows {
 		path = io.get_environment_variable('PATH')
 		if path === none { path = String.empty }
 
@@ -82,7 +80,7 @@ initialize_configuration() {
 		}
 	}
 	else {
-		path = io.get_environment_variable('Path')
+		path = io.get_environment_variable('PATH')
 		if path === none { path = String.empty }
 
 		folders = path.split(`:`)
@@ -158,6 +156,8 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-arm64')
 		console.write_line('-version')
 		console.write_line('-s')
+		console.write_line('-objects')
+		console.write_line('-binary')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -255,6 +255,12 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 	}
 	else value == '-s' {
 		settings.service = true
+	}
+	else value == '-objects' {
+		settings.output_type = BINARY_TYPE_OBJECTS
+	}
+	else value == '-binary' {
+		settings.output_type = BINARY_TYPE_RAW
 	}
 	else {
 		return Status("Unknown option " + value)

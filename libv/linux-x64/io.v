@@ -28,7 +28,6 @@ export internal_init(root: link) {
 
 	io.internal.arguments = arguments
 	io.internal.environment_variables = environment_variables
-	io.internal.executable = arguments[]
 
 	# Call the actual init function here
 	return init()
@@ -37,7 +36,6 @@ export internal_init(root: link) {
 namespace io
 
 namespace internal {
-	executable: String
 	arguments: List<String>
 	environment_variables: List<String>
 
@@ -75,6 +73,9 @@ namespace internal {
 
 	# Summary: Deletes a name and possibly the file it refers to
 	import 'C' system_unlink(path: link): large
+
+	# Summary: Reads the value of the specified symbolic link
+	import 'C' system_read_link(path: link, buffer: link, size: large): large
 
 	plain SignalInformation {
 		signal_number: normal
@@ -437,17 +438,22 @@ export get_environment_variable(name: link) {
 
 # Summary: Returns the filename of the currently running process executable
 export get_process_filename() {
-	return internal.executable
+	path: char[1000]
+
+	length = internal.system_read_link('/proc/self/exe', path as link, 1000)
+	if length < 0 or length >= 1000 return none as String
+
+	return String(path as link, length)
 }
 
 # Summary: Returns the folder which contains the current process executable
 export get_process_folder() {
 	filename = get_process_filename()
-	if filename as link == none return none as String
+	if filename === none return none as String
 
 	# Find the index of the last separator
 	i = filename.last_index_of(`/`)
-	if i == -1 return none as String
+	if i < 0 return String(`/`)
 	
 	# Include the separator to the folder path
 	return filename.slice(0, i + 1)

@@ -324,24 +324,36 @@ create_section_headers(sections: List<BinarySection>, symbols: Map<String, Binar
 		}
 
 		section.offset = file_position
-		header.offset = file_position
+
+		if section.type === BINARY_SECTION_TYPE_NONE {
+			header.alignment = 0
+			header.offset = 0
+		}
+		else {
+			header.offset = file_position
+		}
 
 		file_position += section.virtual_size
 
 		headers.add(header)
 	}
 
+	# Align the file position
+	aligned_file_position = (file_position + 16 - 1) & !(16 - 1)
+
 	string_table_section_name = string_table.add(String(SECTION_HEADER_STRING_TABLE_SECTION))
+
 	string_table_section = BinarySection(String(SECTION_HEADER_STRING_TABLE_SECTION), BINARY_SECTION_TYPE_STRING_TABLE, string_table.build())
+	string_table_section.margin = aligned_file_position - file_position
+	string_table_section.offset = aligned_file_position
+
 	string_table_header = ElfSectionHeader()
-
-	string_table_section.offset = file_position
-
 	string_table_header.name = string_table_section_name
 	string_table_header.type = ELF_SECTION_TYPE_STRING_TABLE
 	string_table_header.flags = 0
-	string_table_header.offset = file_position
+	string_table_header.offset = aligned_file_position
 	string_table_header.section_file_size = string_table_section.data.size
+	string_table_header.alignment = 16
 
 	sections.add(string_table_section)
 	headers.add(string_table_header)
@@ -503,12 +515,27 @@ create_object_file(name: String, sections: List<BinarySection>, exports: Set<Str
 	return BinaryObjectFile(name, sections, exports)
 }
 
+# Summary: Aligns the specified sections
+align_sections(sections: List<BinarySection>, file_position: large) {
+	loop section in sections {
+		if section.type === BINARY_SECTION_TYPE_NONE continue
+
+		alignment = max(section.alignment, 16)
+		aligned_file_position = (file_position + alignment - 1) & !(alignment - 1)
+
+		section.margin = aligned_file_position - file_position
+		section.alignment = alignment
+
+		file_position = aligned_file_position + section.data.size
+	}
+}
+
 # Summary:
 # Creates an object file from the specified sections and converts it to binary format
 build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	if sections.size === 0 or sections[].type !== BINARY_SECTION_TYPE_NONE {
 		# Create an empty section, so that it is possible to leave section index unspecified in symbols for example
-		none_section = BinarySection(String.Empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
+		none_section = BinarySection(String.empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
 		sections.insert(0, none_section)
 	}
 
@@ -529,24 +556,29 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	header.file_header_size = capacityof(ElfFileHeader)
 	header.section_header_size = capacityof(ElfSectionHeader)
 
+	align_sections(sections, capacityof(ElfFileHeader))
 	section_headers = create_section_headers(sections, symbols)
 
 	# Now that section positions are set, compute offsets
 	binary_utility.compute_offsets(sections, symbols)
 
-	section_bytes = sections.sum(i -> i.data.size)
+	# Compute the location of the first section header
+	header.section_header_offset = capacityof(ElfFileHeader)
+
+	loop section in sections {
+		header.section_header_offset += section.margin + section.data.size
+	}
 
 	# Save the location of the section header table
-	header.section_header_offset = capacityof(ElfFileHeader) + section_bytes
 	header.section_header_table_entry_count = section_headers.size
 	header.section_header_size = capacityof(ElfSectionHeader)
 	header.section_name_entry_index = section_headers.size - 1
 
-	bytes = capacityof(ElfFileHeader) + section_bytes + section_headers.size * capacityof(ElfSectionHeader)
-	result = byte[bytes]
+	bytes = header.section_header_offset + section_headers.size * capacityof(ElfSectionHeader)
+	result = Array<byte>(bytes)
 
 	# Write the file header
-	binary_utility.write(result, 0, header)
+	binary_utility.write<ElfFileHeader>(result, 0, header)
 
 	# Write the actual program data
 	loop section in sections {
@@ -557,7 +589,7 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	position = header.section_header_offset
 
 	loop section_header in section_headers {
-		binary_utility.write(result, position, section_header)
+		binary_utility.write<ElfSectionHeader>(result, position, section_header)
 		position += capacityof(ElfSectionHeader)
 	}
 
@@ -735,20 +767,31 @@ import_object_file(path: String) {
 # Summary:
 # Creates the program headers, meaning the specified section will get their own virtual addresses and be loaded into memory when the created executable is loaded
 create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64) {
-	header = ElfProgramHeader()
-	header.type = ELF_SEGMENT_TYPE_LOADABLE
-	header.flags = ELF_SEGMENT_FLAG_READ
-	header.offset = 0
-	header.virtual_address = virtual_address
-	header.physical_address = virtual_address
-	header.segment_file_size = linker.SEGMENT_ALIGNMENT
-	header.segment_memory_size = linker.SEGMENT_ALIGNMENT
-	header.alignment = linker.SEGMENT_ALIGNMENT
+	return create_program_headers(sections, fragments, headers, virtual_address, true)
+}
 
-	headers.add(header)
+# Summary:
+# Creates the program headers, meaning the specified section will get their own virtual addresses and be loaded into memory when the created executable is loaded
+create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64, executable: bool) {
+	file_position = 0
 
-	file_position = linker.SEGMENT_ALIGNMENT
-	virtual_address += linker.SEGMENT_ALIGNMENT
+	# If we are building an executable, create a program header for the ELF-headers as well
+	if executable {
+		header = ElfProgramHeader()
+		header.type = ELF_SEGMENT_TYPE_LOADABLE
+		header.flags = ELF_SEGMENT_FLAG_READ
+		header.offset = 0
+		header.virtual_address = virtual_address
+		header.physical_address = virtual_address
+		header.segment_file_size = linker.SEGMENT_ALIGNMENT
+		header.segment_memory_size = linker.SEGMENT_ALIGNMENT
+		header.alignment = linker.SEGMENT_ALIGNMENT
+
+		headers.add(header)
+
+		file_position = linker.SEGMENT_ALIGNMENT
+		virtual_address += linker.SEGMENT_ALIGNMENT
+	}
 
 	loop section in sections {
 		# Apply the section margin before doing anything
@@ -1180,6 +1223,52 @@ link(objects: List<BinaryObjectFile>, entry: String, executable: bool) {
 	loop section_header in section_headers {
 		binary_utility.write<ElfSectionHeader>(result, position, section_header)
 		position += capacityof(ElfSectionHeader)
+	}
+
+	return result
+}
+
+# Summary: Packs the sections of the specified objects into a raw binary file
+build_binary_file(objects: List<BinaryObjectFile>) {
+	# Index all the specified object files
+	loop (i = 0, i < objects.size, i++) { objects[i].index = i }
+
+	# Make all hidden symbols unique by using their object file indices
+	linker.make_local_symbols_unique(objects)
+
+	# Resolves are unresolved symbols and returns all symbols as a list
+	symbols = linker.resolve_symbols(objects)
+
+	# Ensure sections are ordered so that sections of same type are next to each other
+	fragments = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections).filter(i -> linker.is_loadable_section(i))
+
+	# Load all the relocations from all the sections
+	relocations = objects.flatten<BinarySection>((i: BinaryObjectFile) -> i.sections).flatten<BinaryRelocation>((i: BinarySection) -> i.relocations)
+
+	# Ensure are relocations are resolved
+	loop relocation in relocations {
+		if not relocation.symbol.external continue
+		abort("Symbol " + relocation.symbol.name + " is not defined locally or externally")
+	}
+
+	# Create sections, which cover the fragmented sections
+	overlays = linker.create_loadable_sections(fragments)
+
+	# Compute virtual addresses for the sections
+	create_program_headers(overlays, fragments, List<ElfProgramHeader>(), 0x1000, false)
+
+	# Now that sections have their virtual addresses relocations can be computed
+	linker.compute_relocations(relocations, 0)
+
+	# Compute the number of bytes sections take up
+	bytes = 0
+	loop overlay in overlays { bytes += overlay.margin + overlay.virtual_size }
+
+	result = Array<byte>(bytes)
+
+	# Write the fragments
+	loop fragment in fragments {
+		binary_utility.write_bytes(fragment.data, result.data, fragment.offset, fragment.data.size)
 	}
 
 	return result

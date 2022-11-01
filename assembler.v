@@ -2319,7 +2319,7 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 	if settings.initialization_function != none { implementation = settings.initialization_function }
 
 	# Add the entry function call only into the file, which contains the actual entry function
-	if implementation.metadata.start.file != file return builder
+	if implementation.metadata.start.file !== file or output_type === BINARY_TYPE_OBJECTS return builder
 
 	header = none as String
 
@@ -2348,6 +2348,20 @@ run(executable: link, arguments: List<String>) {
 	pid = io.shell(command)
 	io.wait_for_exit(pid)
 	return Status()
+}
+
+# Summary: Builds an object file from the specified properties and writes it into a file
+output_object_file(output: String, sections: List<BinarySection>, exports: Set<String>) {
+	binary = none as Array<byte>
+
+	if settings.is_target_windows {
+		binary = pe_format.build(sections, exports)
+	}
+	else {
+		binary = elf_format.build_object_file(sections, exports)
+	}
+
+	io.write_file(output, binary)
 }
 
 assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
@@ -2436,6 +2450,11 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 
 		logger.verbose.write_line("- Packing the object file...")
 
+		if output_type == BINARY_TYPE_OBJECTS {
+			output_object_file(file.filename_without_extension + object_file_extension, sections, builder.exports)
+			continue
+		}
+
 		object_file = none as BinaryObjectFile
 
 		if settings.is_target_windows {
@@ -2446,6 +2465,15 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		}
 
 		object_files.add(file, object_file)
+	}
+
+	if output_type == BINARY_TYPE_RAW {
+		io.write_file(output_name, elf_format.build_binary_file(object_files.get_values()))
+		return assemblies
+	}
+
+	if output_type == BINARY_TYPE_OBJECTS {
+		return assemblies
 	}
 
 	if output_type == BINARY_TYPE_STATIC_LIBRARY {

@@ -225,9 +225,6 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 }
 
 get_object_filename(source: SourceFile, output_name: String) {
-	object_file_extension = '.o'
-	if settings.is_target_windows { object_file_extension = '.obj' }
-
 	return output_name + `.` + source.filename_without_extension() + object_file_extension
 }
 
