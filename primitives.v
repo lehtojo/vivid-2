@@ -46,9 +46,9 @@ Number Link {
 	override match(other: Type) {
 		if (other.modifiers & MODIFIER_LINK) == 0 return false
 
-		accessor_type = get_accessor_type()
-		other_accessor_type = other.(Link).get_accessor_type()
-		return accessor_type.match(other_accessor_type)
+		a = get_accessor_type()
+		b = other.(Link).get_accessor_type()
+		return a.name == b.name and a.identity == b.identity
 	}
 
 	override clone() {

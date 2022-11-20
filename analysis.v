@@ -142,6 +142,9 @@ evaluate_constant(variable: Variable, trace: Map<Variable, bool>) {
 		destination.replace(evaluation)
 	}
 
+	# Update the value, because it might have been replaced
+	value = common.get_source(write.last)
+
 	# Since all of the dependencies were evaluated successfully, we can try evaluating the value of the specified constant
 	evaluation = expression_optimizer.get_simplified_value(value)
 	if not evaluation.match(NODE_NUMBER | NODE_STRING) return none as Node
