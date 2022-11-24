@@ -388,6 +388,7 @@ namespace Keywords {
 	readable RETURN: Keyword
 	readable SHARED: Keyword
 	readable STOP: Keyword
+	readable USING: Keyword
 	readable VIRTUAL: Keyword
 	readable WHEN: Keyword
 
@@ -428,6 +429,7 @@ namespace Keywords {
 		RETURN = Keyword("return", KEYWORD_TYPE_FLOW)
 		SHARED = ModifierKeyword("shared", MODIFIER_STATIC)
 		STOP = Keyword("stop", KEYWORD_TYPE_FLOW)
+		USING = Keyword("using", KEYWORD_TYPE_NORMAL)
 		VIRTUAL = Keyword("open", KEYWORD_TYPE_NORMAL)
 		WHEN = Keyword("when", KEYWORD_TYPE_FLOW)
 
@@ -461,6 +463,7 @@ namespace Keywords {
 		add(RETURN)
 		add(SHARED)
 		add(STOP)
+		# Do not reserve using-keyword
 		add(VIRTUAL)
 		add(WHEN)
 	}

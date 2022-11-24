@@ -64,6 +64,32 @@ rewrite_discarded_increments(root: Node) {
 	}
 }
 
+# Summary:
+# Processes using-expressions by:
+# - Extracting the allocators
+# - Replacing the using-expressions with the allocated objects
+# - Saving the extracted allocators into the allocated objects
+# Example:
+# Foo() using Allocator
+# = Using { Construction { Foo() }, Allocator.allocate(sizeof(Foo)) }
+# => Construction { Allocator.allocate(sizeof(Foo)), Foo() }
+assign_allocators_constructions(root: Node) {
+	expressions = root.find_all(NODE_USING)
+
+	loop expression in expressions {
+		# Find the construction node
+		allocated = expression.first
+		if allocated.instance === NODE_LINK { allocated = allocated.last }
+
+		# Extract the allocator provided using the expression
+		allocator = expression.last
+
+		expression.replace(expression.first)
+
+		allocated.first.insert(allocator)
+	}
+}
+
 strip_links(root: Node) {
 	links = root.find_all(NODE_LINK)
 
@@ -575,24 +601,33 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	return container
 }
 
+get_allocator(construction: ConstructionNode, position: Position, size: large) {
+	if not construction.has_allocator {
+		arguments = Node()
+		arguments.add(NumberNode(SYSTEM_SIGNED, size, position))
+
+		return FunctionNode(settings.allocation_function, position).set_arguments(arguments)
+	}
+
+	allocator = construction.allocator
+	allocator.remove()
+
+	return allocator
+}
+
 # Summary: Constructs an object using heap memory
-create_heap_construction(type: Type, construction: Node, constructor: FunctionNode) {
+create_heap_construction(type: Type, construction: ConstructionNode, constructor: FunctionNode) {
 	container = create_inline_container(type, construction, true)
 	position = construction.start
 
 	size = max(1, type.content_size)
-	arguments = Node()
-	arguments.add(NumberNode(SYSTEM_SIGNED, size, position))
+	allocator = get_allocator(construction, construction.start, size)
 
 	# The following example creates an instance of a type called Object
 	# Example: instance = allocate(sizeof(Object)) as Object
 	container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
 		VariableNode(container.result, position),
-		CastNode(
-			FunctionNode(settings.allocation_function, position).set_arguments(arguments),
-			TypeNode(type, position),
-			position
-		)
+		CastNode(allocator, TypeNode(type, position), position)
 	))
 
 	supertypes = type.get_all_supertypes()
@@ -647,7 +682,7 @@ rewrite_constructions(root: Node) {
 	constructions = root.find_all(NODE_CONSTRUCTION)
 
 	loop construction in constructions {
-		container = create_heap_construction(construction.get_type(), construction, construction.(ConstructionNode).constructor)
+		container = create_heap_construction(construction.get_type(), construction as ConstructionNode, construction.(ConstructionNode).constructor)
 		container.destination.replace(container.node)
 	}
 }
@@ -1784,6 +1819,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	remove_redundant_parentheses(root)
 	remove_redundant_casts(root)
 	rewrite_discarded_increments(root)
+	assign_allocators_constructions(root)
 	extract_expressions(root)
 	rewrite_self_returning_functions(root)
 	add_assignment_casts(root)

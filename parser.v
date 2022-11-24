@@ -105,6 +105,7 @@ constant STANDARD_RANGE_TYPE = 'Range'
 constant STANDARD_LIST_TYPE = 'List'
 constant STANDARD_LIST_ADDER = 'add'
 constant STANDARD_STRING_TYPE = 'String'
+constant STANDARD_ALLOCATOR_FUNCTION = 'allocate'
 
 Pattern {
 	path: List<small> = List<small>()
@@ -200,6 +201,7 @@ initialize() {
 	add_pattern(HasPattern())
 	add_pattern(ExtensionFunctionPattern())
 	add_pattern(WhenPattern())
+	add_pattern(UsingPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position

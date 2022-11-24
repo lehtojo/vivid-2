@@ -2571,3 +2571,22 @@ Pattern PackConstructionPattern {
 		return PackConstructionNode(members, arguments, tokens[].position)
 	}
 }
+
+Pattern UsingPattern {
+	init() {
+		path.add(TOKEN_TYPE_ANY)
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		path.add(TOKEN_TYPE_ANY)
+		priority = 5
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		return tokens[1].(IdentifierToken).value == Keywords.USING.identifier
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		allocated = parser.parse(context, tokens[])
+		allocator = parser.parse(context, tokens[2])
+		return UsingNode(allocated, allocator, tokens[1].position)
+	}
+}

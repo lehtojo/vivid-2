@@ -48,6 +48,7 @@ NODE_PACK = 1 <| 46
 NODE_UNDEFINED = 1 <| 47
 NODE_OBJECT_LINK = 1 <| 48
 NODE_OBJECT_UNLINK = 1 <| 49
+NODE_USING = 1 <| 50
 
 Node NumberNode {
 	value: large
@@ -825,7 +826,10 @@ Node FunctionNode {
 }
 
 Node ConstructionNode {
-	constructor => first as FunctionNode
+	allocator => first
+	constructor => last as FunctionNode
+	has_allocator => first !== last
+
 	is_stack_allocated: bool = false
 
 	init(constructor: FunctionNode, position: Position) {
@@ -2484,5 +2488,97 @@ Node UndefinedNode {
 
 	override string() {
 		return "Undefined"
+	}
+}
+
+Node UsingNode {
+	is_allocator_function_added: bool = false
+
+	init(allocated: Node, allocator: Node, position: Position) {
+		this.instance = NODE_USING
+		this.start = position
+		this.is_resolvable = true
+		add(allocated)
+		add(allocator)
+	}
+
+	init(position: Position) {
+		this.instance = NODE_USING
+		this.start = position
+	}
+
+	override try_get_type() {
+		return first.try_get_type()
+	}
+
+	add_allocator_function() {
+		if is_allocator_function_added return
+
+		if not (first.instance === NODE_CONSTRUCTION) and
+			not (first.instance === NODE_LINK and first.last.instance === NODE_CONSTRUCTION)  {
+			return
+		}
+
+		allocated_type = first.try_get_type()
+		if allocated_type === none return
+
+		allocator_type = last.try_get_type()
+		if allocator_type === none return
+
+		allocator_function_name = String(parser.STANDARD_ALLOCATOR_FUNCTION)
+
+		if not allocator_type.is_function_declared(allocator_function_name) and
+			not allocator_type.is_virtual_function_declared(allocator_function_name) {
+			return
+		}
+
+		allocator_object = last
+		allocator_object.remove()
+
+		size = max(1, allocated_type.content_size)
+		arguments = Node()
+		arguments.add(NumberNode(SYSTEM_SIGNED, size, start))
+
+		allocator_call = UnresolvedFunction(allocator_function_name, start)
+		allocator_call.set_arguments(arguments)
+
+		add(LinkNode(allocator_object, allocator_call, start))
+		is_allocator_function_added = true
+	}
+
+	override resolve(context: Context) {
+		resolver.resolve(context, first)
+		resolver.resolve(context, last)
+
+		add_allocator_function()
+
+		return none as Node
+	}
+
+	override get_status() {
+		# 1. Verify the allocated object is a construction
+		if not (first.instance === NODE_CONSTRUCTION) and
+			not (first.instance === NODE_LINK and first.last.instance === NODE_CONSTRUCTION)  {
+			return Status(start, 'Left side must be a construction') 
+		}
+
+		# 2. Verify the allocator has an allocation function
+		allocator_type = last.try_get_type()
+		if allocator_type === none return Status(start, 'Can not resolve the type of the allocator')
+
+		if not allocator_type.is_function_declared(String(parser.STANDARD_ALLOCATOR_FUNCTION)) and
+			not allocator_type.is_virtual_function_declared(String(parser.STANDARD_ALLOCATOR_FUNCTION)) {
+			return Status(start, 'Allocator does not have allocation function: allocate(size: i64): link')
+		}
+
+		return none as Status
+	}
+
+	override copy() {
+		return UsingNode(start)
+	}
+
+	override string() {
+		return "Using"
 	}
 }
