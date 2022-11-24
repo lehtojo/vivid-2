@@ -2492,7 +2492,7 @@ Node UndefinedNode {
 }
 
 Node UsingNode {
-	is_allocator_function_added: bool = false
+	is_allocator_resolved: bool = false
 
 	init(allocated: Node, allocator: Node, position: Position) {
 		this.instance = NODE_USING
@@ -2512,7 +2512,7 @@ Node UsingNode {
 	}
 
 	add_allocator_function() {
-		if is_allocator_function_added return
+		if is_allocator_resolved return
 
 		if not (first.instance === NODE_CONSTRUCTION) and
 			not (first.instance === NODE_LINK and first.last.instance === NODE_CONSTRUCTION)  {
@@ -2520,10 +2520,16 @@ Node UsingNode {
 		}
 
 		allocated_type = first.try_get_type()
-		if allocated_type === none return
+		if allocated_type === none or allocated_type.is_unresolved return
 
 		allocator_type = last.try_get_type()
-		if allocator_type === none return
+		if allocator_type === none or allocator_type.is_unresolved return
+
+		# If the allocator is an integer or a link, treat it as an address where the object should be allocated
+		if (allocator_type.is_number and allocator_type.format !== FORMAT_DECIMAL) or allocator_type.is_link {
+			is_allocator_resolved = true
+			return
+		}
 
 		allocator_function_name = String(parser.STANDARD_ALLOCATOR_FUNCTION)
 
@@ -2543,7 +2549,7 @@ Node UsingNode {
 		allocator_call.set_arguments(arguments)
 
 		add(LinkNode(allocator_object, allocator_call, start))
-		is_allocator_function_added = true
+		is_allocator_resolved = true
 	}
 
 	override resolve(context: Context) {
@@ -2564,7 +2570,10 @@ Node UsingNode {
 
 		# 2. Verify the allocator has an allocation function
 		allocator_type = last.try_get_type()
-		if allocator_type === none return Status(start, 'Can not resolve the type of the allocator')
+		if allocator_type === none or allocator_type.is_unresolved return Status(start, 'Can not resolve the type of the allocator')
+
+		# If the allocator is an integer or a link, treat it as an address where the object should be allocated
+		if (allocator_type.is_number and allocator_type.format !== FORMAT_DECIMAL) or allocator_type.is_link return none as Status
 
 		if not allocator_type.is_function_declared(String(parser.STANDARD_ALLOCATOR_FUNCTION)) and
 			not allocator_type.is_virtual_function_declared(String(parser.STANDARD_ALLOCATOR_FUNCTION)) {
