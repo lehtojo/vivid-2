@@ -1,5 +1,5 @@
 # Arguments passed to the compilers
-$Arguments = './', './entries/vivid.v', './optimizer/', './tests/assert.v', './libv/', './libv/windows-x64/', './libv/allocator/allocator.v', './min.math.obj', './min.memory.obj', './min.tests.obj', '-a', '-l', 'kernel32.dll'
+$Arguments = './', './entries/vivid.v', './optimizer/', './tests/assert.v', './libv/', './libv/windows-x64/', './libv/allocator/allocator.v', './min.math.obj', './min.memory.obj', './min.tests.obj', '-l', 'kernel32.dll'
 # Should the script remove the build files?
 $Clean = $true
 
