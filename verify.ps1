@@ -50,6 +50,21 @@ function Clean()
 # Remove build files from previous runs
 Clean
 
+if ( !(Test-Path "v0.exe" -PathType Leaf) )
+{
+	Write-ColorOutput blue "Building the zeroth stage..."
+
+	Vivid $Arguments -o v0 -d
+
+	if ( ($LASTEXITCODE -ne 0) -or !(Test-Path "v0.exe" -PathType Leaf) )
+	{
+		Write-ColorOutput red "Failed to build the zeroth stage"
+		Exit 1
+	}
+
+	Write-ColorOutput green "Successfully built the zeroth stage"
+}
+
 Write-ColorOutput blue "Building the first stage..."
 ./v0.exe $Arguments -o v1
 
