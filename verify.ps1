@@ -34,17 +34,8 @@ function Clean()
 {
 	if (!$Clean) { return }
 
-	# Delete all files starting with "v1." and "v2."
-	$Files = Get-ChildItem -Path "." -Filter "v1.*" -ErrorAction SilentlyContinue
-	$Files += Get-ChildItem -Path "." -Filter "v2.*" -ErrorAction SilentlyContinue
-
-	if ($Files)
-	{
-		foreach ($File in $Files)
-		{
-			Remove-Item $File -Force -ErrorAction SilentlyContinue
-		}
-	}
+	Remove-Item * -Include v1.* -Force -ErrorAction SilentlyContinue
+	Remove-Item * -Include v2.* -Force -ErrorAction SilentlyContinue
 }
 
 # Remove build files from previous runs
