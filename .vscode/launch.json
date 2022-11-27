@@ -5,16 +5,16 @@
 			"type": "by-gdb",
 			"request": "launch",
 			"name": "Vivid Debug",
-			"program": "${workspaceRoot}/build/vc.exe",
+			"program": "${workspaceRoot}/v0.exe",
 			"cwd": "${workspaceRoot}",
-			//"programArgs": "${workspaceFolder}/box/main.v minimum.math.obj minimum.memory.obj minimum.tests.obj -a -l kernel32.dll -o box -verbose"
+			//"programArgs": "${workspaceFolder}/box/main.v min.math.obj min.memory.obj min.tests.obj -a -l kernel32.dll -o box -verbose"
 
 			// Build the standard library (Windows)
-			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 minimum.math.obj minimum.memory.obj minimum.tests.obj -static -o v"
+			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 min.math.obj min.memory.obj min.tests.obj -static -o v"
 
 			// Build the compiler itself
 			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v -a -o vc -l kernel32 -l v"
-			"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ ${workspaceFolder}/tests/assert.v ${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/minimum.math.obj ${workspaceFolder}/minimum.memory.obj ${workspaceFolder}/minimum.tests.obj -a -o v1 -l kernel32.dll -verbose -O2"
+			"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ ${workspaceFolder}/tests/assert.v ${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/min.math.obj ${workspaceFolder}/min.memory.obj ${workspaceFolder}/min.tests.obj -a -o v1 -l kernel32.dll -verbose -O2"
 		},
 	]
 }

@@ -1,7 +1,2 @@
 build/
-run/
 box/
-libv_x64.obj
-*.asm
-*.o
-*.obj

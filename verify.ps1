@@ -1,5 +1,5 @@
 # Arguments passed to the compilers
-$Arguments = './', './entries/vivid.v', './optimizer/', './tests/assert.v', './libv/', './libv/windows-x64/', './libv/allocator/allocator.v', './minimum.math.obj', './minimum.memory.obj', './minimum.tests.obj', '-a', '-l', 'kernel32.dll'
+$Arguments = './', './entries/vivid.v', './optimizer/', './tests/assert.v', './libv/', './libv/windows-x64/', './libv/allocator/allocator.v', './min.math.obj', './min.memory.obj', './min.tests.obj', '-a', '-l', 'kernel32.dll'
 # Should the script remove the build files?
 $Clean = $true
 
@@ -51,7 +51,7 @@ function Clean()
 Clean
 
 Write-ColorOutput blue "Building the first stage..."
-./build/vc.exe $Arguments -o v1
+./v0.exe $Arguments -o v1
 
 # Verify the compiler exited successfully and the output file was created
 if ( ($LASTEXITCODE -ne 0) -or !(Test-Path "v1.exe" -PathType Leaf) )

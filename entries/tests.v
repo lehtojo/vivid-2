@@ -193,9 +193,9 @@ get_standard_library_utility() {
 	files.add(project_file('libv', 'string-builder.v'))
 	files.add(project_file('libv', 'string-utility.v'))
 	files.add(project_file('libv', 'string.v'))
-	files.add(relative_file('minimum.math.obj'))
-	files.add(relative_file('minimum.memory.obj'))
-	files.add(relative_file('minimum.tests.obj'))
+	files.add(relative_file('min.math.obj'))
+	files.add(relative_file('min.memory.obj'))
+	files.add(relative_file('min.tests.obj'))
 	return files
 }
 
