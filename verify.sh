@@ -60,3 +60,6 @@ if [[ "$first_stage_hash" != "$second_stage_hash" ]]; then
 fi
 
 echo "Verification succeeded"
+
+rm v1
+rm v2
