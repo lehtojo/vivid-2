@@ -1439,9 +1439,14 @@ Instruction GetObjectPointerInstruction {
 				# 1. Ensure we are in build mode, so we can use registers
 				# 2. Ensure the pack member is used, so we do not move it to a register unnecessarily
 				if unit.mode == UNIT_MODE_BUILD and not value.is_deactivating {
-					# Since we are in build mode and the member is required, we need to output a register value
-					value.value = MemoryHandle(unit, start, offset + position)
-					memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+					if member.is_inlined() {
+						value.value = ExpressionHandle.create_memory_address(start, offset + position)
+					}
+					else {
+						# Since we are in build mode and the member is required, we need to output a register value
+						value.value = MemoryHandle(unit, start, offset + position)
+						memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+					}
 				}
 				else {
 					value.value = Handle()
@@ -1551,9 +1556,14 @@ Instruction GetMemoryAddressInstruction {
 				# 1. Ensure we are in build mode, so we can use registers
 				# 2. Ensure the pack member is used, so we do not move it to a register unnecessarily
 				if unit.mode == UNIT_MODE_BUILD and not value.is_deactivating {
-					# Since we are in build mode and the member is required, we need to output a register value
-					value.value = ComplexMemoryHandle(start, offset, stride, position)
-					memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+					if member.is_inlined() {
+						value.value = ExpressionHandle(offset, stride, start, position)
+					}
+					else {
+						# Since we are in build mode and the member is required, we need to output a register value
+						value.value = ComplexMemoryHandle(start, offset, stride, position)
+						memory.move_to_register(unit, value, to_bytes(value.format), value.format == FORMAT_DECIMAL, trace.for(unit, value))
+					}
 				}
 				else {
 					value.value = Handle()
