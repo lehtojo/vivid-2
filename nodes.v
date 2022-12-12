@@ -177,9 +177,6 @@ Node OperatorNode {
 	private is_address_modification(left_type: Type, right_type: Type) {
 		if left_type === none or right_type === none return false
 
-		# Allow plus, minus, and multiply operations on memory addresses
-		if operator !== Operators.ADD and operator !== Operators.SUBTRACT and operator !== Operators.MULTIPLY return false
-
 		# The right operand must be an integer type
 		if not right_type.is_number or right_type.format === FORMAT_DECIMAL return false
 
@@ -714,7 +711,21 @@ Node TypeDefinitionNode {
 		blueprint.clear()
 
 		# Add all member initializations
-		type.initialization = find_top(i -> i.match(Operators.ASSIGN))
+		assignments = find_top(i -> i.match(Operators.ASSIGN))
+
+		# Remove all constant and static variable assignments
+		loop (i = assignments.size - 1, i >= 0, i--) {
+			assignment = assignments[i]
+			destination = assignment.first
+			if destination.instance != NODE_VARIABLE continue
+
+			variable = destination.(VariableNode).variable
+			if not variable.is_static and not variable.is_constant continue
+
+			assignments.remove_at(i)
+		}
+
+		type.initialization = assignments
 
 		# Add member initialization to the constructors that have been created before loading the member initializations
 		loop constructor in type.constructors.overloads {
