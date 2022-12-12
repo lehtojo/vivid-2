@@ -156,6 +156,8 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-s')
 		console.write_line('-objects')
 		console.write_line('-binary')
+		console.write_line('-base <address>')
+		console.write_line('-system')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -259,6 +261,30 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 	}
 	else value == '-binary' {
 		settings.output_type = BINARY_TYPE_RAW
+	}
+	else value == '-base' {
+		argument = parameters.pop_or(none as String)
+		if argument === none return Status('Expected a value for the base address')
+
+		if argument.starts_with('0x') {
+			# Parse the base address as a hexadecimal
+			if hexadecimal_to_integer(argument, 2) has not base_address {
+				return Status('Invalid base address')
+			}
+
+			settings.base_address = base_address
+		}
+		else {
+			# Parse the base address as a normal integer
+			if as_integer(argument) has not base_address {
+				return Status('Invalid base address')
+			}
+
+			settings.base_address = base_address
+		}
+	}
+	else value == '-system' {
+		settings.is_system_mode_enabled = true
 	}
 	else {
 		return Status("Unknown option " + value)

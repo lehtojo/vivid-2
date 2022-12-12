@@ -1255,10 +1255,10 @@ skip_character_value(text: String, start: Position) {
 }
 
 # Summary: Converts the specified hexadecimal string into an integer value
-hexadecimal_to_integer(text: String) {
+hexadecimal_to_integer(text: String, offset: large) {
 	result = 0
 
-	loop (i = 0, i < text.length, i++) {
+	loop (i = offset, i < text.length, i++) {
 		digit = text[i]
 		value = 0
 
@@ -1271,6 +1271,11 @@ hexadecimal_to_integer(text: String) {
 	}
 
 	return Optional<large>(result)
+}
+
+# Summary: Converts the specified hexadecimal string into an integer value
+hexadecimal_to_integer(text: String) {
+	return hexadecimal_to_integer(text, 0)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
