@@ -110,12 +110,13 @@ is_assignable(assignment: Node) {
 	# - Assignment operators
 	# - Non-predictable variables (members and static variables)
 	# - Non-free casts
+	# - Stack allocations (prevents indirect usage of allocated objects, this is crucial for functions that remove unused allocations)
 	unallowed = assignment.find((node) -> {
 		if node.instance == NODE_VARIABLE return not node.(VariableNode).variable.is_predictable
 		if node.instance == NODE_OPERATOR return node.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT
 		if node.instance == NODE_CAST return not node.(CastNode).is_free()
 
-		allowed = NODE_DATA_POINTER | NODE_NEGATE | NODE_NOT | NODE_NUMBER | NODE_PARENTHESIS | NODE_STACK_ADDRESS | NODE_STRING | NODE_TYPE
+		allowed = NODE_DATA_POINTER | NODE_NEGATE | NODE_NOT | NODE_NUMBER | NODE_PARENTHESIS | NODE_STRING | NODE_TYPE
 		return not node.match(allowed)
 	})
 
@@ -332,7 +333,13 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 	loop write in descriptor.writes {
 		value = common.get_source(write.value)
 
+		# NOTE:
+		# It is assumed that stack allocation nodes can not be duplicated and
+		# thus the stack allocation can only be accessed using the variable that owns it.
+		# This means that if the specified variable is only used for writing, 
+		# it must be unused, because the stack memory is represents can not be accessed any other way.
 		if value.instance == NODE_STACK_ADDRESS continue
+
 		if value.instance == NODE_FUNCTION and value.(FunctionNode).function === settings.allocation_function continue
 
 		return false
