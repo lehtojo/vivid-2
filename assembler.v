@@ -500,7 +500,7 @@ Scope {
 			decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 			standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 
-			if (unit.function.is_member and not unit.function.is_static) or unit.function.is_lambda_implementation {
+			if unit.self !== none {
 				receive_parameter(standard_parameter_registers, decimal_parameter_registers, unit.self)
 			}
 
@@ -1167,6 +1167,21 @@ get_all_stack_allocation_handles(handles: List<Handle>) {
 	return stack_allocation_handles
 }
 
+# Summary: Computes the amount of required stack memory from the specified stack allocation handles
+compute_allocated_memory_by_handles<T>(handles: List<T>): large {
+	result = 0
+	allocated = Map<String, bool>()
+
+	loop handle in handles {
+		if allocated.contains_key(handle.identity) continue
+		allocated[handle.identity] = true
+
+		result += handle.bytes
+	}
+
+	return result
+}
+
 # Summary: Collects all constant data section handles from the specified handle list
 get_all_constant_data_section_handles(handles: List<Handle>) {
 	constant_data_section_handles = List<ConstantDataSectionHandle>()
@@ -1501,10 +1516,8 @@ get_text_section(implementation: FunctionImplementation) {
 	# Parameters are active from the start of the function, so they must be required now otherwise they would become active at their first usage
 	parameters = List<Variable>(unit.function.parameters)
 
-	if (unit.function.metadata.is_member and not unit.function.is_static) or implementation.is_lambda_implementation {
-		self = unit.self
-		if self == none abort('Missing self pointer in a member function')
-		parameters.add(self)
+	if unit.self !== none {
+		parameters.add(unit.self)
 	}
 
 	# Include pack proxies as well
@@ -1577,8 +1590,8 @@ get_text_section(implementation: FunctionImplementation) {
 		required_local_memory += local_variable.type.allocation_size
 	}
 
-	loop temporary_handle in temporary_handles { required_local_memory += temporary_handle.size }
-	loop stack_allocation_handle in stack_allocation_handles { required_local_memory += stack_allocation_handle.bytes }
+	required_local_memory += compute_allocated_memory_by_handles<TemporaryMemoryHandle>(temporary_handles)
+	required_local_memory += compute_allocated_memory_by_handles<StackAllocationHandle>(stack_allocation_handles)
 
 	# Append a return instruction at the end if there is no return instruction present
 	if instructions.size == 0 or instructions[instructions.size - 1].type != INSTRUCTION_RETURN {

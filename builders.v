@@ -343,6 +343,13 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 build_call(unit: Unit, node: CallNode) {
 	unit.add_debug_position(node)
 
+	# If the self argument is "empty", do not pass it
+	if node.self.instance == NODE_NORMAL {
+		function_pointer = references.get(unit, node.pointer, ACCESS_READ) as Result
+
+		return calls.build(unit, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
+	}
+
 	self = references.get(unit, node.self, ACCESS_READ) as Result
 	if node.descriptor.self != none { self = casts.cast(unit, self, node.self.get_type(), node.descriptor.self) }
 

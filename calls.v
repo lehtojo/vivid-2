@@ -206,6 +206,15 @@ build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: 
 	return call.add()
 }
 
+build(unit: Unit, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>) {
+	call = CallInstruction(unit, function, return_type)
+
+	# Pass the parameters to the function and then execute it
+	pass_arguments(unit, call, none as Result, none as Type, false, collect_parameters(parameters), parameter_types, settings.is_target_windows)
+
+	return call.add()
+}
+
 build(unit: Unit, node: FunctionNode) {
 	unit.add_debug_position(node)
 
@@ -314,10 +323,8 @@ move_parameters_to_stack(unit: Unit) {
 	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 	stack_position = StackMemoryHandle(unit, stack_offset, true)
 
-	if (unit.function.is_member and not unit.function.is_static) or unit.function.is_lambda_implementation {
-		self = unit.self
-		if self == none abort('Missing self pointer')
-		move_parameters_to_stack(unit, self, standard_parameter_registers, decimal_parameter_registers, stack_position)
+	if unit.self !== none {
+		move_parameters_to_stack(unit, unit.self, standard_parameter_registers, decimal_parameter_registers, stack_position)
 	}
 
 	loop parameter in unit.function.parameters {

@@ -18,6 +18,7 @@ is_verbose_output_enabled: bool
 is_target_windows: bool
 use_indirect_access_tables: bool
 is_assembly_output_enabled: bool
+is_system_mode_enabled: bool
 parse: Parse
 object_files: Map<SourceFile, BinaryObjectFile> # Stores all imported objects (compiler and user)
 user_imported_object_files: List<String> # Stores the object files added by the user
@@ -31,6 +32,7 @@ rebuild: bool # Whether to rebuild all the specified source files
 service: bool # Whether to start a compiler service for code completion
 filenames: List<String> # Stores the user-defined source files to load
 textual_assembly: bool # Stores whether textual assembly mode is enabled
+base_address: u64 # Stores the base address used in binary mode
 
 allocation_function: FunctionImplementation
 deallocation_function: FunctionImplementation
@@ -54,6 +56,7 @@ initialize() {
 	is_target_windows = false
 	use_indirect_access_tables = false
 	is_assembly_output_enabled = false
+	is_system_mode_enabled = false
 	parse = none as Parse
 	object_files = Map<SourceFile, BinaryObjectFile>()
 	user_imported_object_files = List<String>()
@@ -67,5 +70,6 @@ initialize() {
 	service = false
 	filenames = List<String>()
 	textual_assembly = false
+	base_address = 0x1000
 	included_folders = List<String>()
 }

@@ -4,9 +4,6 @@
 		{
 			"label": "Build",
 			"type": "shell",
-			"options": {
-				"cwd": "${workspaceFolder}/build/"
-			},
 			"command": "Vivid",
 			// "args": [
 			// 	"${workspaceFolder}",
@@ -14,7 +11,7 @@
 			// 	"-a",
 			// 	"-f",
 			// 	"-o",
-			// 	"vc",
+			// 	"v0",
 			// 	"-l",
 			// 	"kernel32",
 			// 	"-l",
@@ -35,7 +32,7 @@
 				"${workspaceFolder}/min.tests.obj",
 				"-a",
 				"-o",
-				"vc",
+				"v0",
 				"-l",
 				"kernel32.dll",
 				"-d",
@@ -49,9 +46,6 @@
 		{
 			"label": "Build (Linux)",
 			"type": "shell",
-			"options": {
-				"cwd": "${workspaceFolder}/build/"
-			},
 			"command": "Vivid",
 			// "args": [
 			// 	"${workspaceFolder}",
@@ -59,7 +53,7 @@
 			// 	"-a",
 			// 	"-f",
 			// 	"-o",
-			// 	"vc",
+			// 	"v0",
 			// 	"-l",
 			// 	"kernel32",
 			// 	"-l",
@@ -79,9 +73,8 @@
 				"${workspaceFolder}/min.memory.o",
 				"${workspaceFolder}/min.system.o",
 				"${workspaceFolder}/min.tests.o",
-				"-a",
 				"-o",
-				"vc",
+				"v0",
 				"-d",
 				"-verbose"
 			],
@@ -93,9 +86,6 @@
 		{
 			"label": "Tests",
 			"type": "shell",
-			"options": {
-				"cwd": "${workspaceFolder}/build/"
-			},
 			"command": "Vivid",
 			// "args": [
 			// 	"${workspaceFolder}",
@@ -104,7 +94,7 @@
 			// 	"-a",
 			// 	"-f",
 			// 	"-o",
-			// 	"vc",
+			// 	"v0",
 			// 	"-l",
 			// 	"kernel32",
 			// 	"-l",
@@ -126,7 +116,7 @@
 				"-a",
 				"-f",
 				"-o",
-				"vc",
+				"v0",
 				"-l",
 				"kernel32.dll",
 				"-d",

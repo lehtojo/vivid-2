@@ -350,6 +350,7 @@ StackMemoryHandle StackVariableHandle {
 
 StackMemoryHandle TemporaryMemoryHandle {
 	identity: String
+	bytes => size
 
 	init(unit: Unit) {
 		StackMemoryHandle.init(unit, 0, true)

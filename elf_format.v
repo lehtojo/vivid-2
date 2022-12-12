@@ -1508,7 +1508,7 @@ build_binary_file(objects: List<BinaryObjectFile>) {
 	overlays = linker.create_loadable_sections(fragments)
 
 	# Compute virtual addresses for the sections
-	create_program_headers(overlays, fragments, List<ElfProgramHeader>(), 0x1000, false)
+	create_program_headers(overlays, fragments, List<ElfProgramHeader>(), settings.base_address, false)
 
 	# Now that sections have their virtual addresses relocations can be computed
 	linker.compute_relocations(relocations, 0)

@@ -2002,6 +2002,9 @@ FunctionImplementation LambdaImplementation {
 	}
 
 	seal() {
+		# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+		if settings.is_system_mode_enabled return
+
 		# 1. If the type is not created, it means that this lambda is not used, therefore this lambda can be skipped
 		# 2. If the function is already created, this lambda is sealed
 		if internal_type == none or function != none return
@@ -2044,6 +2047,9 @@ FunctionImplementation LambdaImplementation {
 
 		# The variable can be captured only if it is a local variable or a parameter and it is resolved
 		if variable.is_predictable and variable.is_resolved and not variable.is_constant {
+			# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+			if settings.is_system_mode_enabled return none as Variable
+
 			captured = CapturedVariable(this, variable)
 			captures.add(captured)
 			return captured
@@ -2058,12 +2064,18 @@ FunctionImplementation LambdaImplementation {
 		root = parent
 		loop (root.parent != none) { root = root.parent }
 
-		internal_type = Type(root, identity.replace(`.`, `_`), MODIFIER_DEFAULT, metadata.start)
-		internal_type.add_runtime_configuration()
+		# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+		if settings.is_system_mode_enabled {
+			internal_type = Link.get_variant(primitives.create_number(primitives.U64, FORMAT_UINT64))
+		}
+		else {
+			internal_type = Type(root, identity.replace(`.`, `_`), MODIFIER_DEFAULT, metadata.start)
+			internal_type.add_runtime_configuration()
 
-		# Add the default constructor and destructor
-		internal_type.add_constructor(Constructor.empty(internal_type, metadata.start, metadata.end))
-		internal_type.add_destructor(Destructor.empty(internal_type, metadata.start, metadata.end))
+			# Add the default constructor and destructor
+			internal_type.add_constructor(Constructor.empty(internal_type, metadata.start, metadata.end))
+			internal_type.add_destructor(Destructor.empty(internal_type, metadata.start, metadata.end))
+		}
 
 		node = ScopeNode(this, metadata.start, metadata.end, false)
 		parser.parse(node, this, blueprint, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)

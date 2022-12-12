@@ -601,8 +601,13 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	return container
 }
 
-get_allocator(construction: ConstructionNode, position: Position, size: large) {
+get_allocator(type: Type, construction: ConstructionNode, position: Position, size: large) {
 	if not construction.has_allocator {
+		# If system mode is enabled, constructions without allocators use the stack
+		if settings.is_system_mode_enabled {
+			return StackAddressNode(construction.get_parent_context(), type, position)
+		}
+
 		arguments = Node()
 		arguments.add(NumberNode(SYSTEM_SIGNED, size, position))
 
@@ -621,7 +626,7 @@ create_heap_construction(type: Type, construction: ConstructionNode, constructor
 	position = construction.start
 
 	size = max(1, type.content_size)
-	allocator = get_allocator(construction, construction.start, size)
+	allocator = get_allocator(type, construction, construction.start, size)
 
 	# The following example creates an instance of a type called Object
 	# Example: instance = allocate(sizeof(Object)) as Object
@@ -1314,6 +1319,20 @@ rewrite_lambda_constructions(root: Node) {
 		type = implementation.internal_type
 
 		container = create_inline_container(type, construction, true)
+
+		# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+		if settings.is_system_mode_enabled {
+			function_pointer_assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+				VariableNode(container.result),
+				FunctionDataPointerNode(implementation, 0, position)
+			)
+
+			container.node.add(function_pointer_assignment)
+			container.node.add(VariableNode(container.result))
+			container.destination.replace(container.node)
+			continue
+		}
+
 		allocator = none as Node
 
 		if is_stack_construction_preferred(root, construction) {

@@ -610,13 +610,19 @@ try_get_lambda_call(primary: Context, left: Node, name: String, arguments: Node,
 	
 	position = left.start
 	self = LinkNode(left, VariableNode(variable), position)
-	
+
+	# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+	if settings.is_system_mode_enabled {
+		return CallNode(Node(), self, arguments, properties, position)
+	}
+
 	# Determine where the function pointer is located
 	offset = 1
 	if settings.is_garbage_collector_enabled { offset = 2 }
 
 	# Load the function pointer using the offset
 	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
+
 	return CallNode(self, function_pointer, arguments, properties, position)
 }
 
@@ -644,11 +650,18 @@ try_get_lambda_call(environment: Context, name: String, arguments: Node, argumen
 		self = VariableNode(variable)
 	}
 
+	# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
+	if settings.is_system_mode_enabled {
+		return CallNode(Node(), self, arguments, properties, position)
+	}
+
 	# Determine where the function pointer is located
 	offset = 1
 	if settings.is_garbage_collector_enabled { offset = 2 }
 
+	# Load the function pointer using the offset
 	function_pointer = AccessorNode(self.clone(), NumberNode(SYSTEM_FORMAT, offset, position), position)
+
 	return CallNode(self, function_pointer, arguments, properties, position)
 }
 
@@ -742,11 +755,13 @@ get_all_function_implementations(context: Context, include_imported: bool) {
 try_get_access_type(node: Node) {
 	parent = none as Node
 
-	loop (iterator = node.parent, iterator != none, iterator = iterator.parent) {
+	loop (iterator = node.parent, iterator !== none, iterator = iterator.parent) {
 		if iterator.instance == NODE_CAST continue
 		parent = iterator
 		stop
 	}
+
+	if parent === none return ACCESS_TYPE_READ
 
 	if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT {
 		if parent.first == node or node.is_under(parent.first) return ACCESS_TYPE_WRITE
