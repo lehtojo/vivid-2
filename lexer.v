@@ -797,6 +797,12 @@ Token FunctionToken {
 		tokens = List<Token>(parameters.tokens.size, false)
 		tokens.add_all(parameters.tokens)
 
+		# Remove all line endings, because they have no effect
+		loop (i = tokens.size - 1, i >= 0, i--) {
+			if tokens[i].type != TOKEN_TYPE_END continue 
+			tokens.remove_at(i)
+		}
+
 		result = List<Parameter>()
 
 		loop (tokens.size > 0) {
