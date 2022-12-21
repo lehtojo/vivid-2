@@ -306,32 +306,33 @@ configure(arguments: List<String>) {
 			if result.problematic return result
 			continue
 		}
-		else io.exists(element) {
-			# If the element represents a folder, source files inside it must be compiled
-			if io.is_folder(element) {
-				collect(files, element, false)
-				continue
-			}
 
-			# Ensure the source file ends with the primary file extension
-			if element.ends_with(LANGUAGE_FILE_EXTENSION) {
-				files.add(element)
-			}
-			else element.ends_with(ASSEMBLY_EXTENSION) {
-				files.add(element)
-				settings.textual_assembly = true
-			}
-			else element.ends_with(LINUX_OBJECT_FILE_EXTENSION) or element.ends_with(WINDOWS_OBJECT_FILE_EXTENSION) {
-				objects.add(element)
-			}
-			else {
-				return Status('Source files must end with the language extension')
-			}
+		# Clean up the specified path before adding it
+		element = io.path.normalise(element)
 
+		# Verify the specified path exists before adding it
+		if not io.exists(element) return Status('Invalid source file or folder')
+
+		# If the element represents a folder, source files inside it must be compiled
+		if io.is_folder(element) {
+			collect(files, element, false)
 			continue
 		}
 
-		return Status('Invalid source file or folder')
+		# Ensure the source file ends with the primary file extension
+		if element.ends_with(LANGUAGE_FILE_EXTENSION) {
+			files.add(element)
+		}
+		else element.ends_with(ASSEMBLY_EXTENSION) {
+			files.add(element)
+			settings.textual_assembly = true
+		}
+		else element.ends_with(LINUX_OBJECT_FILE_EXTENSION) or element.ends_with(WINDOWS_OBJECT_FILE_EXTENSION) {
+			objects.add(element)
+		}
+		else {
+			return Status('Source files must end with the language extension')
+		}
 	}
 
 	settings.filenames = files
