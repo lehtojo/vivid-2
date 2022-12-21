@@ -271,8 +271,21 @@ resolve_context(context: Context) {
 	functions = common.get_all_visible_functions(context)
 	loop function in functions { resolve(function) }
 
+	# Resolve imports
+	loop (i = 0, i < context.imports.size, i++) {
+		# Skip resolved imports
+		imported = context.imports[i]
+		if imported.is_resolved continue
+
+		# Try to resolve the import
+		resolved = resolve(context, imported)
+		if resolved === none continue
+
+		context.imports[i] = resolved
+	}
+
 	types = common.get_all_types(context)
-	
+
 	# Resolve all the types
 	loop type in types {
 		resolve_supertypes(context, type)
@@ -382,12 +395,20 @@ get_function_report(implementation: FunctionImplementation) {
 get_report(context: Context, root: Node) {
 	errors = List<Status>()
 
+	# Report unresolved imports
+	loop imported in context.imports {
+		if imported.is_resolved continue
+		errors.add(Status(imported.position, 'Can not resolve the import'))
+	}
+
+	# Report errors in defined types
 	types = common.get_all_types(context)
 
 	loop type in types {
 		errors.add_all(get_type_report(type))
 	}
 
+	# Report errors in defined functions
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {

@@ -127,6 +127,7 @@ read_pack_type(context: Context, tokens: List<Token>, position: Position) {
 read_type(context: Context, tokens: List<Token>) {
 	if tokens.size == 0 return none as Type
 
+	position = tokens[].position
 	next = tokens[]
 
 	if next.match(TOKEN_TYPE_PARENTHESIS) {
@@ -152,7 +153,7 @@ read_type(context: Context, tokens: List<Token>) {
 		tokens.pop_or(none as Token)
 	}
 
-	type = UnresolvedType(components)
+	type = UnresolvedType(components, position)
 
 	# If there are no more tokens, return the type
 	if tokens.size === 0 return type.resolve_or_this(context)

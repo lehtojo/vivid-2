@@ -177,7 +177,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 			environment = context
 
 			if components.size > 1 {
-				environment = UnresolvedType(components.slice(0, components.size - 1)).resolve_or_none(context)
+				environment = UnresolvedType(components.slice(0, components.size - 1), none as Position).resolve_or_none(context)
 				if environment == none abort("Could not import template function variant: " + template_variant_text)
 			}
 

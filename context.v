@@ -404,10 +404,9 @@ Context {
 	get_type(name: String) {
 		if types.contains_key(name) return types[name]
 
-		loop (i = 0, i < imports.size, i++) {
-			if imports[i].types.contains_key(name) {
-				return types[name]
-			}
+		# Try to find the type from imports
+		loop imported in imports {
+			if imported.types.contains_key(name) return imported.types[name]
 		}
 
 		if parent != none return parent.get_type(name) as Type
@@ -418,10 +417,9 @@ Context {
 	get_function_default(name: String) {
 		if functions.contains_key(name) return functions[name]
 
-		loop (i = 0, i < imports.size, i++) {
-			if imports[i].functions.contains_key(name) {
-				return functions[name]
-			}
+		# Try to find the function from imports
+		loop imported in imports {
+			if imported.functions.contains_key(name) return imported.functions[name]
 		}
 
 		if parent != none return parent.get_function(name) as FunctionList
@@ -437,10 +435,9 @@ Context {
 	get_variable_default(name: String) {
 		if variables.contains_key(name) return variables[name]
 
-		loop (i = 0, i < imports.size, i++) {
-			if imports[i].variables.contains_key(name) {
-				return variables[name]
-			}
+		# Try to find the variable from imports
+		loop imported in imports {
+			if imported.variables.contains_key(name) return imported.variables[name]
 		}
 
 		if parent != none return parent.get_variable(name) as Variable
@@ -522,6 +519,10 @@ Context {
 			subcontext.parent = this
 			subcontexts.add(subcontext)
 		}
+
+		# Add all imports
+		# TODO: Import list should be converted into a set, because imports should not be duplicated
+		imports.add_all(context.imports)
 
 		context.destroy()
 	}
@@ -2168,9 +2169,10 @@ Type UnresolvedType {
 		this.is_resolved = false
 	}
 
-	init(components: List<UnresolvedTypeComponent>) {
+	init(components: List<UnresolvedTypeComponent>, position: Position) {
 		Type.init(String.empty, MODIFIER_DEFAULT)
 		this.components = components
+		this.position = position
 		this.is_resolved = false
 	}
 
