@@ -455,11 +455,20 @@ create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 
 # Summary:
 # Tries to find the override for the specified virtual function and registers it to the specified runtime configuration.
-# This function returns the offset after registering the override function.
+# If no override can be found, address of zero is registered.
+# This function returns the next offset after registering the override function.
 try_register_virtual_function_implementation(type: Type, virtual_function: VirtualFunction, configuration: RuntimeConfiguration, offset: large) {
+	# If the configuration is already completed, no need to do anything
+	if configuration.is_completed return offset + SYSTEM_BYTES
+
 	# Find all possible implementations of the virtual function inside the specified type
 	result = type.get_override(virtual_function.name)
-	if result == none return offset
+
+	if result == none {
+		# It seems there is no implementation for this virtual function, register address of zero
+		configuration.entry.add(0 as large)
+		return offset + SYSTEM_BYTES
+	}
 
 	overloads = result.overloads
 
@@ -480,16 +489,13 @@ try_register_virtual_function_implementation(type: Type, virtual_function: Virtu
 		stop
 	}
 
-	if implementation == none {
-		# It seems there is no implementation for this virtual function
-		return offset
+	if implementation === none {
+		# It seems there is no implementation for this virtual function, register address of zero
+		configuration.entry.add(0 as large)
+		return offset + SYSTEM_BYTES
 	}
 
-	# Append configuration information only if it is not generated
-	if not configuration.is_completed {
-		configuration.entry.add(Label(implementation.get_fullname() + '_v'))
-	}
-
+	configuration.entry.add(Label(implementation.get_fullname() + '_v'))
 	return offset + SYSTEM_BYTES
 }
 
@@ -526,6 +532,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 	# Look for default implementations of virtual functions in the specified type
 	loop iterator in type.virtuals {
 		loop virtual_function in iterator.value.overloads {
+			# Register an implementation for the current virtual function.
 			offset = try_register_virtual_function_implementation(type, virtual_function, configuration, offset)
 		}
 	}
@@ -539,7 +546,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 			configuration.entry.add(configuration.descriptor)
 		}
 
-		# Types should not inherited types which do not have runtime configurations such as standard integers
+		# Types should not inherit types which do not have runtime configurations such as standard integers
 		if supertype.configuration == none abort('Type inherited a type which did not have runtime configuration')
 
 		descriptors[i] = Pair<Type, DataPointerNode>(supertype, TableDataPointerNode(configuration.entry, offset, none as Position))
@@ -997,9 +1004,6 @@ add_assignment_casts(root: Node) {
 			continue
 		}
 
-		# If the left operand represents a pack and the right operand is zero, we should not do anything, since this is a special case
-		if to.is_pack and common.is_zero(assignment.last) continue
-
 		# Remove the right operand from the assignment
 		value = assignment.last
 		value.remove()
@@ -1452,14 +1456,14 @@ rewrite_has_expressions(root: Node) {
 # => { object.pack.a, object.pack.other.b, object.pack.other.c }
 create_pack_member_accessors(root: Node, type: Type, position: Position) {
 	result = List<Node>()
-	is_none = common.is_zero(root)
 
 	loop iterator in type.variables {
 		member = iterator.value
-		accessor = none as Node
 
-		if is_none { accessor = root.clone() }
-		else { accessor = LinkNode(root.clone(), VariableNode(member), position) }
+		# Do not initialize static or constant member variables
+		if member.is_static or member.is_constant continue
+
+		accessor = LinkNode(root.clone(), VariableNode(member), position)
 
 		if member.type.is_pack {
 			result.add_all(create_pack_member_accessors(accessor, member.type, position))
@@ -1831,6 +1835,67 @@ rewrite_pack_comparisons(root: Node) {
 	}
 }
 
+# Summary:
+# Creates a pack construction where all members are initialized with zeroes. Nested packs are supported.
+# Example:
+# pack Size { width: decimal, height: decimal }
+# pack Object { name: u8*, x: i32, y: i32, size: Size }
+#
+# object = 0 as Object
+# =>
+# object = pack { name: 0, x: 0, y: 0, size: pack { width: 0, height: 0 } as Size } as Object
+create_zero_initialized_pack(type: Type, position: Position): PackConstructionNode {
+	members = List<String>()
+	arguments = List<Node>()
+
+	loop iterator in type.variables {
+		member = iterator.value
+
+		# Do not initialize static or constant member variables
+		if member.is_static or member.is_constant continue
+
+		argument = none as Node
+
+		# If the member is a pack, create a zero initialized construction for it
+		if member.type.is_pack {
+			argument = create_zero_initialized_pack(member.type, position)
+		}
+		else {
+			# Initialize the member with zero
+			argument = NumberNode(SYSTEM_FORMAT, 0, position)
+		}
+
+		members.add(member.name)
+		arguments.add(argument)
+	}
+
+	construction = PackConstructionNode(members, arguments, position)
+	construction.type = type
+
+	return construction
+}
+
+# Summary: Rewrites expressions that create packs with all members initialized with zero.
+# Example:
+# pack Size { width: decimal, height: decimal }
+# pack Object { name: u8*, x: i32, y: i32, size: Size }
+#
+# object = 0 as Object
+# =>
+# object = pack { name: 0, x: 0, y: 0, size: pack { width: 0, height: 0 } as Size } as Object
+rewrite_zero_initialized_packs(root: Node) {
+	casts = root.find_all(NODE_CAST)
+
+	loop cast in casts {
+		type = cast.get_type()
+
+		# Look for expressions that cast zeroes into packs
+		if not (type.is_pack and common.is_zero(cast.first)) continue
+
+		cast.replace(create_zero_initialized_pack(type, cast.start))
+	}
+}
+
 start(implementation: FunctionImplementation, root: Node) {
 	add_default_constructors(implementation)
 	rewrite_inspections(root)
@@ -1839,6 +1904,7 @@ start(implementation: FunctionImplementation, root: Node) {
 	remove_redundant_casts(root)
 	rewrite_discarded_increments(root)
 	assign_allocators_constructions(root)
+	rewrite_zero_initialized_packs(root)
 	extract_expressions(root)
 	rewrite_self_returning_functions(root)
 	add_assignment_casts(root)
