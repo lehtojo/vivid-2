@@ -32,9 +32,10 @@ KEYWORD_TYPE_MODIFIER = 0
 KEYWORD_TYPE_FLOW = 1
 KEYWORD_TYPE_NORMAL = 2
 
+# NOTE: Access levels must be sorted
 MODIFIER_PUBLIC = 1
-MODIFIER_PRIVATE = 1 <| 1
-MODIFIER_PROTECTED = 1 <| 2
+MODIFIER_PROTECTED = 1 <| 1
+MODIFIER_PRIVATE = 1 <| 2
 MODIFIER_STATIC = 1 <| 3
 MODIFIER_IMPORTED = 1 <| 4
 MODIFIER_READABLE = 1 <| 5
@@ -54,6 +55,7 @@ MODIFIER_LINK = 1 <| 18
 MODIFIER_SELF = 1 <| 19
 
 MODIFIER_DEFAULT = MODIFIER_PUBLIC
+ACCESS_LEVEL_MASK = 0b111
 
 TOKEN_TYPE_PARENTHESIS = 1
 TOKEN_TYPE_FUNCTION = 1 <| 1
@@ -83,6 +85,8 @@ DECIMAL_SEPARATOR = `.`
 EXPONENT_SEPARATOR = `e`
 SIGNED_TYPE_SEPARATOR = `i`
 UNSIGNED_TYPE_SEPARATOR = `u`
+BINARY_BASE_IDENTIFIER = `b`
+HEXADECIMAL_BASE_IDENTIFIER = `x`
 
 MULTILINE_COMMENT_LENGTH = 3
 
@@ -93,7 +97,7 @@ TEXT_TYPE_OPERATOR = 3
 TEXT_TYPE_COMMENT = 4
 TEXT_TYPE_STRING = 5
 TEXT_TYPE_CHARACTER = 6
-TEXT_TYPE_HEXADECIMAL = 7
+TEXT_TYPE_NUMBER_WITH_BASE = 7
 TEXT_TYPE_END = 8
 TEXT_TYPE_UNSPECIFIED = 9
 
@@ -1072,9 +1076,9 @@ mixes(a: char, b: char) {
 	return true
 }
 
-# Summary: Returns whether the characters represent a start of a hexadecimal number
-is_start_of_hexadecimal(current: char, next: char) {
-	return current == `0` and next == `x`
+# Summary: Returns whether the characters represent a start of a number with base
+is_number_with_base(current: char, next: char) {
+	return current == `0` and (next == BINARY_BASE_IDENTIFIER or next == HEXADECIMAL_BASE_IDENTIFIER)
 }
 
 # Summary: Returns whether the character is a text
@@ -1105,7 +1109,7 @@ is_character_value(i: char) {
 # Summary: Returns the type of the specified character
 get_text_type(current: char, next: char) {
 	if is_text(current) return TEXT_TYPE_TEXT
-	if is_start_of_hexadecimal(current, next) return TEXT_TYPE_HEXADECIMAL
+	if is_number_with_base(current, next) return TEXT_TYPE_NUMBER_WITH_BASE
 	if is_digit(current) return TEXT_TYPE_NUMBER
 	if is_parenthesis(current) return TEXT_TYPE_PARENTHESIS
 	if is_operator(current) return TEXT_TYPE_OPERATOR
@@ -1122,10 +1126,10 @@ is_part_of(previous_type: large, current_type: large, previous: char, current: c
 
 	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED return true
 
-	if previous_type == TEXT_TYPE_TEXT return current_type == TEXT_TYPE_NUMBER or current_type == TEXT_TYPE_HEXADECIMAL
+	if previous_type == TEXT_TYPE_TEXT return current_type == TEXT_TYPE_NUMBER or current_type == TEXT_TYPE_NUMBER_WITH_BASE
 
-	if previous_type == TEXT_TYPE_HEXADECIMAL return current_type == TEXT_TYPE_NUMBER or
-		(previous == `0` and current == `x`) or
+	if previous_type == TEXT_TYPE_NUMBER_WITH_BASE return current_type == TEXT_TYPE_NUMBER or
+		(previous == `0` and (current == BINARY_BASE_IDENTIFIER or current == HEXADECIMAL_BASE_IDENTIFIER)) or
 		(current >= `a` and current <= `f`) or (current >= `A` and current <= `F`)
 
 	if previous_type == TEXT_TYPE_NUMBER return (current == DECIMAL_SEPARATOR and is_digit(next)) or
@@ -1279,9 +1283,28 @@ hexadecimal_to_integer(text: String, offset: large) {
 	return Optional<large>(result)
 }
 
+# Summary: Converts the specified binary number string into an integer value
+binary_to_integer(text: String, offset: large) {
+	result = 0
+
+	loop (i = offset, i < text.length, i++) {
+		digit = text[i]
+		if digit != `0` and digit != `1` return Optional<large>()
+
+		result = result * 2 + (digit - `0`)
+	}
+
+	return Optional<large>(result)
+}
+
 # Summary: Converts the specified hexadecimal string into an integer value
 hexadecimal_to_integer(text: String) {
 	return hexadecimal_to_integer(text, 0)
+}
+
+# Summary: Converts the specified binary number string into an integer value
+binary_to_integer(text: String) {
+	return binary_to_integer(text, 0)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
@@ -1421,11 +1444,21 @@ parse_text_token(text: String) {
 	return IdentifierToken(text)
 }
 
-# Summary: Parses the specified hexadecimal text to an integer
-parse_hexadecimal(area: TextArea) {
-	# Extract the integer value from the hexadecimal by skipping the 0x prefix
-	if hexadecimal_to_integer(area.text.slice(2)) has value return Ok<large, String>(value)
-	return Error<large, String>("Can not understand the hexadecimal " + area.text)
+# Summary: Parses the specified number with custom base
+parse_number_with_base(area: TextArea) {
+	# Extract the base and digits from the text
+	base = area.text[1]
+	digits = area.text.slice(2)
+
+	# Parse the number based on its base
+	if base == BINARY_BASE_IDENTIFIER {
+		if binary_to_integer(digits) has value return Ok<large, String>(value)
+	}
+	else base == HEXADECIMAL_BASE_IDENTIFIER {
+		if hexadecimal_to_integer(digits) has value return Ok<large, String>(value)
+	}
+
+	return Error<large, String>("Can not understand the following number " + area.text)
 }
 
 # Summary: Parses a token from a text area
@@ -1454,8 +1487,8 @@ parse_token(area: TextArea) {
 	if area.type == TEXT_TYPE_TEXT { token = parse_text_token(area.text) }
 	else area.type == TEXT_TYPE_END { token = Token(TOKEN_TYPE_END) }
 	else area.type == TEXT_TYPE_STRING { token = StringToken(area.text) }
-	else area.type == TEXT_TYPE_HEXADECIMAL {
-		result = parse_hexadecimal(area)
+	else area.type == TEXT_TYPE_NUMBER_WITH_BASE {
+		result = parse_number_with_base(area)
 		if result has not value return Error<Token, String>(result.get_error())
 
 		token = NumberToken(value, SYSTEM_FORMAT, area.start, area.end)

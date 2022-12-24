@@ -363,6 +363,88 @@ OperatorNode LinkNode {
 		return last.try_get_type()
 	}
 
+	# Summary:
+	# Returns whether the accessed object is accessible based in the specified environment
+	private is_accessible(environment: FunctionImplementation, reads: bool): bool {
+		# Only variables and function calls can be checked
+		if not last.match(NODE_VARIABLE | NODE_FUNCTION) return true
+
+		context = none as Context
+		if last.instance == NODE_VARIABLE { context = last.(VariableNode).variable.parent }
+		else { context = last.(FunctionNode).function.parent }
+
+		if context === none or not context.is_type return true
+
+		# Determine which type owns the accessed object
+		owner = context as Type
+
+		# Determine the required access level for accessing the object
+		modifiers = 0
+		if last.instance == NODE_VARIABLE { modifiers = last.(VariableNode).variable.modifiers }
+		else { modifiers = last.(FunctionNode).function.metadata.modifiers }
+
+		required_access_level = modifiers & ACCESS_LEVEL_MASK
+
+		# Determine the access level of the requester
+		requester = environment.find_type_parent()
+		request_access_level = 0
+
+		if requester === owner {
+			request_access_level = MODIFIER_PRIVATE
+		}
+		else {
+			if requester !== none and requester.is_type_inherited(owner) { request_access_level = MODIFIER_PROTECTED }
+			else { request_access_level = MODIFIER_PUBLIC }
+		}
+
+		# 1. Objects can always be read when the access level of the requester is higher or equal to the required level.
+		# 2. If writing is not restricted, the access level of the requester must be higher or equal to the required level.
+		if reads or not has_flag(modifiers, MODIFIER_READABLE) return request_access_level >= required_access_level
+
+		# Writing is restricted, so the requester must have higher access level
+		return request_access_level > required_access_level
+	}
+
+	# Summary:
+	# Returns whether this link represents a static access that is not allowed.
+	# Unallowed static access can be accessing of a non-static member through type.
+	is_illegal_static_access(environment: FunctionImplementation): bool {
+		# Require the left operand to be a type node
+		if first.instance !== NODE_TYPE return false
+
+		accessed_type = first.(TypeNode).type
+
+		is_inside_static_function = environment.is_static
+		is_inside_accessed_type = environment.parent.is_type and (environment.parent === accessed_type or environment.parent.(Type).is_type_inherited(accessed_type))
+
+		is_accessed_object_static =
+			(last.instance == NODE_VARIABLE and (last.(VariableNode).variable.is_static or last.(VariableNode).variable.is_constant)) or 
+			(last.instance == NODE_FUNCTION and last.(FunctionNode).function.is_static) or 
+			(last.match(NODE_TYPE | NODE_CONSTRUCTION))
+
+		# If a non-static member variable or function is accessed in static way, return true.
+		# Only exception is if we are "inside" the accessed type and not inside a static function.
+		# So in other words, non-static members can be accessed through types in the accessed type or if it is inherited.
+		return not is_accessed_object_static and not (is_inside_accessed_type and not is_inside_static_function)
+	}
+
+	override get_status() {
+		# Find the environment context
+		environment = try_get_parent_context()
+		if environment === none return none as Status
+
+		# Look for the function we are inside of
+		environment = environment.find_implementation_parent()
+		if environment === none return none as Status
+
+		reads = not common.is_edited(this)
+
+		if not is_accessible(environment as FunctionImplementation, reads) return Status(last.start, 'Can not access the member here')
+		if is_illegal_static_access(environment as FunctionImplementation) return Status(last.start, 'Can not access non-shared member this way')
+
+		return none as Status
+	}
+
 	override copy() {
 		return LinkNode(start)
 	}
