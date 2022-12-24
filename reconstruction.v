@@ -786,14 +786,17 @@ find_bool_values(root: Node) {
 	result = List<Node>()
 
 	loop candidate in candidates {
-		node = candidate.find_parent(i -> (not i.match(NODE_INLINE | NODE_PARENTHESIS)))
+		# Find the root of the expression
+		node = candidate
+		loop (node.parent.match(NODE_PARENTHESIS | NODE_INLINE)) { node = node.parent }
 
 		# Skip the current candidate, if it represents a statement condition
-		if common.is_statement(node) or node.match(NODE_NORMAL) or common.is_condition(candidate) continue
+		if common.is_condition(node) continue
 
 		# Ensure the parent is not a comparison or a logical operator
-		if node.match(NODE_OPERATOR) and node.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL continue
-		
+		parent = node.parent
+		if parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL continue
+
 		result.add(candidate)
 	}
 

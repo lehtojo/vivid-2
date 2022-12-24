@@ -866,9 +866,9 @@ is_constant(node: Node) {
 
 # Summary: Returns whether the specified node represents a statement condition
 is_condition(node: Node) {
-	statement = node.find(NODE_ELSE_IF | NODE_IF | NODE_LOOP)
+	statement = node.find_parent(NODE_ELSE_IF | NODE_IF | NODE_LOOP)
 	if statement == none return false
-	
+
 	return when(statement.instance) {
 		NODE_IF => statement.(IfNode).condition == node
 		NODE_ELSE_IF => statement.(ElseIfNode).condition == node
