@@ -51,7 +51,7 @@ DataEncoderModule {
 	write_int16(value: large) {
 		reserve(2)
 		binary_utility.write_int16(output, position, value)
-		position += sizeof(small)
+		position += strideof(small)
 	}
 
 	# Summary:
@@ -59,7 +59,7 @@ DataEncoderModule {
 	write_int32(value: large) {
 		reserve(4)
 		binary_utility.write_int32(output, position, value)
-		position += sizeof(normal)
+		position += strideof(normal)
 	}
 
 	# Summary:
@@ -73,7 +73,7 @@ DataEncoderModule {
 	write_int64(value: large) {
 		reserve(8)
 		binary_utility.write_int64(output, position, value)
-		position += sizeof(large)
+		position += strideof(large)
 	}
 
 	# Summary:
@@ -117,7 +117,7 @@ DataEncoderModule {
 
 			# The following is only necessary if the implementation of |>= uses a logical shift rather than an arithmetic shift for a signed left operand
 			# if negative {
-			# 	value |= (~0 <| (sizeof(int) * 8 - 7)) # Sign extend
+			# 	value |= (~0 <| (strideof(int) * 8 - 7)) # Sign extend
 			# }
 
 			# Sign bit of byte is second high order bit (0x40)

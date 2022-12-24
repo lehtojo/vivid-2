@@ -1961,7 +1961,7 @@ allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<Const
 		else item.value_type == CONSTANT_TYPE_INTEGER or item.value_type == CONSTANT_TYPE_DECIMAL {
 			temporary[] = item.(NumberDataSectionHandle).value
 			data = temporary as link
-			size = sizeof(large)
+			size = strideof(large)
 		}
 		else {
 			abort('Unsupported constant data')
@@ -1980,7 +1980,7 @@ get_bytes<T>(value: T) {
 	bytes = List<byte>()
 
 	# Here we loop over each byte of the value and add them into the list
-	loop (i = 0, i < sizeof(T), i++) {
+	loop (i = 0, i < strideof(T), i++) {
 		slide = i * 8
 		mask = 255 <| slide
 		bytes.add((value & mask) |> slide)

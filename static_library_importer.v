@@ -204,7 +204,7 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 	entries = binary_utility.swap_endianness_int32(entries)
 
 	# Skip all of the location entries to reach the actual symbol names
-	position = STATIC_LIBRARY_SYMBOL_TABLE_FIRST_LOCATION_ENTRY_OFFSET + entries * sizeof(normal)
+	position = STATIC_LIBRARY_SYMBOL_TABLE_FIRST_LOCATION_ENTRY_OFFSET + entries * strideof(normal)
 
 	# Load all the exported symbols
 	exported_symbols = pe_format.load_number_of_strings(bytes, position, entries)

@@ -244,7 +244,7 @@ plain DynamicSectionBuilder {
 		loop (i = 0, i < entries.size, i++) {
 			if entries[i].tag !== tag continue
 
-			relocations.add(BinaryRelocation(symbol, capacityof(ElfDynamicEntry) * i + ElfDynamicEntry.POINTER_OFFSET, 0, relocation_type))
+			relocations.add(BinaryRelocation(symbol, sizeof(ElfDynamicEntry) * i + ElfDynamicEntry.POINTER_OFFSET, 0, relocation_type))
 			return
 		}
 
@@ -343,21 +343,21 @@ create_hash_section(symbols: List<BinarySymbol>) {
 	# [Chains]
 
 	# Convert the buckets and chains to bytes
-	data_size = (2 + number_of_symbols + number_of_symbols) * sizeof(normal)
+	data_size = (2 + number_of_symbols + number_of_symbols) * strideof(normal)
 	data = allocate(data_size)
 
 	binary_utility.write_int32(data, 0, number_of_symbols)
-	binary_utility.write_int32(data, sizeof(normal), number_of_symbols)
+	binary_utility.write_int32(data, strideof(normal), number_of_symbols)
 
 	# Copy the buckets and chains to the data
-	copy(buckets, number_of_symbols * sizeof(normal), data + sizeof(normal) * 2)
-	copy(chains, number_of_symbols * sizeof(normal), data + sizeof(normal) * (2 + number_of_symbols))
+	copy(buckets, number_of_symbols * strideof(normal), data + strideof(normal) * 2)
+	copy(chains, number_of_symbols * strideof(normal), data + strideof(normal) * (2 + number_of_symbols))
 
 	return BinarySection(String(HASH_SECTION), BINARY_SECTION_TYPE_HASH, data, data_size)
 }
 
 create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>) {
-	return create_section_headers(sections, symbols, capacityof(ElfFileHeader))
+	return create_section_headers(sections, symbols, sizeof(ElfFileHeader))
 }
 
 create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, file_position: large) {
@@ -380,7 +380,7 @@ create_section_headers(sections: List<BinarySection>, symbols: Map<String, Binar
 			# The section header of relocation table should be linked to the dynamic symbol table
 			header.link = sections.find_index(i -> i.name == DYNAMIC_SYMBOL_TABLE_SECTION)
 			header.info = 0
-			header.entry_size = capacityof(ElfRelocationEntry)
+			header.entry_size = sizeof(ElfRelocationEntry)
 		}
 		else section.type === BINARY_SECTION_TYPE_RELOCATION_TABLE {
 			# The section header of relocation table should be linked to the symbol table and its info should point to the text section, since it describes it
@@ -388,24 +388,24 @@ create_section_headers(sections: List<BinarySection>, symbols: Map<String, Binar
 
 			header.link = sections.find_index(i -> i.name == SYMBOL_TABLE_SECTION)
 			header.info = sections.find_index(i -> i.name == related_section_name)
-			header.entry_size = capacityof(ElfRelocationEntry)
+			header.entry_size = sizeof(ElfRelocationEntry)
 		}
 		else section.name == SYMBOL_TABLE_SECTION {
 			# The section header of symbol table should be linked to the string table 
 			header.link = sections.find_index(i -> i.name == STRING_TABLE_SECTION)
 			header.info = symbols.get_values().count(i -> not i.external) + 1
-			header.entry_size = capacityof(ElfSymbolEntry)
+			header.entry_size = sizeof(ElfSymbolEntry)
 		}
 		else section.name == DYNAMIC_SYMBOL_TABLE_SECTION {
 			# The section header of dynamic symbol table should be linked to the dynamic string table
 			header.link = sections.find_index(i -> i.name == DYNAMIC_STRING_TABLE_SECTION)
 			header.info = 1
-			header.entry_size = capacityof(ElfSymbolEntry)
+			header.entry_size = sizeof(ElfSymbolEntry)
 		}
 		else section.name == DYNAMIC_SECTION {
 			header.link = sections.find_index(i -> i.name == DYNAMIC_STRING_TABLE_SECTION)
 			header.info = 0
-			header.entry_size = capacityof(ElfDynamicEntry)
+			header.entry_size = sizeof(ElfDynamicEntry)
 		}
 		else section.name == HASH_SECTION {
 			header.link = sections.find_index(i -> i.name == DYNAMIC_SYMBOL_TABLE_SECTION)
@@ -559,7 +559,7 @@ create_symbol_related_sections(sections: List<BinarySection>, fragments: List<Bi
 		relocation_sections[section] = relocation_entries
 	}
 
-	symbol_table_section = BinarySection(String(SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(capacityof(ElfSymbolEntry) * symbol_entries.size))
+	symbol_table_section = BinarySection(String(SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(sizeof(ElfSymbolEntry) * symbol_entries.size))
 	binary_utility.write_all<ElfSymbolEntry>(symbol_table_section.data, 0, symbol_entries)
 	sections.add(symbol_table_section)
 
@@ -568,7 +568,7 @@ create_symbol_related_sections(sections: List<BinarySection>, fragments: List<Bi
 		relocation_entries = iterator.value
 		if relocation_entries.size === 0 continue
 
-		relocation_table_section = BinarySection(String(RELOCATION_TABLE_SECTION_PREFIX) + iterator.key.name, BINARY_SECTION_TYPE_RELOCATION_TABLE, Array<byte>(capacityof(ElfRelocationEntry) * relocation_entries.size))
+		relocation_table_section = BinarySection(String(RELOCATION_TABLE_SECTION_PREFIX) + iterator.key.name, BINARY_SECTION_TYPE_RELOCATION_TABLE, Array<byte>(sizeof(ElfRelocationEntry) * relocation_entries.size))
 		binary_utility.write_all<ElfRelocationEntry>(relocation_table_section.data, 0, relocation_entries)
 		sections.add(relocation_table_section)
 	}
@@ -644,17 +644,17 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 	header = ElfFileHeader()
 	header.type = ELF_OBJECT_FILE_TYPE_RELOCATABLE
 	header.machine = ELF_MACHINE_TYPE_X64
-	header.file_header_size = capacityof(ElfFileHeader)
-	header.section_header_size = capacityof(ElfSectionHeader)
+	header.file_header_size = sizeof(ElfFileHeader)
+	header.section_header_size = sizeof(ElfSectionHeader)
 
-	align_sections(sections, capacityof(ElfFileHeader))
+	align_sections(sections, sizeof(ElfFileHeader))
 	section_headers = create_section_headers(sections, symbols)
 
 	# Now that section positions are set, compute offsets
 	binary_utility.compute_offsets(sections, symbols)
 
 	# Compute the location of the first section header
-	header.section_header_offset = capacityof(ElfFileHeader)
+	header.section_header_offset = sizeof(ElfFileHeader)
 
 	loop section in sections {
 		header.section_header_offset += section.margin + section.data.size
@@ -662,10 +662,10 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 
 	# Save the location of the section header table
 	header.section_header_table_entry_count = section_headers.size
-	header.section_header_size = capacityof(ElfSectionHeader)
+	header.section_header_size = sizeof(ElfSectionHeader)
 	header.section_name_entry_index = section_headers.size - 1
 
-	bytes = header.section_header_offset + section_headers.size * capacityof(ElfSectionHeader)
+	bytes = header.section_header_offset + section_headers.size * sizeof(ElfSectionHeader)
 	result = Array<byte>(bytes)
 
 	# Write the file header
@@ -681,7 +681,7 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 
 	loop section_header in section_headers {
 		binary_utility.write<ElfSectionHeader>(result, position, section_header)
-		position += capacityof(ElfSectionHeader)
+		position += sizeof(ElfSectionHeader)
 	}
 
 	return result
@@ -706,7 +706,7 @@ import_symbols_and_relocations(sections: List<BinarySection>, section_intermedia
 
 	loop (position < symbol_table_section.data.size) {
 		symbol_entries.add(binary_utility.read_object<ElfSymbolEntry>(symbol_table, position))
-		position += capacityof(ElfSymbolEntry)
+		position += sizeof(ElfSymbolEntry)
 	}
 
 	# Determine the section, which contains the symbol names
@@ -759,7 +759,7 @@ import_symbols_and_relocations(sections: List<BinarySection>, section_intermedia
 
 		loop (position < relocation_section.data.size) {
 			relocation_entries.add(binary_utility.read_object<ElfRelocationEntry>(relocation_table, position))
-			position += capacityof(ElfSymbolEntry)
+			position += sizeof(ElfSymbolEntry)
 		}
 
 		# Convert the relocation entries into relocation objects
@@ -797,7 +797,7 @@ import_object_file(name: String, source: Array<byte>) {
 
 	loop (i = 0, i < header.section_header_table_entry_count, i++) {
 		# Load the section header in order to load the actual section
-		section_header = binary_utility.read_object<ElfSectionHeader>(section_headers_start, capacityof(ElfSectionHeader) * i)
+		section_header = binary_utility.read_object<ElfSectionHeader>(section_headers_start, sizeof(ElfSectionHeader) * i)
 
 		# Create a pointer, which points to the start of the section data in the file
 		section_data_start = bytes + section_header.offset
@@ -1002,7 +1002,7 @@ create_dynamic_relocations(sections: List<BinarySection>, relocations: List<Bina
 	if absolute_relocations.size === 0 return
 
 	# Create a section for the dynamic relocations
-	dynamic_relocations_data = Array<byte>(absolute_relocations.size * capacityof(ElfRelocationEntry))
+	dynamic_relocations_data = Array<byte>(absolute_relocations.size * sizeof(ElfRelocationEntry))
 	dynamic_relocations_section = BinarySection(String(DYNAMIC_RELOCATIONS_SECTION), BINARY_SECTION_TYPE_RELOCATION_TABLE, dynamic_relocations_data)
 	dynamic_relocations_section.alignment = 8
 	dynamic_relocations_section.flags = BINARY_SECTION_FLAGS_ALLOCATE
@@ -1030,7 +1030,7 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 	builder.add(ELF_DYNAMIC_SECTION_TAG_HASH_TABLE, 0) # The address is filled in later using a relocation
 	builder.add(ELF_DYNAMIC_SECTION_TAG_STRING_TABLE, 0)  # The address is filled in later using a relocation
 	builder.add(ELF_DYNAMIC_SECTION_TAG_SYMBOL_TABLE, 0)  # The address is filled in later using a relocation
-	builder.add(ELF_DYNAMIC_SECTION_TAG_SYMBOL_ENTRY_SIZE, capacityof(ElfSymbolEntry))
+	builder.add(ELF_DYNAMIC_SECTION_TAG_SYMBOL_ENTRY_SIZE, sizeof(ElfSymbolEntry))
 
 	# Dynamic section:
 	dynamic_section = BinarySection(String(DYNAMIC_SECTION), BINARY_SECTION_TYPE_DYNAMIC, Array<byte>())
@@ -1047,7 +1047,7 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 	add_function_linkage_table(sections, relocations, builder)
 
 	# Dynamic symbol table:
-	dynamic_symbol_table = BinarySection(String(DYNAMIC_SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(capacityof(ElfSymbolEntry) * builder.symbol_entries.size))
+	dynamic_symbol_table = BinarySection(String(DYNAMIC_SYMBOL_TABLE_SECTION), BINARY_SECTION_TYPE_SYMBOL_TABLE, Array<byte>(sizeof(ElfSymbolEntry) * builder.symbol_entries.size))
 	dynamic_symbol_table.alignment = 8
 	dynamic_symbol_table.flags = BINARY_SECTION_FLAGS_ALLOCATE
 
@@ -1091,7 +1091,7 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 		# Add a relocation table entry to the dynamic section entries so that the dynamic linker knows where to find the relocation table
 		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE, 0)  # The address is filled in later using a relocation
 		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE_SIZE, dynamic_linking_information.relocation_section.data.size)
-		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_ENTRY_SIZE, capacityof(ElfRelocationEntry))
+		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_ENTRY_SIZE, sizeof(ElfRelocationEntry))
 		builder.add(ELF_DYNAMIC_SECTION_TAG_RELOCATION_COUNT, dynamic_linking_information.relocations.size)
 
 		builder.set(ELF_DYNAMIC_SECTION_TAG_RELOCATION_TABLE, dynamic_relocations_section_start, BINARY_RELOCATION_TYPE_ABSOLUTE64)
@@ -1107,7 +1107,7 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 	sections.add(dynamic_string_table)
 
 	# Output the dynamic section entries into the dynamic section
-	dynamic_section.data = Array<byte>(capacityof(ElfDynamicEntry) * (builder.entries.size + 1)) # Allocate one more entry so that the last entry is a none-entry
+	dynamic_section.data = Array<byte>(sizeof(ElfDynamicEntry) * (builder.entries.size + 1)) # Allocate one more entry so that the last entry is a none-entry
 	binary_utility.write_all<ElfDynamicEntry>(dynamic_section.data, 0, builder.entries)
 
 	return dynamic_linking_information
@@ -1143,7 +1143,7 @@ add_relocations_for_global_offset_table(sections: List<BinarySection>, externals
 		builder.add_symbol(externals[i], none as BinarySection)
 	}
 
-	data = Array<byte>(capacityof(ElfRelocationEntry) * relocations.size)
+	data = Array<byte>(sizeof(ElfRelocationEntry) * relocations.size)
 	binary_utility.write_all<ElfRelocationEntry>(data, 0, relocations)
 
 	section = BinarySection(String(RELOCATION_TABLE_SECTION_PREFIX) + FUNCTION_LINKAGE_TABLE_SECTION, BINARY_SECTION_TYPE_DATA, data)
@@ -1154,8 +1154,8 @@ add_relocations_for_global_offset_table(sections: List<BinarySection>, externals
 	# Create the relocations that will fill in the offsets of the dynamic relocations.
 	# We must use relocations, because we do not know the virtual address of the global offset table yet.
 	loop (i = 0, i < externals.size, i++) {
-		offset = i * capacityof(ElfRelocationEntry)
-		addend = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * sizeof(link)
+		offset = i * sizeof(ElfRelocationEntry)
+		addend = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * strideof(link)
 		relocation = BinaryRelocation(global_offset_table, offset, addend, BINARY_RELOCATION_TYPE_ABSOLUTE64, section)
 
 		builder.relocations.add(relocation)
@@ -1173,7 +1173,7 @@ add_relocations_for_global_offset_table(sections: List<BinarySection>, externals
 # Summary:
 # Adds the global offset table (GOT) that contains addresses of dynamic functions
 add_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder) {
-	data = Array<byte>((externals.size + GLOBAL_OFFSET_TABLE_RESERVED_COUNT) * sizeof(link))
+	data = Array<byte>((externals.size + GLOBAL_OFFSET_TABLE_RESERVED_COUNT) * strideof(link))
 
 	section = BinarySection(String(GLOBAL_OFFSET_TABLE_SECTION), BINARY_SECTION_TYPE_DATA, data)
 	section.alignment = 8
@@ -1254,7 +1254,7 @@ add_function_linkage_table(sections: List<BinarySection>, relocations: List<Bina
 
 		# Load and jump to the address of the imported function using the global offset table as follows:
 		# jmp qword [rip+GOT+(i+3)*8]
-		global_offset_table_offset = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * sizeof(link)
+		global_offset_table_offset = (GLOBAL_OFFSET_TABLE_RESERVED_COUNT + i) * strideof(link)
 		global_offset_table_handle = DataSectionHandle(String(GLOBAL_OFFSET_TABLE_SYMBOL_NAME), global_offset_table_offset, false, DATA_SECTION_MODIFIER_NONE)
 
 		# Create the jump and mark it with a label, so the imported function can be accessed
@@ -1359,8 +1359,8 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 	}
 
 	header.machine = ELF_MACHINE_TYPE_X64
-	header.file_header_size = capacityof(ElfFileHeader)
-	header.section_header_size = capacityof(ElfSectionHeader)
+	header.file_header_size = sizeof(ElfFileHeader)
+	header.section_header_size = sizeof(ElfSectionHeader)
 
 	# Resolves are unresolved symbols and returns all symbols as a list
 	symbols = linker.resolve_symbols(objects)
@@ -1428,17 +1428,17 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 	section_bytes = 0
 	loop overlay in overlays { section_bytes += overlay.margin + overlay.virtual_size }
 
-	bytes = linker.SEGMENT_ALIGNMENT + section_bytes + section_headers.size * capacityof(ElfSectionHeader)
+	bytes = linker.SEGMENT_ALIGNMENT + section_bytes + section_headers.size * sizeof(ElfSectionHeader)
 
 	# Save the location of the program header table
-	header.program_header_offset = capacityof(ElfFileHeader)
+	header.program_header_offset = sizeof(ElfFileHeader)
 	header.program_header_entry_count = program_headers.size
-	header.program_header_size = capacityof(ElfProgramHeader)
+	header.program_header_size = sizeof(ElfProgramHeader)
 
 	# Save the location of the section header table
 	header.section_header_offset = linker.SEGMENT_ALIGNMENT + section_bytes
 	header.section_header_table_entry_count = section_headers.size
-	header.section_header_size = capacityof(ElfSectionHeader)
+	header.section_header_size = sizeof(ElfSectionHeader)
 	header.section_name_entry_index = section_headers.size - 1
 
 	# Compute the entry point location
@@ -1455,7 +1455,7 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 
 	loop program_header in program_headers {
 		binary_utility.write<ElfProgramHeader>(result, position, program_header)
-		position += capacityof(ElfProgramHeader)
+		position += sizeof(ElfProgramHeader)
 	}
 
 	loop section in overlays {
@@ -1475,7 +1475,7 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 
 	loop section_header in section_headers {
 		binary_utility.write<ElfSectionHeader>(result, position, section_header)
-		position += capacityof(ElfSectionHeader)
+		position += sizeof(ElfSectionHeader)
 	}
 
 	return result

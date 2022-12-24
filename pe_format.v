@@ -35,7 +35,7 @@ namespace pe_format {
 
 	# Summary: Converts the encoded 64-bit integer name into a string
 	decode_integer_name(encoded: large) {
-		name: char[9] # Size = sizeof(large) + 1
+		name: char[9] # Size = strideof(large) + 1
 		zero(name as link, 9)
 		binary_utility.write_int64(name as link, 0, encoded)
 
@@ -199,9 +199,9 @@ namespace pe_format {
 
 		# Skip the export directory table, the export address table, the name pointer table and the ordinal table
 		export_directory_table_size = PeExportDirectoryTable.Size
-		export_address_table_size = export_directory_table.number_of_addresses * sizeof(normal)
-		name_pointer_table_size = export_directory_table.number_of_name_pointers * sizeof(normal)
-		ordinal_table_size = export_directory_table.number_of_name_pointers * sizeof(normal)
+		export_address_table_size = export_directory_table.number_of_addresses * strideof(normal)
+		name_pointer_table_size = export_directory_table.number_of_name_pointers * strideof(normal)
+		ordinal_table_size = export_directory_table.number_of_name_pointers * strideof(normal)
 
 		start = export_data_directory_file_offset + export_directory_table_size + export_address_table_size + name_pointer_table_size + ordinal_table_size
 
@@ -210,7 +210,7 @@ namespace pe_format {
 		name_pointer_table_start = relative_virtual_address_to_file_offset(module, export_directory_table.name_pointer_relative_virtual_address)
 
 		loop (i = 0, i < export_directory_table.number_of_name_pointers, i++) {
-			name_pointer = (module.bytes.data + name_pointer_table_start + i * sizeof(normal)).(i32*)[]
+			name_pointer = (module.bytes.data + name_pointer_table_start + i * strideof(normal)).(i32*)[]
 			name_pointer_file_offset = relative_virtual_address_to_file_offset(module, name_pointer)
 			strings.add(String(module.bytes.data + name_pointer_file_offset))
 		}
@@ -614,15 +614,15 @@ namespace pe_format {
 		})
 
 		# Compute the number of bytes needed loop the export section excluding the string table
-		string_table_start = PeExportDirectoryTable.Size + symbols.size * (sizeof(normal) + sizeof(normal) + sizeof(normal))
+		string_table_start = PeExportDirectoryTable.Size + symbols.size * (strideof(normal) + strideof(normal) + strideof(normal))
 		string_table = BinaryStringTable()
 
 		exporter_section_data = Array<byte>(string_table_start)
 		exporter_section = BinarySection(String(ExporterSection), BINARY_SECTION_TYPE_DATA, exporter_section_data)
 
 		export_address_table_position = PeExportDirectoryTable.Size
-		name_pointer_table_position = PeExportDirectoryTable.Size + symbols.size * sizeof(normal)
-		ordinal_table_position = PeExportDirectoryTable.Size + symbols.size * (sizeof(normal) + sizeof(normal))
+		name_pointer_table_position = PeExportDirectoryTable.Size + symbols.size * strideof(normal)
+		ordinal_table_position = PeExportDirectoryTable.Size + symbols.size * (strideof(normal) + strideof(normal))
 
 		# Create symbols, which represent the start of the tables specified above
 		export_address_table_symbol = BinarySymbol(".export-address-table", export_address_table_position, false, exporter_section)
@@ -645,9 +645,9 @@ namespace pe_format {
 			binary_utility.write_int16(exporter_section_data, ordinal_table_position, i)
 
 			# Move all of the positions to the next entry
-			export_address_table_position += sizeof(normal)
-			name_pointer_table_position += sizeof(normal)
-			ordinal_table_position += sizeof(normal)
+			export_address_table_position += strideof(normal)
+			name_pointer_table_position += strideof(normal)
+			ordinal_table_position += strideof(normal)
 		}
 
 		# Store the output name of this shared library in the string table
@@ -835,7 +835,7 @@ namespace pe_format {
 
 		loop iterator in import_lists {
 			symbols = iterator.value
-			string_table_start += (symbols.size + 1) * sizeof(large)
+			string_table_start += (symbols.size + 1) * strideof(large)
 		}
 
 		importer_section.data = Array<byte>(string_table_start)
@@ -901,7 +901,7 @@ namespace pe_format {
 
 				# Fill in the location of the imported symbol when its virtual address is decided
 				relocations.add(BinaryRelocation(import_symbol, position, 0, BINARY_RELOCATION_TYPE_BASE_RELATIVE_32, importer_section))
-				position += sizeof(large)
+				position += strideof(large)
 
 				# Reserve space for the address of the imported function when it is loaded, also create a symbol which represents the location of the address
 				import_address_symbol = import_address_section_builder.create_local_symbol(".import." + import_symbol_name, import_address_section_builder.position, false)
@@ -927,7 +927,7 @@ namespace pe_format {
 				import_section_instructions.add(instruction)
 			}
 
-			position += sizeof(large) # Skip the none-symbol at the end of each import lookup table
+			position += strideof(large) # Skip the none-symbol at the end of each import lookup table
 		}
 
 		# Build the import address section
@@ -1000,7 +1000,7 @@ namespace pe_format {
 			if relocation_page != page {
 				# Store the size of the current page descriptor before moving to the next one
 				if page_descriptor_start >= 0 {
-					builder.write_int32(page_descriptor_start + sizeof(normal), builder.position - page_descriptor_start)
+					builder.write_int32(page_descriptor_start + strideof(normal), builder.position - page_descriptor_start)
 				}
 
 				# Save the position of the page descriptor so that its size can be stored later
@@ -1021,7 +1021,7 @@ namespace pe_format {
 
 		# Store the size of the last page descriptor
 		if page_descriptor_start >= 0 {
-			builder.write_int32(page_descriptor_start + sizeof(normal), builder.position - page_descriptor_start)
+			builder.write_int32(page_descriptor_start + strideof(normal), builder.position - page_descriptor_start)
 		}
 
 		# Build the relocation section and align it after the last section
@@ -1357,11 +1357,11 @@ namespace pe_format {
 
 				symbol = symbols[relocation_entry.symbol_table_index]
 				relocation_type = get_shared_relocation_type(relocation_entry.type)
-				relocation = BinaryRelocation(symbol, relocation_entry.virtual_address, -(sizeof(normal)), relocation_type)
+				relocation = BinaryRelocation(symbol, relocation_entry.virtual_address, -(strideof(normal)), relocation_type)
 				relocation.section = section
 
 				# Set the default addend if the relocation type is program counter relative
-				if relocation_type == BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE { relocation.addend = -(sizeof(normal)) }
+				if relocation_type == BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE { relocation.addend = -(strideof(normal)) }
 
 				section.relocations.add(relocation)
 				file_position += PeRelocationEntry.Size

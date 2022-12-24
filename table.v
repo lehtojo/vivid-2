@@ -138,11 +138,11 @@ Table {
 
 	add(value: String) { add(StringTableItem(value)) }
 	add(value: link) { add(StringTableItem(String(value))) }
-	add(value: large) { add(IntegerTableItem(value, sizeof(large))) }
-	add(value: normal) { add(IntegerTableItem(value, sizeof(normal))) }
-	add(value: small) { add(IntegerTableItem(value, sizeof(small))) }
-	add(value: tiny) { add(IntegerTableItem(value, sizeof(tiny))) }
-	add(value: byte) { add(IntegerTableItem(value, sizeof(byte))) }
+	add(value: large) { add(IntegerTableItem(value, strideof(large))) }
+	add(value: normal) { add(IntegerTableItem(value, strideof(normal))) }
+	add(value: small) { add(IntegerTableItem(value, strideof(small))) }
+	add(value: tiny) { add(IntegerTableItem(value, strideof(tiny))) }
+	add(value: byte) { add(IntegerTableItem(value, strideof(byte))) }
 	add(value: Table) { add(TableReferenceTableItem(value)) }
 	add(value: Label) { add(LabelTableItem(value)) }
 	add(value: LabelOffset) { add(LabelOffsetTableItem(value)) }

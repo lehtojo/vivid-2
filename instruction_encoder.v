@@ -403,14 +403,14 @@ namespace instruction_encoder {
 	# Writes the specified value to the current position and advances to the next position
 	write_int16(module: EncoderModule, value: large) {
 		(module.output + module.position).(small*)[] = value as small
-		module.position += sizeof(small)
+		module.position += strideof(small)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
 	write_int32(module: EncoderModule, value: large) {
 		(module.output + module.position).(normal*)[] = value as normal
-		module.position += sizeof(normal)
+		module.position += strideof(normal)
 	}
 
 	# Summary:
@@ -423,7 +423,7 @@ namespace instruction_encoder {
 	# Writes the specified value to the current position and advances to the next position
 	write_int64(module: EncoderModule, value: large) {
 		(module.output + module.position).(large*)[] = value as large
-		module.position += sizeof(large)
+		module.position += strideof(large)
 	}
 
 	# Summary:
@@ -1270,8 +1270,8 @@ namespace instruction_encoder {
 			to = descriptor.absolute_position
 			offset = to - from
 
-			if module.is_short_jump write(module, module.position - sizeof(byte), offset)
-			else { write_int32(module, module.position - sizeof(normal), offset) }
+			if module.is_short_jump write(module, module.position - strideof(byte), offset)
+			else { write_int32(module, module.position - strideof(normal), offset) }
 		}
 
 		# Calls:
@@ -1282,8 +1282,8 @@ namespace instruction_encoder {
 				if not labels.contains_key(call.label) continue
 				descriptor = labels[call.label]
 
-				# Move the start to the end of the call instruction using the offset 'sizeof(normal)'
-				from = module.start + call.position + sizeof(normal)
+				# Move the start to the end of the call instruction using the offset 'strideof(normal)'
+				from = module.start + call.position + strideof(normal)
 				to = descriptor.absolute_position
 				offset = to - from
 

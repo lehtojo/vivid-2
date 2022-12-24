@@ -27,7 +27,7 @@ CustomArray<T> {
 	count: large
 	
 	init(count: large) {
-		this.data = allocate(count * sizeof(T))
+		this.data = allocate(count * strideof(T))
 		this.count = count
 	}
 
@@ -66,21 +66,21 @@ Object {
 export iteration_1(array: CustomArray<large>, destination: large*) {
 	loop i in array {
 		destination[] = i
-		destination += sizeof(large)
+		destination += strideof(large)
 	}
 }
 
 export iteration_2(destination: large*) {
 	loop i in -10..10 {
 		destination[] = i * i
-		destination += sizeof(large)
+		destination += strideof(large)
 	}
 }
 
 export iteration_3(range: Range, destination: large*) {
 	loop i in range {
 		destination[] = 2 * i
-		destination += sizeof(large)
+		destination += strideof(large)
 	}
 }
 

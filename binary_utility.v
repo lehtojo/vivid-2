@@ -125,7 +125,7 @@ BinaryRelocation {
 		this.symbol = symbol
 		this.offset = offset
 		this.addend = addend
-		this.bytes = sizeof(normal)
+		this.bytes = strideof(normal)
 		this.type = type
 	}
 
@@ -141,7 +141,7 @@ BinaryRelocation {
 		this.symbol = symbol
 		this.offset = offset
 		this.addend = addend
-		this.bytes = sizeof(normal)
+		this.bytes = strideof(normal)
 		this.type = type
 		this.section = section
 	}
@@ -189,7 +189,7 @@ BinaryStringTable {
 
 	init(size: bool) {
 		this.size = size
-		if size { this.position = sizeof(normal) }
+		if size { this.position = strideof(normal) }
 	}
 
 	add(item: String) {
@@ -205,7 +205,7 @@ BinaryStringTable {
 
 		if size {
 			# Since the size of the String table is included, we must insert a 4-byte integer before the String table, which contains the size of the String table.
-			bytes = sizeof(normal) + payload.length + 1
+			bytes = strideof(normal) + payload.length + 1
 			result = Array<byte>(bytes)
 			
 			# Insert the size of the String table
@@ -213,7 +213,7 @@ BinaryStringTable {
 
 			# Copy the payload
 			if payload.length > 0 {
-				copy(payload.data, payload.length, result.data + sizeof(normal))
+				copy(payload.data, payload.length, result.data + strideof(normal))
 			}
 		}
 		else {
@@ -329,8 +329,8 @@ compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol
 # Summary:
 # Writes the specified source to the specified destination to the specified offset
 write<T>(destination: Array<byte>, offset: large, source: T) {
-	copy(source as link, capacityof(T), destination.data + offset)
-	return offset + capacityof(T)
+	copy(source as link, sizeof(T), destination.data + offset)
+	return offset + sizeof(T)
 }
 
 # Summary:

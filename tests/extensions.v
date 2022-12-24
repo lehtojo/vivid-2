@@ -9,7 +9,7 @@ namespace Foo {
 Factory {}
 
 Foo.is_larger<Ta, Tb>() {
-	return sizeof(Ta) > sizeof(Tb)
+	return strideof(Ta) > strideof(Tb)
 }
 
 Foo.Bar.Counter.increment() {

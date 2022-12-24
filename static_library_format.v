@@ -185,7 +185,7 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 	}
 
 	# Compute the size of the export table that will be placed to the start of static library file for quick access
-	export_table_size = sizeof(normal) + symbol_count * sizeof(normal) + symbol_buffer.position
+	export_table_size = strideof(normal) + symbol_count * strideof(normal) + symbol_buffer.position
 
 	# Compute the offset which must be applied to all the file positions
 	offset = length_of(SIGNATURE) + FILE_HEADER_LENGTH + export_table_size + filename_table.position

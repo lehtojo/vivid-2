@@ -3,7 +3,7 @@ Array<T> {
 	count: large
 	
 	init(count: large) {
-		this.data = allocate(count * sizeof(T))
+		this.data = allocate(count * strideof(T))
 		this.count = count
 	}
 	

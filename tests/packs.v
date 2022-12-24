@@ -106,8 +106,8 @@ init() {
 	y = pack_5(27, 31)
 	console.write_line(pack_6(x, y))
 
-	memory = allocate(sizeof(Bar) * 2) as large*
-	zero(memory, sizeof(Bar) * 2)
+	memory = allocate(strideof(Bar) * 2) as large*
+	zero(memory, strideof(Bar) * 2)
 	memory[] = 37
 	memory[1] = 41
 

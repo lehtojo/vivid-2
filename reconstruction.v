@@ -1136,11 +1136,11 @@ rewrite_inspections(root: Node) {
 		if inspection.type == INSPECTION_TYPE_NAME {
 			inspection.replace(StringNode(type.string(), inspection.start))
 		}
-		else inspection.type == INSPECTION_TYPE_CAPACITY {
-			inspection.replace(NumberNode(SYSTEM_FORMAT, type.content_size, inspection.start))
+		else inspection.type == INSPECTION_TYPE_STRIDE {
+			inspection.replace(NumberNode(SYSTEM_FORMAT, type.allocation_size, inspection.start))
 		}
 		else inspection.type == INSPECTION_TYPE_SIZE {
-			inspection.replace(NumberNode(SYSTEM_FORMAT, type.allocation_size, inspection.start))
+			inspection.replace(NumberNode(SYSTEM_FORMAT, type.content_size, inspection.start))
 		}
 	}
 }
@@ -1483,7 +1483,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 # Load the destination address as follows:
 # destination[index] = ...
 # =>
-# local = destination + index * sizeof(destination)
+# local = destination + index * strideof(destination)
 # local[0] = ...
 prepare_accessor_destination_for_duplication(context: Context, destination: AccessorNode, interphases: Node, position: Position) {
 	accessor_base = destination.first

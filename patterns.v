@@ -1845,10 +1845,10 @@ Pattern SpecificModificationPattern {
 
 Pattern TypeInspectionPattern {
 	constant SIZE_INSPECTION_IDENTIFIER = 'sizeof'
-	constant CAPACITY_INSPECTION_IDENTIFIER = 'capacityof'
+	constant STRIDE_INSPECTION_IDENTIFIER = 'strideof'
 	constant NAME_INSPECTION_IDENTIFIER = 'nameof'
 
-	# Pattern: sizeof($type)/capacityof($type)/nameof($type)
+	# Pattern: strideof($type)/sizeof($type)/nameof($type)
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
 		priority = 18
@@ -1856,7 +1856,7 @@ Pattern TypeInspectionPattern {
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
 		descriptor = tokens[] as FunctionToken
-		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == CAPACITY_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) return false
+		if not (descriptor.name == SIZE_INSPECTION_IDENTIFIER or descriptor.name == STRIDE_INSPECTION_IDENTIFIER or descriptor.name == NAME_INSPECTION_IDENTIFIER) return false
 
 		# Create a temporary state which in order to check whether the parameters contains a type
 		state = ParserState()
@@ -1881,8 +1881,8 @@ Pattern TypeInspectionPattern {
 			return InspectionNode(INSPECTION_TYPE_NAME, TypeNode(type), position)
 		}
 
-		if descriptor.name == CAPACITY_INSPECTION_IDENTIFIER {
-			return InspectionNode(INSPECTION_TYPE_CAPACITY, TypeNode(type), position)
+		if descriptor.name == STRIDE_INSPECTION_IDENTIFIER {
+			return InspectionNode(INSPECTION_TYPE_STRIDE, TypeNode(type), position)
 		}
 
 		return InspectionNode(INSPECTION_TYPE_SIZE, TypeNode(type), position)
