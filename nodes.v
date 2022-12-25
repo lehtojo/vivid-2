@@ -992,9 +992,40 @@ Node ReturnNode {
 	init(node: Node, position: Position) {
 		this.instance = NODE_RETURN
 		this.start = position
+		this.is_resolvable = true
 
 		# Add the return value, if it exists
 		if node != none add(node)
+	}
+
+	override resolve(context: Context) {
+		if first !== none resolver.resolve(context, first)
+		return none as Node
+	}
+
+	override get_status() {
+		# Find the environment context
+		environment = try_get_parent_context()
+		if environment === none return none as Status
+
+		# Look for the function we are inside of
+		environment = environment.find_implementation_parent()
+		if environment === none return none as Status
+
+		# If this statement has a return value, try to get its type
+		return_value_type = none as Type
+		if first !== none { return_value_type = first.try_get_type() }
+
+		# Illegal return statements:
+		# - Return statement does not have a return value even though the function has a return type
+		# - Return statement does have a return value, but the function does not return a value
+		# Unit type represents no return type. Exceptionally allow returning units when the return type is unit.
+		has_return_type = not primitives.is_primitive(environment.(FunctionImplementation).return_type, primitives.UNIT)
+		has_return_value = first !== none and not primitives.is_primitive(return_value_type, primitives.UNIT)
+		if has_return_type == has_return_value return none as Status
+
+		if has_return_type return Status(start, 'Can not return without a value, because the function has a return type')
+		return Status(start, 'Can not return with a value, because the function does not return a value')
 	}
 
 	override copy() {
