@@ -1079,7 +1079,10 @@ get_pack_proxies(context: Context, prefix: String, type: Type, category: large) 
 	proxies = List<Variable>()
 
 	loop iterator in type.variables {
+		# Do not process static or constant member variables
 		member = iterator.value
+		if member.is_static or member.is_constant continue
+
 		name = prefix + '.' + member.name
 
 		# Create proxies for each member, even for nested pack members
@@ -1104,6 +1107,22 @@ get_pack_proxies(variable: Variable) {
 	if variable.name.starts_with(`.`) return get_pack_proxies(variable.parent, variable.name, variable.type, variable.category)
 
 	return get_pack_proxies(variable.parent, String(`.`) + variable.name, variable.type, variable.category)
+}
+
+# Summary:
+# Returns all non-static members from the specified type
+get_non_static_members(type: Type): List<Variable> {
+	result = List<Variable>()
+
+	loop iterator in type.variables {
+		# Skip static and constant member variables
+		member = iterator.value
+		if member.is_static or member.is_constant continue
+
+		result.add(member)
+	}
+
+	return result
 }
 
 # Summary:

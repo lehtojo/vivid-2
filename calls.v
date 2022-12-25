@@ -88,16 +88,21 @@ is_self_pointer_required(current: FunctionImplementation, other: FunctionImpleme
 }
 
 # Summary: Passes the specified disposable pack by passing its member one by one
-pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle, shadow: bool) {
-	loop iterator in disposable_pack.members {
-		member = iterator.value.member
-		value = iterator.value.value
+pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle, type: Type, shadow: bool) {
+	source_members = disposable_pack.members.get_values()
+	destination_members = common.get_non_static_members(type)
 
-		if member.type.is_pack {
-			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, shadow)
+	loop (i = 0, i < source_members.size, i++) {
+		source_member = source_members[i].member
+		source_value = source_members[i].value
+		destination_member = destination_members[i]
+		destination_type = destination_member.type
+
+		if destination_type.is_pack {
+			pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, source_value.value as DisposablePackHandle, destination_type, shadow)
 		}
 		else {
-			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value, member.type, member.type.get_register_format(), shadow)
+			pass_argument(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, source_value, destination_type, destination_type.get_register_format(), shadow)
 		}
 	}
 }
@@ -105,7 +110,7 @@ pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standar
 # Summary: Passes the specified argument using a register or the specified stack position depending on the situation
 pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large, shadow: bool) {
 	if value.value.instance == INSTANCE_DISPOSABLE_PACK {
-		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, shadow)
+		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, type, shadow)
 		return
 	}
 
