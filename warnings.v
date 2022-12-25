@@ -1,24 +1,5 @@
 namespace warnings
 
-# Summary: Reports unnecessary casts in the specified node tree
-report_unnecessary_casts(diagnostics: List<Status>, root: Node) {
-	casts = root.find_all(NODE_CAST)
-
-	loop cast in casts {
-		from = cast.first.get_type()
-		to = cast.last.get_type()
-
-		if from === to and from.match(to) {
-			diagnostics.add(Status(cast.start, 'Cast is not needed'))
-		}
-	}
-}
-
-# Summary: Analyzes the specified node tree and reports warnings
-report(diagnostics: List<Status>, root: Node) {
-	report_unnecessary_casts(diagnostics, root)
-}
-
 # Summary: Returns all variables that are captured by lambdas in the specified function
 get_all_captured_variables(implementation: FunctionImplementation): Map<Variable, bool> {
 	lambdas = implementation.node.find_all(NODE_LAMBDA) as List<LambdaNode>
@@ -64,8 +45,6 @@ report(diagnostics: List<Status>, implementation: FunctionImplementation) {
 	if not implementation.is_imported {
 		report_unused_variables(diagnostics, implementation)
 	}
-
-	report(diagnostics, implementation.node)
 }
 
 # Summary: Analyzes the specified context and returns warnings concerning the functions and types in it

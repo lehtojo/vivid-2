@@ -635,12 +635,15 @@ create_heap_construction(type: Type, construction: ConstructionNode, constructor
 	size = max(1, type.content_size)
 	allocator = get_allocator(type, construction, construction.start, size)
 
+	# Cast the allocation to the construction type if needed
+	if allocator.get_type() !== type {
+		casted = CastNode(allocator, TypeNode(type, position), position)
+		allocator = casted
+	}
+
 	# The following example creates an instance of a type called Object
 	# Example: instance = allocate(sizeof(Object)) as Object
-	container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(
-		VariableNode(container.result, position),
-		CastNode(allocator, TypeNode(type, position), position)
-	))
+	container.node.add(OperatorNode(Operators.ASSIGN, position).set_operands(VariableNode(container.result, position), allocator))
 
 	supertypes = type.get_all_supertypes()
 

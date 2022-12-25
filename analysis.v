@@ -264,8 +264,14 @@ analyze() {
 	root = settings.parse.root
 	context = settings.parse.context
 
+	# Update variable usages, because they are needed for analyzing
 	reset_variable_usages(context)
 	load_variable_usages(context, root)
+
+	# Report warnings at this point, because variables usages are now updated and we have the most information here before reconstruction
+	warnings.report()
+
+	# Apply the values of constant variables
 	apply_constants(context)
 
 	implementations = common.get_all_function_implementations(context)
