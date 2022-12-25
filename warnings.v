@@ -86,7 +86,7 @@ report() {
 			console.write('<Source>:<Line>:<Character>')
 		}
 
-		console.write(': Warning: ')
+		console.write(': \e[1;33mWarning\e[0m: ')
 		console.write_line(diagnostic.message)
 	}
 }

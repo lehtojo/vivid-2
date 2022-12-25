@@ -485,7 +485,7 @@ output(status: Status) {
 		console.write(to_string(position.character + 1))
 	}
 
-	console.write(': Error: ')
+	console.write(': \e[1;31mError\e[0m: ')
 	console.write_line(status.message)
 }
 

@@ -44,8 +44,12 @@ Number Link {
 	}
 
 	override match(other: Type) {
+		# Require the other type to be a link
 		if (other.modifiers & MODIFIER_LINK) == 0 return false
 
+		# Use name and identity to compare the accessor types.
+		# Do not use this function recursively, because it would lead to a lot of calls 
+		# and possibly to infinite recursion when a type contains a link to itself.
 		a = get_accessor_type()
 		b = other.(Link).get_accessor_type()
 		return a.name == b.name and a.identity == b.identity
