@@ -8,7 +8,7 @@ get_shared_type(expected: Type, actual: Type) {
 	if (expected.is_link ¤ actual.is_link) != 0 return none as Type
 
 	if expected.is_number and actual.is_number {
-		bits = max(expected.reference_size * 8, actual.reference_size * 8)
+		bits = max(expected.default_allocation_size * 8, actual.default_allocation_size * 8)
 		signed = not expected.(Number).unsigned or not actual.(Number).unsigned
 		is_decimal = expected.format == FORMAT_DECIMAL or actual.format == FORMAT_DECIMAL
 		return primitives.create_number(bits, signed, is_decimal)

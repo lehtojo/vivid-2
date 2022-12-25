@@ -715,9 +715,12 @@ Context Type {
 	is_unnamed_pack => is_pack and name.index_of(`.`) != -1
 	is_template_type_variant => name.index_of(`<`) != -1
 
-	reference_size: large = SYSTEM_BYTES
+	default_allocation_size: large = SYSTEM_BYTES
 	allocation_size => get_allocation_size()
 
+	# Summary:
+	# Returns how many bytes are required to store this type inside something such as a function.
+	# Some types only require the address of the actual memory to be stored so in those cases the allocation size is the address size.
 	open get_allocation_size() {
 		if is_pack {
 			result = 0
@@ -732,12 +735,12 @@ Context Type {
 			return result
 		}
 
-		return reference_size
+		return default_allocation_size
 	}
 
 	# Summary: Returns how many bytes this type contains
 	content_size() {
-		if is_array_type return get_allocation_size()
+		if is_array_type or is_primitive return get_allocation_size()
 
 		bytes = 0
 

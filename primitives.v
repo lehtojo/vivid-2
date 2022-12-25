@@ -5,7 +5,7 @@ Type Number {
 
 	init(format: large, bits: normal, name: String) {
 		Type.init(name, MODIFIER_DEFAULT | MODIFIER_PRIMITIVE | MODIFIER_NUMBER, 0)
-		this.reference_size = bits / 8
+		this.default_allocation_size = bits / 8
 		this.format = format
 		this.bits = bits
 	}
