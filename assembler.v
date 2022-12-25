@@ -1747,35 +1747,6 @@ group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
 	return groups
 }
 
-get_static_variables(type: Type) {
-	builder = StringBuilder()
-
-	loop iterator in type.variables {
-		variable = iterator.value
-		if not variable.is_static continue
-
-		name = variable.get_static_name()
-		size = variable.type.reference_size
-
-		builder.append(EXPORT_DIRECTIVE)
-		builder.append(` `)
-		builder.append_line(name)
-
-		if not settings.is_x64 {
-			builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-			builder.append_line(' 3')
-		}
-
-		builder.append(name)
-		builder.append(': ')
-		builder.append(BYTE_ZERO_ALLOCATOR)
-		builder.append(` `)
-		builder.append_line(to_string(size))
-	}
-
-	return builder.string()
-}
-
 # Summary:
 # Allocates the specified static variable using assembly directives
 allocate_static_variable(variable: Variable) {
@@ -1790,7 +1761,7 @@ allocate_static_variable(variable: Variable) {
 
 	if not settings.is_x64 {
 		builder.append(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-		builder.append_line(' 3')
+		builder.append_line(' 4')
 	}
 
 	builder.append(name)
@@ -1824,7 +1795,7 @@ add_table(builder: AssemblyBuilder, table: Table, marker: large) {
 
 		if not settings.is_x64 {
 			builder.write(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-			builder.write_line(' 3')
+			builder.write_line(' 4')
 		}
 
 		builder.write(table.name)
@@ -1943,7 +1914,7 @@ allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<Const
 		name = item.identifier
 
 		if settings.is_assembly_output_enabled {
-			builder.write_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 3')
+			builder.write_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 4')
 			builder.write_line(name + `:`)
 		}
 
@@ -2011,7 +1982,7 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 		}
 
 		if settings.is_x64 { builder.append_line(String(BYTE_ALIGNMENT_DIRECTIVE) + ' 16') }
-		else { builder.append_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 3') }
+		else { builder.append_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 4') }
 
 		builder.append(name)
 		builder.append_line(`:`)
@@ -2150,7 +2121,7 @@ get_data_sections(context: Context) {
 			if node.identifier === none continue
 
 			builder.write(POWER_OF_TWO_ALIGNMENT_DIRECTIVE)
-			builder.write_line(' 3')
+			builder.write_line(' 4')
 			builder.write(node.identifier)
 			builder.write(':\n')
 			builder.write_line(allocate_string(node.text))
