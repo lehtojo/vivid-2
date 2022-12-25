@@ -150,6 +150,11 @@ FolderItem {
 }
 
 export get_folder_items(folder: String, all: bool) {
+	# Ensure the folder ends with a separator
+	if not folder.ends_with(`/`) {
+		folder = folder + `/`
+	}
+
 	# Try to open the specified folder
 	file_descriptor = internal.system_open(folder.data, internal.FLAG_DIRECTORY, 0)
 	if file_descriptor < 0 return none as List<FolderItem>
@@ -173,7 +178,7 @@ export get_folder_items(folder: String, all: bool) {
 		loop (position < result) {
 			entry = (buffer + position) as internal.DirectoryEntry
 			name = String(entry as link + 19)
-			fullname = folder + `/` + name
+			fullname = folder + name
 
 			if entry.type == internal.FILE_TYPE_DIRECTORY {
 				items.add(FolderItem(fullname, true))
