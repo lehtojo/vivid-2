@@ -1851,7 +1851,7 @@ Pattern TypeInspectionPattern {
 	# Pattern: strideof($type)/sizeof($type)/nameof($type)
 	init() {
 		path.add(TOKEN_TYPE_FUNCTION)
-		priority = 18
+		priority = 19
 	}
 
 	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
