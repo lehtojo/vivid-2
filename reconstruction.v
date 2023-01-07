@@ -1721,7 +1721,7 @@ apply_pack_cast(cast: Node, from: Type, to: Type) {
 
 	# Verify the casted value is a packer and that the value type and target type are compatible
 	value = cast.first
-	if value.instance != NODE_PACK or not to.match(from) abort('Can not cast the value to a pack')
+	if value.instance != NODE_PACK or not to.match(from) abort(value.start, 'Can not cast the value to a pack')
 
 	# Replace the internal type of the packer with the target type
 	value.(PackNode).type = to
@@ -1919,9 +1919,10 @@ start(implementation: FunctionImplementation, root: Node) {
 	rewrite_is_expressions(root)
 	rewrite_lambda_constructions(root)
 	rewrite_list_constructions(root)
+	rewrite_has_expressions(root)
+	rewrite_zero_initialized_packs(root) # Rewrite zero initialized packs once again, because other rewriters may have generated these
 	rewrite_pack_constructions(root)
 	rewrite_constructions(root)
-	rewrite_has_expressions(root)
 	extract_bool_values(root)
 	rewrite_edits_as_assignments(root)
 	cast_member_calls(root)

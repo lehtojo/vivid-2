@@ -12,6 +12,29 @@ abort(message: link) {
 	application.exit(1)
 }
 
+abort(position: Position, message: link) {
+	console.write('Internal error: ')
+	console.write(message)
+
+	if position !== none {
+		console.write(' (')
+
+		file = position.file
+
+		if file !== none { console.write(file.fullname) }
+		else { console.write('<Source>') }
+
+		console.write(':')
+		console.write(to_string(position.line + 1))
+		console.write(':')
+		console.write(to_string(position.character + 1))
+		console.put(`)`)
+	}
+
+	console.write_line()
+	application.exit(1)
+}
+
 complain(status: Status) {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)

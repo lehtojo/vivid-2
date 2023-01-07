@@ -97,6 +97,10 @@ namespace internal.allocator {
 			# Ensure the slab is not already deallocated
 			allocate_slab(index)
 
+			# NOTE: Debug mode only
+			# Zero out the slab after use
+			zero(address, sizeof(T))
+
 			address.(link*)[] = available
 			available = address
 
@@ -264,6 +268,11 @@ export outline deallocate(address: link) {
 	# Load the size of the allocation and deallocate the memory
 	address -= strideof(large)
 	bytes = address.(large*)[]
+
+	# NOTE: Debug mode only
+	# Zero out the memory after use
+	zero(address, bytes)
+
 	internal.deallocate(address, bytes)
 }
 

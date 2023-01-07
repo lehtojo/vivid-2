@@ -56,7 +56,8 @@ for(unit: Unit, result: Result) {
 	loop (i = start, i <= end, i++) {
 		instruction = instructions[i]
 
-		if instruction.type == INSTRUCTION_CALL {
+		# If the value is used after a call, add non-volatility directive
+		if instruction.type == INSTRUCTION_CALL and i < end {
 			directives.add(NonVolatilityDirective())
 			continue
 		}
