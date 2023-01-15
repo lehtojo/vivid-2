@@ -2256,8 +2256,9 @@ create_header(context: Context, file: SourceFile, output_type: large) {
 
 	add_debug_information_to_header(builder, file)
 
-	# Do not add the entry function call, if the we are outputting a static library
-	if output_type == BINARY_TYPE_STATIC_LIBRARY return builder
+	# Static libraries and object files do not have entry points
+	is_entry_point_needed = output_type == BINARY_TYPE_EXECUTABLE or output_type == BINARY_TYPE_SHARED_LIBRARY
+	if not is_entry_point_needed return builder
 
 	selector = context.get_function("init")
 	if selector == none or selector.overloads.size == 0 abort('Missing entry function')
