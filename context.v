@@ -2159,6 +2159,29 @@ UnresolvedTypeComponent {
 			arguments[i] = replacement
 		}
 	}
+
+	string() {
+		if arguments.size == 0 return identifier
+
+		result = StringBuilder(identifier)
+
+		# Begin the template arguments
+		result.append(`<`)
+
+		# Add the template arguments by joining them by commas
+		loop argument in arguments {
+			result.append(argument.string())
+			result.append(', ')
+		}
+
+		# Remove the comma from the end
+		result.remove(result.length - 1, result.length)
+
+		# End the template arguments
+		result.append(`>`)
+
+		return result.string()
+	}
 }
 
 Type UnresolvedType {
@@ -2249,6 +2272,28 @@ Type UnresolvedType {
 		if result === none return this
 
 		return result
+	}
+
+	override string() {
+		result = StringBuilder()
+
+		# Add the components by joining them by dots
+		loop component in components {
+			result.append(component.string())
+			result.append(`.`)
+		}
+
+		# Remove the dot from the end if it is there
+		length = result.length
+		if length > 0 { result.remove(length - 1, length) }
+
+		# Add the array specifier to the type if it exists
+		if size !== none { result.append(size.string()) }
+
+		# Add pointers to the end of the type
+		loop (i = 0, i < pointers, i++) { result.append(`.`) }
+
+		return result.string()
 	}
 }
 
