@@ -248,7 +248,7 @@ export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, 
 			bytes = pe_format.build(object_file.sections, object_file.exports)
 		}
 		else {
-			# TODO: Import linux support
+			bytes = elf_format.build_object_file(object_file.sections, object_file.exports)
 		}
 
 		files.add(StaticLibraryFormatFile(object_file_name, object_file_symbols.to_list(), bytes))

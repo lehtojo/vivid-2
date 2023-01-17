@@ -22,14 +22,13 @@ constant EXPORT_TABLE_FILENAME = '/'
 constant FILENAME_TABLE_NAME = '//'
 
 # Summary:
-# Iterates through the specified sections which represent template exports and imports them
-import_templates(context: Context, bytes: Array<byte>, headers: List<StaticLibraryFormatFileHeader>, library: String, files: List<SourceFile>) {
+# Iterates through the specified headers and looks for an export file and imports it.
+# Export files contain exported source code such as template types and functions.
+import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLibraryFormatFileHeader>, library: String, files: List<SourceFile>) {
 	loop (i = 0, i < headers.size, i++) {
-		# Look for files which represent source code of this language
+		# Look for an export file
 		header = headers[i]
-
-		# Ensure the file ends with the extension of this language
-		if not header.filename.ends_with(LANGUAGE_FILE_EXTENSION) continue
+		if not header.filename.ends_with(GENERAL_IMPORT_FILE_EXTENSION) continue
 
 		start = header.pointer_of_data
 		end = start + header.size
@@ -100,7 +99,7 @@ import_object_files_from_static_library(file: String, headers: List<StaticLibrar
 		if settings.is_target_windows {
 			object_file = pe_format.import_object_file(object_file_name, object_file_bytes)
 		} else {
-			# TODO: Import linux support
+			object_file = elf_format.import_object_file(object_file_name, object_file_bytes)
 		}
 
 		object_file_source = SourceFile(object_file_name, String.empty, -1)
@@ -213,7 +212,7 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 	headers = load_file_headers(bytes)
 	if headers.size == 0 return false
 
-	import_templates(context, bytes, headers, file, files)
+	import_export_file(context, bytes, headers, file, files)
 	import_object_files_from_static_library(file, headers, bytes, object_files)
 	import_template_type_variants(context, headers, bytes)
 	import_template_function_variants(context, headers, bytes)

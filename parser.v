@@ -571,16 +571,20 @@ apply_extension_functions(context: Context, root: Node) {
 	loop extension in extensions { resolver.resolve(context, extension) }
 }
 
-# Summary: Ensures that exported functions and virtual functions are implemented
-implement_functions(context: Context, file: SourceFile, all: bool) {
+# Summary: Ensures that all exported functions are implemented
+implement_exported_functions(context: Context, file: SourceFile, all: bool) {
 	loop function in common.get_all_visible_functions(context) {
 		# If the file filter is specified, skip all functions which are not defined inside that file
-		if file != none and function.start != none and function.start.file != file continue
+		if file !== none and function.start !== none and function.start.file !== file continue
 
-		is_function_imported = function.is_exported or (function.parent != none and function.parent.is_type and function.parent.(Type).is_exported)
+		# Function is exported when:
+		# - 1. All functions are automatically exported
+		# - 2. It is set to be exported
+		# - 3. It is inside an exported type
+		is_function_exported = all or function.is_exported or (function.parent != none and function.parent.is_type and function.parent.(Type).is_exported)
 
 		# Skip all functions which are not exported
-		if not all and not function.is_exported continue
+		if not is_function_exported continue
 
 		# Template functions can not be implemented
 		if function.is_template_function continue
@@ -605,11 +609,12 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 		# Force implement the current exported function
 		function.get(types)
 	}
+}
 
-	all_types = common.get_all_types(context)
-
+# Summary: Ensures that all virtual function overrides are implemented
+implement_virtual_function_overrides(types: List<Type>, file: SourceFile) {
 	# Implement all virtual function overloads
-	loop type in all_types {
+	loop type in types {
 		# Find all virtual functions
 		virtual_functions = type.get_all_virtual_functions()
 
@@ -651,11 +656,29 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 			}
 		}
 	}
+}
 
+# Summary: Ensures that all constructors are implemented
+implement_constructors(types: List<Type>) {
 	# Ensure all default constructors are implemented, because otherwise uncalled default constructors might be added after resolving and they might bypass reconstruction
-	loop type in all_types {
+	loop type in types {
 		type.constructors.get_implementation(List<Type>())
 	}
+}
+
+# Summary:
+# Ensures that all necessary functions are implemented.
+# For example, libraries need all functions to be implemented even when they are not called.
+implement_functions(context: Context, file: SourceFile, all: bool) {
+	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or settings.output_type == BINARY_TYPE_SHARED_LIBRARY
+
+	if is_output_library implement_exported_functions(context, file, all)
+
+	types = common.get_all_types(context)
+
+	implement_virtual_function_overrides(types, file)
+
+	implement_constructors(types)
 }
 
 # Summary: Goes through all the specified types and ensures all their supertypes are resolved

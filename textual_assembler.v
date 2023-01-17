@@ -39,7 +39,7 @@ assemble() {
 				object_file = pe_format.create_object_file(file.fullname, sections, parser.exports)
 			}
 			else {
-				# TODO: Import linux support
+				object_file = elf_format.create_object_file(file.fullname, sections, parser.exports)
 			}
 
 			object_files.add(object_file)
@@ -51,7 +51,7 @@ assemble() {
 			binary = pe_format.link(object_files, List<String>(), assembler.get_default_entry_point(), output_basename, true)
 		}
 		else {
-			# TODO: Import linux support
+			binary = elf_format.link(object_files, List<String>(), assembler.get_default_entry_point(), true)
 		}
 
 		io.write_file(output_basename, binary)
@@ -76,7 +76,7 @@ assemble() {
 				binary = pe_format.build(sections, parser.exports)
 			}
 			else {
-				# TODO: Import linux support
+				binary = elf_format.build_object_file(sections, parser.exports)
 			}
 
 			object_filename = output_basename + `.` + file.filename_without_extension() + object_file_extension

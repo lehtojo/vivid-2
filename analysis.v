@@ -241,7 +241,7 @@ load_variable_usages(context: Context, root: Node) {
 		}
 	}
 
-	# Classify the loaded usages
+	# Classify usages of variables inside functions
 	loop implementation in implementations {
 		loop variable in implementation.all_variables {
 			classify_variable_usages(variable)
@@ -252,11 +252,18 @@ load_variable_usages(context: Context, root: Node) {
 		}
 	}
 
+	# Classify usages of variables inside types
 	loop type in common.get_all_types(context) {
 		loop iterator in type.variables {
 			variable = iterator.value
 			classify_variable_usages(variable)
 		}
+	}
+
+	# Classify usages of global variables
+	loop iterator in context.variables {
+		variable = iterator.value
+		classify_variable_usages(variable)
 	}
 }
 

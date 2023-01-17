@@ -184,11 +184,12 @@ node_to_string(node: Node) {
 	}
 
 	if node.instance == NODE_NUMBER {
-		return node.(NumberNode).string()
+		if node.(NumberNode).format == FORMAT_DECIMAL return to_string(bits_to_decimal(node.(NumberNode).value))
+		return to_string(node.(NumberNode).value)
 	}
 
 	if node.instance == NODE_STRING {
-		return node.(StringNode).text
+		return "\'" + node.(StringNode).text + `\'`
 	}
 
 	abort('Exporter does not support this constant value')

@@ -1797,7 +1797,7 @@ Function Lambda {
 
 		# Add import modifier if this lambda is inside an imported function
 		container = context.find_lambda_container_parent()
-		if container.is_implementation and container.(FunctionImplementation).metadata.is_imported { modifiers |= MODIFIER_IMPORTED }
+		if container.is_implementation and container.(FunctionImplementation).metadata.is_imported { this.modifiers |= MODIFIER_IMPORTED }
 	}
 
 	# Summary: Implements the lambda using the specified parameter types
@@ -2169,13 +2169,13 @@ UnresolvedTypeComponent {
 		result.append(`<`)
 
 		# Add the template arguments by joining them by commas
-		loop argument in arguments {
-			result.append(argument.string())
+		loop (i = 0, i < arguments.size - 1, i++) {
+			result.append(arguments[i].string())
 			result.append(', ')
 		}
 
-		# Remove the comma from the end
-		result.remove(result.length - 1, result.length)
+		# Add the last argument
+		result.append(arguments[arguments.size - 1].string())
 
 		# End the template arguments
 		result.append(`>`)
@@ -2291,7 +2291,7 @@ Type UnresolvedType {
 		if size !== none { result.append(size.string()) }
 
 		# Add pointers to the end of the type
-		loop (i = 0, i < pointers, i++) { result.append(`.`) }
+		loop (i = 0, i < pointers, i++) { result.append(`*`) }
 
 		return result.string()
 	}
