@@ -1,17 +1,20 @@
 import 'C' ExitProcess(status: large)
 import 'C' GetStdHandle(handle: large): large
 import 'C' WriteFile(handle: large, buffer: link, size: large, written: large*, overlapped: large*): bool
+import 'C' VirtualAlloc(address: link, size: large, type: large, protect: bool): link
+import 'C' VirtualFree(address: link, size: large, type: large)
+
+import zero(address: link, size: large)
+
+constant MEMORY_COMMIT = 0x1000
+constant MEMORY_RESERVE = 0x2000
+constant MEMORY_RELEASE = 0x8000
+
+constant PAGE_READWRITE = 0x04
 
 STANDARD_OUTPUT_HANDLE = -11
 STRING_DECIMAL_PRECISION = 15
 DECIMAL_PRECISION = 0.000000001
-
-# Summary: Fills the memory with the specified amount of zero bytes
-zero(memory: link, amount: large) {
-	loop (i = 0, i < amount, i++) {
-		memory[i] = 0
-	}
-}
 
 # Exits the application with the specified status code
 exit(code: large) {
@@ -100,7 +103,7 @@ to_string(number: decimal, result: link) {
 print(bytes: link, length: large) {
 	written: large[1]
 	handle = GetStdHandle(STANDARD_OUTPUT_HANDLE)
-	WriteFile(handle, bytes, length, written as link, 0)
+	WriteFile(handle, bytes, length, written as large*, 0 as large*)
 }
 
 # Summary: Writes the specified character to the console
@@ -109,7 +112,7 @@ print(character: char) {
 	bytes: char[1]
 	bytes[] = character
 	handle = GetStdHandle(STANDARD_OUTPUT_HANDLE)
-	WriteFile(handle, bytes as link, 1, written as link, 0)
+	WriteFile(handle, bytes as link, 1, written as large*, 0 as large*)
 }
 
 # Summary: Length is determined by looking for a zero byte
@@ -237,16 +240,17 @@ export are_not_equal(a: large, b: large) {
 	exit(1)
 }
 
-allocate(bytes: large) {
-	panic('Prebuilt library does not support allocation')
+allocate(bytes: large): link {
+	return VirtualAlloc(0 as link, bytes, MEMORY_COMMIT | MEMORY_RESERVE, PAGE_READWRITE)
 }
 
-deallocate(bytes: link) {
-	panic('Prebuilt library does not support deallocation')
+deallocate(address: link) {
+	return VirtualFree(address, 0, MEMORY_RELEASE)
 }
 
-internal_is(a: link, b: link) {
+internal_is(a: link, b: link): bool {
 	panic('Prebuilt library does not support inheritance')
+	return false
 }
 
 panic(message: link) {

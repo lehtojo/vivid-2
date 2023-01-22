@@ -5,7 +5,6 @@ $Arguments = './libv/', './libv/allocator/allocator.v', './libv/windows-x64/', '
 # Verify the compiler exited successfully and the output file was created
 if ( ($LASTEXITCODE -ne 0) -or !(Test-Path "core.lib" -PathType Leaf) )
 {
-	Write-ColorOutput red "Failed to build the core library"
-	Clean
+	Write-Output red "Failed to build the core library"
 	Exit 1
 }
