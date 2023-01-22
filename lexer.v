@@ -1502,19 +1502,25 @@ parse_token(area: TextArea) {
 join_sequential_modifiers(tokens: List<Token>) {
 	loop (i = tokens.size - 2, i >= 0, i--) {
 		# Require both the current and the next tokens to be modifier keywords
-		a = tokens[i]
-		b = tokens[i + 1]
+		left_token = tokens[i]
+		right_token = tokens[i + 1]
 
-		if a.type != TOKEN_TYPE_KEYWORD or b.type != TOKEN_TYPE_KEYWORD continue
+		if left_token.type != TOKEN_TYPE_KEYWORD or right_token.type != TOKEN_TYPE_KEYWORD continue
 
-		x = a.(KeywordToken).keyword
-		y = b.(KeywordToken).keyword
+		left_keyword = left_token.(KeywordToken).keyword
+		right_keyword = right_token.(KeywordToken).keyword
 
-		if x.type != KEYWORD_TYPE_MODIFIER or y.type != KEYWORD_TYPE_MODIFIER continue
+		if left_keyword.type != KEYWORD_TYPE_MODIFIER or right_keyword.type != KEYWORD_TYPE_MODIFIER continue
 
-		# Combine the two modifiers into one token, and remove the second token
-		modifiers = x.(ModifierKeyword).modifier | y.(ModifierKeyword).modifier
-		a.(KeywordToken).keyword = ModifierKeyword(String.empty, modifiers)
+		left_modifier = left_keyword as ModifierKeyword
+		right_modifier = right_keyword as ModifierKeyword
+
+		# Combine the two modifiers into one token
+		identifier = left_modifier.identifier + ` ` + right_modifier.identifier
+		modifiers = left_modifier.modifier | right_modifier.modifier
+		left_token.(KeywordToken).keyword = ModifierKeyword(identifier, modifiers)
+
+		# Remove the right keyword, because it is combined into the left keyword
 		tokens.remove_at(i + 1)
 	}
 }
