@@ -37,6 +37,7 @@ DataEncoderModule {
 	# Summary:
 	# Writes the specified character to the current position and advances to the next position
 	write(value: char) {
+		reserve(1)
 		output[position++] = value
 	}
 
