@@ -61,15 +61,21 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	arguments.add("kernel32.dll")
 	arguments.add("-o")
 	arguments.add(String(UNIT_TEST_PREFIX) + output)
+	arguments.add_all(get_standard_object_files())
 
 	if prebuilt {
 		objects = io.get_folder_files(io.get_process_working_folder() + '/prebuilt/', false)
-		loop object in objects { arguments.add(object.fullname) }
+
+		loop object in objects {
+			# Add object files and source files
+			if object.fullname.ends_with(LANGUAGE_FILE_EXTENSION) or 
+				object.fullname.ends_with(object_file_extension) {
+				arguments.add(object.fullname)
+			}
+		}
 	}
 	else {
 		# Add the built standard library
-		# arguments.add("-l")
-		# arguments.add("v")
 		arguments.add_all(get_standard_library_utility())
 	}
 
@@ -199,6 +205,10 @@ get_function_from_assembly(assembly: String, function: link) {
 	return assembly.slice(start, end)
 }
 
+get_standard_object_files(): List<String> {
+	return [ relative_file('min.math.obj'), relative_file('min.memory.obj'), relative_file('min.tests.obj') ]
+}
+
 get_standard_library_utility() {
 	files = List<String>()
 	files.add(project_file('libv/tests', 'core.v'))
@@ -216,9 +226,6 @@ get_standard_library_utility() {
 	files.add(project_file('libv', 'string-builder.v'))
 	files.add(project_file('libv', 'string-utility.v'))
 	files.add(project_file('libv', 'string.v'))
-	files.add(relative_file('min.math.obj'))
-	files.add(relative_file('min.memory.obj'))
-	files.add(relative_file('min.tests.obj'))
 	return files
 }
 
