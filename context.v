@@ -1514,10 +1514,6 @@ Context Function {
 			if matches return implementation
 		}
 
-		# Imported functions should have exactly one implementation
-		# This also prevents additional implementations when the parameters of an imported function are unresolved
-		if is_imported and implementations.size > 0 return none as FunctionImplementation
-
 		return implement(implementation_types)
 	}
 
