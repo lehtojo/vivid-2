@@ -24,7 +24,7 @@ constant FILENAME_TABLE_NAME = '//'
 # Summary:
 # Iterates through the specified headers and looks for an export file and imports it.
 # Export files contain exported source code such as template types and functions.
-import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLibraryFormatFileHeader>, library: String, files: List<SourceFile>) {
+import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLibraryFormatFileHeader>, library: String, files: List<SourceFile>): Node {
 	loop (i = 0, i < headers.size, i++) {
 		# Look for an export file
 		header = headers[i]
@@ -33,7 +33,7 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 		start = header.pointer_of_data
 		end = start + header.size
 
-		if start < 0 or start > bytes.size or end < 0 or end > bytes.size return false
+		if start < 0 or start > bytes.size or end < 0 or end > bytes.size abort('Export file data was out of bounds')
 
 		# Determine the next available index for the new source file
 		index = 0
@@ -50,7 +50,7 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 		files.add(file)
 
 		# Produce tokens from the template code
-		if get_tokens(text, true) has not tokens return false
+		if get_tokens(text, true) has not tokens abort('Failed to tokenize export file')
 		file.tokens = tokens
 
 		# Register the file to the produced tokens
@@ -77,9 +77,11 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 		loop namespace_node in namespace_nodes {
 			namespace_node.parse(context)
 		}
+
+		return root
 	}
 
-	return true
+	return none as Node
 }
 
 # Summary:
@@ -196,9 +198,39 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 }
 
 # Summary:
+# Resolve issues such as parameter types in the imported context and node tree
+resolve(context: Context, root: Node) {
+	current = resolver.get_report(context, root)
+	evaluated = false
+
+	# Try to resolve as long as errors change -- errors do not always decrease since the program may expand each cycle
+	loop {
+		previous = current
+
+		# Try to resolve problems in the node tree and get the status after that
+		resolver.resolve_context(context)
+		resolver.resolve(context, root)
+
+		current = resolver.get_report(context, root)
+
+		# Try again only if the errors have changed
+		if not resolver.are_reports_equal(previous, current) continue
+		if evaluated stop
+
+		evaluator.evaluate(context)
+		evaluated = true
+	}
+
+	if current.size > 0 {
+		resolver.complain(current)
+		abort('Failed to import a library')
+	}
+}
+
+# Summary:
 # Imports the specified static library by finding the exported symbols and importing them
 internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
-	if io.read_file(file) has not bytes return false
+	if io.read_file(file) has not bytes abort('Failed to open a library')
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
 
@@ -207,16 +239,18 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 
 	# Load all the exported symbols
 	exported_symbols = pe_format.load_number_of_strings(bytes, position, entries)
-	if exported_symbols == none return false
+	if exported_symbols == none abort('Failed to load exported symbols from a library')
 
 	headers = load_file_headers(bytes)
-	if headers.size == 0 return false
+	if headers.size == 0 abort('Failed to load headers from a library')
 
-	import_export_file(context, bytes, headers, file, files)
+	root = import_export_file(context, bytes, headers, file, files)
 	import_object_files_from_static_library(file, headers, bytes, object_files)
 	import_template_type_variants(context, headers, bytes)
 	import_template_function_variants(context, headers, bytes)
-	return true
+
+	# Resolve issues in the imported context and node tree if they exist
+	if root !== none resolve(context, root)
 }
 
 # Summary:
@@ -322,19 +356,23 @@ import_static_library(context: Context, file: String, files: List<SourceFile>, o
 	functions = common.get_all_visible_functions(import_context)
 
 	loop function in functions {
-		function.modifiers |= MODIFIER_IMPORTED
-
-		# Create default implementations for imported functions that do not require template arguments
 		parameter_types = function.parameters.map<Type>((i: Parameter) -> i.type)
 
-		if not function.is_template_function and parameter_types.all(i -> i != none and i.is_resolved) {
-			function.get(parameter_types)
+		if function.is_template_function or parameter_types.any(i -> i === none) {
+			# Set all template functions as not imported as later variations are no longer imported
+			function.modifiers &= !MODIFIER_IMPORTED
 		}
+		else {
+			# Create a default implementation for the imported function, since it does not require template arguments
+			if function.get(parameter_types) === none abort('Failed to import a function')
+		}
+	}
 
-		# Register the default implementations as imported
-		loop implementation in function.implementations {
-			implementation.is_imported = true
-		}
+	# Register all implementations here imported
+	implementations = common.get_all_function_implementations(import_context, true)
+
+	loop implementation in implementations {
+		implementation.is_imported = true
 	}
 
 	# Ensure all types are marked as imported
@@ -344,7 +382,6 @@ import_static_library(context: Context, file: String, files: List<SourceFile>, o
 		type.modifiers = combine_modifiers(type.modifiers, MODIFIER_IMPORTED)
 	}
 
-	# TODO: Verify all parameter types are resolved
 	context.merge(import_context)
 	return true
 }
