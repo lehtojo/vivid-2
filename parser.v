@@ -672,7 +672,9 @@ implement_constructors(types: List<Type>) {
 # Ensures that all necessary functions are implemented.
 # For example, libraries need all functions to be implemented even when they are not called.
 implement_functions(context: Context, file: SourceFile, all: bool) {
-	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or settings.output_type == BINARY_TYPE_SHARED_LIBRARY
+	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or 
+		settings.output_type == BINARY_TYPE_SHARED_LIBRARY or 
+		settings.output_type == BINARY_TYPE_OBJECTS
 
 	if is_output_library implement_required_functions(context, file, all)
 
@@ -766,7 +768,7 @@ parse() {
 	# Ensure exported and virtual functions are implemented
 	implement_functions(context, none as SourceFile, false)
 
-	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY {
+	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY and settings.output_type != BINARY_TYPE_OBJECTS {
 		function = context.get_function("init")
 		if function == none return Status('Can not find the entry function \'init()\'')
 
