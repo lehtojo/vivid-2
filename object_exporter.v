@@ -56,6 +56,9 @@ export_short_template_function(builder: StringBuilder, function: Function) {
 # Summary:
 # Exports the specified template type
 export_template_type(builder: StringBuilder, type: TemplateType) {
+	builder.append(get_modifiers(type.modifiers))
+	builder.append(` `)
+
 	if type.inherited.size > 0 {
 		builder.append(to_string(type.inherited))
 		builder.append(` `)
