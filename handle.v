@@ -139,8 +139,8 @@ Handle ConstantHandle {
 	}
 
 	string_shared() {
-		if format == FORMAT_DECIMAL return to_string(bits_to_decimal(value)).replace(`,`, `.`)
-		return to_string(value).replace(`,`, `.`)
+		if format == FORMAT_DECIMAL return to_string(bits_to_decimal(value))
+		return to_string(value)
 	}
 
 	override string() {

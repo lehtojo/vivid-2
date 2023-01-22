@@ -78,7 +78,7 @@ export to_string(number: decimal, result: link) {
 	if number < 0 { number = -number }
 
 	# Add the decimal point
-	result[position] = `,`
+	result[position] = `.`
 	position++
 
 	# If the number is zero, skip the fractional part computation
