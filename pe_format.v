@@ -262,7 +262,7 @@ namespace pe_format {
 		#                          .
 		# 8192-byte alignment: 0x00E00000
 		exponent = common.integer_log2(section.alignment)
-		characteristics |= (PE_SECTION_CHARACTERISTICS_ALIGN_1 * (exponent + 1)) <| 20
+		characteristics |= (PE_SECTION_CHARACTERISTICS_ALIGN_1 * (exponent + 1))
 
 		return characteristics
 	}
@@ -1281,10 +1281,10 @@ namespace pe_format {
 		#                          .
 		#                          .
 		# 8192-byte alignment: 0x00E00000
-		exponent = (characteristics |> 20) & 15 # Take out the first four bits: 15 = 0b1111
+		exponent = (characteristics |> 20) & 0b1111
 		if exponent == 0 return 1
 
-		return 2 <| (exponent - 1) # 2^(exponent - 1)
+		return 1 <| (exponent - 1)
 	}
 
 	# Summary:
