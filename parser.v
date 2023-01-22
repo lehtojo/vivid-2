@@ -571,20 +571,21 @@ apply_extension_functions(context: Context, root: Node) {
 	loop extension in extensions { resolver.resolve(context, extension) }
 }
 
-# Summary: Ensures that all exported functions are implemented
-implement_exported_functions(context: Context, file: SourceFile, all: bool) {
+# Summary: Ensures that all exported and imported functions are implemented
+implement_required_functions(context: Context, file: SourceFile, all: bool) {
 	loop function in common.get_all_visible_functions(context) {
 		# If the file filter is specified, skip all functions which are not defined inside that file
 		if file !== none and function.start !== none and function.start.file !== file continue
 
-		# Function is exported when:
+		# Function must be implemented when:
 		# - 1. All functions are automatically exported
-		# - 2. It is set to be exported
-		# - 3. It is inside an exported type
-		is_function_exported = all or function.is_exported or (function.parent != none and function.parent.is_type and function.parent.(Type).is_exported)
+		# - 2. It is imported
+		# - 3. It is set to be exported
+		# - 4. It is inside an exported type
+		is_implementation_required = all or function.is_imported or function.is_exported or (function.parent != none and function.parent.is_type and function.parent.(Type).is_exported)
 
 		# Skip all functions which are not exported
-		if not is_function_exported continue
+		if not is_implementation_required continue
 
 		# Template functions can not be implemented
 		if function.is_template_function continue
@@ -662,6 +663,7 @@ implement_virtual_function_overrides(types: List<Type>, file: SourceFile) {
 implement_constructors(types: List<Type>) {
 	# Ensure all default constructors are implemented, because otherwise uncalled default constructors might be added after resolving and they might bypass reconstruction
 	loop type in types {
+		if type.is_template_type continue
 		type.constructors.get_implementation(List<Type>())
 	}
 }
@@ -672,7 +674,7 @@ implement_constructors(types: List<Type>) {
 implement_functions(context: Context, file: SourceFile, all: bool) {
 	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or settings.output_type == BINARY_TYPE_SHARED_LIBRARY
 
-	if is_output_library implement_exported_functions(context, file, all)
+	if is_output_library implement_required_functions(context, file, all)
 
 	types = common.get_all_types(context)
 
