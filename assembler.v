@@ -1872,7 +1872,7 @@ allocate_string(text: String) {
 		else command == `\\` {
 			builder.append(BYTE_ALLOCATOR)
 			builder.append(` `)
-			builder.append(`\\` as large)
+			builder.append_line(`\\` as large)
 			continue
 		}
 		else {
