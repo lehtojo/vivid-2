@@ -1941,7 +1941,7 @@ allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<Const
 		module.write(data, size)
 
 		loop (i = 0, i < size, i++) {
-			builder.write_line(String(BYTE_ALLOCATOR) + ` ` + to_string(data[i]))
+			builder.write_line(String(BYTE_ALLOCATOR) + ` ` + to_string(data[i] as large))
 		}
 	}
 }
