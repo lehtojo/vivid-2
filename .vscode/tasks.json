@@ -5,20 +5,6 @@
 			"label": "Build",
 			"type": "shell",
 			"command": "Vivid",
-			// "args": [
-			// 	"${workspaceFolder}",
-			// 	"${workspaceFolder}/entries/vivid.v",
-			// 	"-a",
-			// 	"-f",
-			// 	"-o",
-			// 	"v0",
-			// 	"-l",
-			// 	"kernel32",
-			// 	"-l",
-			// 	"v",
-			// 	"-d",
-			// 	"-verbose"
-			// ],
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/vivid.v",
@@ -30,7 +16,6 @@
 				"${workspaceFolder}/min.math.obj",
 				"${workspaceFolder}/min.memory.obj",
 				"${workspaceFolder}/min.tests.obj",
-				"-a",
 				"-o",
 				"v0",
 				"-l",
@@ -47,20 +32,6 @@
 			"label": "Build (Linux)",
 			"type": "shell",
 			"command": "Vivid",
-			// "args": [
-			// 	"${workspaceFolder}",
-			// 	"${workspaceFolder}/entries/vivid.v",
-			// 	"-a",
-			// 	"-f",
-			// 	"-o",
-			// 	"v0",
-			// 	"-l",
-			// 	"kernel32",
-			// 	"-l",
-			// 	"v",
-			// 	"-d",
-			// 	"-verbose"
-			// ],
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/vivid.v",
@@ -87,21 +58,6 @@
 			"label": "Tests",
 			"type": "shell",
 			"command": "Vivid",
-			// "args": [
-			// 	"${workspaceFolder}",
-			// 	"${workspaceFolder}/entries/tests.v",
-			// 	"${workspaceFolder}/tests/assert.v",
-			// 	"-a",
-			// 	"-f",
-			// 	"-o",
-			// 	"v0",
-			// 	"-l",
-			// 	"kernel32",
-			// 	"-l",
-			// 	"v",
-			// 	"-d",
-			// 	"-verbose"
-			// ],
 			"args": [
 				"${workspaceFolder}",
 				"${workspaceFolder}/entries/tests.v",
@@ -113,8 +69,6 @@
 				"${workspaceFolder}/min.math.obj",
 				"${workspaceFolder}/min.memory.obj",
 				"${workspaceFolder}/min.tests.obj",
-				"-a",
-				"-f",
 				"-o",
 				"v0",
 				"-l",
@@ -128,19 +82,7 @@
 			}
 		},
 		{
-			"label": "Verify (Debug)",
-			"type": "shell",
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
-			"command": "./verify -d",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
-		},
-		{
-			"label": "Verify",
+			"label": "Verify all configurations",
 			"type": "shell",
 			"options": {
 				"cwd": "${workspaceFolder}"
@@ -152,24 +94,96 @@
 			}
 		},
 		{
-			"label": "Verify -O1",
+			"label": "Verify without core library (O0)",
 			"type": "shell",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
-			"command": "./verify -O1",
+			"command": "./verify coreless",
 			"group": {
 				"kind": "build",
 				"isDefault": true
 			}
 		},
 		{
-			"label": "Verify -O2",
+			"label": "Verify without core library (Debug)",
 			"type": "shell",
 			"options": {
 				"cwd": "${workspaceFolder}"
 			},
-			"command": "./verify -O2",
+			"command": "./verify coreless -d",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify without core library (O1)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify coreless -O1",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify without core library (O2)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify coreless -O2",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify with core library (O0)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify core",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify with core library (Debug)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify core -d",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify with core library (O1)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify core -O1",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "Verify with core library (O2)",
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"command": "./verify core -O2",
 			"group": {
 				"kind": "build",
 				"isDefault": true

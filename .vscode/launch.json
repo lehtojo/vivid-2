@@ -7,14 +7,19 @@
 			"name": "Vivid Debug",
 			"program": "${workspaceRoot}/v0.exe",
 			"cwd": "${workspaceRoot}",
-			//"programArgs": "${workspaceFolder}/box/main.v min.math.obj min.memory.obj min.tests.obj -a -l kernel32.dll -o box -verbose"
+			"programArgs": "./box/hello.v -o app -l core -l kernel32.dll"
 
-			// Build the standard library (Windows)
-			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64 min.math.obj min.memory.obj min.tests.obj -static -o v"
+			// Build the standard library
+			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/libv/windows-x64/ min.math.obj min.memory.obj min.tests.obj -static -o core"
+			//"programArgs": "${workspaceFolder}/libv/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/libv/linux-x64/ min.math.o min.memory.o min.tests.o -static -o core"
 
-			// Build the compiler itself
-			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v -a -o vc -l kernel32 -l v"
-			"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ ${workspaceFolder}/tests/assert.v ${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/min.math.obj ${workspaceFolder}/min.memory.obj ${workspaceFolder}/min.tests.obj -a -o v1 -l kernel32.dll -verbose -O2"
+			// Build the compiler itself with the core library
+			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ -a -o v1 -l kernel32.dll -l core -verbose"
+			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ -a -o v1 -l core -verbose"
+
+			// Build the compiler itself without the core library
+			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ ${workspaceFolder}/tests/assert.v ${workspaceFolder}/libv/ ${workspaceFolder}/libv/windows-x64/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/min.math.obj ${workspaceFolder}/min.memory.obj ${workspaceFolder}/min.tests.obj -o v1 -l kernel32.dll -verbose"
+			//"programArgs": "${workspaceFolder} ${workspaceFolder}/entries/vivid.v ${workspaceFolder}/optimizer/ ${workspaceFolder}/tests/assert.v ${workspaceFolder}/libv/ ${workspaceFolder}/libv/linux-x64/ ${workspaceFolder}/libv/allocator/allocator.v ${workspaceFolder}/min.math.o ${workspaceFolder}/min.memory.o ${workspaceFolder}/min.tests.o -o v1 -verbose"
 		},
 	]
 }
