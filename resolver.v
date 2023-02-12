@@ -249,6 +249,22 @@ resolve_virtual_functions(type: Type) {
 	}
 }
 
+# Summary: Resolves imports in the specified context
+resolve_imports(context: Context) {
+	# Resolve imports
+	loop (i = 0, i < context.imports.size, i++) {
+		# Skip resolved imports
+		imported = context.imports[i]
+		if imported.is_resolved continue
+
+		# Try to resolve the import
+		resolved = resolve(context, imported)
+		if resolved === none continue
+
+		context.imports[i] = resolved
+	}
+}
+
 # Summary: Tries to resolve supertypes which were not found previously
 resolve_supertypes(context: Context, type: Type) {
 	loop (i = type.supertypes.size - 1, i >= 0, i--) {
@@ -271,23 +287,14 @@ resolve_context(context: Context) {
 	functions = common.get_all_visible_functions(context)
 	loop function in functions { resolve(function) }
 
-	# Resolve imports
-	loop (i = 0, i < context.imports.size, i++) {
-		# Skip resolved imports
-		imported = context.imports[i]
-		if imported.is_resolved continue
-
-		# Try to resolve the import
-		resolved = resolve(context, imported)
-		if resolved === none continue
-
-		context.imports[i] = resolved
-	}
+	# Resolve imports in the current context
+	resolve_imports(context)
 
 	types = common.get_all_types(context)
 
 	# Resolve all the types
 	loop type in types {
+		resolve_imports(type)
 		resolve_supertypes(context, type)
 
 		# Resolve all member variables
@@ -348,8 +355,20 @@ get_tree_report(root: Node) {
 	return errors
 }
 
+# Summary: Reports unresolved imports
+get_import_report(context: Context, errors: List<Status>) {
+	# Report unresolved imports
+	loop imported in context.imports {
+		if imported.is_resolved continue
+		errors.add(Status(imported.position, 'Can not resolve the import'))
+	}
+}
+
 get_type_report(type: Type) {
 	errors = List<Status>()
+
+	# Report unresolved imports
+	get_import_report(type, errors)
 
 	if not (type.parent.is_global or type.parent.is_namespace) {
 		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
@@ -396,10 +415,7 @@ get_report(context: Context, root: Node) {
 	errors = List<Status>()
 
 	# Report unresolved imports
-	loop imported in context.imports {
-		if imported.is_resolved continue
-		errors.add(Status(imported.position, 'Can not resolve the import'))
-	}
+	get_import_report(context, errors)
 
 	# Report errors in defined types
 	types = common.get_all_types(context)

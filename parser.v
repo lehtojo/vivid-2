@@ -674,7 +674,8 @@ implement_constructors(types: List<Type>) {
 implement_functions(context: Context, file: SourceFile, all: bool) {
 	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or 
 		settings.output_type == BINARY_TYPE_SHARED_LIBRARY or 
-		settings.output_type == BINARY_TYPE_OBJECTS
+		settings.output_type == BINARY_TYPE_OBJECTS or 
+		settings.output_type == BINARY_TYPE_RAW
 
 	if is_output_library implement_required_functions(context, file, all)
 
