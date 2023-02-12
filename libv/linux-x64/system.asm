@@ -28,6 +28,12 @@ mov rax, 4 # System call: sys_stat
 syscall
 ret
 
+.export system_seek
+system_seek:
+mov rax, 8 # System call: sys_lseek
+syscall
+ret
+
 .export system_memory_map
 system_memory_map:
 mov rax, 9 # System call: sys_mmap
