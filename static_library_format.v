@@ -27,7 +27,7 @@ StaticLibraryFormatFile {
 		bytes = result
 	}
 
-	get_bytes() {
+	get_bytes(): Array<u8> {
 		if bytes != none return bytes
 		if io.read_file(name) has not result return none as Array<byte>
 		bytes = result
@@ -66,7 +66,7 @@ constant SIZE_LENGTH = 10
 
 constant PADDING_VALUE = 0x20
 
-write_padding(builder: DataEncoderModule, length: large) {
+write_padding(builder: DataEncoderModule, length: large): _ {
 	if length <= 0 return
 
 	loop (i = 0, i < length, i++) {
@@ -74,7 +74,7 @@ write_padding(builder: DataEncoderModule, length: large) {
 	}
 }
 
-write_file_header(builder: DataEncoderModule, filename: String, timestamp: large, size: large, filemode: String) {
+write_file_header(builder: DataEncoderModule, filename: String, timestamp: large, size: large, filemode: String): _ {
 	# Write the filename
 	builder.write(filename.data, min(FILENAME_LENGTH, filename.length))
 	write_padding(builder, FILENAME_LENGTH - filename.length)
@@ -103,13 +103,13 @@ write_file_header(builder: DataEncoderModule, filename: String, timestamp: large
 	builder.write(END_COMMAND, 2)
 }
 
-write_symbols(files: List<StaticLibraryFormatFile>) {
+write_symbols(files: List<StaticLibraryFormatFile>): DataEncoderModule {
 	builder = DataEncoderModule()
 	write_symbols(builder, files.flatten<String>((i: StaticLibraryFormatFile) -> i.symbols))
 	return builder
 }
 
-write_symbols(builder: DataEncoderModule, symbols: List<String>) {
+write_symbols(builder: DataEncoderModule, symbols: List<String>): List<large> {
 	indices = List<large>(symbols.size, true)
 
 	loop (i = 0, i < symbols.size, i++) {
@@ -126,7 +126,7 @@ write_symbols(builder: DataEncoderModule, symbols: List<String>) {
 	return indices
 }
 
-create_filename_table(files: List<StaticLibraryFormatFile>, timestamp: large) {
+create_filename_table(files: List<StaticLibraryFormatFile>, timestamp: large): DataEncoderModule {
 	filenames = DataEncoderModule()
 	indices = write_symbols(filenames, files.map<String>((i: StaticLibraryFormatFile) -> i.name))
 
@@ -144,7 +144,7 @@ create_filename_table(files: List<StaticLibraryFormatFile>, timestamp: large) {
 	return builder
 }
 
-build(files: List<StaticLibraryFormatFile>, output: String) {
+build(files: List<StaticLibraryFormatFile>, output: String): bool {
 	loop file in files { file.load() }
 
 	contents = DataEncoderModule()
@@ -224,11 +224,11 @@ build(files: List<StaticLibraryFormatFile>, output: String) {
 	return io.write_file(output + static_library_extension, Array<byte>(builder.output, builder.position))
 }
 
-get_object_filename(source: SourceFile, output_name: String) {
+get_object_filename(source: SourceFile, output_name: String): String {
 	return output_name + `.` + source.filename_without_extension() + object_file_extension
 }
 
-export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, output_name: String) {
+export build(context: Context, object_files: Map<SourceFile, BinaryObjectFile>, output_name: String): bool {
 	context_export_file = object_exporter.export_context(context)
 	template_type_variants_export_file = object_exporter.export_template_type_variants(context)
 	template_function_variants_export_file = object_exporter.export_template_function_variants(context)

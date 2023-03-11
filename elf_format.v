@@ -91,7 +91,7 @@ plain ElfSymbolEntry {
 	value: u64 = 0
 	symbol_size: u64 = 0
 
-	set_info(binding: normal, type: normal) {
+	set_info(binding: normal, type: normal): _ {
 		info = (binding <| 4) | type
 	}
 
@@ -121,7 +121,7 @@ plain ElfRelocationEntry {
 		this.addend = addend
 	}
 
-	set_info(symbol: u64, type: u64) {
+	set_info(symbol: u64, type: u64): _ {
 		info = (symbol <| 32) | type
 	}
 }
@@ -202,11 +202,11 @@ plain DynamicSectionBuilder {
 		symbol_entries.add(ElfSymbolEntry())
 	}
 
-	add(tag: u64, value: u64) {
+	add(tag: u64, value: u64): _ {
 		entries.add(ElfDynamicEntry(tag, value))
 	}
 
-	add_symbol(name: String, section: BinarySection) {
+	add_symbol(name: String, section: BinarySection): BinarySymbol {
 		symbol = BinarySymbol(name, 0, false, section)
 		symbol.exported = true
 
@@ -227,7 +227,7 @@ plain DynamicSectionBuilder {
 		return symbol
 	}
 
-	add_symbols(symbols: List<BinarySymbol>) {
+	add_symbols(symbols: List<BinarySymbol>): _ {
 		loop symbol in symbols {
 			entry = ElfSymbolEntry()
 			entry.name = symbol_name_table.add(symbol.name)
@@ -240,7 +240,7 @@ plain DynamicSectionBuilder {
 		}
 	}
 
-	set(tag: u64, symbol: BinarySymbol, relocation_type: large) {
+	set(tag: u64, symbol: BinarySymbol, relocation_type: large): _ {
 		loop (i = 0, i < entries.size, i++) {
 			if entries[i].tag !== tag continue
 
@@ -251,7 +251,7 @@ plain DynamicSectionBuilder {
 		panic('Failed to add relocation for a dynamic section entry')
 	}
 
-	connect(section: BinarySection, relocations: List<BinaryRelocation>) {
+	connect(section: BinarySection, relocations: List<BinaryRelocation>): _ {
 		# Connect the relocations to the specified section
 		loop relocation in this.relocations {
 			if relocation.section !== none continue
@@ -278,7 +278,7 @@ get_section_type(section: BinarySection) {
 	}
 }
 
-get_section_flags(section: BinarySection) {
+get_section_flags(section: BinarySection): u64 {
 	result = ELF_SECTION_FLAG_NONE
 
 	if section.type === BINARY_SECTION_TYPE_RELOCATION_TABLE and not (section.name == DYNAMIC_RELOCATIONS_SECTION) { result |= ELF_SECTION_FLAG_INFO_LINK }
@@ -293,7 +293,7 @@ get_section_flags(section: BinarySection) {
 # Summary:
 # Hashes the specified symbol name.
 # Implementation is provided by the ELF specification.
-get_symbol_hash(name: String) {
+get_symbol_hash(name: String): u64 {
 	h = 0 as u64
 
 	loop (i = 0, i < name.length, i++) {
@@ -308,7 +308,7 @@ get_symbol_hash(name: String) {
 
 # Summary:
 # Generates a hash section from the specified symbols
-create_hash_section(symbols: List<BinarySymbol>) {
+create_hash_section(symbols: List<BinarySymbol>): BinarySection {
 	number_of_symbols = symbols.size
 	buckets = allocate<normal>(number_of_symbols)
 	chains = allocate<normal>(number_of_symbols)
@@ -356,11 +356,11 @@ create_hash_section(symbols: List<BinarySymbol>) {
 	return BinarySection(String(HASH_SECTION), BINARY_SECTION_TYPE_HASH, data, data_size)
 }
 
-create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>) {
+create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>): List<elf_format.ElfSectionHeader> {
 	return create_section_headers(sections, symbols, sizeof(ElfFileHeader))
 }
 
-create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, file_position: large) {
+create_section_headers(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, file_position: large): List<elf_format.ElfSectionHeader> {
 	string_table = BinaryStringTable()
 	headers = List<ElfSectionHeader>()
 
@@ -453,7 +453,7 @@ create_section_headers(sections: List<BinarySection>, symbols: Map<String, Binar
 
 # Summary:
 # Converts the specified relocation type into ELF symbol type
-get_symbol_type(type: large) {
+get_symbol_type(type: large): u64 {
 	return when(type) {
 		BINARY_RELOCATION_TYPE_PROCEDURE_LINKAGE_TABLE => ELF_SYMBOL_TYPE_PROGRAM_COUNTER_RELATIVE, # Redirect to PC32 for now
 		BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE => ELF_SYMBOL_TYPE_PROGRAM_COUNTER_RELATIVE,
@@ -465,7 +465,7 @@ get_symbol_type(type: large) {
 
 # Summary:
 # Converts the specified ELF symbol type to relocation type
-get_relocation_type_from_symbol_type(type: large) {
+get_relocation_type_from_symbol_type(type: large): large {
 	return when(type) {
 		ELF_SYMBOL_TYPE_PROGRAM_COUNTER_RELATIVE => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
 		ELF_SYMBOL_TYPE_PLT32 => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
@@ -477,7 +477,7 @@ get_relocation_type_from_symbol_type(type: large) {
 
 # Summary:
 # Converts the specified ELF section flags to shared section flags
-get_shared_section_flags(flags: large) {
+get_shared_section_flags(flags: large): large {
 	result = 0
 
 	if has_flag(flags, ELF_SECTION_FLAG_WRITE) { result |= BINARY_SECTION_FLAGS_WRITE }
@@ -489,7 +489,7 @@ get_shared_section_flags(flags: large) {
 
 # Summary:
 # Creates the symbol table and the relocation table based on the specified symbols
-create_symbol_related_sections(sections: List<BinarySection>, fragments: List<BinarySection>, symbols: Map<String, BinarySymbol>) {
+create_symbol_related_sections(sections: List<BinarySection>, fragments: List<BinarySection>, symbols: Map<String, BinarySymbol>): BinaryStringTable {
 	# Create a string table that contains the names of the specified symbols
 	symbol_name_table = BinaryStringTable()
 	symbol_entries = List<ElfSymbolEntry>()
@@ -581,7 +581,7 @@ create_symbol_related_sections(sections: List<BinarySection>, fragments: List<Bi
 
 # Summary:
 # Creates an object file from the specified sections
-create_object_file(name: String, sections: List<BinarySection>, exports: Set<String>) {
+create_object_file(name: String, sections: List<BinarySection>, exports: Set<String>): BinaryObjectFile {
 	# Create an empty section, so that it is possible to leave section index unspecified in symbols for example
 	none_section = BinarySection(String.empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
 	sections.insert(0, none_section)
@@ -607,7 +607,7 @@ create_object_file(name: String, sections: List<BinarySection>, exports: Set<Str
 }
 
 # Summary: Aligns the specified sections
-align_sections(sections: List<BinarySection>, file_position: large) {
+align_sections(sections: List<BinarySection>, file_position: large): _ {
 	loop section in sections {
 		if section.type === BINARY_SECTION_TYPE_NONE continue
 
@@ -623,7 +623,7 @@ align_sections(sections: List<BinarySection>, file_position: large) {
 
 # Summary:
 # Creates an object file from the specified sections and converts it to binary format
-build_object_file(sections: List<BinarySection>, exports: Set<String>) {
+build_object_file(sections: List<BinarySection>, exports: Set<String>): Array<u8> {
 	if sections.size === 0 or sections[].type !== BINARY_SECTION_TYPE_NONE {
 		# Create an empty section, so that it is possible to leave section index unspecified in symbols for example
 		none_section = BinarySection(String.empty, BINARY_SECTION_TYPE_NONE, Array<byte>())
@@ -689,7 +689,7 @@ build_object_file(sections: List<BinarySection>, exports: Set<String>) {
 
 # Summary:
 # Creates symbol and relocation objects from the raw data inside the specified sections
-import_symbols_and_relocations(sections: List<BinarySection>, section_intermediates: List<Pair<ElfSectionHeader, Array<byte>>>) {
+import_symbols_and_relocations(sections: List<BinarySection>, section_intermediates: List<Pair<ElfSectionHeader, Array<byte>>>): _ {
 	# Try to find the symbol table section
 	symbol_table_index = sections.find_index(i -> i.type === BINARY_SECTION_TYPE_SYMBOL_TABLE)
 	if symbol_table_index < 0 return
@@ -781,7 +781,7 @@ import_symbols_and_relocations(sections: List<BinarySection>, section_intermedia
 
 # Summary:
 # Load the specified object file and constructs a object structure that represents it
-import_object_file(name: String, source: Array<byte>) {
+import_object_file(name: String, source: Array<byte>): BinaryObjectFile {
 	# Load the file into raw memory
 	bytes = allocate(source.size)
 	binary_utility.write_bytes(source, bytes)
@@ -850,21 +850,21 @@ import_object_file(name: String, source: Array<byte>) {
 
 # Summary:
 # Load the specified object file and constructs a object structure that represents it
-import_object_file(path: String) {
+import_object_file(path: String): Optional<BinaryObjectFile> {
 	if io.read_file(path) has not bytes return Optional<BinaryObjectFile>()
 	return Optional<BinaryObjectFile>(import_object_file(path, bytes))
 }
 
 # Summary:
 # Creates the program headers, meaning the specified section will get their own virtual addresses and be loaded into memory when the created executable is loaded
-create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64) {
+create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64): large {
 	# Create the program header load segment
 	return create_program_headers(sections, fragments, headers, virtual_address, true)
 }
 
 # Summary:
 # Creates the program headers, meaning the specified section will get their own virtual addresses and be loaded into memory when the created executable is loaded
-create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64, executable: bool) {
+create_program_headers(sections: List<BinarySection>, fragments: List<BinarySection>, headers: List<ElfProgramHeader>, virtual_address: u64, executable: bool): large {
 	file_position = 0
 
 	explicits = List<ElfProgramHeader>()
@@ -981,7 +981,7 @@ create_program_headers(sections: List<BinarySection>, fragments: List<BinarySect
 # Summary:
 # Searches for relocations that must be solved by the dynamic linker and removes them from the specified relocations.
 # This function creates a dynamic relocation section if required.
-create_dynamic_relocations(sections: List<BinarySection>, relocations: List<BinaryRelocation>, dynamic_linking_information: DynamicLinkingInformation) {
+create_dynamic_relocations(sections: List<BinarySection>, relocations: List<BinaryRelocation>, dynamic_linking_information: DynamicLinkingInformation): _ {
 	# Find all relocations that are absolute
 	absolute_relocations = relocations.filter(i -> i.type === BINARY_RELOCATION_TYPE_ABSOLUTE64)
 
@@ -1018,7 +1018,7 @@ create_dynamic_relocations(sections: List<BinarySection>, relocations: List<Bina
 # Summary:
 # Creates all the required dynamic sections needed in a shared library. This includes the dynamic section, the dynamic symbol table, the dynamic string table.
 # The dynamic symbol table created by this function will only exported symbols.
-create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, relocations: List<BinaryRelocation>, dependencies: List<String>) {
+create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>, relocations: List<BinaryRelocation>, dependencies: List<String>): elf_format.DynamicLinkingInformation {
 	# Build the dynamic section data
 	builder = DynamicSectionBuilder()
 
@@ -1115,7 +1115,7 @@ create_dynamic_sections(sections: List<BinarySection>, symbols: Map<String, Bina
 
 # Summary:
 # Adds an interpreter section that specifies the runtime linker that should be used
-add_interpreter_section(sections: List<BinarySection>) {
+add_interpreter_section(sections: List<BinarySection>): _ {
 	interpreter = String(DEFAULT_INTERPRETER)
 
 	# Interpreter section must be the first one
@@ -1129,7 +1129,7 @@ add_interpreter_section(sections: List<BinarySection>) {
 # Summary:
 # Adds a section that contains relocations for the global offset table.
 # These relocations define which symbols correspond to which GOT entries.
-add_relocations_for_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder, global_offset_table: BinarySymbol) {
+add_relocations_for_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder, global_offset_table: BinarySymbol): _ {
 	relocations = List<ElfRelocationEntry>(externals.size, false)
 
 	loop (i = 0, i < externals.size, i++) {
@@ -1172,7 +1172,7 @@ add_relocations_for_global_offset_table(sections: List<BinarySection>, externals
 
 # Summary:
 # Adds the global offset table (GOT) that contains addresses of dynamic functions
-add_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder) {
+add_global_offset_table(sections: List<BinarySection>, externals: List<String>, builder: DynamicSectionBuilder): BinarySymbol {
 	data = Array<byte>((externals.size + GLOBAL_OFFSET_TABLE_RESERVED_COUNT) * strideof(link))
 
 	section = BinarySection(String(GLOBAL_OFFSET_TABLE_SECTION), BINARY_SECTION_TYPE_DATA, data)
@@ -1196,7 +1196,7 @@ add_global_offset_table(sections: List<BinarySection>, externals: List<String>, 
 # Summary:
 # Adds the function linkage table that supports calling dynamic functions.
 # Dynamic functions mean functions that are inside shared objects.
-add_function_linkage_table(sections: List<BinarySection>, relocations: List<BinaryRelocation>, builder: DynamicSectionBuilder) {
+add_function_linkage_table(sections: List<BinarySection>, relocations: List<BinaryRelocation>, builder: DynamicSectionBuilder): _ {
 	external_relocations = relocations.filter(i -> i.symbol.external)
 	externals = external_relocations
 		.map<String>((i: BinaryRelocation) -> i.symbol.name)
@@ -1294,7 +1294,7 @@ add_function_linkage_table(sections: List<BinarySection>, relocations: List<Bina
 
 # Summary:
 # Finish the specified dynamic linking information by filling symbol section indices into the symbol entires and writing them to the dynamic symbol table.
-finish_dynamic_linking_information(information: DynamicLinkingInformation) {
+finish_dynamic_linking_information(information: DynamicLinkingInformation): _ {
 	# Fill in the symbol section indices
 	loop (i = 0, i < information.symbols.size, i++) {
 		symbol = information.symbols[i]
@@ -1342,7 +1342,7 @@ finish_dynamic_linking_information(information: DynamicLinkingInformation) {
 	binary_utility.write_all<ElfRelocationEntry>(information.relocation_section.data, 0, relocations_entries)
 }
 
-link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, executable: bool) {
+link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, executable: bool): Array<u8> {
 	# Index all the specified object files
 	loop (i = 0, i < objects.size, i++) { objects[i].index = i }
 
@@ -1482,7 +1482,7 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 }
 
 # Summary: Packs the sections of the specified objects into a raw binary file
-build_binary_file(objects: List<BinaryObjectFile>) {
+build_binary_file(objects: List<BinaryObjectFile>): Array<u8> {
 	# Index all the specified object files
 	loop (i = 0, i < objects.size, i++) { objects[i].index = i }
 

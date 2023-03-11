@@ -24,7 +24,7 @@ DynamicBitset {
 		this.size = expanded_size
 	}
 
-	set(i: large) {
+	set(i: large): _ {
 		require(i >= 0, 'Index can not be negative')
 
 		# Grow the bitset if the specified index is outside the allocated memory
@@ -48,7 +48,7 @@ DynamicBitset {
 		data[slot] &= !mask
 	}
 
-	get(i: large) {
+	get(i: large): bool {
 		require(i >= 0, 'Index can not be negative')
 
 		# Grow the bitset if the specified index is outside the allocated memory
@@ -60,7 +60,7 @@ DynamicBitset {
 		return (data[slot] & mask) != 0
 	}
 
-	dispose() {
+	dispose(): _ {
 		deallocate(data)
 	}
 }
@@ -83,7 +83,7 @@ StatementFlow {
 	end: Label
 	label_identity: normal = 0
 
-	get_next_label() {
+	get_next_label(): String {
 		return to_string(label_identity++)
 	}
 
@@ -98,7 +98,7 @@ StatementFlow {
 	# Summary:
 	# Registers the indices of all jumps and labels.
 	# Groups all the jumps by their destination labels as well.
-	register_jumps_and_labels() {
+	register_jumps_and_labels(): _ {
 		loop iterator in indices {
 			node = iterator.key
 			index = iterator.value
@@ -122,12 +122,12 @@ StatementFlow {
 		}
 	}
 
-	add(node: Node) {
+	add(node: Node): _ {
 		indices.add(node, indices.size)
 		nodes.add(node)
 	}
 
-	remove(node: Node) {
+	remove(node: Node): _ {
 		if not indices.contains_key(node) return
 
 		index = indices[node]
@@ -136,7 +136,7 @@ StatementFlow {
 		nodes[index] = none as Node
 	}
 
-	replace(what: Node, with: Node) {
+	replace(what: Node, with: Node): _ {
 		if not indices.contains_key(what) return
 
 		index = indices[what] # Extract the index of the node that we are replacing
@@ -150,7 +150,7 @@ StatementFlow {
 	# Summary:
 	# Returns the index of the statement inside of which the specified node is.
 	# If such a statement does not exist, this function panics.
-	index_of(node: Node) {
+	index_of(node: Node): normal {
 		# Go up in the node tree until we get an index.
 		# This is helpful, because if we pass a child node of an statement, we get back the index of statement
 		loop (iterator = node, iterator != none, iterator = iterator.parent) {
@@ -160,7 +160,7 @@ StatementFlow {
 		abort('Could not return the flow index of the specified node')
 	}
 
-	linearise_logical_operator(operation: OperatorNode, success: Label, failure: Label) {
+	linearise_logical_operator(operation: OperatorNode, success: Label, failure: Label): _ {
 		left = operation.first
 		right = operation.last
 
@@ -198,7 +198,7 @@ StatementFlow {
 		}
 	}
 
-	linearise_condition(statement: IfNode, failure: Label) {
+	linearise_condition(statement: IfNode, failure: Label): _ {
 		condition = statement.condition
 		parent = condition.parent
 
@@ -224,7 +224,7 @@ StatementFlow {
 		}
 	}
 
-	linearise_condition(statement: LoopNode, failure: Label) {
+	linearise_condition(statement: LoopNode, failure: Label): _ {
 		condition = statement.condition
 		parent = condition.parent
 
@@ -249,7 +249,7 @@ StatementFlow {
 		}
 	}
 
-	linearise(node: Node) {
+	linearise(node: Node): _ {
 		instance = node.instance
 
 		if instance == NODE_OPERATOR {
@@ -374,7 +374,7 @@ StatementFlow {
 	# Summary:
 	# Finds the positions which can be reached starting from the specified position while avoiding the specified obstacles
 	# NOTE: Provide a copy of the positions since this function edits the specified list
-	get_executable_positions(start: normal, obstacles: List<normal>, positions: List<normal>, visited: DynamicBitset, depth: normal) {
+	get_executable_positions(start: normal, obstacles: List<normal>, positions: List<normal>, visited: DynamicBitset, depth: normal): List<normal> {
 		executable = List<normal>(positions.size, false)
 
 		loop {
@@ -458,7 +458,7 @@ StatementFlow {
 	# Summary:
 	# Finds the positions which can be reached starting from the specified position while avoiding the specified obstacles
 	# NOTE: Provide a copy of the positions since this function edits the specified list
-	get_executable_positions(start: normal, obstacles: List<normal>, positions: List<normal>) {
+	get_executable_positions(start: normal, obstacles: List<normal>, positions: List<normal>): List<normal> {
 		visited = DynamicBitset(indices.size, DEFAULT_MAX_BITSET_SIZE)
 		result = get_executable_positions(start, obstacles, positions, visited, DEFAULT_MAX_DEPTH)
 		visited.dispose()

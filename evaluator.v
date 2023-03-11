@@ -60,7 +60,7 @@ evaluate_logical_operator(expression: OperatorNode) {
 }
 
 # Summary: Evaluates expressions under the specified node
-evaluate_logical_operators(root: Node) {
+evaluate_logical_operators(root: Node): _ {
 	loop iterator in root {
 		if iterator.match(Operators.LOGICAL_AND) or iterator.match(Operators.LOGICAL_OR) {
 			evaluate_logical_operator(iterator as OperatorNode)
@@ -72,7 +72,7 @@ evaluate_logical_operators(root: Node) {
 }
 
 # Summary: Tries to evaluate the specified conditional statement
-evaluate_conditional_statement(root: IfNode) {
+evaluate_conditional_statement(root: IfNode): bool {
 	# Ensure the condition is single number node
 	condition_container = root.condition_container
 	condition = condition_container.first
@@ -115,7 +115,7 @@ evaluate_conditional_statement(root: IfNode) {
 }
 
 # Summary: Evaluates conditional statements under the specified node
-evaluate_conditional_statements(root: Node) {
+evaluate_conditional_statements(root: Node): _ {
 	iterator = root.first
 
 	loop (iterator != none) {
@@ -140,7 +140,7 @@ evaluate_conditional_statements(root: Node) {
 	}
 }
 
-evaluate_compiles_nodes(root: Node) {
+evaluate_compiles_nodes(root: Node): _ {
 	nodes = root.find_all(NODE_COMPILES)
 
 	# Evaluate all compiles nodes
@@ -155,13 +155,13 @@ evaluate_compiles_nodes(root: Node) {
 	}
 }
 
-evaluate(node: Node) {
+evaluate(node: Node): _ {
 	evaluate_compiles_nodes(node)
 	evaluate_logical_operators(node)
 	evaluate_conditional_statements(node)
 }
 
-evaluate(context: Context) {
+evaluate(context: Context): _ {
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {

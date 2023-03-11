@@ -42,7 +42,7 @@ included_folders: List<String>
 
 is_x64 => settings.architecture == ARCHITECTURE_X64
 
-initialize() {
+initialize(): _ {
 	architecture = ARCHITECTURE_X64
 	is_optimization_enabled = false
 	is_instruction_analysis_enabled = false
@@ -53,7 +53,7 @@ initialize() {
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
 	is_verbose_output_enabled = false
-	is_target_windows = false
+	is_target_windows = true
 	use_indirect_access_tables = false
 	is_assembly_output_enabled = false
 	is_system_mode_enabled = false

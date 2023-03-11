@@ -34,7 +34,7 @@ is_affector(node: Node) {
 
 # Summary:
 # Removes the specified conditional branch while taking into account other branches
-remove_conditional_branch(branch: Node) {
+remove_conditional_branch(branch: Node): _ {
 	logger.verbose.write_line('Removing conditional branch')
 
 	if branch.instance != NODE_IF and branch.instance != NODE_ELSE_IF {
@@ -75,7 +75,7 @@ remove_conditional_branch(branch: Node) {
 }
 
 # Summary: Finds statements which can not be reached and removes them
-remove_unreachable_statements(root: Node) {
+remove_unreachable_statements(root: Node): bool {
 	return_statements = root.find_all(NODE_RETURN)
 	removed = false
 
@@ -98,7 +98,7 @@ remove_unreachable_statements(root: Node) {
 	return removed
 }
 
-remove_abandoned_statements_in_scope(statement: Node) {
+remove_abandoned_statements_in_scope(statement: Node): _ {
 	iterator = statement.first
 
 	loop (iterator !== none) {
@@ -125,7 +125,7 @@ remove_abandoned_statements_in_scope(statement: Node) {
 	}
 }
 
-remove_abandoned_conditional_statement(node: Node) {
+remove_abandoned_conditional_statement(node: Node): _ {
 	statement = node as IfNode
 
 	# 1. The statement can not be removed, if its body is not empty
@@ -146,7 +146,7 @@ remove_abandoned_conditional_statement(node: Node) {
 
 # Summary:
 # Finds all statements, which do not have an effect on the flow, and removes them
-remove_abandoned_expressions(root: Node) {
+remove_abandoned_expressions(root: Node): _ {
 	statements = root.find_all(NODE_IF | NODE_ELSE_IF | NODE_ELSE | NODE_LOOP | NODE_INLINE | NODE_SCOPE | NODE_NORMAL)
 	statements.insert(0, root)
 	statements.reverse()
@@ -236,7 +236,7 @@ remove_abandoned_expressions(root: Node) {
 	}
 }
 
-find_edited_locals(statement: Node) {
+find_edited_locals(statement: Node): Map<Variable, List<Node>> {
 	# Find all edited variables inside the specified statement
 	editors = statement.find_all(i -> i.match(Operators.ASSIGN))
 	edited_locals = Map<Variable, List<Node>>()
@@ -261,7 +261,7 @@ find_edited_locals(statement: Node) {
 
 # Summary:
 # Returns whether the condition is not dependent on the statements inside the specified loop.
-is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementPullDescriptor, edited_locals: Map<Variable, List<Node>>) {
+is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalStatementPullDescriptor, edited_locals: Map<Variable, List<Node>>): bool {
 	# 1. Dependencies must be defined outside the statement
 	statement_context = statement.context
 
@@ -288,7 +288,7 @@ is_condition_isolated(statement: LoopNode, inner_conditional: LoopConditionalSta
 
 # Summary:
 # Copies the nodes and contexts inside the specified statement and connects it to the specified context.
-deep_copy_statement(statement: Node, context: Context) {
+deep_copy_statement(statement: Node, context: Context): Node {
 	copy = statement.clone()
 
 	# Place the copy inside a container, so that the function below will process the copy by iterating the container node
@@ -309,7 +309,7 @@ deep_copy_statement(statement: Node, context: Context) {
 	return copy
 }
 
-pull_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) {
+pull_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode): _ {
 	# Get the environment context
 	environment = statement.context.parent
 
@@ -417,7 +417,7 @@ pull_conditional_statements_from_loop(statement: LoopNode, conditional: IfNode) 
 # a = random() > 0.5
 # if a { loop (i = 0, i < n, i++) { ... }
 # else { loop (i = 0, i < n, i++) { # If-statement is optimized out } }
-pull_conditional_statements_from_loops(root: Node) {
+pull_conditional_statements_from_loops(root: Node): _ {
 	statements = root.find_all(NODE_LOOP)
 	conditionals = root.find_all(NODE_IF)
 		.map<LoopConditionalStatementPullDescriptor>((i: Node) -> LoopConditionalStatementPullDescriptor(i as IfNode))
@@ -449,7 +449,7 @@ pull_conditional_statements_from_loops(root: Node) {
 	}
 }
 
-optimize(context: Context, root: Node) {
+optimize(context: Context, root: Node): _ {
 	remove_unreachable_statements(root)
 	remove_abandoned_expressions(root)
 	pull_conditional_statements_from_loops(root)

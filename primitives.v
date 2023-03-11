@@ -17,13 +17,13 @@ Type Number {
 
 Number Link {
 	# Summary: Creates a link type which has the specified offset type
-	shared get_variant(argument: Type) {
+	shared get_variant(argument: Type): Link {
 		link = Link(argument)
 		return link
 	}
 
 	# Summary: Creates a link type which has the specified offset type and the specified name
-	shared get_variant(argument: Type, name: String) {
+	shared get_variant(argument: Type, name: String): Link {
 		link = Link(argument)
 		link.name = name
 		return link
@@ -109,15 +109,15 @@ namespace primitives {
 	constant BYTE_IDENTIFIER = 'h'
 	constant CHAR_IDENTIFIER = 'c'
 
-	shared initialize() {
+	shared initialize(): _ {
 		SELF = Type(String(SELF_POINTER_IDENTIFIER), MODIFIER_SELF)
 	}
 
-	create_number(primitive: link, format: large) {
+	create_number(primitive: link, format: large): Number {
 		return create_number(String(primitive), format)
 	}
 
-	create_number(primitive: String, format: large) {
+	create_number(primitive: String, format: large): Number {
 		number = Number(format, to_bits(format), primitive)
 		number.identifier = String(when(primitive) {
 			LINK => LINK_IDENTIFIER
@@ -145,7 +145,7 @@ namespace primitives {
 
 	# Summary:
 	# Creates a primitive number which matches the specified settings
-	create_number(bits: large, signed: bool, is_decimal: bool) {
+	create_number(bits: large, signed: bool, is_decimal: bool): Number {
 		number = none as Number
 
 		if is_decimal {
@@ -186,11 +186,11 @@ namespace primitives {
 		return number
 	}
 
-	create_unit() {
+	create_unit(): Type {
 		return Type(String(UNIT), MODIFIER_PRIMITIVE)
 	}
 
-	create_bool() {
+	create_bool(): Number {
 		return create_number(BOOL, FORMAT_UINT8)
 	}
 
@@ -200,11 +200,11 @@ namespace primitives {
 	}
 
 	# Summary: Returns whether the specified type is primitive type and whether its name matches the specified name
-	is_primitive(type: Type, expected: link) {
+	is_primitive(type: Type, expected: link): bool {
 		return type != none and type.is_primitive and type.name == expected
 	}
 
-	inject(context: Context) {
+	inject(context: Context): _ {
 		signed_integer_8 = create_number(TINY, FORMAT_INT8)
 		signed_integer_16 = create_number(SMALL, FORMAT_INT16)
 		signed_integer_32 = create_number(NORMAL, FORMAT_INT32)
@@ -250,7 +250,7 @@ namespace numbers {
 	private UINT64: Number
 	private DECIMAL: Number
 
-	initialize() {
+	initialize(): _ {
 		INT8 = primitives.create_number(primitives.TINY, FORMAT_INT8)
 		INT16 = primitives.create_number(primitives.SMALL, FORMAT_INT16)
 		INT32 = primitives.create_number(primitives.NORMAL, FORMAT_INT32)
@@ -262,7 +262,7 @@ namespace numbers {
 		DECIMAL = primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL)
 	}
 
-	get(format: large) {
+	get(format: large): Number {
 		return when(format) {
 			FORMAT_INT8 => INT8
 			FORMAT_INT16 => INT16

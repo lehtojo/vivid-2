@@ -29,7 +29,7 @@ localize_labels(context: Context, root: Node) {
 # Summary:
 # Replaces all the variables created in the specified context with new localized variables.
 # This function takes into account the variable node usages as well.
-localize_subcontext(context: Context, replacement_context: Context, usages_by_variable: Map<Variable, List<Node>>) {
+localize_subcontext(context: Context, replacement_context: Context, usages_by_variable: Map<Variable, List<Node>>): _ {
 	loop iterator in context.variables {
 		variable = iterator.value
 
@@ -51,7 +51,7 @@ localize_subcontext(context: Context, replacement_context: Context, usages_by_va
 
 # Summary:
 # Finds subcontexts under the specified start node and localizes them by declaring new subcontexts to the specified context
-localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Variable, List<Node>>) {
+localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Variable, List<Node>>): _ {
 	loop node in start {
 		subcontext = when(node.instance) {
 			NODE_SCOPE => node.(ScopeNode).context,
@@ -84,7 +84,7 @@ localize_subcontexts(context: Context, start: Node, usages_by_variable: Map<Vari
 
 # Summary:
 # Initializes the specified function parameter at the beginning of the function body with the provided argument.
-insert_parameter_initialization(assignments: Node, parameter: Variable, argument: Node) {
+insert_parameter_initialization(assignments: Node, parameter: Variable, argument: Node): _ {
 	# Cast the argument if necessary
 	parameter_value = argument
 
@@ -101,7 +101,7 @@ insert_parameter_initialization(assignments: Node, parameter: Variable, argument
 
 # Summary:
 # Initializes all the function parameters at the beginning of the function body with the provided arguments.
-insert_parameter_initializations(context: Context, implementation: FunctionImplementation, self_argument: Node, arguments: Node, body: Node) {
+insert_parameter_initializations(context: Context, implementation: FunctionImplementation, self_argument: Node, arguments: Node, body: Node): _ {
 	assignments = Node()
 	body.insert(body.first, assignments)
 
@@ -132,7 +132,7 @@ insert_parameter_initializations(context: Context, implementation: FunctionImple
 # Summary:
 # Replaces return statements with jump nodes that jump to the end of the function body.
 # Since the return statements have return values, they are stored to the provided result variable.
-rewrite_return_statements_with_values(context: Context, body: Node, result: Variable) {
+rewrite_return_statements_with_values(context: Context, body: Node, result: Variable): _ {
 	# Find all return statements
 	return_statements = body.find_all(NODE_RETURN) as List<ReturnNode>
 
@@ -188,7 +188,7 @@ rewrite_return_statements_with_values(context: Context, body: Node, result: Vari
 
 # Summary:
 # Replaces return statements with jump nodes that jump to the end of the function body.
-rewrite_return_statements_without_values(context: Context, body: Node) {
+rewrite_return_statements_without_values(context: Context, body: Node): _ {
 	# Find all return statements
 	return_statements = body.find_all(NODE_RETURN) as List<ReturnNode>
 
@@ -224,7 +224,7 @@ pack State {
 
 # Summary:
 # Returns whether the specified assignment saves a value to the specified variable.
-is_pack_member_assignment(assignment: Node, proxy: Variable) {
+is_pack_member_assignment(assignment: Node, proxy: Variable): bool {
 	return assignment !== none and 
 		assignment.match(Operators.ASSIGN) and
 		assignment.first.instance == NODE_VARIABLE and
@@ -234,7 +234,7 @@ is_pack_member_assignment(assignment: Node, proxy: Variable) {
 # Summary:
 # Removes statements that save a returned pack to the proxies of the specified pack variable.
 # These statements are expected to come after the specified assignment.
-remove_pack_return_value_assignments(assignment: Node, variable: Variable) {
+remove_pack_return_value_assignments(assignment: Node, variable: Variable): _ {
 	proxies = common.get_pack_proxies(variable)
 
 	loop proxy in proxies {
@@ -248,7 +248,7 @@ remove_pack_return_value_assignments(assignment: Node, variable: Variable) {
 # Summary:
 # Returns a state containing a node tree that represents the body of the specified function implementation and other related information.
 # The returned node tree will not have any connections to the original function implementation.
-start_inlining(context: Context, implementation: FunctionImplementation, caller: Node, self_argument: Node, arguments: Node) {
+start_inlining(context: Context, implementation: FunctionImplementation, caller: Node, self_argument: Node, arguments: Node): inliner.State {
 	# Clone the body of the called function, so that we are free to modify it
 	body = implementation.node.clone()
 
@@ -298,7 +298,7 @@ start_inlining(context: Context, implementation: FunctionImplementation, caller:
 }
 
 # Summary: Replaces the function call with the body of the specified function using the parameter values of the call
-start_inlining(implementation: FunctionImplementation, usage: Node) {
+start_inlining(implementation: FunctionImplementation, usage: Node): inliner.State {
 	# Get the root of the function call and the potential self argument
 	caller = none as Node
 	self_argument = none as Node
@@ -322,7 +322,7 @@ start_inlining(implementation: FunctionImplementation, usage: Node) {
 
 # Summary:
 # Finishes inlining the function by inserting the function body into the node tree containing the caller.
-finish_inlining(state: State) {
+finish_inlining(state: State): _ {
 	# Following code assumes that calls returning packs always have the corresponding member assignments directly after them.
 	# This means that nothing should move those assignments.
 	if state.implementation.return_type.is_pack {
@@ -371,7 +371,7 @@ finish_inlining(state: State) {
 
 # Summary:
 # Returns whether the called function can be inlined. Do not inline when recursion is detected.
-is_inlinable(destination: FunctionImplementation, called: FunctionImplementation) {
+is_inlinable(destination: FunctionImplementation, called: FunctionImplementation): bool {
 	if called.metadata.is_outlined return false
 
 	calls = called.node.find_all(NODE_FUNCTION)
@@ -385,7 +385,7 @@ is_inlinable(destination: FunctionImplementation, called: FunctionImplementation
 
 # Summary:
 # Returns cost for inlining the specified function that is based on general heuristics.
-heuristic_cost(called: FunctionImplementation, arguments: Node) {
+heuristic_cost(called: FunctionImplementation, arguments: Node): large {
 	# If the arguments contain constants, inlining is likely to be a win.
 	loop argument in arguments {
 		if common.is_constant(argument) return INLINE_THRESHOLD
@@ -411,7 +411,7 @@ heuristic_cost(called: FunctionImplementation, arguments: Node) {
 
 # Summary:
 # Attempts to inline functions optimally in the specified function and in the functions that it calls.
-optimize(implementation: FunctionImplementation, states: Map<FunctionImplementation, bool>) {
+optimize(implementation: FunctionImplementation, states: Map<FunctionImplementation, bool>): _ {
 	# Do not process the same function twice
 	if states.contains_key(implementation) return
 	states[implementation] = true # Mark the implementation as visited
@@ -481,7 +481,7 @@ optimize(implementation: FunctionImplementation, states: Map<FunctionImplementat
 
 # Summary:
 # Attempts to inline functions optimally in the functions declared in the specified context.
-optimize(context: Context) {
+optimize(context: Context): _ {
 	implementations = common.get_all_function_implementations(context, false)
 	states = Map<FunctionImplementation, bool>()
 	i = 0

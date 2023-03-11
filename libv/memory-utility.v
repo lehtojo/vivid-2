@@ -14,7 +14,7 @@ export move(source: link, offset: large, destination: link, bytes: large) {
 	deallocate(buffer)
 }
 
-export move(source: link, destination: link, bytes: large) {
+export move(source: link, destination: link, bytes: large): _ {
 	# Copy the area to be moved to a temporary buffer, since moving can override the bytes to be moved
 	buffer = allocate(bytes)
 	copy(source, bytes, buffer)
@@ -30,7 +30,7 @@ export move(source: link, destination: link, bytes: large) {
 }
 
 # Summary: Allocates a new buffer, with the size of 'to' bytes, and copies the contents of the source buffer to the new buffer. Also deallocates the source buffer.
-export resize(source: link, from: large, to: large) {
+export resize(source: link, from: large, to: large): u8* {
 	resized = allocate(to)
 	copy(source, min(from, to), resized)
 	deallocate(source)
@@ -38,7 +38,7 @@ export resize(source: link, from: large, to: large) {
 }
 
 # Summary: Reverses the bytes in the specified memory range
-export reverse(memory: link, size: large) {
+export reverse(memory: link, size: large): _ {
 	i = 0
 	j = size - 1
 	n = size / 2

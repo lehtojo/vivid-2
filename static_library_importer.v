@@ -87,7 +87,7 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 # Summary:
 # Iterates through the specified file headers and imports all object files by adding them to the specified object file list.
 # Object files are determined using filenames stored in the file headers.
-import_object_files_from_static_library(file: String, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>, object_files: Map<SourceFile, BinaryObjectFile>) {
+import_object_files_from_static_library(file: String, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>, object_files: Map<SourceFile, BinaryObjectFile>): _ {
 	loop header in headers {
 		# Find object files only
 		is_object_file = header.filename.ends_with('.o') or header.filename.ends_with('.obj') or header.filename.ends_with('.o/') or header.filename.ends_with('.obj/')
@@ -111,7 +111,7 @@ import_object_files_from_static_library(file: String, headers: List<StaticLibrar
 
 # Summary:
 # Imports all template type variants using the specified static library file headers
-import_template_type_variants(context: Context, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>) {
+import_template_type_variants(context: Context, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>): _ {
 	loop header in headers {
 		if not header.filename.ends_with(TEMPLATE_TYPE_VARIANT_IMPORT_FILE_EXTENSION) continue
 
@@ -133,7 +133,7 @@ import_template_type_variants(context: Context, headers: List<StaticLibraryForma
 
 # Summary:
 # Imports all template function variants using the specified static library file headers
-import_template_function_variants(context: Context, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>) {
+import_template_function_variants(context: Context, headers: List<StaticLibraryFormatFileHeader>, bytes: Array<byte>): _ {
 	loop header in headers {
 		if not header.filename.ends_with(TEMPLATE_FUNCTION_VARIANT_IMPORT_FILE_EXTENSION) continue
 
@@ -199,7 +199,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 
 # Summary:
 # Resolve issues such as parameter types in the imported context and node tree
-resolve(context: Context, root: Node) {
+resolve(context: Context, root: Node): _ {
 	current = resolver.get_report(context, root)
 	evaluated = false
 
@@ -229,7 +229,7 @@ resolve(context: Context, root: Node) {
 
 # Summary:
 # Imports the specified static library by finding the exported symbols and importing them
-internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
+internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>): _ {
 	if io.read_file(file) has not bytes abort('Failed to open a library')
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
@@ -255,7 +255,7 @@ internal_import_static_library(context: Context, file: String, files: List<Sourc
 
 # Summary:
 # Assigns the actual filenames to the specified file headers from the specified filename table
-load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, headers: List<StaticLibraryFormatFileHeader>) {
+load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, headers: List<StaticLibraryFormatFileHeader>): bool {
 	loop header in headers {
 		# Look for files which have names such as: /10
 		if not header.filename.starts_with(`/`) or header.filename.length <= 1 continue
@@ -294,7 +294,7 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 # Summary:
 # Loads all static library file headers from the specified file.
 # Returns an empty list if it fails, since static libraries should not be empty
-load_file_headers(bytes: Array<byte>) {
+load_file_headers(bytes: Array<byte>): List<StaticLibraryFormatFileHeader> {
 	headers = List<StaticLibraryFormatFileHeader>()
 	position = 8 # Skip signature: !<arch>\n
 
@@ -347,7 +347,7 @@ load_file_headers(bytes: Array<byte>) {
 # Summary:
 # Imports the specified file.
 # This function assumes the file represents a library
-import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>) {
+import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>): bool {
 	import_context = parser.create_root_context(context.create_identity())
 
 	internal_import_static_library(import_context, file, files, object_files)

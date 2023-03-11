@@ -97,7 +97,7 @@ EncoderModule {
 		this.output = allocate(1)
 	}
 
-	get_max_instruction_buffer_size() {
+	get_max_instruction_buffer_size(): large {
 		instruction_count = 0
 
 		# Count the number of non-abstract instructions, that is, the number of instructions that can actually be encoded
@@ -365,70 +365,70 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns whether the specified register needs the REX-prefix
-	is_extension_register(register: Register) {
+	is_extension_register(register: Register): bool {
 		return register.identifier >= platform.x64.R8
 	}
 
 	# Summary:
 	# Returns whether the specified register needs the REX-prefix
-	is_extension_register(identifier: large) {
+	is_extension_register(identifier: large): bool {
 		return identifier >= platform.x64.R8
 	}
 
 	# Summary:
 	# Returns whether the specified register can be overridden to represent another register using the REX-prefix
-	is_overridable_register(register: large, size: large) {
+	is_overridable_register(register: large, size: large): bool {
 		return size == 1 and register >= platform.x64.RSP and register <= platform.x64.RDI
 	}
 
 	# Summary:
 	# Returns whether the specified register can be overridden to represent another register using the REX-prefix
-	is_overridable_register(register: Register, size: large) {
+	is_overridable_register(register: Register, size: large): bool {
 		return is_overridable_register(register.identifier, size)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write(module: EncoderModule, value: large) {
+	write(module: EncoderModule, value: large): _ {
 		module.output[module.position++] = value as byte
 	}
 
 	# Summary:
 	# Writes the specified value to the specified position
-	write(module: EncoderModule, position: normal, value: large) {
+	write(module: EncoderModule, position: normal, value: large): _ {
 		module.output[position] = value as byte
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int16(module: EncoderModule, value: large) {
+	write_int16(module: EncoderModule, value: large): _ {
 		(module.output + module.position).(small*)[] = value as small
 		module.position += strideof(small)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int32(module: EncoderModule, value: large) {
+	write_int32(module: EncoderModule, value: large): _ {
 		(module.output + module.position).(normal*)[] = value as normal
 		module.position += strideof(normal)
 	}
 
 	# Summary:
 	# Writes the specified value to the specified position
-	write_int32(module: EncoderModule, position: large, value: large) {
+	write_int32(module: EncoderModule, position: large, value: large): _ {
 		(module.output + position).(normal*)[] = value as normal
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int64(module: EncoderModule, value: large) {
+	write_int64(module: EncoderModule, value: large): _ {
 		(module.output + module.position).(large*)[] = value as large
 		module.position += strideof(large)
 	}
 
 	# Summary:
 	# Writes the specified operation code
-	write_operation(module: EncoderModule, operation: large) {
+	write_operation(module: EncoderModule, operation: large): _ {
 		next = operation & 0xFF
 		write(module, next)
 
@@ -443,7 +443,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a REX-prefix if it is needed depending on the specified flags
-	try_write_rex(module: EncoderModule, w: bool, r: bool, x: bool, b: bool, force: bool) {
+	try_write_rex(module: EncoderModule, w: bool, r: bool, x: bool, b: bool, force: bool): _ {
 		# Write the REX-prefix only if any of the flags in enabled
 		flags = 0
 		if w { flags |= REX_W }
@@ -458,7 +458,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a SIB-byte, which contains scale, index and base parameters
-	write_sib(module: EncoderModule, scale: large, index: large, start: large) {
+	write_sib(module: EncoderModule, scale: large, index: large, start: large): _ {
 		write(module, (common.integer_log2(scale) <| 6) | (index <| 3) | start)
 	}
 
@@ -470,13 +470,13 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a SIB-byte, which contains scale, index and base parameters
-	write_sib(module: EncoderModule, scale: large, index: Register, start: Register) {
+	write_sib(module: EncoderModule, scale: large, index: Register, start: Register): _ {
 		write_sib(module, scale, index.name, start.name)
 	}
 
 	# Summary:
 	# Writes a register and a second register using the modrm-byte. Uses register-direct addressing mode. 
-	write_register_and_register(module: EncoderModule, encoding: InstructionEncoding, first: Register, second: Register) {
+	write_register_and_register(module: EncoderModule, encoding: InstructionEncoding, first: Register, second: Register): _ {
 		force = is_overridable_register(first, encoding.input_size_of_first) or is_overridable_register(second, encoding.input_size_of_second)
 		try_write_rex(module, encoding.is_64bit, is_extension_register(first), false, is_extension_register(second), force)
 		write_operation(module, encoding.operation)
@@ -485,7 +485,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a single register using the modrm-byte. Uses register-direct addressing mode. 
-	write_single_register(module: EncoderModule, encoding: InstructionEncoding, first: Register) {
+	write_single_register(module: EncoderModule, encoding: InstructionEncoding, first: Register): _ {
 		force = is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, false, false, is_extension_register(first), force)
 		write_operation(module, encoding.operation)
@@ -494,7 +494,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a register and a constant using the modrm-byte. The register is encoded into the rm-field.
-	write_register_and_constant(module: EncoderModule, encoding: InstructionEncoding, first: Register, second: large, size: large) {
+	write_register_and_constant(module: EncoderModule, encoding: InstructionEncoding, first: Register, second: large, size: large): _ {
 		force = is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, false, false, is_extension_register(first), force)
 
@@ -510,7 +510,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a constant directly
-	write_raw_constant(module: EncoderModule, value: large, size: large) {
+	write_raw_constant(module: EncoderModule, value: large, size: large): _ {
 		if size == 1 write(module, value)
 		else size == 2 write_int16(module, value)
 		else size == 4 write_int32(module, value)
@@ -520,7 +520,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Defines the specified symbol and writes a modrm-byte which uses the symbol and the specified register 'first'
-	private write_register_and_symbol(module: EncoderModule, encoding: InstructionEncoding, first: large, relocation: BinaryRelocation) {
+	private write_register_and_symbol(module: EncoderModule, encoding: InstructionEncoding, first: large, relocation: BinaryRelocation): _ {
 		force = encoding.modifier == 0 and is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, is_extension_register(first), false, false, force)
 
@@ -535,7 +535,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes register and memory address operands
-	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, offset: large) {
+	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, offset: large): _ {
 		#warning The register might also be the second operand
 		force = encoding.modifier == 0 and is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, is_extension_register(first), false, is_extension_register(start), force)
@@ -568,7 +568,7 @@ namespace instruction_encoder {
 	}
 
 	# Summary: Writes register and memory address operands
-	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, index: Register, scale: large, offset: large) {
+	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, start: Register, index: Register, scale: large, offset: large): _ {
 		# Convert [start+index*0+offset] => [start+offset]
 		if scale == 0 {
 			write_register_and_memory_address(module, encoding, first, start, offset)
@@ -601,7 +601,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes register and memory address operands
-	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, index: Register, scale: large, offset: large) {
+	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, index: Register, scale: large, offset: large): _ {
 		# Convert [index*0+offset] => [offset]
 		if scale == 0 {
 			write_register_and_memory_address(module, encoding, first, offset)
@@ -626,7 +626,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes register and memory address operands
-	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, offset: large) {
+	write_register_and_memory_address(module: EncoderModule, encoding: InstructionEncoding, first: large, offset: large): _ {
 		force = encoding.modifier == 0 and is_overridable_register(first, encoding.input_size_of_first)
 		try_write_rex(module, encoding.is_64bit, is_extension_register(first), false, false, force)
 
@@ -638,7 +638,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns a object that describes the specified memory address
-	get_memory_address_descriptor(handle: Handle) {
+	get_memory_address_descriptor(handle: Handle): MemoryAddressDescriptor {
 		return when(handle.instance) {
 			INSTANCE_MEMORY => MemoryAddressDescriptor(handle.(MemoryHandle).get_start(), none as Register, 0, handle.(MemoryHandle).get_offset()),
 			INSTANCE_COMPLEX_MEMORY => MemoryAddressDescriptor(handle.(ComplexMemoryHandle).get_start(), handle.(ComplexMemoryHandle).get_index(), handle.(ComplexMemoryHandle).stride, handle.(ComplexMemoryHandle).get_offset()),
@@ -655,7 +655,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns whether the specified handle passes the configured filter
-	private passes_filter(type: large, filter: small, value: Handle) {
+	private passes_filter(type: large, filter: small, value: Handle): bool {
 		return when(type) {
 			ENCODING_FILTER_TYPE_REGISTER => value.instance == INSTANCE_REGISTER
 			ENCODING_FILTER_TYPE_STANDARD_REGISTER => value.type == HANDLE_REGISTER
@@ -679,7 +679,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns how many bits are required for encoding the specified integer
-	get_number_of_bits_for_encoding(value: large) {
+	get_number_of_bits_for_encoding(value: large): large {
 		if value == LARGE_MIN return 64
 
 		x = value
@@ -693,7 +693,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns whether the specified handle passes the configured filter
-	private passes_size(value: Handle, filter: large, size: small) {
+	private passes_size(value: Handle, filter: large, size: small): bool {
 		if value.instance == INSTANCE_CONSTANT {
 			if filter == ENCODING_FILTER_TYPE_CONSTANT return value.(ConstantHandle).bits / 8 <= size
 
@@ -706,7 +706,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds an instruction encoding that takes none parameters and matches the specified type
-	find_encoding(type: large) {
+	find_encoding(type: large): InstructionEncoding {
 		encodings = platform.x64.parameterless_encodings[type]
 		if encodings.size == 0 abort('Could not find instruction encoding')
 
@@ -715,7 +715,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds an instruction encoding that takes one parameter and is suitable for the specified handle
-	find_encoding(type: large, first: Handle) {
+	find_encoding(type: large, first: Handle): InstructionEncoding {
 		encodings = platform.x64.single_parameter_encodings[type]
 
 		loop encoding in encodings {
@@ -728,7 +728,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds an instruction encoding that takes two parameters and is suitable for the specified handles
-	find_encoding(type: large, first: Handle, second: Handle) {
+	find_encoding(type: large, first: Handle, second: Handle): InstructionEncoding {
 		encodings = platform.x64.dual_parameter_encodings[type]
 
 		loop encoding in encodings {
@@ -742,7 +742,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds an instruction encoding that takes three parameters and is suitable for the specified handles
-	find_encoding(type: large, first: Handle, second: Handle, third: Handle) {
+	find_encoding(type: large, first: Handle, second: Handle, third: Handle): InstructionEncoding {
 		encodings = platform.x64.triple_parameter_encodings[type]
 
 		loop encoding in encodings {
@@ -757,7 +757,7 @@ namespace instruction_encoder {
 	# Summary:
 	# Returns the unique operation index of the specified instruction.
 	# This function will be removed, because instruction will use operation indices instead of text identifiers in the future.
-	get_instruction_index(instruction: Instruction, operation: String) {
+	get_instruction_index(instruction: Instruction, operation: String): large {
 		#warning Optimize this function
 		if instruction.type == INSTRUCTION_LABEL return platform.x64._LABEL
 
@@ -862,7 +862,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Handles debug line information instructions and other similar instructions
-	process_debug_instructions(module: EncoderModule, instruction: Instruction) {
+	process_debug_instructions(module: EncoderModule, instruction: Instruction): _ {
 		if instruction.type == INSTRUCTION_DEBUG_BREAK {
 			position = instruction.(DebugBreakInstruction).position
 			module.debug_line_information.add(EncoderDebugLineInformation(module.position, position.friendly_line, position.friendly_character))
@@ -889,13 +889,13 @@ namespace instruction_encoder {
 	}
 
 	# Summary: Returns the primary operation of the specified instruction by discarding any instruction prefixes
-	get_primary_operation(instruction: Instruction) {
+	get_primary_operation(instruction: Instruction): String {
 		i = instruction.operation.last_index_of(` `)
 		if i < 0 return instruction.operation
 		return instruction.operation.slice(i + 1)
 	}
 
-	write_instruction(module: EncoderModule, instruction: Instruction) {
+	write_instruction(module: EncoderModule, instruction: Instruction): _ {
 		parameters = List<InstructionParameter>()
 
 		loop parameter in instruction.parameters {
@@ -1072,7 +1072,7 @@ namespace instruction_encoder {
 	# ...
 	# Jump L1
 	# [End of module 2]
-	create_modules(instructions: List<Instruction>) {
+	create_modules(instructions: List<Instruction>): List<EncoderModule> {
 		modules = List<EncoderModule>()
 		start = 0
 
@@ -1121,7 +1121,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Encodes each module using tasks
-	encode(modules: List<EncoderModule>) {
+	encode(modules: List<EncoderModule>): _ {
 		file = SourceFile(String(TEMPORARY_ASSEMBLY_FILE), String.empty, 0)
 
 		loop (i = 0, i < modules.size, i++) {
@@ -1149,7 +1149,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds all labels from the specified modules and gathers them into the specified label dictionary
-	load_labels(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>) {
+	load_labels(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>): _ {
 		loop module in modules {
 			loop item in module.labels {
 				labels.add(item.label, LabelDescriptor(module, item.position))
@@ -1159,7 +1159,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Returns whether currently an extended jump is needed between the specified jump and its destination label
-	is_long_jump_needed(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>, module: EncoderModule, position: large) {
+	is_long_jump_needed(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>, module: EncoderModule, position: large): bool {
 		# If the label does not exist in the specified labels, it must be an external label which are assumed to require long jumps
 		if not labels.contains_key(module.jump) return true
 		descriptor = labels[module.jump]
@@ -1204,7 +1204,7 @@ namespace instruction_encoder {
 	# Returns the distance that specified module jumps. The unit of distance is one module.
 	# If the specified module does not have a jump, this function returns zero.
 	# If the specified module jumps to an external label, this function returns int.MaxValue.
-	private get_module_jump_distance(module: EncoderModule, labels: Map<Label, LabelDescriptor>) {
+	private get_module_jump_distance(module: EncoderModule, labels: Map<Label, LabelDescriptor>): large {
 		if module.jump === none return 0
 		if not labels.contains_key(module.jump) return NORMAL_MAX
 		label = labels[module.jump]
@@ -1214,7 +1214,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Goes through the specified modules and decides the jump sizes
-	complete_modules(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>) {
+	complete_modules(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>): _ {
 		# Order the modules so that shorter jumps are completed first
 		# NOTE: This should reduce the error of approximated jump distances, because if shorter jumps are completed first, there should be less uncompleted jumps between longer jumps
 		sorted_modules = List<EncoderModule>(modules)
@@ -1248,7 +1248,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Computes the 'absolute positions' of all modules relative to the start of the first module
-	complete_module_positions(modules: List<EncoderModule>) {
+	complete_module_positions(modules: List<EncoderModule>): _ {
 		# Align all modules
 		position = 0
 
@@ -1260,7 +1260,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Finds all jumps and calls and write the their offsets to the binary output
-	write_offsets(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>) {
+	write_offsets(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>): _ {
 		# Jumps:
 		loop module in modules {
 			if module.jump === none or not labels.contains_key(module.jump) continue
@@ -1297,7 +1297,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Creates a text section and exports the specified labels as symbols
-	build(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>, debug_file: String) {
+	build(modules: List<EncoderModule>, labels: Map<Label, LabelDescriptor>, debug_file: String): EncoderOutput {
 		# Mesh all the module binaries into one large binary
 		bytes = 0
 		loop module in modules { bytes += module.position }
@@ -1432,7 +1432,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Encodes the specified instructions
-	encode(instructions: List<Instruction>, debug_file: String) {
+	encode(instructions: List<Instruction>, debug_file: String): EncoderOutput {
 		modules = create_modules(instructions)
 		labels = Map<Label, LabelDescriptor>()
 

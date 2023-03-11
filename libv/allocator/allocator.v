@@ -218,7 +218,7 @@ namespace internal.allocator {
 		}
 	}
 
-	initialize() {
+	initialize(): _ {
 		s16 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[16]>, byte[16]>)) as Allocators<SlabAllocator<byte[16]>, byte[16]>
 		s32 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[32]>, byte[32]>)) as Allocators<SlabAllocator<byte[32]>, byte[32]>
 		s64 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[64]>, byte[64]>)) as Allocators<SlabAllocator<byte[64]>, byte[64]>
@@ -237,7 +237,7 @@ namespace internal.allocator {
 	}
 }
 
-export outline allocate(bytes: large) {
+export outline allocate(bytes: large): u8* {
 	if bytes <= 16 return internal.allocator.s16.allocate()
 	if bytes <= 32 return internal.allocator.s32.allocate()
 	if bytes <= 64 return internal.allocator.s64.allocate()
@@ -256,7 +256,7 @@ export outline allocate(bytes: large) {
 }
 
 
-export outline deallocate(address: link) {
+export outline deallocate(address: link): _ {
 	if internal.allocator.s16.deallocate(address) return
 	if internal.allocator.s32.deallocate(address) return
 	if internal.allocator.s64.deallocate(address) return
@@ -296,7 +296,7 @@ outline allocate<T>(count: large) {
 TYPE_DESCRIPTOR_FULLNAME_OFFSET = 0
 TYPE_DESCRIPTOR_FULLNAME_END = 1
 
-outline internal_is(inspected: link, inheritant: link) {
+outline internal_is(inspected: link, inheritant: link): bool {
 	if inspected == inheritant return true
 	
 	inspected_fullname = inspected.(large*)[TYPE_DESCRIPTOR_FULLNAME_OFFSET] as link

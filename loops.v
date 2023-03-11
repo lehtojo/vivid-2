@@ -48,7 +48,7 @@ build_command(unit: Unit, node: CommandNode) {
 }
 
 # Summary: Builds the body of the specified loop without any of the steps
-build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
+build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction): Result {
 	# Add the label where the loop will start
 	unit.add(start)
 
@@ -60,7 +60,7 @@ build_forever_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction
 }
 
 # Summary: Builds the body of the specified loop with its steps
-build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
+build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction): Result {
 	# Add the label where the loop will start
 	unit.add(start)
 
@@ -91,7 +91,7 @@ build_loop_body(unit: Unit, statement: LoopNode, start: LabelInstruction) {
 }
 
 # Summary: Builds the specified forever-loop
-build_forever_loop(unit: Unit, statement: LoopNode) {
+build_forever_loop(unit: Unit, statement: LoopNode): Result {
 	start = unit.get_next_label()
 
 	# Register the start and exit label to the loop for control keywords
@@ -114,7 +114,7 @@ build_forever_loop(unit: Unit, statement: LoopNode) {
 }
 
 # Summary: Builds the specified loop
-build(unit: Unit, statement: LoopNode) {
+build(unit: Unit, statement: LoopNode): Result {
 	unit.add_debug_position(statement)
 
 	if statement.is_forever_loop return build_forever_loop(unit, statement)
@@ -151,12 +151,12 @@ build(unit: Unit, statement: LoopNode) {
 }
 
 # Summary: Builds the the specified condition which should be placed at the end of a loop
-build_end_condition(unit: Unit, condition: Node, success: Label) {
+build_end_condition(unit: Unit, condition: Node, success: Label): _ {
 	return build_end_condition(unit, condition, success, none as Label)
 }
 
 # Summary: Builds the the specified condition which should be placed at the end of a loop
-build_end_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
+build_end_condition(unit: Unit, condition: Node, success: Label, failure: Label): _ {
 	exit = unit.get_next_label()
 
 	instructions = conditionals.build_condition(unit, condition, success, exit)

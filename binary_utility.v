@@ -104,7 +104,7 @@ BINARY_RELOCATION_TYPE_FILE_OFFSET_64 = 7
 BINARY_RELOCATION_TYPE_BASE_RELATIVE_64 = 8
 BINARY_RELOCATION_TYPE_BASE_RELATIVE_32 = 9
 
-data_access_modifier_to_relocation_type(modifier: large) {
+data_access_modifier_to_relocation_type(modifier: large): large {
 	return when(modifier) {
 		DATA_SECTION_MODIFIER_NONE => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
 		DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
@@ -199,7 +199,7 @@ BinaryStringTable {
 		return start
 	}
 
-	build() {
+	build(): Array<u8> {
 		payload = String.join(0 as char, items)
 		result = none as Array<byte>
 
@@ -233,7 +233,7 @@ namespace binary_utility
 
 # Summary:
 # Goes through all the relocations from the specified sections and connects them to the local symbols if possible
-update_relocations(relocations: List<BinaryRelocation>, symbols: Map<String, BinarySymbol>) {
+update_relocations(relocations: List<BinaryRelocation>, symbols: Map<String, BinarySymbol>): _ {
 	loop relocation in relocations {
 		symbol = relocation.symbol
 
@@ -249,7 +249,7 @@ update_relocations(relocations: List<BinaryRelocation>, symbols: Map<String, Bin
 
 # Summary:
 # Goes through all the relocations from the specified sections and connects them to the local symbols if possible
-update_relocations(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>) {
+update_relocations(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>): _ {
 	loop section in sections {
 		update_relocations(section.relocations, symbols)
 	}
@@ -257,7 +257,7 @@ update_relocations(sections: List<BinarySection>, symbols: Map<String, BinarySym
 
 # Summary:
 # Exports the specified symbols
-apply_exports(symbols: Map<String, BinarySymbol>, exports: Set<String>) {
+apply_exports(symbols: Map<String, BinarySymbol>, exports: Set<String>): _ {
 	loop symbol in exports {
 		if symbols.contains_key(symbol) {
 			symbols[symbol].exported = true
@@ -270,7 +270,7 @@ apply_exports(symbols: Map<String, BinarySymbol>, exports: Set<String>) {
 
 # Summary:
 # Returns a list of all symbols in the specified sections
-get_all_symbols_from_sections(sections: List<BinarySection>) {
+get_all_symbols_from_sections(sections: List<BinarySection>): Map<String, BinarySymbol> {
 	symbols = Map<String, BinarySymbol>()
 
 	loop section in sections {
@@ -296,7 +296,7 @@ get_all_symbols_from_sections(sections: List<BinarySection>) {
 
 # Summary:
 # Computes all offsets in the specified sections. If any of the offsets can not computed, this function throws an exception.
-compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>) {
+compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol>): _ {
 	loop section in sections {
 		loop offset in section.offsets {
 			# Try to find the 'from'-symbol
@@ -367,7 +367,7 @@ read_object<T>(container: link, offset: large) {
 
 # Summary:
 # Writes the specified value to the specified offset
-write(container: Array<byte>, offset: large, value: large) {
+write(container: Array<byte>, offset: large, value: large): _ {
 	container.data[offset] = value
 }
 
@@ -379,13 +379,13 @@ write(container: List<byte>, offset: large, value: large) {
 
 # Summary:
 # Writes the specified value to the specified offset
-write(container: link, offset: large, value: large) {
+write(container: link, offset: large, value: large): _ {
 	container[offset] = value
 }
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int16(container: Array<byte>, offset: large, value: large) {
+write_int16(container: Array<byte>, offset: large, value: large): _ {
 	(container.data + offset).(small*)[] = value as small
 }
 
@@ -397,13 +397,13 @@ write_int16(container: List<byte>, offset: large, value: large) {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int16(container: link, offset: large, value: large) {
+write_int16(container: link, offset: large, value: large): _ {
 	(container + offset).(small*)[] = value as small
 }
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int32(container: Array<byte>, offset: large, value: large) {
+write_int32(container: Array<byte>, offset: large, value: large): _ {
 	(container.data + offset).(normal*)[] = value as normal
 }
 
@@ -415,13 +415,13 @@ write_int32(container: List<byte>, offset: large, value: large) {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int32(container: link, offset: large, value: large) {
+write_int32(container: link, offset: large, value: large): _ {
 	(container + offset).(normal*)[] = value as normal
 }
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int64(container: Array<byte>, offset: large, value: large) {
+write_int64(container: Array<byte>, offset: large, value: large): _ {
 	(container.data + offset).(large*)[] = value as large
 }
 
@@ -433,13 +433,13 @@ write_int64(container: List<byte>, offset: large, value: large) {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int64(container: link, offset: large, value: large) {
+write_int64(container: link, offset: large, value: large): _ {
 	(container + offset).(large*)[] = value as large
 }
 
 # Summary:
 # Swaps the endianness of the specified 32-bit integer
-swap_endianness_int32(value: normal) {
+swap_endianness_int32(value: normal): large {
 	a = value & 0xFF
 	b = (value |> 8) & 0xFF
 	c = (value |> 16) & 0xFF
@@ -450,7 +450,7 @@ swap_endianness_int32(value: normal) {
 
 # Summary:
 # Copies the specified number of bytes from the source array to the destination address at the specified offset
-write_bytes(source: Array<byte>, destination: link, offset: large, bytes: large) {
+write_bytes(source: Array<byte>, destination: link, offset: large, bytes: large): _ {
 	require(source.size >= bytes, 'Source array is not large enough')
 
 	if source.size == 0 return
@@ -465,13 +465,13 @@ write_bytes(source: Array<byte>, destination: link, bytes: large) {
 
 # Summary:
 # Copies all the bytes from the source array to the destination address
-write_bytes(source: Array<byte>, destination: link) {
+write_bytes(source: Array<byte>, destination: link): _ {
 	write_bytes(source, destination, 0, source.size)
 }
 
 # Summary:
 # Copies the specified number of bytes from the source array to the destination array at the specified offset
-write_bytes(source: Array<byte>, destination: Array<byte>, offset: large, bytes: large) {
+write_bytes(source: Array<byte>, destination: Array<byte>, offset: large, bytes: large): _ {
 	require(destination.size - offset >= bytes, 'Destination array can not contain the copy')
 	write_bytes(source, destination.data, offset, bytes)
 }
@@ -479,7 +479,7 @@ write_bytes(source: Array<byte>, destination: Array<byte>, offset: large, bytes:
 
 # Summary:
 # Copies all the bytes from the source array to the destination array
-write_bytes(source: Array<byte>, destination: Array<byte>) {
+write_bytes(source: Array<byte>, destination: Array<byte>): _ {
 	require(destination.size >= source.size, 'Destination array can not contain the copy')
 	write_bytes(source, destination.data, 0, source.size)
 }

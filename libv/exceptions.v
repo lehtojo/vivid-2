@@ -74,17 +74,17 @@ export require(result: bool) {
 }
 
 # Summary: Ensures the specified condition is true, otherwise this function exits the application and informs the user with the specified message
-export require(result: bool, message: link) {
+export require(result: bool, message: link): _ {
 	if not result panic(message)
 }
 
 # Summary: Ensures the specified condition is true, otherwise this function exits the application and informs the user with the specified message
-export require(result: bool, message: String) {
+export require(result: bool, message: String): _ {
 	require(result, message.data)
 }
 
 # Summary: Writes the specified message to the console and exits the application with code 1
-export panic(message: link) {
+export panic(message: link): _ {
 	internal.console.write(message, length_of(message))
 	application.exit(1)
 }

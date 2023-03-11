@@ -8,7 +8,7 @@ try_get_local_variable(unit: Unit, result: Result) {
 	return none as Variable
 }
 
-build_addition_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
+build_addition_operator(unit: Unit, operator: OperatorNode, assigns: bool): Result {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
 
@@ -19,7 +19,7 @@ build_addition_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
 	return AdditionInstruction(unit, left, right, type, assigns).add()
 }
 
-build_subtraction_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
+build_subtraction_operator(unit: Unit, operator: OperatorNode, assigns: bool): Result {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
 
@@ -30,7 +30,7 @@ build_subtraction_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
 	return SubtractionInstruction(unit, left, right, type, assigns).add()
 }
 
-build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool) {
+build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool): Result {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
 
@@ -61,7 +61,7 @@ compute_reciprocal(divider: large) {
 	return result
 }
 
-build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assigns: bool) {
+build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assigns: bool): Result {
 	type = operator.get_type().(Number).type
 
 	access = ACCESS_READ
@@ -75,7 +75,7 @@ build_division_operator(unit: Unit, modulus: bool, operator: OperatorNode, assig
 }
 
 # Summary: Builds bitwise operations such as AND, XOR and OR which can assign the result if specified
-build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
+build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool): Result {
 	access = ACCESS_READ
 	if assigns { access = ACCESS_WRITE }
 
@@ -93,21 +93,21 @@ build_bitwise_operator(unit: Unit, node: OperatorNode, assigns: bool) {
 }
 
 # Summary: Builds a left shift operation which can not assign
-build_shift_left(unit: Unit, shift: OperatorNode) {
+build_shift_left(unit: Unit, shift: OperatorNode): Result {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
 	return BitwiseInstruction.create_shift_left(unit, left, right, shift.get_type().format).add()
 }
 
 # Summary: Builds a right shift operation which can not assign
-build_shift_right(unit: Unit, shift: OperatorNode) {
+build_shift_right(unit: Unit, shift: OperatorNode): Result {
 	left = references.get(unit, shift.first, ACCESS_READ)
 	right = references.get(unit, shift.last, ACCESS_READ)
 	return BitwiseInstruction.create_shift_right(unit, left, right, shift.get_type().format, is_unsigned(shift.first.get_type().format)).add()
 }
 
 # Summary: Builds a not operation which can not assign and work with booleans as well
-build_not(unit: Unit, node: NotNode) {
+build_not(unit: Unit, node: NotNode): Result {
 	type = node.first.get_type()
 
 	if not node.is_bitwise {
@@ -119,7 +119,7 @@ build_not(unit: Unit, node: NotNode) {
 }
 
 # Summary: Builds a negation operation which can not assign
-build_negate(unit: Unit, node: NegateNode) {
+build_negate(unit: Unit, node: NegateNode): Result {
 	is_decimal = node.get_type().format == FORMAT_DECIMAL
 
 	if settings.is_x64 and is_decimal {
@@ -135,7 +135,7 @@ build_negate(unit: Unit, node: NegateNode) {
 	return SingleParameterInstruction.create_negate(unit, references.get(unit, node.first, ACCESS_READ), is_decimal).add()
 }
 
-build_debug_assign_operator(unit: Unit, node: OperatorNode) {
+build_debug_assign_operator(unit: Unit, node: OperatorNode): Result {
 	left = references.get(unit, node.first, ACCESS_WRITE)
 	right = references.get(unit, node.last, ACCESS_READ)
 
@@ -156,7 +156,7 @@ build_debug_assign_operator(unit: Unit, node: OperatorNode) {
 	return MoveInstruction(unit, left, right).add()
 }
 
-build_assign_operator(unit: Unit, node: OperatorNode) {
+build_assign_operator(unit: Unit, node: OperatorNode): Result {
 	if settings.is_debugging_enabled return build_debug_assign_operator(unit, node)
 
 	# TODO: Support conditions
@@ -179,7 +179,7 @@ build_assign_operator(unit: Unit, node: OperatorNode) {
 	return MoveInstruction(unit, left, right).add()
 }
 
-build_arithmetic(unit: Unit, node: OperatorNode) {
+build_arithmetic(unit: Unit, node: OperatorNode): Result {
 	operator = node.operator
 
 	if operator == Operators.ASSIGN {
@@ -207,7 +207,7 @@ build_arithmetic(unit: Unit, node: OperatorNode) {
 	abort('Missing operator node implementation')
 }
 
-build_pack(unit: Unit, node: PackNode) {
+build_pack(unit: Unit, node: PackNode): Result {
 	values = List<Result>()
 
 	loop value in node {
@@ -219,7 +219,7 @@ build_pack(unit: Unit, node: PackNode) {
 
 # Summary:
 # Returns the specified pack by using the registers used when passing packs in parameters
-return_pack(unit: Unit, value: Result, type: Type) {
+return_pack(unit: Unit, value: Result, type: Type): _ {
 	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 
@@ -236,7 +236,7 @@ return_pack(unit: Unit, value: Result, type: Type) {
 	unit.add(ReorderInstruction(unit, destinations, sources, unit.function.return_type))
 }
 
-build_return(unit: Unit, node: ReturnNode) {
+build_return(unit: Unit, node: ReturnNode): Result {
 	unit.add_debug_position(node)
 
 	# Find the parent scope, so that can add the last line of the scope as debugging information
@@ -264,7 +264,7 @@ build_return(unit: Unit, node: ReturnNode) {
 	return ReturnInstruction(unit, none as Result, unit.function.return_type).add()
 }
 
-get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: Type) {
+get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: Type): Result {
 	# Static functions can not access any instance data
 	if function.function.is_static return calls.build(unit, function)
 
@@ -280,7 +280,7 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 
 # Summary:
 # Builds the specified jump node, while merging with its container scope
-build_jump(unit: Unit, node: JumpNode) {
+build_jump(unit: Unit, node: JumpNode): Result {
 	# TODO: Support conditional jumps
 	unit.add(JumpInstruction(unit, node.label))
 	return Result()
@@ -288,11 +288,11 @@ build_jump(unit: Unit, node: JumpNode) {
 
 # Summary:
 # Adds the label to the specified unit
-build_label(unit: Unit, node: LabelNode) {
+build_label(unit: Unit, node: LabelNode): _ {
 	unit.add(LabelInstruction(unit, node.label))
 }
 
-build_link(unit: Unit, node: LinkNode, mode: large) {
+build_link(unit: Unit, node: LinkNode, mode: large): Result {
 	type = node.first.get_type()
 
 	if node.last.match(NODE_VARIABLE) {
@@ -319,7 +319,7 @@ build_link(unit: Unit, node: LinkNode, mode: large) {
 	return get_member_function_call(unit, node.last as FunctionNode, node.first, type)
 }
 
-build_accessor(unit: Unit, node: AccessorNode, mode: large) {
+build_accessor(unit: Unit, node: AccessorNode, mode: large): Result {
 	accessor_base = node.first
 	accessor_index = node.last.first
 
@@ -340,7 +340,7 @@ build_accessor(unit: Unit, node: AccessorNode, mode: large) {
 	return GetMemoryAddressInstruction(unit, node.get_type(), node.format, start, offset, stride, mode).add()
 }
 
-build_call(unit: Unit, node: CallNode) {
+build_call(unit: Unit, node: CallNode): Result {
 	unit.add_debug_position(node)
 
 	# If the self argument is "empty", do not pass it
@@ -361,7 +361,7 @@ build_call(unit: Unit, node: CallNode) {
 	return calls.build(unit, self, self_type, function_pointer, node.descriptor.return_type, node.parameters, node.descriptor.parameters)
 }
 
-build_string(unit: Unit, node: StringNode) {
+build_string(unit: Unit, node: StringNode): Result {
 	# Generate an identifier for the string, if it does not already exist
 	if node.identifier === none { node.identifier = unit.get_next_string() }
 
@@ -371,11 +371,11 @@ build_string(unit: Unit, node: StringNode) {
 	return Result(handle, SYSTEM_FORMAT)
 }
 
-build_undefined(unit: Unit, node: UndefinedNode) {
+build_undefined(unit: Unit, node: UndefinedNode): Result {
 	return AllocateRegisterInstruction(unit, node.format).add()
 }
 
-build_data_pointer(node: DataPointerNode) {
+build_data_pointer(node: DataPointerNode): Result {
 	if node.type == FUNCTION_DATA_POINTER {
 		handle = DataSectionHandle(node.(FunctionDataPointerNode).function.get_fullname(), node.offset, true, DATA_SECTION_MODIFIER_NONE)
 		
@@ -393,7 +393,7 @@ build_data_pointer(node: DataPointerNode) {
 	abort('Could not build data pointer')
 }
 
-build_childs(unit: Unit, node: Node) {
+build_childs(unit: Unit, node: Node): Result {
 	result = none as Result
 
 	loop iterator in node {
@@ -404,7 +404,7 @@ build_childs(unit: Unit, node: Node) {
 	return Result()
 }
 
-build(unit: Unit, node: Node) {
+build(unit: Unit, node: Node): Result {
 	return when(node.instance) {
 		NODE_ACCESSOR => build_accessor(unit, node, ACCESS_READ)
 		NODE_CAST => casts.build(unit, node as CastNode, ACCESS_READ)

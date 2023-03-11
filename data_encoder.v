@@ -22,7 +22,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write(value: large) {
+	write(value: large): _ {
 		reserve(1)
 		binary_utility.write(output, position, value)
 		position++
@@ -36,7 +36,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified character to the current position and advances to the next position
-	write(value: char) {
+	write(value: char): _ {
 		reserve(1)
 		output[position++] = value
 	}
@@ -49,7 +49,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int16(value: large) {
+	write_int16(value: large): _ {
 		reserve(2)
 		binary_utility.write_int16(output, position, value)
 		position += strideof(small)
@@ -57,7 +57,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int32(value: large) {
+	write_int32(value: large): _ {
 		reserve(4)
 		binary_utility.write_int32(output, position, value)
 		position += strideof(normal)
@@ -65,13 +65,13 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the specified position
-	write_int32(position: large, value: large) {
+	write_int32(position: large, value: large): _ {
 		binary_utility.write_int32(output, position, value)
 	}
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int64(value: large) {
+	write_int64(value: large): _ {
 		reserve(8)
 		binary_utility.write_int64(output, position, value)
 		position += strideof(large)
@@ -85,7 +85,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Expresses the specified value as a signed LEB128.
-	to_uleb128(value: large) {
+	to_uleb128(value: large): List<u8> {
 		bytes = List<byte>()
 
 		loop {
@@ -106,7 +106,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Expresses the specified value as an unsigned LEB128.
-	to_sleb128(value: large) {
+	to_sleb128(value: large): List<u8> {
 		bytes = List<byte>()
 
 		more = true
@@ -137,19 +137,19 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified integer as a SLEB128
-	write_sleb128(value: large) {
+	write_sleb128(value: large): _ {
 		write(to_sleb128(value))
 	}
 
 	# Summary:
 	# Writes the specified integer as a ULEB128
-	write_uleb128(value: large) {
+	write_uleb128(value: large): _ {
 		write(to_uleb128(value))
 	}
 
 	# Summary:
 	# Writes the specified bytes into this module
-	write(bytes: Array<byte>) {
+	write(bytes: Array<byte>): _ {
 		reserve(bytes.size)
 		copy(bytes.data, bytes.size, output + position)
 		position += bytes.size
@@ -157,7 +157,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified bytes into this module
-	write(bytes: link, size: large) {
+	write(bytes: link, size: large): _ {
 		reserve(size)
 		copy(bytes, size, output + position)
 		position += size
@@ -165,7 +165,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified bytes into this module
-	write(bytes: List<byte>) {
+	write(bytes: List<byte>): _ {
 		reserve(bytes.size)
 		copy(bytes.data, bytes.size, output + position)
 		position += bytes.size
@@ -173,20 +173,20 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified amount of zeroes into this module
-	zero(amount: large) {
+	zero(amount: large): _ {
 		reserve(amount)
 		position += amount
 	}
 
 	# Summary:
 	# Writes the specified into: String this module
-	string(text: String) {
+	string(text: String): _ {
 		return string(text, true)
 	}
 
 	# Summary:
 	# Writes the specified into: String this module
-	string(text: String, terminate: bool) {
+	string(text: String, terminate: bool): _ {
 		position: large = 0
 
 		loop (position < text.length) {
@@ -251,7 +251,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Returns a local symbol with the specified name if such symbol exists, otherwise an external symbol with the specified name is created.
-	get_local_or_create_external_symbol(name: String) {
+	get_local_or_create_external_symbol(name: String): BinarySymbol {
 		if symbols.contains_key(name) return symbols[name]
 
 		# Create an external version of the specified symbol
@@ -263,7 +263,7 @@ DataEncoderModule {
 	# Summary:
 	# Creates a local symbol with the specified name at the specified offset.
 	# This function converts an existing external version of the symbol to a local symbol if such symbol exists.
-	create_local_symbol(name: String, offset: large) {
+	create_local_symbol(name: String, offset: large): BinarySymbol {
 		symbol = none as BinarySymbol
 
 		if symbols.contains_key(name) {
@@ -287,7 +287,7 @@ DataEncoderModule {
 	# Summary:
 	# Creates a local symbol with the specified name at the specified offset.
 	# This function converts an existing external version of the symbol to a local symbol if such symbol exists.
-	create_local_symbol(name: String, offset: large, exported: bool) {
+	create_local_symbol(name: String, offset: large, exported: bool): BinarySymbol {
 		symbol = none as BinarySymbol
 
 		if symbols.contains_key(name) {
@@ -308,7 +308,7 @@ DataEncoderModule {
 		return symbol
 	}
 
-	build() {
+	build(): BinarySection {
 		# Shrink the output buffer to only fit the current size
 		output = resize(output, output_size, position)
 		output_size = position
@@ -338,7 +338,7 @@ DataEncoderModule {
 		return section
 	}
 
-	reset() {
+	reset(): _ {
 		output = resize(output, position, DEFAULT_OUTPUT_SIZE)
 		output_size = DEFAULT_OUTPUT_SIZE
 		position = 0
@@ -354,7 +354,7 @@ DataEncoderModule {
 namespace data_encoder {
 	# Summary:
 	# Ensures the specified module is aligned as requested
-	align(module: DataEncoderModule, alignment: large) {
+	align(module: DataEncoderModule, alignment: large): _ {
 		# By choosing the largest alignment, it is guaranteed that all the alignments are correct even after the linker relocates all sections
 		module.alignment = max(module.alignment, alignment)
 
@@ -366,7 +366,7 @@ namespace data_encoder {
 
 	# Summary:
 	# Adds the specified table label into the specified module
-	add_table_label(module: DataEncoderModule, label: TableLabel) {
+	add_table_label(module: DataEncoderModule, label: TableLabel): _ {
 		if label.declare {
 			# Define the table label as a symbol
 			module.create_local_symbol(label.name, module.position)
@@ -406,7 +406,7 @@ namespace data_encoder {
 
 	# Summary:
 	# Adds the specified table into the specified module
-	add_table(builder: AssemblyBuilder, module: DataEncoderModule, table: Table, marker: large) {
+	add_table(builder: AssemblyBuilder, module: DataEncoderModule, table: Table, marker: large): _ {
 		if (table.marker & marker) != 0 return
 		table.marker |= marker
 
@@ -480,7 +480,7 @@ namespace data_encoder {
 
 	# Summary:
 	# Defines the specified variable
-	add_static_variable(module: DataEncoderModule, variable: Variable) {
+	add_static_variable(module: DataEncoderModule, variable: Variable): _ {
 		name = variable.get_static_name()
 		size = variable.type.allocation_size
 

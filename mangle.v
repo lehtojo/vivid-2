@@ -77,15 +77,15 @@ Mangle {
 		this.value = value
 	}
 
-	add(raw: String) {
+	add(raw: String): _ {
 		value = value + raw
 	}
 
-	add(character: char) {
+	add(character: char): _ {
 		value = value + character
 	}
 
-	private push(last: MangleDefinition, pointers: large) {
+	private push(last: MangleDefinition, pointers: large): _ {
 		loop (i = 0, i < pointers, i++) {
 			definitions.add(MangleDefinition(last.type, definitions.size, last.pointers + i + 1))
 			value = value + POINTER_COMMAND
@@ -95,7 +95,7 @@ Mangle {
 	}
 
 	# Summary: Adds the specified type to this mangled identifier
-	add(type: Type, pointers: large, full: bool) {
+	add(type: Type, pointers: large, full: bool): _ {
 		if pointers == 0 and type.is_primitive and not (type.name == primitives.LINK) and not type.is_array_type {
 			value = value + type.identifier
 			return
@@ -213,7 +213,7 @@ Mangle {
 		push(definitions[i], pointer_difference)
 	}
 
-	add_path(path: List<Type>) {
+	add_path(path: List<Type>): _ {
 		components = List<Type>()
 
 		loop (i = path.size - 1, i >= 0, i--) {
@@ -251,17 +251,17 @@ Mangle {
 		}
 	}
 
-	add(types: List<Type>) {
+	add(types: List<Type>): _ {
 		loop type in types {
 			add(type, (not type.is_primitive) as large, true)
 		}
 	}
 
-	add(type: Type) {
+	add(type: Type): _ {
 		add(type, (not type.is_primitive) as large, true)
 	}
 
-	clone() {
+	clone(): Mangle {
 		return Mangle(this)
 	}
 }

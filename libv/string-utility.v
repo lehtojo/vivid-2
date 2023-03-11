@@ -1,7 +1,7 @@
 STRING_DECIMAL_PRECISION = 15
 
 # Summary: Returns the length of the specified string
-export length_of(text: link) {
+export length_of(text: link): large {
 	length = 0
 
 	loop {
@@ -11,7 +11,7 @@ export length_of(text: link) {
 }
 
 # Summary: Returns the index of the first occurrence of the specified character in the specified string
-export index_of(string: link, character: char) {
+export index_of(string: link, character: char): large {
 	length = length_of(string)
 
 	loop (i = 0, i < length, i++) {
@@ -22,7 +22,7 @@ export index_of(string: link, character: char) {
 }
 
 # Summary: Returns whether the specified character is a digit
-export is_digit(value: char) {
+export is_digit(value: char): bool {
 	return value >= `0` and value <= `9`
 }
 
@@ -68,7 +68,7 @@ export to_string(number: large, result: link) {
 }
 
 # Summary: Converts the specified number into a string and stores it in the specified buffer
-export to_string(number: decimal, result: link) {
+export to_string(number: decimal, result: link): large {
 	position = to_string(number as large, result)
 
 	# Remove the integer part
@@ -101,7 +101,7 @@ export to_string(number: decimal, result: link) {
 }
 
 # Summary: Converts the specified string into an integer
-export to_integer(string: link, length: large) {
+export to_integer(string: link, length: large): large {
 	require(length >= 0, 'String can not be empty when converting to integer')
 
 	result = 0
@@ -123,7 +123,7 @@ export to_integer(string: link, length: large) {
 }
 
 # Summary: Converts the specified string to a decimal using the specified separator
-export to_decimal(string: link, length: large, separator: char) {
+export to_decimal(string: link, length: large, separator: char): decimal {
 	require(length >= 0, 'String can not be empty when converting to integer')
 
 	# Find the index of the separator
@@ -167,12 +167,12 @@ export to_decimal(string: link, length: large, separator: char) {
 }
 
 # Summary: Converts the specified string to a decimal
-export to_decimal(string: link, length: large) {
+export to_decimal(string: link, length: large): decimal {
 	return to_decimal(string, length, `.`)
 }
 
 # Summary: Tries to convert the specified string to a decimal number
-export as_decimal(string: link, length: large) {
+export as_decimal(string: link, length: large): Optional<decimal> {
 	index = 0
 
 	first = string[]
@@ -193,7 +193,7 @@ export as_decimal(string: link, length: large) {
 }
 
 # Summary: Tries to convert the specified string to an integer number
-export as_integer(string: link, length: large) {
+export as_integer(string: link, length: large): Optional<large> {
 	index = 0
 
 	first = string[]

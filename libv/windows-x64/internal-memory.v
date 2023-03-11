@@ -13,7 +13,7 @@ export allocate(size: large) {
 	return VirtualAlloc(none as link, size, MEMORY_COMMIT | MEMORY_RESERVE, PAGE_READWRITE)
 }
 
-export deallocate(address: link, size: large) {
+export deallocate(address: link, size: large): _ {
 	size = 0
 	return VirtualFree(address, 0, MEMORY_RELEASE)
 }

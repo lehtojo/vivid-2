@@ -6,13 +6,13 @@ abort(message: String) {
 	application.exit(1)
 }
 
-abort(message: link) {
+abort(message: link): _ {
 	console.write('Internal error: ')
 	console.write_line(message)
 	application.exit(1)
 }
 
-abort(position: Position, message: link) {
+abort(position: Position, message: link): _ {
 	console.write('Internal error: ')
 	console.write(message)
 
@@ -35,13 +35,13 @@ abort(position: Position, message: link) {
 	application.exit(1)
 }
 
-complain(status: Status) {
+complain(status: Status): _ {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)
 	application.exit(1)
 }
 
-init() {
+init(): large {
 	start = time.now()
 
 	String.empty = ""

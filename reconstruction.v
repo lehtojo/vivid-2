@@ -23,7 +23,7 @@ complete_self_returning_function(implementation: FunctionImplementation) {
 
 # Summary: Removes redundant parentheses in the specified node tree
 # Example: x = x * (((x + 1))) => x = x * (x + 1)
-remove_redundant_parentheses(node: Node) {
+remove_redundant_parentheses(node: Node): _ {
 	# Look for parentheses that have exactly one child
 	if node.instance === NODE_PARENTHESIS and node.first !== none and node.first === node.last {
 		# Do not remove parentheses that are indices of accessor nodes
@@ -48,7 +48,7 @@ remove_redundant_parentheses(node: Node) {
 # loop (i = 0, i < n, i++)
 # After:
 # loop (i = 0, i < n, i += 1)
-rewrite_discarded_increments(root: Node) {
+rewrite_discarded_increments(root: Node): _ {
 	increments = root.find_all(NODE_INCREMENT | NODE_DECREMENT)
 
 	loop increment in increments {
@@ -73,7 +73,7 @@ rewrite_discarded_increments(root: Node) {
 # Foo() using Allocator
 # = Using { Construction { Foo() }, Allocator.allocate(sizeof(Foo)) }
 # => Construction { Allocator.allocate(sizeof(Foo)), Foo() }
-assign_allocators_constructions(root: Node) {
+assign_allocators_constructions(root: Node): _ {
 	expressions = root.find_all(NODE_USING)
 
 	loop expression in expressions {
@@ -90,7 +90,7 @@ assign_allocators_constructions(root: Node) {
 	}
 }
 
-strip_links(root: Node) {
+strip_links(root: Node): _ {
 	links = root.find_all(NODE_LINK)
 
 	loop link in links {
@@ -108,7 +108,7 @@ strip_links(root: Node) {
 	}
 }
 
-get_expression_extract_position(expression: Node) {
+get_expression_extract_position(expression: Node): Node {
 	iterator = expression.parent
 	position = expression
 
@@ -136,7 +136,7 @@ get_expression_extract_position(expression: Node) {
 }
 
 # Summary: Returns the root of the expression which contains the specified node
-get_expression_root(node: Node) {
+get_expression_root(node: Node): Node {
 	iterator = node
 
 	loop {
@@ -157,7 +157,7 @@ get_expression_root(node: Node) {
 	return iterator
 }
 
-extract_calls(root: Node) {
+extract_calls(root: Node): _ {
 	nodes = root.find_every(NODE_ACCESSOR | NODE_CALL | NODE_CONSTRUCTION | NODE_FUNCTION | NODE_HAS | NODE_LAMBDA | NODE_LINK | NODE_LIST_CONSTRUCTION | NODE_PACK_CONSTRUCTION | NODE_WHEN)
 	nodes.add_all(find_bool_values(root))
 
@@ -198,7 +198,7 @@ extract_calls(root: Node) {
 	}
 }
 
-get_increment_extractions(increments: List<Node>) {
+get_increment_extractions(increments: List<Node>): List<Pair<Node, List<Node>>> {
 	# Group all increment nodes by their extraction positions
 	extractions = List<Pair<Node, List<Node>>>()
 
@@ -226,7 +226,7 @@ get_increment_extractions(increments: List<Node>) {
 	return extractions
 }
 
-create_local_increment_extract_groups(locals: List<Node>) {
+create_local_increment_extract_groups(locals: List<Node>): List<Pair<Variable, List<Node>>> {
 	# Group all locals increment nodes by their edited locals
 	extractions = List<Pair<Variable, List<Node>>>()
 
@@ -254,7 +254,7 @@ create_local_increment_extract_groups(locals: List<Node>) {
 	return extractions
 }
 
-extract_local_increments(destination: Node, locals: List<Node>) {
+extract_local_increments(destination: Node, locals: List<Node>): _ {
 	local_extract_groups = create_local_increment_extract_groups(locals)
 
 	loop local_extract in local_extract_groups {
@@ -295,7 +295,7 @@ extract_local_increments(destination: Node, locals: List<Node>) {
 	}
 }
 
-extract_complex_increments(destination: Node, others: List<Node>) {
+extract_complex_increments(destination: Node, others: List<Node>): _ {
 	loop increment in others {
 		# Determine the edited node
 		edited = increment.first
@@ -321,7 +321,7 @@ extract_complex_increments(destination: Node, others: List<Node>) {
 	}
 }
 
-find_increments(root: Node) {
+find_increments(root: Node): List<Node> {
 	result = List<Node>()
 
 	loop node in root {
@@ -334,7 +334,7 @@ find_increments(root: Node) {
 	return result
 }
 
-extract_increments(root: Node) {
+extract_increments(root: Node): _ {
 	# Find all increment and decrement nodes
 	increments = find_increments(root)
 	extractions = get_increment_extractions(increments)
@@ -367,7 +367,7 @@ extract_increments(root: Node) {
 	}
 }
 
-extract_expressions(root: Node) {
+extract_expressions(root: Node): _ {
 	extract_calls(root)
 	extract_increments(root)
 }
@@ -383,7 +383,7 @@ extract_expressions(root: Node) {
 # =>
 # t = a[i].b.f(...)
 # a[i].b = t
-rewrite_self_returning_functions(root: Node) {
+rewrite_self_returning_functions(root: Node): _ {
 	calls = root.find_all(NODE_FUNCTION)
 
 	loop call in calls {
@@ -435,7 +435,7 @@ InlineContainer {
 }
 
 # Summary: Determines the variable which will store the result and the node that should contain the inlined content
-create_inline_container(type: Type, node: Node, is_value_returned: bool) {
+create_inline_container(type: Type, node: Node, is_value_returned: bool): reconstruction.InlineContainer {
 	editor = common.try_get_editor(node)
 
 	if editor != none and editor.match(Operators.ASSIGN) {
@@ -457,7 +457,7 @@ create_inline_container(type: Type, node: Node, is_value_returned: bool) {
 # Tries to find the override for the specified virtual function and registers it to the specified runtime configuration.
 # If no override can be found, address of zero is registered.
 # This function returns the next offset after registering the override function.
-try_register_virtual_function_implementation(type: Type, virtual_function: VirtualFunction, configuration: RuntimeConfiguration, offset: large) {
+try_register_virtual_function_implementation(type: Type, virtual_function: VirtualFunction, configuration: RuntimeConfiguration, offset: large): large {
 	# If the configuration is already completed, no need to do anything
 	if configuration.is_completed return offset + SYSTEM_BYTES
 
@@ -499,7 +499,7 @@ try_register_virtual_function_implementation(type: Type, virtual_function: Virtu
 	return offset + SYSTEM_BYTES
 }
 
-copy_type_descriptors(type: Type, supertypes: List<Type>) {
+copy_type_descriptors(type: Type, supertypes: List<Type>): List<Pair<Type, DataPointerNode>> {
 	if type.configuration == none return List<Pair<Type, DataPointerNode>>()
 
 	configuration = type.configuration
@@ -566,7 +566,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>) {
 }
 
 # Summary: Constructs an object using stack memory
-create_stack_construction(type: Type, construction: Node, constructor: FunctionNode) {
+create_stack_construction(type: Type, construction: Node, constructor: FunctionNode): reconstruction.InlineContainer {
 	container = create_inline_container(type, construction, true)
 	position = construction.start
 
@@ -608,7 +608,7 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 	return container
 }
 
-get_allocator(type: Type, construction: ConstructionNode, position: Position, size: large) {
+get_allocator(type: Type, construction: ConstructionNode, position: Position, size: large): Node {
 	if not construction.has_allocator {
 		# If system mode is enabled, constructions without allocators use the stack
 		if settings.is_system_mode_enabled {
@@ -628,7 +628,7 @@ get_allocator(type: Type, construction: ConstructionNode, position: Position, si
 }
 
 # Summary: Constructs an object using heap memory
-create_heap_construction(type: Type, construction: ConstructionNode, constructor: FunctionNode) {
+create_heap_construction(type: Type, construction: ConstructionNode, constructor: FunctionNode): reconstruction.InlineContainer {
 	container = create_inline_container(type, construction, true)
 	position = construction.start
 
@@ -679,12 +679,12 @@ create_heap_construction(type: Type, construction: ConstructionNode, constructor
 }
 
 # Summary: Returns if stack construction should be used
-is_stack_construction_preferred(root: Node, value: Node) {
+is_stack_construction_preferred(root: Node, value: Node): bool {
 	return false
 }
 
 # Summary: Rewrites construction expressions so that they use nodes which can be compiled
-rewrite_constructions(root: Node) {
+rewrite_constructions(root: Node): _ {
 	constructions = root.find_all(NODE_CONSTRUCTION)
 
 	loop construction in constructions {
@@ -708,7 +708,7 @@ rewrite_constructions(root: Node) {
 # list = [ $value-1, $value-2, ... ]
 # =>
 # { list = List<$shared-type>(), list.add($value-1), list.add($value-2), ... }
-rewrite_list_constructions(root: Node) {
+rewrite_list_constructions(root: Node): _ {
 	constructions = root.find_all(NODE_LIST_CONSTRUCTION) as List<ListConstructionNode>
 
 	loop construction in constructions {
@@ -746,7 +746,7 @@ rewrite_list_constructions(root: Node) {
 # result = { $member-1: $value-1, $member-2: $value-2, ... }
 # =>
 # { result = $unnamed-pack(), result.$member-1 = $value-1, result.$member-2 = $value-2, ... }
-rewrite_pack_constructions(root: Node) {
+rewrite_pack_constructions(root: Node): _ {
 	constructions = root.find_all(NODE_PACK_CONSTRUCTION) as List<PackConstructionNode>
 
 	loop construction in constructions {
@@ -782,7 +782,7 @@ rewrite_pack_constructions(root: Node) {
 
 # Summary: Finds expressions which do not represent statement conditions and can be evaluated to bool values
 # Example: element.is_visible = element.color.alpha > 0
-find_bool_values(root: Node) {
+find_bool_values(root: Node): List<Node> {
 	# NOTE: Find all bool operators, including nested ones, because sometimes even bool operators have nested bool operators, which must be extracted
 	# Example: a = i > 0 and f(i < 10) # Here both the right assignment operand and the expression 'i < 10' must be extracted
 	candidates = root.find_all(i -> i.match(NODE_OPERATOR) and (i.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON or i.(OperatorNode).operator.type == OPERATOR_TYPE_LOGICAL))
@@ -806,7 +806,7 @@ find_bool_values(root: Node) {
 	return result
 }
 
-extract_bool_values(root: Node) {
+extract_bool_values(root: Node): _ {
 	expressions = find_bool_values(root)
 
 	loop expression in expressions {
@@ -851,7 +851,7 @@ extract_bool_values(root: Node) {
 # x-- => x = x - 1
 # a *= 2 => a = a * 2
 # b[i] /= 10 => b[i] = b[i] / 10
-try_rewrite_as_assignment_operator(edit: Node) {
+try_rewrite_as_assignment_operator(edit: Node): Node {
 	if common.is_value_used(edit) return none as Node
 	position = edit.start
 
@@ -902,7 +902,7 @@ try_rewrite_as_assignment_operator(edit: Node) {
 
 # Summary: Ensures all edits under the specified node are assignments
 # Example: a += 1 => a = a + 1
-rewrite_edits_as_assignments(root: Node) {
+rewrite_edits_as_assignments(root: Node): _ {
 	edits = root.find_all(i -> i.match(NODE_INCREMENT | NODE_DECREMENT) or (i.instance == NODE_OPERATOR and i.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT))
 
 	loop edit in edits {
@@ -917,7 +917,7 @@ rewrite_edits_as_assignments(root: Node) {
 }
 
 # Summary: Finds all inline nodes, which can be replaced with their own child nodes
-remove_redundant_inline_nodes(root: Node) {
+remove_redundant_inline_nodes(root: Node): _ {
 	inlines = root.find_all(NODE_INLINE)
 
 	loop iterator in inlines {
@@ -937,7 +937,7 @@ remove_redundant_inline_nodes(root: Node) {
 # i = i + 1 => i += 1
 # x = 2 * x => x *= 2
 # this.a = this.a % 2 => this.a %= 2
-construct_assignment_operators(root: Node) {
+construct_assignment_operators(root: Node): _ {
 	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
 
 	loop assignment in assignments {
@@ -965,7 +965,7 @@ construct_assignment_operators(root: Node) {
 
 # Summary:
 # Returns whether the cast converts a pack to another pack and whether it needs to be processed later
-is_required_pack_cast(from: Type, to: Type) {
+is_required_pack_cast(from: Type, to: Type): bool {
 	return from != to and from.is_pack and to.is_pack
 }
 
@@ -974,7 +974,7 @@ is_required_pack_cast(from: Type, to: Type) {
 # Summary:
 # Finds casts which have no effect and removes them
 # Example: x = 0 as large
-remove_redundant_casts(root: Node) {
+remove_redundant_casts(root: Node): _ {
 	casts = root.find_all(NODE_CAST) as List<CastNode>
 
 	loop cast in casts {
@@ -994,7 +994,7 @@ remove_redundant_casts(root: Node) {
 
 # Summary:
 # Finds assignments which have implicit casts and adds them
-add_assignment_casts(root: Node) {
+add_assignment_casts(root: Node): _ {
 	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
 
 	loop assignment in assignments {
@@ -1031,7 +1031,7 @@ add_assignment_casts(root: Node) {
 # 		# The rewritten expression still refers to the same member variable even though Inheritor has its own member variable a
 # 	}
 # }
-rewrite_super_accessors(root: Node) {
+rewrite_super_accessors(root: Node): _ {
 	links = root.find_top(NODE_LINK) as List<LinkNode>
 
 	loop link in links {
@@ -1056,7 +1056,7 @@ rewrite_super_accessors(root: Node) {
 # Summary:
 # Returns whether the node uses the local self pointer.
 # This function assumes the node is a member object.
-is_using_local_self_pointer(node: Node) {
+is_using_local_self_pointer(node: Node): bool {
 	link = node.parent
 
 	# Take into account the following situation:
@@ -1079,7 +1079,7 @@ is_using_local_self_pointer(node: Node) {
 }
 
 # Summary: Adds default constructors to all supertypes, if the specified function implementation represents a constructor
-add_default_constructors(iterator: FunctionImplementation) {
+add_default_constructors(iterator: FunctionImplementation): _ {
 	# Ensure the function represents a constructor or a destructor
 	if not iterator.is_constructor and not iterator.is_destructor return
 
@@ -1130,7 +1130,7 @@ add_default_constructors(iterator: FunctionImplementation) {
 }
 
 # Summary: Evaluates the values of inspection nodes
-rewrite_inspections(root: Node) {
+rewrite_inspections(root: Node): _ {
 	inspections = root.find_all(NODE_INSPECTION) as List<InspectionNode>
 
 	loop inspection in inspections {
@@ -1149,7 +1149,7 @@ rewrite_inspections(root: Node) {
 }
 
 # Summary: Returns the first position where a statement can be placed outside the scope of the specified node
-get_insert_position(from: Node) {
+get_insert_position(from: Node): Node {
 	iterator = from.parent
 	position = from
 
@@ -1166,7 +1166,7 @@ get_insert_position(from: Node) {
 }
 
 # Summary: Creates a condition which passes if the source has the same type as the specified type in runtime
-create_type_condition(source: Node, expected: Type, position: Position) {
+create_type_condition(source: Node, expected: Type, position: Position): Node {
 	type = source.get_type()
 
 	if type.configuration == none or expected.configuration == none {
@@ -1187,7 +1187,7 @@ create_type_condition(source: Node, expected: Type, position: Position) {
 }
 
 # Summary: Rewrites is-expressions so that they use nodes which can be compiled
-rewrite_is_expressions(root: Node) {
+rewrite_is_expressions(root: Node): _ {
 	expressions = root.find_all(NODE_IS) as List<IsNode>
 
 	loop (i = expressions.size - 1, i >= 0, i--) {
@@ -1272,7 +1272,7 @@ rewrite_is_expressions(root: Node) {
 
 # Summary:
 # Rewrites when-expressions so that they use nodes which can be compiled
-rewrite_when_expressions(root: Node) {
+rewrite_when_expressions(root: Node): _ {
 	expressions = root.find_all(NODE_WHEN) as List<WhenNode>
 
 	loop expression in expressions {
@@ -1316,7 +1316,7 @@ rewrite_when_expressions(root: Node) {
 }
 
 # Summary: Rewrites lambda nodes using simpler nodes
-rewrite_lambda_constructions(root: Node) {
+rewrite_lambda_constructions(root: Node): _ {
 	constructions = root.find_all(NODE_LAMBDA) as List<LambdaNode>
 
 	loop construction in constructions {
@@ -1382,7 +1382,7 @@ rewrite_lambda_constructions(root: Node) {
 }
 
 # Summary: Rewrites has nodes using simpler nodes
-rewrite_has_expressions(root: Node) {
+rewrite_has_expressions(root: Node): _ {
 	expressions = root.find_all(NODE_HAS) as List<HasNode>
 
 	loop expression in expressions {
@@ -1460,7 +1460,7 @@ rewrite_has_expressions(root: Node) {
 # Creates all member accessors that represent all non-pack members
 # Example (root = object.pack, type = { a: large, other: { b: large, c: large } })
 # => { object.pack.a, object.pack.other.b, object.pack.other.c }
-create_pack_member_accessors(root: Node, type: Type, position: Position) {
+create_pack_member_accessors(root: Node, type: Type, position: Position): List<Node> {
 	result = List<Node>()
 
 	loop iterator in type.variables {
@@ -1488,7 +1488,7 @@ create_pack_member_accessors(root: Node, type: Type, position: Position) {
 # =>
 # local = destination + index * strideof(destination)
 # local[0] = ...
-prepare_accessor_destination_for_duplication(context: Context, destination: AccessorNode, interphases: Node, position: Position) {
+prepare_accessor_destination_for_duplication(context: Context, destination: AccessorNode, interphases: Node, position: Position): _ {
 	accessor_base = destination.first
 	accessor_index = destination.last.first
 	accessor_stride = destination.get_stride()
@@ -1519,7 +1519,7 @@ prepare_accessor_destination_for_duplication(context: Context, destination: Acce
 # Reduces the number of steps in the specified destination node by extracting expressions from it.
 # When the destination node is duplicated, this function should reduce duplicated work.
 # The function will add all the produced steps before the 'interphases' position.
-prepare_destination_for_duplication(context: Context, destination: Node, interphases: Node) {
+prepare_destination_for_duplication(context: Context, destination: Node, interphases: Node): _ {
 	position = destination.start
 
 	if destination.instance == NODE_ACCESSOR {
@@ -1561,7 +1561,7 @@ prepare_destination_for_duplication(context: Context, destination: Node, interph
 # $c.x = c.x
 # $c.y = c.y
 # g({ $c.x, $c.y })
-rewrite_pack_usages(environment: Context, root: Node) {
+rewrite_pack_usages(environment: Context, root: Node): _ {
 	placeholders = List<Pair<Node, Node>>()
 
 	# Direct assignments are expanded:
@@ -1716,7 +1716,7 @@ rewrite_pack_usages(environment: Context, root: Node) {
 
 # Summary:
 # Applies a cast to a pack node by changing the inner type
-apply_pack_cast(cast: Node, from: Type, to: Type) {
+apply_pack_cast(cast: Node, from: Type, to: Type): bool {
 	if not from.is_pack and not to.is_pack return false
 
 	# Verify the casted value is a packer and that the value type and target type are compatible
@@ -1730,7 +1730,7 @@ apply_pack_cast(cast: Node, from: Type, to: Type) {
 
 # Summary:
 # Applies a cast to a number node by converting the inner value
-apply_number_cast(cast: Node, from: Type, to: Type) {
+apply_number_cast(cast: Node, from: Type, to: Type): bool {
 	# Both of the types must be numbers
 	if not from.is_number or not to.is_number return false
 
@@ -1745,7 +1745,7 @@ apply_number_cast(cast: Node, from: Type, to: Type) {
 
 # Summary:
 # Finds casts and tries to apply them by changing the casted value
-apply_casts(root: Node) {
+apply_casts(root: Node): _ {
 	casts = root.find_all(NODE_CAST).reverse()
 
 	loop cast in casts {
@@ -1759,7 +1759,7 @@ apply_casts(root: Node) {
 }
 
 # Summary: Casts called objects to match the expected self pointer type
-cast_member_calls(root: Node) {
+cast_member_calls(root: Node): _ {
 	calls = root.find_all(i -> i.instance == NODE_LINK and i.last.instance == NODE_FUNCTION)
 
 	loop call in calls {
@@ -1790,7 +1790,7 @@ cast_member_calls(root: Node) {
 # a == b
 # =>
 # a.a == b.a && a.b == b.b
-rewrite_pack_comparisons(root: Node) {
+rewrite_pack_comparisons(root: Node): _ {
 	# Find all comparisons
 	comparisons = root.find_all(NODE_OPERATOR).filter(i -> i.match(Operators.EQUALS) or i.match(Operators.ABSOLUTE_EQUALS) or i.match(Operators.NOT_EQUALS) or i.match(Operators.ABSOLUTE_NOT_EQUALS))
 
@@ -1889,7 +1889,7 @@ create_zero_initialized_pack(type: Type, position: Position): PackConstructionNo
 # object = 0 as Object
 # =>
 # object = pack { name: 0, x: 0, y: 0, size: pack { width: 0, height: 0 } as Size } as Object
-rewrite_zero_initialized_packs(root: Node) {
+rewrite_zero_initialized_packs(root: Node): _ {
 	casts = root.find_all(NODE_CAST)
 
 	loop cast in casts {
@@ -1902,7 +1902,7 @@ rewrite_zero_initialized_packs(root: Node) {
 	}
 }
 
-start(implementation: FunctionImplementation, root: Node) {
+start(implementation: FunctionImplementation, root: Node): _ {
 	add_default_constructors(implementation)
 	rewrite_inspections(root)
 	strip_links(root)
@@ -1931,14 +1931,14 @@ start(implementation: FunctionImplementation, root: Node) {
 	apply_casts(root)
 }
 
-clean(root: Node) {
+clean(root: Node): _ {
 	remove_redundant_parentheses(root)
 	remove_redundant_casts(root)
 	remove_redundant_inline_nodes(root)
 	apply_casts(root)
 }
 
-end(root: Node) {
+end(root: Node): _ {
 	construct_assignment_operators(root)
 	remove_redundant_inline_nodes(root)
 

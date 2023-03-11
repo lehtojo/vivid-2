@@ -45,7 +45,7 @@ DualParameterInstruction AdditionInstruction {
 		build(platform.x64.EVALUATE, SYSTEM_BYTES, InstructionParameter(result, FLAG_DESTINATION, HANDLE_REGISTER), InstructionParameter(Result(calculation, SYSTEM_FORMAT), FLAG_NONE, HANDLE_EXPRESSION))
 	}
 
-	on_build_arm64() {
+	on_build_arm64(): _ {
 		
 	}
 }
@@ -58,7 +58,7 @@ DualParameterInstruction SubtractionInstruction {
 		this.assigns = assigns
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		flags = FLAG_DESTINATION
 		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
 
@@ -83,7 +83,7 @@ DualParameterInstruction SubtractionInstruction {
 		build(platform.all.SUBTRACT, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 	}
 
-	on_build_arm64() {
+	on_build_arm64(): _ {
 
 	}
 
@@ -111,13 +111,13 @@ DualParameterInstruction MultiplicationInstruction {
 		this.assigns = assigns
 	}
 
-	try_get_constant_multiplication() {
+	try_get_constant_multiplication(): ConstantMultiplication {
 		if first.value.type == HANDLE_CONSTANT and first.format != FORMAT_DECIMAL return ConstantMultiplication(second, first)
 		if second.value.type == HANDLE_CONSTANT and second.format != FORMAT_DECIMAL return ConstantMultiplication(first, second)
 		return none as ConstantMultiplication
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		flags = FLAG_DESTINATION
 		if assigns { flags = flags | FLAG_WRITE_ACCESS | FLAG_NO_ATTACH }
 
@@ -188,7 +188,7 @@ DualParameterInstruction MultiplicationInstruction {
 		build(platform.x64.SIGNED_MULTIPLY, SYSTEM_BYTES, InstructionParameter(operand, FLAG_READS | flags, HANDLE_REGISTER), InstructionParameter(second, FLAG_NONE, HANDLE_CONSTANT | HANDLE_REGISTER | HANDLE_MEMORY))
 	}
 
-	on_build_arm64() {
+	on_build_arm64(): _ {
 
 	}
 
@@ -235,12 +235,12 @@ Instruction ReturnInstruction {
 	object: Result
 	return_type: Type
 
-	return_register() {
+	return_register(): Register {
 		if return_type != none and return_type.format == FORMAT_DECIMAL return unit.get_decimal_return_register()
 		return unit.get_standard_return_register()
 	}
 
-	return_register_handle() {
+	return_register_handle(): RegisterHandle {
 		return RegisterHandle(return_register)
 	}
 
@@ -261,7 +261,7 @@ Instruction ReturnInstruction {
 	}
 
 	# Summary: Returns whether the return value is in the wanted return register
-	is_value_in_return_register() {
+	is_value_in_return_register(): bool {
 		return object.value.instance == INSTANCE_REGISTER and object.value.(RegisterHandle).register == return_register
 	}
 
@@ -276,7 +276,7 @@ Instruction ReturnInstruction {
 		unit.add(instruction)
 	}
 
-	restore_registers_x64(builder: StringBuilder, registers: List<Register>) {
+	restore_registers_x64(builder: StringBuilder, registers: List<Register>): _ {
 		# Save all used non-volatile registers
 		loop register in registers {
 			builder.append(platform.x64.POP)
@@ -287,7 +287,7 @@ Instruction ReturnInstruction {
 
 	restore_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
 
-	build(recover_registers: List<Register>, local_memory_top: large) {
+	build(recover_registers: List<Register>, local_memory_top: large): _ {
 		builder = StringBuilder()
 		allocated_local_memory = unit.stack_offset - local_memory_top
 
@@ -366,7 +366,7 @@ DualParameterInstruction MoveInstruction {
 	# Summary:
 	# Determines whether the move is considered to be redundant.
 	# If the destination and source operands are the same, the move is considered redundant.
-	is_redundant() {
+	is_redundant(): bool {
 		if not first.value.equals(second.value) return false
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL return first.format == second.format
 		return first.size == second.size 
@@ -544,7 +544,7 @@ DualParameterInstruction MoveInstruction {
 		)
 	}
 
-	on_build_x64(flags_first: large, flags_second: large) {
+	on_build_x64(flags_first: large, flags_second: large): _ {
 		if first.is_standard_register and second.is_constant and second.value.(ConstantHandle).value == 0 {
 			# Example: xor r, r
 			build(platform.x64.XOR, SYSTEM_BYTES, InstructionParameter(first, flags_first, HANDLE_REGISTER), InstructionParameter(first, FLAG_NONE, HANDLE_REGISTER), InstructionParameter(second, flags_second | FLAG_HIDDEN, HANDLE_CONSTANT))
@@ -640,12 +640,12 @@ DualParameterInstruction MoveInstruction {
 		on_build_x64(flags_first, flags_second)
 	}
 
-	is_move_instruction_x64() {
+	is_move_instruction_x64(): bool {
 		if operation === none return false
 		return operation == platform.all.MOVE or operation == platform.x64.UNSIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_CONVERSION_MOVE or operation == platform.x64.SIGNED_DWORD_CONVERSION_MOVE
 	}
 
-	on_post_build_x64() {
+	on_post_build_x64(): _ {
 		# Skip decimal formats, since they are correct by default
 		if destination.value.format == FORMAT_DECIMAL or source.value.format == FORMAT_DECIMAL or not is_move_instruction_x64() return
 
@@ -776,7 +776,7 @@ Instruction InitializeInstruction {
 		Instruction.init(unit, INSTRUCTION_INITIALIZE)
 	}
 
-	get_required_call_memory(call_instructions: List<CallInstruction>) {
+	get_required_call_memory(call_instructions: List<CallInstruction>): large {
 		if call_instructions.size == 0 return 0
 
 		# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
@@ -801,7 +801,7 @@ Instruction InitializeInstruction {
 		return max_parameter_memory_offset + SYSTEM_BYTES
 	}
 
-	save_registers_x64(builder: StringBuilder, registers: List<Register>) {
+	save_registers_x64(builder: StringBuilder, registers: List<Register>): _ {
 		# Save all used non-volatile registers
 		loop register in registers {
 			builder.append(platform.x64.PUSH)
@@ -813,7 +813,7 @@ Instruction InitializeInstruction {
 
 	save_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
 
-	build(save_registers: List<Register>, required_local_memory: large) {
+	build(save_registers: List<Register>, required_local_memory: large): _ {
 		# Collect all normal call instructions
 		call_instructions = List<CallInstruction>()
 
@@ -932,7 +932,7 @@ Instruction SetVariableInstruction {
 		unit.set_variable_value(variable, value)
 	}
 
-	copy_value() {
+	copy_value(): _ {
 		format = variable.type.get_register_format()
 		register = memory.get_next_register_without_releasing(unit, format == FORMAT_DECIMAL, trace.for(unit, result))
 
@@ -1032,7 +1032,7 @@ Instruction CallInstruction {
 	}
 
 	# Summary: Iterates through the volatile registers and ensures that they do not contain any important values which are needed later
-	validate_evacuation() {
+	validate_evacuation(): _ {
 		loop register in unit.volatile_registers {
 			# NOTE: The availability of the register is not checked the standard way since they are usually locked at this stage
 			if register.value == none or not register.value.is_active or register.value.is_deactivating() or register.is_value_copy() continue
@@ -1042,7 +1042,7 @@ Instruction CallInstruction {
 
 	# Summary: Prepares the memory handle for use by relocating its inner handles into registers, therefore its use does not require additional steps, except if it is in invalid format
 	# Returns: Returns a list of register locks which must be active while the handle is in use
-	validate_memory_handle(handle: Handle) {
+	validate_memory_handle(handle: Handle): List<Register> {
 		results = handle.get_register_dependent_results()
 		locked = List<Register>()
 
@@ -1073,7 +1073,7 @@ Instruction CallInstruction {
 		return locked
 	}
 
-	output_pack(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle) {
+	output_pack(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle): _ {
 		loop iterator in disposable_pack.members {
 			member = iterator.value.member
 			value = iterator.value.value
@@ -1198,7 +1198,7 @@ Instruction ReorderInstruction {
 	}
 
 	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>) {
+	compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>): large {
 		loop iterator in type.variables {
 			member = iterator.value
 
@@ -1225,7 +1225,7 @@ Instruction ReorderInstruction {
 	}
 
 	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type) {
+	compute_return_overflow(type: Type): large {
 		decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
 		standard_parameter_registers = calls.get_standard_parameter_registers(unit)
 
@@ -1233,7 +1233,7 @@ Instruction ReorderInstruction {
 	}
 
 	# Summary: Evacuates variables that are located at the overflow zone of the stack
-	evacuate_overflow_zone(type: Type) {
+	evacuate_overflow_zone(type: Type): _ {
 		shadow_space_size = 0
 		if settings.is_target_windows { shadow_space_size = calls.SHADOW_SPACE_SIZE }
 		overflow = max(compute_return_overflow(type), shadow_space_size)
@@ -1417,7 +1417,7 @@ Instruction GetObjectPointerInstruction {
 		}
 	}
 
-	output_pack(disposable_pack: DisposablePackHandle, position: large) {
+	output_pack(disposable_pack: DisposablePackHandle, position: large): large {
 		loop iterator in disposable_pack.members {
 			member = iterator.value.member
 			value = iterator.value.value
@@ -1459,7 +1459,7 @@ Instruction GetObjectPointerInstruction {
 		return position
 	}
 
-	validate_handle() {
+	validate_handle(): _ {
 		# Ensure the start value is a constant or in a register
 		if not start.is_constant and not start.is_stack_allocation and not start.is_standard_register {
 			memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
@@ -1534,7 +1534,7 @@ Instruction GetMemoryAddressInstruction {
 		}
 	}
 
-	output_pack(disposable_pack: DisposablePackHandle, position: large) {
+	output_pack(disposable_pack: DisposablePackHandle, position: large): large {
 		loop iterator in disposable_pack.members {
 			member = iterator.value.member
 			value = iterator.value.value
@@ -1576,7 +1576,7 @@ Instruction GetMemoryAddressInstruction {
 		return position
 	}
 
-	validate_handle() {
+	validate_handle(): _ {
 		# Ensure the start value is a constant or in a register
 		if start.is_constant or start.is_stack_allocation or start.is_standard_register return
 		memory.move_to_register(unit, start, SYSTEM_BYTES, false, trace.for(unit, start))
@@ -1640,7 +1640,7 @@ JumpOperatorBinding {
 Instruction JumpInstruction {
 	shared jumps: Map<ComparisonOperator, JumpOperatorBinding>
 
-	shared initialize() {
+	shared initialize(): _ {
 		jumps = Map<ComparisonOperator, JumpOperatorBinding>()
 
 		if settings.is_x64 {
@@ -1685,7 +1685,7 @@ Instruction JumpInstruction {
 		else { this.comparator = comparator }
 	}
 
-	invert() {
+	invert(): _ {
 		this.comparator = comparator.counterpart
 	}
 
@@ -1718,7 +1718,7 @@ DualParameterInstruction CompareInstruction {
 		this.description = "Compares two operands"
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
 			return build(platform.x64.DOUBLE_PRECISION_COMPARE, 0,
 				InstructionParameter(first, FLAG_NONE, HANDLE_MEDIA_REGISTER),
@@ -1767,7 +1767,7 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	# Summary: Ensures the numerator value is in the right register
-	correct_numerator_location() {
+	correct_numerator_location(): Result {
 		numerator = unit.get_numerator_register()
 		remainder = unit.get_remainder_register()
 
@@ -1798,7 +1798,7 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	# Summary: Ensures the remainder register is ready for division or modulus operation
-	prepare_remainder_register() {
+	prepare_remainder_register(): _ {
 		numerator_register = unit.get_numerator_register()
 		remainder_register = unit.get_remainder_register()
 
@@ -1819,7 +1819,7 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	# Summary: Builds a modulus operation
-	build_modulus(numerator: Result) {
+	build_modulus(numerator: Result): _ {
 		remainder = RegisterHandle(unit.get_remainder_register())
 
 		flags = FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_WRITES | FLAG_READS | FLAG_LOCKED
@@ -1838,7 +1838,7 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	# Summary: Builds a division operation
-	build_division(numerator: Result) {
+	build_division(numerator: Result): _ {
 		remainder = RegisterHandle(unit.get_remainder_register())
 		flags = FLAG_DESTINATION | FLAG_WRITE_ACCESS | FLAG_HIDDEN | FLAG_READS | FLAG_LOCKED
 		if assigns { flags = flags | FLAG_NO_ATTACH }
@@ -1855,12 +1855,12 @@ DualParameterInstruction DivisionInstruction {
 	}
 
 	# Summary: Tries to express the current instructions as a division instruction where the divisor is a constant
-	try_get_constant_division() {
+	try_get_constant_division(): ConstantDivision {
 		if second.is_constant and second.format != FORMAT_DECIMAL return ConstantDivision(first, second)
 		return none as ConstantDivision
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		# Handle decimal division separately
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
 			flags = FLAG_NONE
@@ -1950,26 +1950,26 @@ DualParameterInstruction BitwiseInstruction {
 	instruction: String
 	assigns: bool
 
-	shared create_and(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+	shared create_and(unit: Unit, first: Result, second: Result, format: large, assigns: bool): BitwiseInstruction {
 		return BitwiseInstruction(unit, platform.all.AND, first, second, format, assigns)
 	}
 
-	shared create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+	shared create_xor(unit: Unit, first: Result, second: Result, format: large, assigns: bool): BitwiseInstruction {
 		if settings.is_x64 {
 			if format == FORMAT_DECIMAL return BitwiseInstruction(unit, platform.x64.DOUBLE_PRECISION_XOR, first, second, format, assigns)
 			return BitwiseInstruction(unit, platform.x64.XOR, first, second, format, assigns)
 		}
 	}
 
-	shared create_or(unit: Unit, first: Result, second: Result, format: large, assigns: bool) {
+	shared create_or(unit: Unit, first: Result, second: Result, format: large, assigns: bool): BitwiseInstruction {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.OR, first, second, format, assigns)
 	}
 
-	shared create_shift_left(unit: Unit, first: Result, second: Result, format: large) {
+	shared create_shift_left(unit: Unit, first: Result, second: Result, format: large): BitwiseInstruction {
 		if settings.is_x64 return BitwiseInstruction(unit, platform.x64.SHIFT_LEFT, first, second, format, false)
 	}
 
-	shared create_shift_right(unit: Unit, first: Result, second: Result, format: large, unsigned: bool) {
+	shared create_shift_right(unit: Unit, first: Result, second: Result, format: large, unsigned: bool): BitwiseInstruction {
 		if settings.is_x64 {
 			instruction: link = platform.x64.SHIFT_RIGHT
 			if unsigned { instruction = platform.x64.SHIFT_RIGHT_UNSIGNED }
@@ -1985,7 +1985,7 @@ DualParameterInstruction BitwiseInstruction {
 		this.assigns = assigns
 	}
 
-	build_shift_x64() {
+	build_shift_x64(): _ {
 		locked = none as Register
 		shifter = Result(second.value, FORMAT_INT8)
 
@@ -2030,7 +2030,7 @@ DualParameterInstruction BitwiseInstruction {
 		if locked != none locked.unlock()
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		if instruction == platform.x64.DOUBLE_PRECISION_XOR {
 			if assigns abort('Assigning bitwise XOR-operation on media registers is not allowed')
 
@@ -2069,7 +2069,7 @@ Instruction SingleParameterInstruction {
 	instruction: link
 	first: Result
 
-	shared create_not(unit: Unit, first: Result) {
+	shared create_not(unit: Unit, first: Result): Instruction {
 		instruction: Instruction = none as Instruction
 
 		if settings.is_x64 { instruction = SingleParameterInstruction(unit, platform.x64.NOT, first) }
@@ -2079,7 +2079,7 @@ Instruction SingleParameterInstruction {
 		return instruction
 	}
 
-	shared create_negate(unit: Unit, first: Result, is_decimal: bool) {
+	shared create_negate(unit: Unit, first: Result, is_decimal: bool): Instruction {
 		if is_decimal and settings.is_x64 abort('Negating decimal value using single parameter instruction on architecture x64 is not allowed')
 
 		instruction: Instruction = none as Instruction
@@ -2100,7 +2100,7 @@ Instruction SingleParameterInstruction {
 		this.result.format = first.format
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		result.format = first.format
 		build(instruction, SYSTEM_BYTES, InstructionParameter(first, FLAG_DESTINATION | FLAG_READS, HANDLE_REGISTER))
 	}
@@ -2115,7 +2115,7 @@ Instruction DebugBreakInstruction {
 
 	position: Position
 
-	shared get_position_instruction(position: Position) {
+	shared get_position_instruction(position: Position): String {
 		return String(INSTRUCTION) + ' 1 ' + to_string(position.friendly_line) + ' ' + to_string(position.friendly_character)
 	}
 
@@ -2226,7 +2226,7 @@ Instruction CreatePackInstruction {
 		on_build()
 	}
 
-	register_member_values(disposable_pack: DisposablePackHandle, type: Type, position: large) {
+	register_member_values(disposable_pack: DisposablePackHandle, type: Type, position: large): large {
 		loop iterator in type.variables {
 			member = iterator.value
 
@@ -2269,7 +2269,7 @@ Instruction LabelMergeInstruction {
 		this.is_abstract = true
 	}
 
-	prepare_for(id: String) {
+	prepare_for(id: String): _ {
 		if id === none return
 
 		variables = unit.scopes[id].inputs.get_keys()
@@ -2294,7 +2294,7 @@ Instruction LabelMergeInstruction {
 		}
 	}
 
-	register_state(id: String) {
+	register_state(id: String): _ {
 		if id === none return
 
 		variables = unit.scopes[id].inputs.get_keys()
@@ -2312,7 +2312,7 @@ Instruction LabelMergeInstruction {
 		unit.states[id] = state
 	}
 
-	merge_with_state(state: List<VariableState>) {
+	merge_with_state(state: List<VariableState>): _ {
 		# Collect the destination handles and the current values of the corresponding variables
 		destinations = List<Handle>()
 		sources = List<Result>()

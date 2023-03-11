@@ -73,7 +73,7 @@ Node NumberNode {
 		return this
 	}
 
-	convert(format: large) {
+	convert(format: large): _ {
 		if format == FORMAT_DECIMAL {
 			if this.format != FORMAT_DECIMAL { this.value = decimal_to_bits(value as decimal) }
 		}
@@ -119,13 +119,13 @@ Node OperatorNode {
 		this.is_resolvable = true
 	}
 
-	set_operands(left: Node, right: Node) {
+	set_operands(left: Node, right: Node): OperatorNode {
 		add(left)
 		add(right)
 		return this
 	}
 
-	private try_resolve_as_setter_accessor() {
+	private try_resolve_as_setter_accessor(): Node {
 		if operator != Operators.ASSIGN return none as Node
 
 		# Since the left node represents an accessor, its first node must represent the target object
@@ -143,7 +143,7 @@ Node OperatorNode {
 		return create_operator_overload_function_call(object, String(Operators.ACCESSOR_SETTER_FUNCTION_IDENTIFIER), arguments)
 	}
 
-	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
+	private create_operator_overload_function_call(object: Node, function: String, arguments: Node): LinkNode {
 		return LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
 	}
 
@@ -174,7 +174,7 @@ Node OperatorNode {
 
 	# Summary:
 	# Returns whether the user is attempting to modify a memory address
-	private is_address_modification(left_type: Type, right_type: Type) {
+	private is_address_modification(left_type: Type, right_type: Type): bool {
 		if left_type === none or right_type === none return false
 
 		# The right operand must be an integer type
@@ -184,7 +184,7 @@ Node OperatorNode {
 		return primitives.is_primitive(left_type, primitives.LINK) or left_type.is_array_type
 	}
 
-	private get_classic_type() {
+	private get_classic_type(): Type {
 		left_type = first.try_get_type()
 		right_type = last.try_get_type()
 
@@ -464,7 +464,7 @@ Node UnresolvedIdentifier {
 		this.is_resolvable = true
 	}
 
-	private try_resolve_as_function_pointer(context: Context) {
+	private try_resolve_as_function_pointer(context: Context): Node {
 		# TODO: Function pointers
 		return none as Node
 	}
@@ -519,12 +519,12 @@ Node UnresolvedFunction {
 		this.is_resolvable = true
 	}
 
-	set_arguments(arguments: Node) {
+	set_arguments(arguments: Node): UnresolvedFunction {
 		loop argument in arguments { add(argument) }
 		return this
 	}
 
-	private try_resolve_lambda_parameters(primary: Context, call_arguments: List<CallArgument>) {
+	private try_resolve_lambda_parameters(primary: Context, call_arguments: List<CallArgument>): _ {
 		# Collect all the parameters which are unresolved
 		unresolved = call_arguments.filter(i -> i.type == none or i.type.is_unresolved)
 
@@ -621,7 +621,7 @@ Node UnresolvedFunction {
 		}
 	}
 
-	resolve(environment: Context, primary: Context) {
+	resolve(environment: Context, primary: Context): Node {
 		linked = environment != primary
 
 		# Try to resolve all the arguments
@@ -784,7 +784,7 @@ Node TypeDefinitionNode {
 		this.start = position
 	}
 
-	parse() {
+	parse(): _ {
 		# Static types can not be constructed
 		if not type.is_static and not type.is_plain type.add_runtime_configuration()
 
@@ -896,7 +896,7 @@ Node FunctionNode {
 		function.usages.add(this)
 	}
 
-	set_arguments(arguments: Node) {
+	set_arguments(arguments: Node): FunctionNode {
 		loop argument in arguments { add(argument) }
 		return this
 	}
@@ -1042,12 +1042,12 @@ Node IfNode {
 	condition => common.find_condition(first)
 	body => last as ScopeNode
 
-	successor() {
+	successor(): Node {
 		if next != none and (next.instance == NODE_ELSE_IF or next.instance == NODE_ELSE) return next
 		return none as Node
 	}
 
-	predecessor() {
+	predecessor(): Node {
 		if instance == NODE_IF return none as Node
 		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) return previous
 		return none as Node
@@ -1084,7 +1084,7 @@ Node IfNode {
 		this.is_resolvable = true
 	}
 
-	get_successors() {
+	get_successors(): List<Node> {
 		successors = List<Node>()
 		iterator = successor
 
@@ -1147,7 +1147,7 @@ IfNode ElseIfNode {
 		this.instance = NODE_ELSE_IF
 	}
 
-	get_root() {
+	get_root(): IfNode {
 		iterator = predecessor
 
 		loop (iterator.instance != NODE_IF) {
@@ -1205,7 +1205,7 @@ Node LoopNode {
 
 	condition_container => first.first.next
 	
-	condition() {
+	condition(): Node {
 		return common.find_condition(first.first.next)
 	}
 
@@ -1263,7 +1263,7 @@ Node CastNode {
 		this.instance = NODE_CAST
 	}
 
-	is_free() {
+	is_free(): bool {
 		from = first.get_type()
 		to = get_type()
 
@@ -1415,7 +1415,7 @@ Node NegateNode {
 Node ElseNode {
 	body => first as ScopeNode
 
-	predecessor() {
+	predecessor(): Node {
 		if previous != none and (previous.instance == NODE_IF or previous.instance == NODE_ELSE_IF) return previous
 		return none as Node
 	}
@@ -1436,7 +1436,7 @@ Node ElseNode {
 		this.is_resolvable = true
 	}
 
-	get_root() {
+	get_root(): IfNode {
 		iterator = predecessor
 
 		loop (iterator.instance != NODE_IF) {
@@ -1583,15 +1583,15 @@ Node AccessorNode {
 		this.is_resolvable = true
 	}
 
-	get_stride() {
+	get_stride(): large {
 		return get_type().allocation_size
 	}
 
-	private create_operator_overload_function_call(object: Node, function: String, arguments: Node) {
+	private create_operator_overload_function_call(object: Node, function: String, arguments: Node): LinkNode {
 		return LinkNode(object, UnresolvedFunction(function, start).set_arguments(arguments), start)
 	}
 
-	private try_resolve_as_getter_accessor(type: Type) {
+	private try_resolve_as_getter_accessor(type: Type): Node {
 		# Determine if this node represents a setter accessor
 		if parent != none and parent.instance == NODE_OPERATOR and parent.(OperatorNode).operator.type == OPERATOR_TYPE_ASSIGNMENT and parent.first == this {
 			# Indexed accessor setter is handled elsewhere
@@ -1850,7 +1850,7 @@ Node NamespaceNode {
 	# Summary:
 	# Defines the actual namespace from the stored tokens.
 	# This does not create the body of the namespace.
-	create_namespace(context: Context) {
+	create_namespace(context: Context): Type {
 		position = this.name[].position
 
 		loop (i = 0, i < name.size, i += 2) {
@@ -1872,7 +1872,7 @@ Node NamespaceNode {
 		return context as Type
 	}
 
-	parse(context: Context) {
+	parse(context: Context): _ {
 		if is_parsed return
 		is_parsed = true
 
@@ -2092,13 +2092,13 @@ Node LambdaNode {
 		this.is_resolvable = true
 	}
 
-	get_parameter_types() {
+	get_parameter_types(): List<Type> {
 		parameter_types = List<Type>(function.parameters.size, false)
 		loop parameter in function.parameters { parameter_types.add(parameter.type) }
 		return parameter_types
 	}
 
-	get_incomplete_type() {
+	get_incomplete_type(): FunctionType {
 		return_type = none as Type
 		if implementation != none { return_type = implementation.return_type }
 		return FunctionType(get_parameter_types(), return_type, start)
@@ -2336,7 +2336,7 @@ Node WhenNode {
 		return resolver.get_shared_type(types)
 	}
 
-	get_section_body(section: Node) {
+	get_section_body(section: Node): ScopeNode {
 		return when(section.instance) {
 			NODE_IF => section.(IfNode).body
 			NODE_ELSE_IF => section.(ElseIfNode).body
@@ -2487,7 +2487,7 @@ Node PackConstructionNode {
 		return type
 	}
 
-	validate_member_names() {
+	validate_member_names(): bool {
 		# Ensure that all member names are unique
 		loop (i = 0, i < members.size, i++) {
 			member = members[i]
@@ -2504,7 +2504,7 @@ Node PackConstructionNode {
 	# Returns whether the values for all the required members are present.
 	# If a value for a member is missing, this function returns the member.
 	# Otherwise, this function returns none.
-	capture_missing_member() {
+	capture_missing_member(): Variable {
 		loop iterator in type.variables {
 			member = iterator.value
 
@@ -2635,7 +2635,7 @@ Node UsingNode {
 		return first.try_get_type()
 	}
 
-	add_allocator_function() {
+	add_allocator_function(): _ {
 		if is_allocator_resolved return
 
 		if not (first.instance === NODE_CONSTRUCTION) and

@@ -72,7 +72,7 @@ Context {
 	is_inside_function => is_implementation or is_function or (parent != none and parent.is_inside_function)
 	is_inside_lambda => is_lambda_implementation or is_lambda or (parent != none and parent.is_inside_lambda)
 
-	all_variables() {
+	all_variables(): List<Variable> {
 		result = List<Variable>()
 
 		loop iterator in variables {
@@ -89,7 +89,7 @@ Context {
 		return result
 	}
 
-	locals() {
+	locals(): List<Variable> {
 		result = List<Variable>()
 
 		loop iterator in variables {
@@ -150,7 +150,7 @@ Context {
 	}
 
 	# Summary: Returns the mangled name of this context
-	get_fullname() {
+	get_fullname(): String {
 		if mangle == none {
 			mangle = Mangle(none as Mangle)
 			on_mangle(mangle)
@@ -168,13 +168,13 @@ Context {
 	}
 
 	# Summary: Adds this context under the specified context
-	connect(context: Context) {
+	connect(context: Context): _ {
 		parent = context
 		parent.subcontexts.add(this)
 	}
 
 	# Summary: Declares the specified type
-	declare(type: Type) {
+	declare(type: Type): bool {
 		if types.contains_key(type.name) return false
 
 		type.parent = this
@@ -183,7 +183,7 @@ Context {
 	}
 
 	# Summary: Declares the specified function
-	declare(function: Function) {
+	declare(function: Function): Function {
 		if functions.contains_key(function.name) {
 			entry = functions[function.name]
 			return entry.add(function)
@@ -195,7 +195,7 @@ Context {
 	}
 
 	# Summary: Declares the specified variable
-	declare(variable: Variable) {
+	declare(variable: Variable): bool {
 		if variables.contains_key(variable.name) return false
 
 		variable.parent = this
@@ -204,7 +204,7 @@ Context {
 	}
 
 	# Summary: Declares a variable into the context
-	declare(type: Type, category: large, name: String) {
+	declare(type: Type, category: large, name: String): Variable {
 		if variables.contains_key(name) return none as Variable
 		variable = Variable(this, type, category, name, MODIFIER_DEFAULT)
 		if not declare(variable) return none as Variable
@@ -212,33 +212,33 @@ Context {
 	}
 
 	# Summary: Declares a hidden variable with the specified type
-	declare_hidden(type: Type) {
+	declare_hidden(type: Type): Variable {
 		variable = Variable(this, type, VARIABLE_CATEGORY_LOCAL, identity + '.' + to_string(indexer.hidden), MODIFIER_DEFAULT)
 		declare(variable)
 		return variable
 	}
 
 	# Summary: Declares a hidden variable with the specified type
-	declare_hidden(type: Type, category: large) {
+	declare_hidden(type: Type, category: large): Variable {
 		variable = Variable(this, type, category, identity + '.' + to_string(indexer.hidden), MODIFIER_DEFAULT)
 		declare(variable)
 		return variable
 	}
 
 	# Summary: Declares an unnamed pack type
-	declare_unnamed_pack(position: Position) {
+	declare_unnamed_pack(position: Position): Type {
 		return Type(this, identity + '.' + to_string(indexer.hidden), MODIFIER_PACK, position)
 	}
 
 	# Summary: Declares an already existing type with different name
-	declare_type_alias(alias: String, type: Type) {
+	declare_type_alias(alias: String, type: Type): bool {
 		if is_local_type_declared(alias) return false
 		types.add(alias, type)
 		return true
 	}
 
 	# Summary: Tries to find the first parent context which is a type
-	find_type_parent() {
+	find_type_parent(): Type {
 		if is_type return this as Type
 
 		iterator = parent
@@ -252,7 +252,7 @@ Context {
 	}
 
 	# Summary: Tries to find the first parent context which is a function implementation
-	find_implementation_parent() {
+	find_implementation_parent(): FunctionImplementation {
 		if is_implementation return this as FunctionImplementation
 
 		iterator = parent
@@ -266,7 +266,7 @@ Context {
 	}
 
 	# Summary: Tries to find the first parent context which can contain a lambda
-	find_lambda_container_parent() {
+	find_lambda_container_parent(): Context {
 		if has_flag(type, LAMBDA_CONTAINER_CONTEXT_MODIFIER) return this
 
 		iterator = parent
@@ -280,7 +280,7 @@ Context {
 	}
 
 	# Summary: Returns all parent contexts, which represent types
-	get_parent_types() {
+	get_parent_types(): List<Type> {
 		result = List<Type>()
 		iterator = parent
 
@@ -294,17 +294,17 @@ Context {
 	}
 
 	# Summary: Returns whether the specified context is this context or one of the parent contexts
-	is_inside(context: Context) {
+	is_inside(context: Context): bool {
 		return context == this or (parent != none and parent.is_inside(context))
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context
-	is_local_type_declared(name: String) {
+	is_local_type_declared(name: String): bool {
 		return types.contains_key(name)
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context
-	is_local_function_declared_default(name: String) {
+	is_local_function_declared_default(name: String): bool {
 		return functions.contains_key(name)
 	}
 
@@ -314,7 +314,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context
-	is_local_variable_declared_default(name: String) {
+	is_local_variable_declared_default(name: String): bool {
 		return variables.contains_key(name)
 	}
 
@@ -324,12 +324,12 @@ Context {
 	}
 
 	# Summary: Returns whether the specified property is declared inside this context
-	is_local_property_declared(name: String) {
+	is_local_property_declared(name: String): bool {
 		return is_local_function_declared(name) and get_function(name).get_overload(List<Type>()) != none
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts
-	is_type_declared(name: String) {
+	is_type_declared(name: String): bool {
 		if types.contains_key(name) return true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -340,7 +340,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts
-	is_function_declared_default(name: String) {
+	is_function_declared_default(name: String): bool {
 		if functions.contains_key(name) return true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -356,7 +356,7 @@ Context {
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts
-	is_variable_declared_default(name: String) {
+	is_variable_declared_default(name: String): bool {
 		if variables.contains_key(name) return true
 
 		loop (i = 0, i < imports.size, i++) {
@@ -372,36 +372,36 @@ Context {
 	}
 
 	# Summary: Returns whether the specified property is declared inside this context or in the parent contexts
-	is_property_declared(name: String) {
+	is_property_declared(name: String): bool {
 		return is_function_declared(name) and get_function(name).get_overload(List<Type>()) != none
 	}
 
 	# Summary: Returns whether the specified type is declared inside this context or in the parent contexts depending on the specified flag
-	is_type_declared(name: String, local: bool) {
+	is_type_declared(name: String, local: bool): bool {
 		if local return is_local_type_declared(name)
 		return is_type_declared(name)
 	}
 
 	# Summary: Returns whether the specified function is declared inside this context or in the parent contexts depending on the specified flag
-	is_function_declared(name: String, local: bool) {
+	is_function_declared(name: String, local: bool): bool {
 		if local return is_local_function_declared(name)
 		return is_function_declared(name)
 	}
 
 	# Summary: Returns whether the specified variable is declared inside this context or in the parent contexts depending on the specified flag
-	is_variable_declared(name: String, local: bool) {
+	is_variable_declared(name: String, local: bool): bool {
 		if local return is_local_variable_declared(name)
 		return is_variable_declared(name)
 	}
 
 	# Summary: Returns whether the specified property is declared inside this context or in the parent contexts depending on the specified flag
-	is_property_declared(name: String, local: bool) {
+	is_property_declared(name: String, local: bool): bool {
 		if local return is_local_property_declared(name)
 		return is_property_declared(name)
 	}
 
 	# Summary: Returns the specified type by searching it from the local types, imports and parent types
-	get_type(name: String) {
+	get_type(name: String): Type {
 		if types.contains_key(name) return types[name]
 
 		# Try to find the type from imports
@@ -414,7 +414,7 @@ Context {
 	}
 
 	# Summary: Returns the specified function by searching it from the local types, imports and parent types
-	get_function_default(name: String) {
+	get_function_default(name: String): FunctionList {
 		if functions.contains_key(name) return functions[name]
 
 		# Try to find the function from imports
@@ -432,7 +432,7 @@ Context {
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
-	get_variable_default(name: String) {
+	get_variable_default(name: String): Variable {
 		if variables.contains_key(name) return variables[name]
 
 		# Try to find the variable from imports
@@ -450,28 +450,28 @@ Context {
 	}
 
 	# Summary: Returns the specified property by searching it from the local types, imports and parent types
-	get_property(name: String) {
+	get_property(name: String): Function {
 		return get_function(name).get_overload(List<Type>())
 	}
 
-	create_label() {
+	create_label(): Label {
 		return Label(get_fullname() + '_I' + to_string(indexer.label))
 	}
 
-	create_stack_address() {
+	create_stack_address(): String {
 		return "stack." + identity + '.' + to_string(indexer.stack)
 	}
 
-	create_lambda() {
+	create_lambda(): large {
 		return indexer.lambda
 	}
 
-	create_identity() {
+	create_identity(): String {
 		return identity + `.` + to_string(indexer.context)
 	}
 
 	# Summary: Moves all types, functions and variables from the specified context to this context
-	merge(context: Context) {
+	merge(context: Context): _ {
 		# Add all types
 		loop type in context.types {
 			types.try_add(type.key, type.value)
@@ -527,12 +527,12 @@ Context {
 		context.destroy()
 	}
 
-	destroy() {
+	destroy(): _ {
 		if parent != none parent.subcontexts.remove(this)
 		parent = none
 	}
 
-	default_dispose() {
+	default_dispose(): _ {
 		variables.clear()
 		functions.clear()
 		types.clear()
@@ -560,7 +560,7 @@ Context {
 Function Constructor {
 	is_default: bool
 
-	shared empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position): Constructor {
 		constructor = Constructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -572,7 +572,7 @@ Function Constructor {
 	}
 
 	# Summary: Adds the member variable initializations to the specified constructor implementation
-	add_member_initializations(implementation: FunctionImplementation) {
+	add_member_initializations(implementation: FunctionImplementation): _ {
 		root = implementation.node
 		parent: Type = this.parent as Type
 
@@ -604,7 +604,7 @@ Function Constructor {
 
 	# Summary: Adds the member variable initializations for all existing implementations.
 	# NOTE: This should not be executed twice, as it will cause duplicate initializations.
-	add_member_initializations() {
+	add_member_initializations(): _ {
 		loop implementation in implementations {
 			add_member_initializations(implementation)
 		}
@@ -622,7 +622,7 @@ Function Constructor {
 Function Destructor {
 	is_default: bool
 
-	shared empty(context: Context, start: Position, end: Position) {
+	shared empty(context: Context, start: Position, end: Position): Destructor {
 		constructor = Destructor(context, MODIFIER_DEFAULT, start, end, true)
 		return constructor
 	}
@@ -651,7 +651,7 @@ RuntimeConfiguration {
 
 	is_completed: bool = false
 
-	get_fullname(type: Type) {
+	get_fullname(type: Type): String {
 		builder = StringBuilder()
 		builder.append(type.name)
 
@@ -739,7 +739,7 @@ Context Type {
 	}
 
 	# Summary: Returns how many bytes this type contains
-	content_size() {
+	content_size(): large {
 		if is_array_type or is_primitive return get_allocation_size()
 
 		bytes = 0
@@ -801,7 +801,7 @@ Context Type {
 		this.overrides = Map<String, FunctionList>(profile)
 	}
 
-	add_runtime_configuration() {
+	add_runtime_configuration(): _ {
 		if configuration != none return
 		configuration = RuntimeConfiguration(this)
 	}
@@ -815,7 +815,7 @@ Context Type {
 		return none as Type
 	}
 
-	add_constructor(constructor: Constructor) {
+	add_constructor(constructor: Constructor): _ {
 		if constructors.overloads.size <= 0 or not constructors.overloads[].(Constructor).is_default {
 			constructors.add(constructor)
 			Context.declare(constructor)
@@ -831,7 +831,7 @@ Context Type {
 		Context.declare(constructor)
 	}
 
-	add_destructor(destructor: Destructor) {
+	add_destructor(destructor: Destructor): _ {
 		if not is_user_defined or not destructors.overloads[].(Destructor).is_default {
 			destructors.add(destructor)
 			Context.declare(destructor)
@@ -848,7 +848,7 @@ Context Type {
 	}
 
 	# Summary: Declares a virtual function into the context
-	declare(function: VirtualFunction) {
+	declare(function: VirtualFunction): _ {
 		entry = none as FunctionList
 
 		if virtuals.contains_key(function.name) {
@@ -868,7 +868,7 @@ Context Type {
 	}
 
 	# Summary: Declares the specified virtual function overload
-	declare_override(function: Function) {
+	declare_override(function: Function): _ {
 		entry = none as FunctionList
 
 		if overrides.contains_key(function.name) {
@@ -883,46 +883,46 @@ Context Type {
 	}
 
 	# Summary: Returns all supertypes this type inherits
-	get_all_supertypes() {
+	get_all_supertypes(): List<Type> {
 		result = List<Type>(supertypes)
 		loop supertype in supertypes { result.add_all(supertype.get_all_supertypes()) }
 		return result
 	}
 
-	is_supertype_declared(type: Type) {
+	is_supertype_declared(type: Type): bool {
 		if supertypes.contains(type) return true
 		loop supertype in supertypes { if supertype.is_supertype_declared(type) return true }
 		return false
 	}
 
-	is_super_function_declared(name: String) {
+	is_super_function_declared(name: String): bool {
 		loop supertype in supertypes { if supertype.is_local_function_declared(name) return true }
 		return false
 	}
 
-	is_super_variable_declared(name: String) {
+	is_super_variable_declared(name: String): bool {
 		loop supertype in supertypes { if supertype.is_local_variable_declared(name) return true }
 		return false
 	}
 
-	get_super_function(name: String) {
+	get_super_function(name: String): FunctionList {
 		loop supertype in supertypes { if supertype.is_local_function_declared(name) return supertype.get_function(name) }
 		return none as FunctionList
 	}
 
-	get_super_variable(name: String) {
+	get_super_variable(name: String): Variable {
 		loop supertype in supertypes { if supertype.is_local_variable_declared(name) return supertype.get_variable(name) }
 		return none as Variable
 	}
 
 	# Summary: Returns whether the type contains a function, which overloads the specified operator
-	is_operator_overloaded(operator: Operator) {
+	is_operator_overloaded(operator: Operator): bool {
 		if not Operators.overloads.contains_key(operator) return false
 		overload = Operators.overloads[operator]
 		return is_local_function_declared(overload) or is_super_function_declared(overload)
 	}
 
-	is_type_inherited(type: Type) {
+	is_type_inherited(type: Type): bool {
 		loop supertype in supertypes {
 			if supertype == type or supertype.is_type_inherited(type) return true
 		}
@@ -931,7 +931,7 @@ Context Type {
 	}
 
 	# Summary: Returns whether the specified virtual function is declared in this type or in any of the supertypes
-	is_virtual_function_declared(name: String) {
+	is_virtual_function_declared(name: String): bool {
 		if virtuals.contains_key(name) return true
 		loop supertype in supertypes { if supertype.is_virtual_function_declared(name) return true }
 		return false
@@ -964,7 +964,7 @@ Context Type {
 	}
 
 	# Summary: Retrieves the virtual function list which corresponds the specified name
-	get_virtual_function(name: String) {
+	get_virtual_function(name: String): FunctionList {
 		if virtuals.contains_key(name) return virtuals[name]
 
 		loop supertype in supertypes {
@@ -976,7 +976,7 @@ Context Type {
 	}
 
 	# Summary: Tries to find virtual function overrides with the specified name
-	get_override(name: String) {
+	get_override(name: String): FunctionList {
 		if overrides.contains_key(name) return overrides[name]
 
 		loop supertype in supertypes {
@@ -988,7 +988,7 @@ Context Type {
 	}
 
 	# Summary: Returns all virtual function declarations contained in this type and its supertypes
-	get_all_virtual_functions() {
+	get_all_virtual_functions(): List<VirtualFunction> {
 		result = List<VirtualFunction>()
 		loop supertype in supertypes { result.add_all(supertype.get_all_virtual_functions()) }
 
@@ -999,7 +999,7 @@ Context Type {
 		return result
 	}
 
-	get_supertype_base_offset(type: Type) {
+	get_supertype_base_offset(type: Type): Optional<large> {
 		position: large = 0
 		if type == this return Optional<large>(position)
 
@@ -1015,7 +1015,7 @@ Context Type {
 		return Optional<large>()
 	}
 
-	is_inheriting_allowed(inheritant: Type) {
+	is_inheriting_allowed(inheritant: Type): bool {
 		# Type must not inherit itself
 		if inheritant == this return false
 
@@ -1038,7 +1038,7 @@ Context Type {
 	}
 
 	# Summary: Finds the first configuration variable in the hierarchy of this type
-	get_configuration_variable() {
+	get_configuration_variable(): Variable {
 		if supertypes.size > 0 {
 			supertype = supertypes[]
 
@@ -1054,7 +1054,7 @@ Context Type {
 		return configuration.variable
 	}
 
-	get_register_format() {
+	get_register_format(): large {
 		if format == FORMAT_DECIMAL return FORMAT_DECIMAL
 		if (format & 1) != 0 return SYSTEM_FORMAT
 		return SYSTEM_SIGNED
@@ -1163,7 +1163,7 @@ Variable {
 	}
 
 	# Summary: Returns the mangled static name for this variable
-	get_static_name() {
+	get_static_name(): String {
 		# Request the fullname in order to generate the mangled name object
 		parent.get_fullname()
 
@@ -1180,7 +1180,7 @@ Variable {
 	}
 
 	# Summary: Returns the alignment compared to the specified parent type
-	get_alignment(parent: Type) {
+	get_alignment(parent: Type): large {
 		if this.parent == parent {
 			alignment: large = 0
 			loop supertype in parent.supertypes { alignment += supertype.content_size }
@@ -1201,7 +1201,7 @@ Variable {
 	}
 
 	# Summary: Returns whether this variable is inlined
-	is_inlined() {
+	is_inlined(): bool {
 		if has_flag(modifiers, MODIFIER_OUTLINE) or type == none return false
 		if has_flag(modifiers, MODIFIER_INLINE) return true
 
@@ -1209,7 +1209,7 @@ Variable {
 		return type.is_inlining
 	}
 
-	string() {
+	string(): String {
 		start: String = String.empty
 		if parent != none and parent.is_type { start = parent.string() + '.' }
 
@@ -1225,7 +1225,7 @@ FunctionList {
 	overloads: List<Function> = List<Function>()
 
 	# Summary: Tries to add the specified function. Returns the conflicting function, which prevents adding the specified function, if one exists.
-	add(function: Function) {
+	add(function: Function): Function {
 		# Conflicts can only happen with functions which are similar kind (either a template function or a standard function) and have the same amount of parameters
 		is_template_function = function.is_template_function
 		count = function.parameters.size
@@ -1250,7 +1250,7 @@ FunctionList {
 	}
 
 	# Summary: Returns the number of casts needed to call the specified function candidate with the specified parameter types
-	get_cast_count(candidate: Function, parameter_types: List<Type>) {
+	get_cast_count(candidate: Function, parameter_types: List<Type>): large {
 		casts = 0
 
 		loop (i = 0, i < parameter_types.size, i++) {
@@ -1261,7 +1261,7 @@ FunctionList {
 		return casts
 	}
 
-	get_overload(parameter_types: List<Type>, template_arguments: List<Type>) {
+	get_overload(parameter_types: List<Type>, template_arguments: List<Type>): Function {
 		candidates = List<Function>()
 
 		if template_arguments.size > 0 {
@@ -1296,22 +1296,22 @@ FunctionList {
 		return minimum_candidate
 	}
 
-	get_overload(parameter_types: List<Type>) {
+	get_overload(parameter_types: List<Type>): Function {
 		return get_overload(parameter_types, List<Type>())
 	}
 
-	get_implementation(parameter_types: List<Type>, template_arguments: List<Type>) {
+	get_implementation(parameter_types: List<Type>, template_arguments: List<Type>): FunctionImplementation {
 		overload = get_overload(parameter_types, template_arguments)
 		if overload == none return none as FunctionImplementation
 		if template_arguments.size > 0 return overload.(TemplateFunction).get(parameter_types, template_arguments)
 		return overload.get(parameter_types)
 	}
 
-	get_implementation(parameter_types: List<Type>) {
+	get_implementation(parameter_types: List<Type>): FunctionImplementation {
 		return get_implementation(parameter_types, List<Type>(0, false))
 	}
 
-	get_implementation(parameter: Type) {
+	get_implementation(parameter: Type): FunctionImplementation {
 		parameter_types = List<Type>()
 		parameter_types.add(parameter)
 		return get_implementation(parameter_types, List<Type>(0, false))
@@ -1335,7 +1335,7 @@ Parameter {
 		this.type = type
 	}
 
-	export_string() {
+	export_string(): String {
 		if type == none return name
 		return name + ': ' + type.string()
 	}
@@ -1418,7 +1418,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	implement_default(parameter_types: List<Type>) {
+	implement_default(parameter_types: List<Type>): FunctionImplementation {
 		implementation_parameters = List<Parameter>(types.size, false)
 
 		# Pack parameters with names and types
@@ -1447,7 +1447,7 @@ Context Function {
 	}
 
 	# Summary: Returns whether the specified parameter types can be used to implement this function
-	passes(types: List<Type>) {
+	passes(types: List<Type>): bool {
 		if types.size != parameters.size return false
 
 		loop (i = 0, i < parameters.size, i++) {
@@ -1467,7 +1467,7 @@ Context Function {
 	}
 
 	# Summary: Returns whether the specified parameter types can be used to implement this function
-	passes(types: List<Type>, template_arguments: List<Type>) {
+	passes(types: List<Type>, template_arguments: List<Type>): bool {
 		if template_arguments.size > 0 return is_template_function and this.(TemplateFunction).passes(types, template_arguments)
 		return not is_template_function and passes(types)
 	}
@@ -1480,7 +1480,7 @@ Context Function {
 	}
 
 	# Summary: Tries to find function implementation with the specified parameter types
-	get(parameter_types: List<Type>) {
+	get(parameter_types: List<Type>): FunctionImplementation {
 		if parameter_types.size != parameters.size return none as FunctionImplementation
 
 		# Implementation should not be made if any of the parameters has a fixed type but it is unresolved
@@ -1567,7 +1567,7 @@ Type TemplateType {
 		this.template_parameters = template_parameters
 	}
 
-	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
+	insert_arguments(tokens: List<Token>, arguments: List<Type>): _ {
 		loop (i = 0, i < tokens.size, i++) {
 			token = tokens[i]
 
@@ -1590,19 +1590,19 @@ Type TemplateType {
 	}
 
 	# Summary: Returns an identifier, which are used to identify template type variants
-	get_variant_identifier(arguments: List<Type>) {
+	get_variant_identifier(arguments: List<Type>): String {
 		names = List<String>(arguments.size, false)
 		loop argument in arguments { names.add(argument.string()) }
 		return String.join(", ", names)
 	}
 
-	try_get_variant(arguments: List<Type>) {
+	try_get_variant(arguments: List<Type>): Type {
 		variant_identifier = get_variant_identifier(arguments)
 		if variants.contains_key(variant_identifier) return variants[variant_identifier].type
 		return none as Type
 	}
 
-	create_variant(arguments: List<Type>) {
+	create_variant(arguments: List<Type>): Type {
 		identifier: String = get_variant_identifier(arguments)
 		
 		# Copy the blueprint and insert the specified arguments to their places
@@ -1638,7 +1638,7 @@ Type TemplateType {
 	}
 
 	# Summary: Returns a variant with the specified template arguments, creating it if necessary
-	get_variant(arguments: List<Type>) {
+	get_variant(arguments: List<Type>): Type {
 		if arguments.size < template_parameters.size return none as Type
 		variant = try_get_variant(arguments)
 		if variant != none return variant
@@ -1659,7 +1659,7 @@ Function TemplateFunction {
 	}
 
 	# Summary: Creates the parameters of this function in a way that they do not have types
-	initialize() {
+	initialize(): bool {
 		result = header.get_parameters(Context(String.empty, FUNCTION_CONTEXT))
 
 		if result has parameters {
@@ -1670,16 +1670,16 @@ Function TemplateFunction {
 		return false
 	}
 
-	try_get_variant(template_arguments: List<Type>) {
+	try_get_variant(template_arguments: List<Type>): Function {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
 		variant_identifier = String.join(", ", names)
 
 		if variants.contains_key(variant_identifier) return variants[variant_identifier]
-		return none as FunctionImplementation
+		return none as Function
 	}
 
-	insert_arguments(tokens: List<Token>, arguments: List<Type>) {
+	insert_arguments(tokens: List<Token>, arguments: List<Type>): _ {
 		loop (i = 0, i < tokens.size, i++) {
 			token = tokens[i]
 
@@ -1701,7 +1701,7 @@ Function TemplateFunction {
 		}
 	}
 
-	create_variant(template_arguments: List<Type>) {
+	create_variant(template_arguments: List<Type>): Function {
 		names = List<String>()
 		loop template_argument in template_arguments { names.add(template_argument.string()) }
 		variant_identifier = String.join(", ", names)
@@ -1728,7 +1728,7 @@ Function TemplateFunction {
 		return abort('Tried to execute pass function without template parameters') as bool
 	}
 
-	passes(actual_types: List<Type>, template_arguments: List<Type>) {
+	passes(actual_types: List<Type>, template_arguments: List<Type>): bool {
 		if template_arguments.size != template_parameters.size return false
 
 		# None of the types can be unresolved
@@ -1765,7 +1765,7 @@ Function TemplateFunction {
 		return abort('Tried to get overload of template function without template arguments') as FunctionImplementation
 	}
 
-	get(parameter_types: List<Type>, template_arguments: List<Type>) {
+	get(parameter_types: List<Type>, template_arguments: List<Type>): FunctionImplementation {
 		if template_arguments.size != template_parameters.size abort('Missing template arguments')
 
 		variant = try_get_variant(template_arguments)
@@ -1843,7 +1843,7 @@ Context FunctionImplementation {
 	is_static => metadata.is_static
 	is_empty => (node == none or node.first == none) and not metadata.is_imported
 
-	parameters() {
+	parameters(): List<Variable> {
 		result = List<Variable>()
 
 		loop iterator in variables {
@@ -1855,7 +1855,7 @@ Context FunctionImplementation {
 		return result
 	}
 
-	parameter_types() {
+	parameter_types(): List<Type> {
 		result = List<Type>()
 		loop iterator in parameters() { result.add(iterator.type) }
 		return result
@@ -1879,7 +1879,7 @@ Context FunctionImplementation {
 	}
 
 	# Summary: Sets the function parameters
-	set_parameters(parameters: List<Parameter>) {
+	set_parameters(parameters: List<Parameter>): Status {
 		loop parameter in parameters {
 			variable = Variable(this, parameter.type, VARIABLE_CATEGORY_PARAMETER, parameter.name, MODIFIER_DEFAULT)
 			variable.position = parameter.position
@@ -1959,7 +1959,7 @@ Context FunctionImplementation {
 		return result
 	}
 
-	delete_node_tree(tree: Node) {
+	delete_node_tree(tree: Node): _ {
 		if tree === none return
 
 		loop (iterator = tree.last, iterator != none, iterator = iterator.previous) {
@@ -2001,7 +2001,7 @@ FunctionImplementation LambdaImplementation {
 		this.type = this.type | LAMBDA_CONTEXT_MODIFIER
 	}
 
-	seal() {
+	seal(): _ {
 		# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
 		if settings.is_system_mode_enabled return
 
@@ -2116,11 +2116,11 @@ Label {
 		this.name = name
 	}
 
-	equals(other: Label) {
+	equals(other: Label): bool {
 		return name == other.name
 	}
 
-	hash() {
+	hash(): large {
 		return name.hash()
 	}
 
@@ -2143,7 +2143,7 @@ UnresolvedTypeComponent {
 		this.arguments = List<Type>()
 	}
 
-	resolve(context: Context) {
+	resolve(context: Context): _ {
 		# Resolve the template arguments
 		loop (i = 0, i < arguments.size, i++) {
 			argument = arguments[i]
@@ -2156,7 +2156,7 @@ UnresolvedTypeComponent {
 		}
 	}
 
-	string() {
+	string(): String {
 		if arguments.size == 0 return identifier
 
 		result = StringBuilder(identifier)
@@ -2254,13 +2254,13 @@ Type UnresolvedType {
 		return false
 	}
 
-	resolve_or_none(context: Context) {
+	resolve_or_none(context: Context): Type {
 		result = resolve(context)
 		if result === none return none as Type
 		return result.try_get_type()
 	}
 
-	resolve_or_this(context: Context) {
+	resolve_or_this(context: Context): Type {
 		node = resolve(context)
 		if node === none return this
 
@@ -2318,7 +2318,7 @@ UnresolvedType FunctionType {
 		update_state()
 	}
 
-	update_state() {
+	update_state(): _ {
 		loop parameter in parameters {
 			if parameter == none or parameter.is_unresolved return
 		}
@@ -2409,7 +2409,7 @@ Number ArrayType {
 	}
 
 	# Summary: Try to parse the expression using the internal tokens
-	try_parse(context: Context) {
+	try_parse(context: Context): _ {
 		expression = parser.parse(context, tokens, parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
 	}
 	
@@ -2417,7 +2417,7 @@ Number ArrayType {
 		return element
 	}
 
-	resolve(context: Context) {
+	resolve(context: Context): _ {
 		# Ensure the expression is created
 		if expression == none {
 			try_parse(context)

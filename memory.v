@@ -54,7 +54,7 @@ minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
 }
 
 # Summary: Aligns the specified moves so that intersections are minimized
-align(unit: Unit, moves: List<MoveInstruction>) {
+align(unit: Unit, moves: List<MoveInstruction>): _ {
 	complex = List<Instruction>()
 
 	# Execute complex moves before anything else, because they might require multiple steps
@@ -122,7 +122,7 @@ align(unit: Unit, moves: List<MoveInstruction>) {
 }
 
 # Summary: Loads the operand so that it is ready based on the specified settings
-load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool) {
+load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool): Result {
 	if not assigns return operand
 	if operand.is_memory_address return memory.copy_to_register(unit, operand, SYSTEM_BYTES, media_register, trace.for(unit, operand))
 
@@ -131,7 +131,7 @@ load_operand(unit: Unit, operand: Result, media_register: bool, assigns: bool) {
 }
 
 # Summary: Moves the value inside the given register to other register or releases it memory
-clear_register(unit: Unit, target: Register) {
+clear_register(unit: Unit, target: Register): _ {
 	# 1. If the register is already available, no need to clear it
 	# 2. If the value inside the register does not own the register, no need to clear it
 	if target.is_available() or target.is_value_copy() return
@@ -166,7 +166,7 @@ clear_register(unit: Unit, target: Register) {
 }
 
 # Summary: Sets the value of the register to zero
-zero(unit: Unit, register: Register) {
+zero(unit: Unit, register: Register): _ {
 	if not register.is_available() clear_register(unit, register)
 
 	handle = RegisterHandle(register)
@@ -178,7 +178,7 @@ zero(unit: Unit, register: Register) {
 }
 
 # Summary: Copies the specified result to a register
-copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
+copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>): Result {
 	format = FORMAT_DECIMAL
 	if not media_register { format = to_format(size, is_unsigned(result.format)) }
 
@@ -201,7 +201,7 @@ copy_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 }
 
 # Summary: Moves the specified result to a register considering the specified hints
-move_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>) {
+move_to_register(unit: Unit, result: Result, size: large, media_register: bool, directives: List<Directive>): Result {
 	# Prevents redundant moving to registers
 	if media_register {
 		if result.value.type == HANDLE_MEDIA_REGISTER return result
@@ -224,7 +224,7 @@ move_to_register(unit: Unit, result: Result, size: large, media_register: bool, 
 }
 
 # Summary: Tries to apply the most important directive
-consider(unit: Unit, directive: Directive, media_register: bool) {
+consider(unit: Unit, directive: Directive, media_register: bool): Register {
 	return when(directive.type) {
 		DIRECTIVE_NON_VOLATILITY => unit.get_next_non_volatile_register(media_register, false),
 		DIRECTIVE_AVOID_REGISTERS => {
@@ -242,7 +242,7 @@ consider(unit: Unit, directive: Directive, media_register: bool) {
 }
 
 # Summary: Determines the next register to use
-get_next_register(unit: Unit, media_register: bool, directives: List<Directive>, is_result: bool) {
+get_next_register(unit: Unit, media_register: bool, directives: List<Directive>, is_result: bool): Register {
 	register = none as Register
 
 	if directives != none {
@@ -267,7 +267,7 @@ get_next_register(unit: Unit, media_register: bool, directives: List<Directive>,
 }
 
 # Summary: Tries to get a register without releasing based on the specified directives
-get_next_register_without_releasing(unit: Unit, media_register: bool, directives: List<Directive>) {
+get_next_register_without_releasing(unit: Unit, media_register: bool, directives: List<Directive>): Register {
 	register = none as Register
 
 	if directives != none {
@@ -290,7 +290,7 @@ get_next_register_without_releasing(unit: Unit, media_register: bool, directives
 }
 
 # Summary: Moves the specified result to an available register
-get_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool) {
+get_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool): _ {
 	register = get_next_register(unit, media_register, trace.for(unit, result), false)
 
 	register.value = result
@@ -302,7 +302,7 @@ get_register_for(unit: Unit, result: Result, unsigned: bool, media_register: boo
 }
 
 # Summary: Moves the specified result to an available register
-get_result_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool) {
+get_result_register_for(unit: Unit, result: Result, unsigned: bool, media_register: bool): _ {
 	register = get_next_register(unit, media_register, trace.for(unit, result), true)
 
 	register.value = result
@@ -313,7 +313,7 @@ get_result_register_for(unit: Unit, result: Result, unsigned: bool, media_regist
 	else { result.format = get_system_format(unsigned) }
 }
 
-try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool, directives: List<Directive>) {
+try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool, directives: List<Directive>): Result {
 	if type == HANDLE_REGISTER or type == HANDLE_MEDIA_REGISTER {
 		is_media_register = type == HANDLE_MEDIA_REGISTER
 
@@ -357,7 +357,7 @@ try_convert(unit: Unit, result: Result, size: large, type: large, protect: bool,
 	return none as Result
 }
 
-convert(unit: Unit, result: Result, size: large, types: large, protect: bool, directives: List<Directive>) {
+convert(unit: Unit, result: Result, size: large, types: large, protect: bool, directives: List<Directive>): Result {
 	loop (i = 0, types != 0 and i < 64, i++) {
 		type = 1 <| i
 
@@ -375,7 +375,7 @@ convert(unit: Unit, result: Result, size: large, types: large, protect: bool, di
 }
 
 # Summary: Moves the specified result to a register considering the specified directives
-convert(unit: Unit, result: Result, size: large, directives: List<Directive>) {
+convert(unit: Unit, result: Result, size: large, directives: List<Directive>): Result {
 	register = none as Register
 	destination = none as Result
 	format = FORMAT_DECIMAL

@@ -24,7 +24,7 @@ export write(string: String) {
 }
 
 # Summary: Writes the specified string to the console
-export write(string: link) {
+export write(string: link): _ {
 	internal.console.write(string, length_of(string))
 }
 
@@ -34,7 +34,7 @@ export write(string: link, length: large) {
 }
 
 # Summary: Writes the specified integer to the console
-export write(value: large) {
+export write(value: large): _ {
 	buffer: byte[32]
 	zero(buffer as link, 32)
 	length = to_string(value, buffer as link)
@@ -69,13 +69,13 @@ export write(value: bool) {
 }
 
 # Summary: Writes the specified string to the console
-export write_line(string: String) {
+export write_line(string: String): _ {
 	internal.console.write(string.data, string.length)
 	put(`\n`)
 }
 
 # Summary: Writes the specified string to the console
-export write_line(string: link) {
+export write_line(string: link): _ {
 	internal.console.write(string, length_of(string))
 	put(`\n`)
 }
@@ -124,12 +124,12 @@ export write_line(value: bool) {
 }
 
 # Summary: Writes an empty line to the console
-export write_line() {
+export write_line(): _ {
 	put(`\n`)
 }
 
 # Summary: Writes the specified character to the console
-export put(value: char) {
+export put(value: char): _ {
 	buffer: char[1]
 	buffer[] = value
 	internal.console.write(buffer as link, 1)

@@ -28,7 +28,7 @@ get_shared_type(expected: Type, actual: Type) {
 }
 
 # Summary: Returns the shared type between all the specified types
-outline get_shared_type(types: List<Type>) {
+outline get_shared_type(types: List<Type>): Type {
 	if types.size == 0 return none as Type
 	shared_type = types[]
 
@@ -41,7 +41,7 @@ outline get_shared_type(types: List<Type>) {
 }
 
 # Summary: Returns the types of the child nodes, only if all have types
-get_types(node: Node) {
+get_types(node: Node): List<Type> {
 	result = List<Type>()
 
 	loop iterator in node {
@@ -54,14 +54,14 @@ get_types(node: Node) {
 }
 
 # Summary: Tries to resolve the specified array type
-resolve_array_type(environment: Context, type: ArrayType) {
+resolve_array_type(environment: Context, type: ArrayType): Type {
 	type.resolve(environment)
 	if type.is_resolved return type
 	return none as Type
 }
 
 # Summary: Tries to resolve the specified type if it is unresolved
-resolve(context: Context, type: Type) {
+resolve(context: Context, type: Type): Type {
 	if type.is_resolved return none as Type
 
 	# Resolve array types, because their sizes need to be determined at compile time and they can be dependent on expressions
@@ -71,14 +71,14 @@ resolve(context: Context, type: Type) {
 }
 
 # Summary: Tries to resolve the specified node tree
-resolve(context: Context, node: Node) {
+resolve(context: Context, node: Node): _ {
 	result = resolve_tree(context, node)
 	if result == none return
 	node.replace(result)
 }
 
 # Summary: Tries to resolve problems in the node tree
-resolve_tree(context: Context, node: Node) {
+resolve_tree(context: Context, node: Node): Node {
 	# If the node is unresolved, try to resolve it
 	if node.is_resolvable return node.resolve(context)
 
@@ -90,7 +90,7 @@ resolve_tree(context: Context, node: Node) {
 }
 
 # Summary: Tries to resolve the type of the specified variable
-resolve(variable: Variable) {
+resolve(variable: Variable): _ {
 	if variable.type != none {
 		# If the variable is already resolved, there is no need to do anything
 		if variable.type.is_resolved return
@@ -139,7 +139,7 @@ resolve(variable: Variable) {
 }
 
 # Summary: Resolves the parameters of the specified function
-resolve(function: Function) {
+resolve(function: Function): _ {
 	# Resolve the parameters
 	loop parameter in function.parameters {
 		type = parameter.type
@@ -153,7 +153,7 @@ resolve(function: Function) {
 }
 
 # Summary: Tries to resolve all the locals in the specified context
-resolve_variables(context: Context) {
+resolve_variables(context: Context): _ {
 	loop iterator in context.variables {
 		resolve(iterator.value)
 	}
@@ -164,7 +164,7 @@ resolve_variables(context: Context) {
 }
 
 # Summary: Tries to resolve the return type of the specified implementation based on its return statements
-resolve_return_type(implementation: FunctionImplementation) {
+resolve_return_type(implementation: FunctionImplementation): _ {
 	# Do not resolve the return type if it is already resolved.
 	# This also prevents virtual function overrides from overriding the return type, enforced by the virtual function declaration
 	if implementation.return_type != none {
@@ -208,7 +208,7 @@ resolve_return_type(implementation: FunctionImplementation) {
 }
 
 # Summary: Resolves return types of the virtual functions declared in the specified type
-resolve_virtual_functions(type: Type) {
+resolve_virtual_functions(type: Type): _ {
 	overloads = List<VirtualFunction>()
 	loop iterator in type.virtuals { overloads.add_all(iterator.value.overloads as List<VirtualFunction>) }
 
@@ -250,7 +250,7 @@ resolve_virtual_functions(type: Type) {
 }
 
 # Summary: Resolves imports in the specified context
-resolve_imports(context: Context) {
+resolve_imports(context: Context): _ {
 	# Resolve imports
 	loop (i = 0, i < context.imports.size, i++) {
 		# Skip resolved imports
@@ -266,7 +266,7 @@ resolve_imports(context: Context) {
 }
 
 # Summary: Tries to resolve supertypes which were not found previously
-resolve_supertypes(context: Context, type: Type) {
+resolve_supertypes(context: Context, type: Type): _ {
 	loop (i = type.supertypes.size - 1, i >= 0, i--) {
 		supertype = type.supertypes[i]
 		if supertype.is_resolved continue
@@ -283,7 +283,7 @@ resolve_supertypes(context: Context, type: Type) {
 }
 
 # Summary: Tries to resolve every problem in the specified context
-resolve_context(context: Context) {
+resolve_context(context: Context): _ {
 	functions = common.get_all_visible_functions(context)
 	loop function in functions { resolve(function) }
 
@@ -328,7 +328,7 @@ resolve_context(context: Context) {
 	resolve_variables(context)
 }
 
-get_tree_statuses(root: Node) {
+get_tree_statuses(root: Node): List<Status> {
 	result = List<Status>()
 
 	loop child in root {
@@ -343,7 +343,7 @@ get_tree_statuses(root: Node) {
 	return result
 }
 
-get_tree_report(root: Node) {
+get_tree_report(root: Node): List<Status> {
 	errors = List<Status>()
 	if root == none return errors
 
@@ -356,7 +356,7 @@ get_tree_report(root: Node) {
 }
 
 # Summary: Reports unresolved imports
-get_import_report(context: Context, errors: List<Status>) {
+get_import_report(context: Context, errors: List<Status>): _ {
 	# Report unresolved imports
 	loop imported in context.imports {
 		if imported.is_resolved continue
@@ -364,7 +364,7 @@ get_import_report(context: Context, errors: List<Status>) {
 	}
 }
 
-get_type_report(type: Type) {
+get_type_report(type: Type): List<Status> {
 	errors = List<Status>()
 
 	# Report unresolved imports
@@ -392,7 +392,7 @@ get_type_report(type: Type) {
 	return errors
 }
 
-get_function_report(implementation: FunctionImplementation) {
+get_function_report(implementation: FunctionImplementation): List<Status> {
 	errors = List<Status>()
 
 	loop variable in implementation.locals {
@@ -411,7 +411,7 @@ get_function_report(implementation: FunctionImplementation) {
 	return errors
 }
 
-get_report(context: Context, root: Node) {
+get_report(context: Context, root: Node): List<Status> {
 	errors = List<Status>()
 
 	# Report unresolved imports
@@ -435,7 +435,7 @@ get_report(context: Context, root: Node) {
 	return errors
 }
 
-are_reports_equal(a: List<Status>, b: List<Status>) {
+are_reports_equal(a: List<Status>, b: List<Status>): bool {
 	if a.size != b.size return false
 
 	loop (i = 0, i < a.size, i++) {
@@ -448,7 +448,7 @@ are_reports_equal(a: List<Status>, b: List<Status>) {
 	return true
 }
 
-register_default_functions(context: Context) {
+register_default_functions(context: Context): _ {
 	# Allocation:
 	allocation_function_overloads = context.get_function("allocate")
 	if allocation_function_overloads == none abort('Missing the allocation function, please implement it or include the standard library')
@@ -483,7 +483,7 @@ register_default_functions(context: Context) {
 	}
 }
 
-output(status: Status) {
+output(status: Status): _ {
 	position = status.position
 
 	if position === none {
@@ -505,7 +505,7 @@ output(status: Status) {
 	console.write_line(status.message)
 }
 
-complain(report: List<Status>) {
+complain(report: List<Status>): _ {
 	loop status in report { output(status) }
 }
 
@@ -520,7 +520,7 @@ debug_print(context: Context) {
 	}
 }
 
-resolve() {
+resolve(): Status {
 	parse = settings.parse
 
 	context = parse.context
