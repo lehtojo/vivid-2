@@ -32,7 +32,7 @@ load_variable_usages(implementation: FunctionImplementation) {
 # Summary:
 # Iterates through the usages of the specified variable and adds them to 'write' and 'read' lists accordingly.
 # Returns whether the usages were added or not. This function does not add the usages, if the access type of an usage can not be determined accurately.
-classify_variable_usages(variable: Variable) {
+classify_variable_usages(variable: Variable): bool {
 	variable.writes.clear()
 	variable.reads.clear()
 
@@ -54,7 +54,7 @@ classify_variable_usages(variable: Variable) {
 }
 
 # Summary: Inserts the values of the constants in the specified into their usages
-apply_constants(context: Context) {
+apply_constants(context: Context): _ {
 	loop iterator in context.variables {
 		variable = iterator.value
 		if not variable.is_constant continue
@@ -99,7 +99,7 @@ apply_constants(context: Context) {
 }
 
 # Summary: Evaluates the value of the specified constant and returns it. If evaluation fails, none is returned.
-evaluate_constant(variable: Variable, trace: Map<Variable, bool>) {
+evaluate_constant(variable: Variable, trace: Map<Variable, bool>): Node {
 	# Ensure we do not enter into an infinite evaluation cycle
 	if trace.contains_key(variable) return none as Node
 	trace[variable] = true
@@ -154,12 +154,12 @@ evaluate_constant(variable: Variable, trace: Map<Variable, bool>) {
 }
 
 # Summary: Evaluates the value of the specified constant and returns it. If evaluation fails, none is returned.
-evaluate_constant(variable: Variable) {
+evaluate_constant(variable: Variable): Node {
 	return evaluate_constant(variable, Map<Variable, bool>())
 }
 
 # Summary: Finds all the constant usages in the specified node tree and inserts the values of the constants into their usages
-apply_constants_into(root: Node) {
+apply_constants_into(root: Node): _ {
 	usages = root.find_all(NODE_VARIABLE).filter(i -> i.(VariableNode).variable.is_constant)
 
 	loop usage in usages {
@@ -175,7 +175,7 @@ apply_constants_into(root: Node) {
 }
 
 # Summary: Processes static variables
-configure_static_variables(context: Context) {
+configure_static_variables(context: Context): _ {
 	types = common.get_all_types(context)
 
 	loop type in types {
@@ -189,7 +189,7 @@ configure_static_variables(context: Context) {
 }
 
 # Summary: Resets all variable usages in the specified context
-reset_variable_usages(context: Context) {
+reset_variable_usages(context: Context): _ {
 	loop implementation in common.get_all_function_implementations(context) {
 		loop variable in implementation.all_variables {
 			variable.usages.clear()
@@ -224,7 +224,7 @@ reset_variable_usages(context: Context) {
 }
 
 # Summary: Load all variable usages in the specified context
-load_variable_usages(context: Context, root: Node) {
+load_variable_usages(context: Context, root: Node): _ {
 	implementations = common.get_all_function_implementations(context)
 	usages = root.find_all(NODE_VARIABLE)
 
@@ -267,7 +267,7 @@ load_variable_usages(context: Context, root: Node) {
 	}
 }
 
-analyze() {
+analyze(): _ {
 	root = settings.parse.root
 	context = settings.parse.context
 

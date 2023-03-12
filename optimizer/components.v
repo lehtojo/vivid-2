@@ -17,11 +17,11 @@ Component {
 	is_variable => type == COMPONENT_TYPE_VARIABLE
 	is_variable_product => type == COMPONENT_TYPE_VARIABLE_PRODUCT
 
-	is_one() {
+	is_one(): bool {
 		return is_number and this.(NumberComponent).value.is_one()
 	}
 
-	is_zero() {
+	is_zero(): bool {
 		return is_number and this.(NumberComponent).value.data == 0
 	}
 
@@ -72,7 +72,7 @@ Component {
 	open equals(other: Component): bool
 	open clone(): Component
 
-	plus(other: Component) {
+	plus(other: Component): Component {
 		return addition(other)
 	}
 
@@ -80,11 +80,11 @@ Component {
 		return subtraction(other)
 	}
 
-	times(other: Component) {
+	times(other: Component): Component {
 		return multiplication(other)
 	}
 
-	divide(other: Component) {
+	divide(other: Component): Component {
 		return division(other)
 	}
 }
@@ -93,25 +93,25 @@ pack Number {
 	data: large
 	is_decimal: bool
 
-	is_integer() {
+	is_integer(): bool {
 		return not is_decimal
 	}
 
-	format() {
+	format(): large {
 		if is_decimal return FORMAT_DECIMAL
 		return SYSTEM_FORMAT
 	}
 
-	is_zero() {
+	is_zero(): bool {
 		return data == 0
 	}
 
-	is_one() {
+	is_one(): bool {
 		if is_decimal return bits_to_decimal(data) == 1.0
 		return data == 1
 	}
 
-	is_negative() {
+	is_negative(): bool {
 		if is_decimal return bits_to_decimal(data) < 0.0
 		return data < 0
 	}
@@ -121,7 +121,7 @@ pack Number {
 		return abs(data)
 	}
 
-	plus(other: Number) {
+	plus(other: Number): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = false
@@ -149,7 +149,7 @@ pack Number {
 		return result
 	}
 
-	minus(other: Number) {
+	minus(other: Number): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = false
@@ -177,7 +177,7 @@ pack Number {
 		return result
 	}
 
-	times(other: Number) {
+	times(other: Number): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = false
@@ -205,7 +205,7 @@ pack Number {
 		return result
 	}
 
-	divide(other: Number) {
+	divide(other: Number): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = false
@@ -233,7 +233,7 @@ pack Number {
 		return result
 	}
 
-	remainder(other: Number) {
+	remainder(other: Number): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = false
@@ -243,7 +243,7 @@ pack Number {
 		return result
 	}
 
-	negation() {
+	negation(): Number {
 		result: Number
 		result.data = 0
 		result.is_decimal = is_decimal
@@ -258,7 +258,7 @@ pack Number {
 		return result
 	}
 
-	compare(other: Number) {
+	compare(other: Number): large {
 		if is_decimal {
 			if other.is_decimal return sign(bits_to_decimal(data) - bits_to_decimal(other.data))
 			return sign(bits_to_decimal(data) - other.data)
@@ -269,7 +269,7 @@ pack Number {
 		}
 	}
 
-	equals(other: Number) {
+	equals(other: Number): bool {
 		return data === other.data and is_decimal === other.is_decimal
 	}
 }

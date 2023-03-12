@@ -36,7 +36,7 @@ get_standard_parameter_register_names() {
 	return result
 }
 
-get_standard_parameter_register_count() {
+get_standard_parameter_register_count(): large {
 	if settings.is_x64 {
 		if settings.is_target_windows return 4
 		return 6
@@ -45,7 +45,7 @@ get_standard_parameter_register_count() {
 	return 8
 }
 
-get_decimal_parameter_register_count() {
+get_decimal_parameter_register_count(): large {
 	if settings.is_x64 {
 		if settings.is_target_windows return 4
 		return 7
@@ -54,7 +54,7 @@ get_decimal_parameter_register_count() {
 	return 8
 }
 
-get_standard_parameter_registers(unit: Unit) {
+get_standard_parameter_registers(unit: Unit): List<Register> {
 	registers = List<Register>()
 
 	loop name in get_standard_parameter_register_names() {
@@ -67,7 +67,7 @@ get_standard_parameter_registers(unit: Unit) {
 	return registers
 }
 
-get_decimal_parameter_registers(unit: Unit) {
+get_decimal_parameter_registers(unit: Unit): List<Register> {
 	registers = List<Register>()
 	count = get_decimal_parameter_register_count()
 
@@ -78,7 +78,7 @@ get_decimal_parameter_registers(unit: Unit) {
 	return registers
 }
 
-is_self_pointer_required(current: FunctionImplementation, other: FunctionImplementation) {
+is_self_pointer_required(current: FunctionImplementation, other: FunctionImplementation): bool {
 	if other.is_static or other.is_constructor or not current.is_member or current.is_static or not other.is_member or other.is_static return false
 
 	x = current.find_type_parent()
@@ -88,7 +88,7 @@ is_self_pointer_required(current: FunctionImplementation, other: FunctionImpleme
 }
 
 # Summary: Passes the specified disposable pack by passing its member one by one
-pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle, type: Type, shadow: bool) {
+pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, disposable_pack: DisposablePackHandle, type: Type, shadow: bool): _ {
 	source_members = disposable_pack.members.get_values()
 	destination_members = common.get_non_static_members(type)
 
@@ -108,7 +108,7 @@ pass_pack(unit: Unit, destinations: List<Handle>, sources: List<Result>, standar
 }
 
 # Summary: Passes the specified argument using a register or the specified stack position depending on the situation
-pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large, shadow: bool) {
+pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, position: StackMemoryHandle, value: Result, type: Type, format: large, shadow: bool): _ {
 	if value.value.instance == INSTANCE_DISPOSABLE_PACK {
 		pass_pack(unit, destinations, sources, standard_parameter_registers, decimal_parameter_registers, position, value.value as DisposablePackHandle, type, shadow)
 		return
@@ -149,7 +149,7 @@ pass_argument(unit: Unit, destinations: List<Handle>, sources: List<Result>, sta
 
 # Summary: Passes the specified parameters to the function using the specified calling convention
 # Returns: Returns the amount of parameters moved to stack
-pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_type: Type, is_self_pointer_required: bool, parameters: List<Node>, parameter_types: List<Type>, shadow: bool) {
+pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_type: Type, is_self_pointer_required: bool, parameters: List<Node>, parameter_types: List<Type>, shadow: bool): _ {
 	standard_parameter_registers = get_standard_parameter_registers(unit)
 	decimal_parameter_registers = get_decimal_parameter_registers(unit)
 
@@ -181,14 +181,14 @@ pass_arguments(unit: Unit, call: CallInstruction, self_pointer: Result, self_typ
 }
 
 # Summary: Collects all parameters from the specified node tree into an array
-collect_parameters(parameters: Node) {
+collect_parameters(parameters: Node): List<Node> {
 	result = List<Node>()
 	if parameters == none return result
 	loop parameter in parameters { result.add(parameter) }
 	return result
 }
 
-build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplementation) {
+build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplementation): Result {
 	if self == none and is_self_pointer_required(unit.function, implementation) abort('Missing self pointer')
 
 	call = CallInstruction(unit, implementation.get_fullname(), implementation.return_type)
@@ -202,7 +202,7 @@ build(unit: Unit, self: Result, parameters: Node, implementation: FunctionImplem
 	return call.add()
 }
 
-build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>) {
+build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>): Result {
 	call = CallInstruction(unit, function, return_type)
 
 	# Pass the parameters to the function and then execute it
@@ -211,7 +211,7 @@ build(unit: Unit, self: Result, self_type: Type, function: Result, return_type: 
 	return call.add()
 }
 
-build(unit: Unit, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>) {
+build(unit: Unit, function: Result, return_type: Type, parameters: Node, parameter_types: List<Type>): Result {
 	call = CallInstruction(unit, function, return_type)
 
 	# Pass the parameters to the function and then execute it
@@ -220,7 +220,7 @@ build(unit: Unit, function: Result, return_type: Type, parameters: Node, paramet
 	return call.add()
 }
 
-build(unit: Unit, node: FunctionNode) {
+build(unit: Unit, node: FunctionNode): Result {
 	unit.add_debug_position(node)
 
 	self = none as Result
@@ -238,12 +238,12 @@ build(unit: Unit, node: FunctionNode) {
 	return build(unit, self, node.parameters, node.function)
 }
 
-build(unit: Unit, self: Result, node: FunctionNode) {
+build(unit: Unit, self: Result, node: FunctionNode): Result {
 	unit.add_debug_position(node)
 	return build(unit, self, node.parameters, node.function)
 }
 
-move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
+move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle): _ {
 	proxies = common.get_pack_proxies(parameter)
 
 	loop proxy in proxies {
@@ -286,7 +286,7 @@ move_pack_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers
 # Moves the specified parameter or its proxies to their own stack locations, if they are not already in the stack.
 # The location of the parameter is determined by using the specified registers.
 # This is used for debugging purposes.
-move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle) {
+move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, stack_position: StackMemoryHandle): _ {
 	if parameter.type.is_pack {
 		move_pack_to_stack(unit, parameter, standard_parameter_registers, decimal_parameter_registers, stack_position)
 		return
@@ -320,7 +320,7 @@ move_parameters_to_stack(unit: Unit, parameter: Variable, standard_parameter_reg
 # Summary:
 # Moves the specified parameters or their proxies to their own stack locations, if they are not already in the stack.
 # This is used for debugging purposes.
-move_parameters_to_stack(unit: Unit) {
+move_parameters_to_stack(unit: Unit): _ {
 	stack_offset = 0
 	if settings.is_x64 { stack_offset = SYSTEM_BYTES }
 

@@ -28,7 +28,7 @@ capture_nested_assignments(root: Node) {
 
 # Summary:
 # Produces a descriptor for the specified variable from the specified set of variable nodes
-get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>) {
+get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>): assignment_optimizer.VariableDescriptor {
 	if not nodes.contains_key(variable) return pack { writes: List<VariableWrite>(), reads: List<Node>() } as VariableDescriptor
 
 	usages = nodes[variable]
@@ -50,7 +50,7 @@ get_variable_descriptor(variable: Variable, nodes: Map<Variable, List<Node>>) {
 
 # Summary:
 # Produces descriptors for all the variables defined in the specified context
-get_variable_descriptors(context: Context, root: Node) {
+get_variable_descriptors(context: Context, root: Node): Map<Variable, assignment_optimizer.VariableDescriptor> {
 	nodes = assembler.group_by<Node, Variable>(root.find_all(NODE_VARIABLE), (i: Node) -> i.(VariableNode).variable)
 	result = Map<Variable, VariableDescriptor>()
 
@@ -64,7 +64,7 @@ get_variable_descriptors(context: Context, root: Node) {
 # Summary:
 # Registers all dependencies for the specified variable writes.
 # This means that the non-write usages of the variables are added to the lists of the writes that affect them.
-register_write_dependencies(descriptor: VariableDescriptor, flow: StatementFlow) {
+register_write_dependencies(descriptor: VariableDescriptor, flow: StatementFlow): _ {
 	loop write in descriptor.writes {
 		write.dependencies.clear()
 	}
@@ -103,7 +103,7 @@ register_write_dependencies(descriptor: VariableDescriptor, flow: StatementFlow)
 
 # Summary:
 # Returns whether the value of the specified assignment can be inlined safely
-is_assignable(assignment: Node) {
+is_assignable(assignment: Node): bool {
 	# Assignable if does not contain:
 	# - Function calls
 	# - Memory accesses
@@ -125,7 +125,7 @@ is_assignable(assignment: Node) {
 
 # Summary:
 # Returns all the predictable variables that affect the specified value
-get_value_dependencies(value: Node) {
+get_value_dependencies(value: Node): List<Variable> {
 	result = List<Variable>()
 
 	if value.instance == NODE_VARIABLE {
@@ -146,7 +146,7 @@ get_value_dependencies(value: Node) {
 
 # Summary:
 # Returns if any of the writes of the specified variable expect the specified write contains the specified read as dependency.
-is_dependent_on_other_write(descriptor: VariableDescriptor, write: VariableWrite, read: Node) {
+is_dependent_on_other_write(descriptor: VariableDescriptor, write: VariableWrite, read: Node): bool {
 	loop other in descriptor.writes {
 		if other === write continue
 
@@ -160,7 +160,7 @@ is_dependent_on_other_write(descriptor: VariableDescriptor, write: VariableWrite
 
 # Summary:
 # Returns all variable nodes from the specified root while taking into account if the specified root is a variable node
-get_all_variable_usages(root: Node) {
+get_all_variable_usages(root: Node): List<Node> {
 	usages = none as List<Node>
 
 	if root.instance == NODE_VARIABLE { usages = [ root ] }
@@ -171,7 +171,7 @@ get_all_variable_usages(root: Node) {
 
 # Summary:
 # Removes all local variable usages from the specified node tree 'from' and adds the new usages from the specified node tree 'to'
-update_variable_usages(descriptors: Map<Variable, VariableDescriptor>, from: Node, to: Node) {
+update_variable_usages(descriptors: Map<Variable, VariableDescriptor>, from: Node, to: Node): _ {
 	# Find all variable usages from the node tree 'from' and remove them from descriptors
 	previous_usages = get_all_variable_usages(from)
 
@@ -205,7 +205,7 @@ update_variable_usages(descriptors: Map<Variable, VariableDescriptor>, from: Nod
 
 # Summary:
 # Adds all the variable usages from the specified node tree 'from' into the specified descriptors
-add_variable_usages_from(descriptors: Map<Variable, VariableDescriptor>, from: Node) {
+add_variable_usages_from(descriptors: Map<Variable, VariableDescriptor>, from: Node): _ {
 	usages = get_all_variable_usages(from)
 
 	loop usage in usages {
@@ -223,7 +223,7 @@ add_variable_usages_from(descriptors: Map<Variable, VariableDescriptor>, from: N
 
 # Summary:
 # Assigns the value of the specified write to the specified reads
-assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: Map<Variable, VariableDescriptor>, descriptor: VariableDescriptor, flow: StatementFlow) {
+assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: Map<Variable, VariableDescriptor>, descriptor: VariableDescriptor, flow: StatementFlow): bool {
 	assigned = false
 
 	loop read in write.assignable {
@@ -322,7 +322,7 @@ assign(variable: Variable, write: VariableWrite, recursive: bool, descriptors: M
 # Summary:
 # Removes the variable, if it represents an allocated object that is only written into.
 # Returns whether the specified variable was removed.
-remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescriptor) {
+remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescriptor): bool {
 	# Do nothing if optimizations are not enabled
 	if not settings.is_optimization_enabled return false
 
@@ -385,7 +385,7 @@ remove_unread_allocated_variables(variable: Variable, descriptor: VariableDescri
 
 # Summary:
 # Looks for assignments of the specified variable which can be inlined
-assign_variables(context: Context, root: Node, hidden_only: bool) {
+assign_variables(context: Context, root: Node, hidden_only: bool): _ {
 	variables = List<Variable>(context.all_variables)
 	variables.distinct()
 
@@ -504,6 +504,6 @@ assign_variables(context: Context, root: Node, hidden_only: bool) {
 
 # Summary:
 # Looks for assignments of the specified variable which can be inlined
-assign_variables(context: Context, root: Node) {
+assign_variables(context: Context, root: Node): _ {
 	assign_variables(context, root, not settings.is_optimization_enabled)
 }

@@ -24,7 +24,7 @@ INSTANCE_LOWER_12_BITS = 1 <| 13
 INSTANCE_DISPOSABLE_PACK = 1 <| 14
 
 # Summary: Converts the specified size to corresponding size modifier
-to_size_modifier(bytes: large) {
+to_size_modifier(bytes: large): u8* {
 	return when(bytes) {
 		1 => 'byte'
 		2 => 'word'
@@ -47,7 +47,7 @@ XWORD_ALLOCATOR = '.xword'
 YWORD_ALLOCATOR = '.yword'
 
 # Summary: Converts the specified size to corresponding data section allocator
-to_data_section_allocator(bytes: large) {
+to_data_section_allocator(bytes: large): u8* {
 	return when(bytes) {
 		1 => '.byte'
 		2 => '.word'
@@ -107,7 +107,7 @@ Handle {
 Handle ConstantHandle {
 	value: large
 	
-	bits() {
+	bits(): large {
 		return common.get_bits(value, format == FORMAT_DECIMAL)
 	}
 	
@@ -129,7 +129,7 @@ Handle ConstantHandle {
 		this.size = size
 	}
 
-	convert(format: large) {
+	convert(format: large): _ {
 		if this.format == format return
 
 		if format == FORMAT_DECIMAL { value = decimal_to_bits(value as decimal) }
@@ -138,7 +138,7 @@ Handle ConstantHandle {
 		this.format = format
 	}
 
-	string_shared() {
+	string_shared(): String {
 		if format == FORMAT_DECIMAL return to_string(bits_to_decimal(value))
 		return to_string(value)
 	}
@@ -210,7 +210,7 @@ Handle MemoryHandle {
 		start.use(instruction)
 	}
 
-	get_start() {
+	get_start(): Register {
 		return when(start.value.instance) {
 			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
 			INSTANCE_STACK_ALLOCATION => unit.get_stack_pointer(),
@@ -218,7 +218,7 @@ Handle MemoryHandle {
 		}
 	}
 
-	get_offset() {
+	get_offset(): large {
 		return when(start.value.instance) {
 			INSTANCE_CONSTANT => start.value.(ConstantHandle).value + get_absolute_offset(),
 			INSTANCE_STACK_ALLOCATION => start.value.(StackAllocationHandle).get_absolute_offset() + get_absolute_offset(),
@@ -226,7 +226,7 @@ Handle MemoryHandle {
 		}
 	}
 
-	default_string() {
+	default_string(): String {
 		start: Register = get_start()
 		offset: large = get_offset()
 
@@ -548,21 +548,21 @@ Handle ComplexMemoryHandle {
 		index.use(instruction)
 	}
 
-	get_start() {
+	get_start(): Register {
 		return when(start.value.instance) {
 			INSTANCE_REGISTER => start.value.(RegisterHandle).register,
 			else => none as Register
 		}
 	}
 
-	get_index() {
+	get_index(): Register {
 		return when(index.value.instance) {
 			INSTANCE_REGISTER => index.value.(RegisterHandle).register,
 			else => none as Register
 		}
 	}
 
-	get_offset() {
+	get_offset(): large {
 		offset: large = this.offset
 
 		offset += when(start.value.instance) {
@@ -647,7 +647,7 @@ Handle ExpressionHandle {
 	addition: Result
 	number: large
 
-	shared create_addition(left: Result, right: Result) {
+	shared create_addition(left: Result, right: Result): ExpressionHandle {
 		return ExpressionHandle(left, 1, right, 0)
 	}
 
@@ -655,13 +655,13 @@ Handle ExpressionHandle {
 		return ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
 	}
 
-	shared create_memory_address(start: Result, offset: large) {
+	shared create_memory_address(start: Result, offset: large): ExpressionHandle {
 		if settings.is_x64 return ExpressionHandle(start, 1, none as Result, offset)
 
 		return ExpressionHandle(start, 1, Result(ConstantHandle(offset), SYSTEM_FORMAT), 0)
 	}
 
-	shared create_memory_address(start: Result, offset: Result, stride: large) {
+	shared create_memory_address(start: Result, offset: Result, stride: large): ExpressionHandle {
 		return ExpressionHandle(offset, stride, start, 0)
 	}
 
@@ -678,12 +678,12 @@ Handle ExpressionHandle {
 		if addition != none addition.use(instruction)
 	}
 
-	validate() {
+	validate(): _ {
 		if (multiplicand.is_standard_register or multiplicand.is_constant) and (addition == none or (addition.is_standard_register or addition.is_constant)) and multiplier > 0 return
 		abort('Invalid expression handle')
 	}
 
-	get_start() {
+	get_start(): Register {
 		if addition == none return none as Register
 
 		return when(addition.value.instance) {
@@ -692,14 +692,14 @@ Handle ExpressionHandle {
 		}
 	}
 
-	get_index() {
+	get_index(): Register {
 		return when(multiplicand.value.instance) {
 			INSTANCE_REGISTER => multiplicand.value.(RegisterHandle).register,
 			else => none as Register
 		}
 	}
 
-	get_offset() {
+	get_offset(): large {
 		offset = number
 
 		if addition != none {
@@ -717,7 +717,7 @@ Handle ExpressionHandle {
 		return offset
 	}
 
-	string_x64() {
+	string_x64(): String {
 		expression = String.empty
 		postfix = number
 
@@ -751,7 +751,7 @@ Handle ExpressionHandle {
 		return "[" + expression + ']'
 	}
 
-	string_arm64() {
+	string_arm64(): String {
 		return none as String
 	}
 
@@ -808,7 +808,7 @@ Handle StackAllocationHandle {
 	bytes: large
 	identity: String
 
-	get_absolute_offset() {
+	get_absolute_offset(): large {
 		return unit.stack_offset + offset
 	}
 

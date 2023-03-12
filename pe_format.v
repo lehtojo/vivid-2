@@ -34,7 +34,7 @@ namespace pe_format {
 	}
 
 	# Summary: Converts the encoded 64-bit integer name into a string
-	decode_integer_name(encoded: large) {
+	decode_integer_name(encoded: large): String {
 		name: char[9] # Size = strideof(large) + 1
 		zero(name as link, 9)
 		binary_utility.write_int64(name as link, 0, encoded)
@@ -44,13 +44,13 @@ namespace pe_format {
 	
 	# Summary:
 	# Loads the offset of the PE header in the image file
-	get_header_offset(bytes: Array<byte>) {
+	get_header_offset(bytes: Array<byte>): normal {
 		return (bytes.data + PeLegacyHeader.PeHeaderPointerOffset).(normal*)[]
 	}
 
 	# Summary:
 	# Computes the file offset corresponding to the specified virtual address
-	relative_virtual_address_to_file_offset(module: PeMetadata, relative_virtual_address: large) {
+	relative_virtual_address_to_file_offset(module: PeMetadata, relative_virtual_address: large): large {
 		loop section in module.sections {
 			# Find the section, which contains the specified virtual address
 			end = section.virtual_address + section.virtual_size
@@ -68,7 +68,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads all the data directories from the specified image file bytes starting from the specified offset
-	load_data_directories(bytes: Array<byte>, start: large, count: large) {
+	load_data_directories(bytes: Array<byte>, start: large, count: large): List<PeDataDirectory> {
 		if count == 0 return List<PeDataDirectory>()
 
 		directories = List<PeDataDirectory>()
@@ -91,7 +91,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads the specified number of section tables from the specified image file bytes starting from the specified offset
-	load_section_tables(bytes: Array<byte>, start: large, count: large) {
+	load_section_tables(bytes: Array<byte>, start: large, count: large): List<PeSectionTable> {
 		if count == 0 return List<PeSectionTable>()
 
 		directories = List<PeSectionTable>()
@@ -114,7 +114,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads library metadata including the PE-header, data directories and section tables
-	load_library_metadata(file: String) {
+	load_library_metadata(file: String): PeMetadata {
 		# Load the image file and determine the PE header offset
 		if io.read_file(file) has not bytes return none as PeMetadata
 		header_offset = get_header_offset(bytes)
@@ -149,7 +149,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads strings the specified amount starting from the specified position.
-	load_number_of_strings(bytes: Array<byte>, position: large, count: large) {
+	load_number_of_strings(bytes: Array<byte>, position: large, count: large): List<String> {
 		if position < 0 return none as List<String>
 
 		strings = List<String>(count, true)
@@ -187,7 +187,7 @@ namespace pe_format {
 
 	# Summary:
 	# Extracts the exported symbols from the specified export section.
-	load_exported_symbols(module: PeMetadata) {
+	load_exported_symbols(module: PeMetadata): List<String> {
 		# Check if the library has an export table
 		export_data_directory = module.data_directories[ExporterSectionIndex]
 		if export_data_directory.relative_virtual_address == 0 return none as List<String>
@@ -220,7 +220,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads the exported symbols from the specified library.
-	load_exported_symbols(library: String) {
+	load_exported_symbols(library: String): List<String> {
 		metadata = load_library_metadata(library)
 		if metadata == none return none as List<String>
 
@@ -229,7 +229,7 @@ namespace pe_format {
 
 	# Summary:
 	# Converts the relocation type to corresponding PE relocation type
-	get_relocation_type(type: large) {
+	get_relocation_type(type: large): large {
 		return when(type) {
 			BINARY_RELOCATION_TYPE_PROCEDURE_LINKAGE_TABLE => PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32,
 			BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE => PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32,
@@ -241,7 +241,7 @@ namespace pe_format {
 	
 	# Summary:
 	# Determines appropriate section flags loop the specified section
-	get_section_characteristics(section: BinarySection) {
+	get_section_characteristics(section: BinarySection): u64 {
 		type = section.type
 		characteristics = PE_SECTION_CHARACTERISTICS_READ
 
@@ -269,7 +269,7 @@ namespace pe_format {
 
 	# Summary:
 	# Creates the symbol table and the relocation table based on the specified symbols
-	create_symbol_related_sections(symbol_name_table: BinaryStringTable, sections: List<BinarySection>, fragments: List<BinarySection>, symbols: Map<String, BinarySymbol>, file_position: large) {
+	create_symbol_related_sections(symbol_name_table: BinaryStringTable, sections: List<BinarySection>, fragments: List<BinarySection>, symbols: Map<String, BinarySymbol>, file_position: large): BinarySection {
 		symbol_entries = List<PeSymbolEntry>()
 
 		# Index the sections since the symbols need that
@@ -389,7 +389,7 @@ namespace pe_format {
 	# Fills all the empty section in the specified list of sections with one byte.
 	# Instead of just removing these sections, this is done to preserve all the properties of these sections such as symbols.
 	# If these sections would have a size of zero, then overlapping sections could emerge.
-	fill_empty_sections(sections: List<BinarySection>) {
+	fill_empty_sections(sections: List<BinarySection>): _ {
 		loop section in sections {
 			if section.data.size > 0 continue
 			section.data = Array<byte>(1)
@@ -398,7 +398,7 @@ namespace pe_format {
 
 	# Summary:
 	# Creates an object file from the specified sections
-	create_object_file(name: String, sections: List<BinarySection>, exports: Set<String>) {
+	create_object_file(name: String, sections: List<BinarySection>, exports: Set<String>): BinaryObjectFile {
 		fill_empty_sections(sections)
 
 		# Load all the symbols from the specified sections
@@ -421,7 +421,7 @@ namespace pe_format {
 
 	# Summary:
 	# Creates an object file from the specified sections
-	build(sections: List<BinarySection>, exports: Set<String>) {
+	build(sections: List<BinarySection>, exports: Set<String>): Array<u8> {
 		fill_empty_sections(sections)
 
 		# Load all the symbols from the specified sections
@@ -541,7 +541,7 @@ namespace pe_format {
 		return binary
 	}
 
-	align_sections(section: BinarySection, file_position: large) {
+	align_sections(section: BinarySection, file_position: large): large {
 		# Determine the virtual address alignment to use, since the section can request loop larger alignment than the default.
 		alignment = max(section.alignment, VirtualSectionAlignment)
 
@@ -559,7 +559,7 @@ namespace pe_format {
 		return file_position + section.data.size
 	}
 
-	align_sections(overlays: List<BinarySection>, fragments: List<BinarySection>, file_position: large) {
+	align_sections(overlays: List<BinarySection>, fragments: List<BinarySection>, file_position: large): large {
 		# Align the file positions and virtual addresses of the overlays.
 		loop section in overlays {
 			# Determine the virtual address alignment to use, since the section can request loop larger alignment than the default.
@@ -593,7 +593,7 @@ namespace pe_format {
 		return file_position
 	}
 
-	create_exporter_section(sections: List<BinarySection>, relocations: List<BinaryRelocation>, symbols: List<BinarySymbol>, output_name: String) {
+	create_exporter_section(sections: List<BinarySection>, relocations: List<BinaryRelocation>, symbols: List<BinarySymbol>, output_name: String): BinarySection {
 		# The exported symbols must be sorted by name (ascending)
 		symbols = symbols.filter(i -> i.exported and not i.external)
 
@@ -770,7 +770,7 @@ namespace pe_format {
 	# <import-address-table-2>:
 	# ...
 	# <import-address-table-n>:
-	create_dynamic_linkage(relocations: List<BinaryRelocation>, imports: List<String>, fragments: List<BinarySection>) {
+	create_dynamic_linkage(relocations: List<BinaryRelocation>, imports: List<String>, fragments: List<BinarySection>): BinarySection {
 		# Only dynamic libraries are inspected here
 		extension = shared_library_extension()
 		imports = imports.filter(i -> i.ends_with(extension))
@@ -980,7 +980,7 @@ namespace pe_format {
 	# Summary:
 	# Creates a relocation section, which describes how to fix absolute addresses when the binary is loaded as a shared library.
 	# This is needed, because shared libraries are loaded at random addresses.
-	create_relocation_section_for_absolute_addresses(sections: List<BinarySection>, relocations: List<BinaryRelocation>) {
+	create_relocation_section_for_absolute_addresses(sections: List<BinarySection>, relocations: List<BinaryRelocation>): large {
 		# Find all absolute relocations and order them by their virtual addresses
 		relocations = relocations
 			.filter((i: BinaryRelocation) -> i.section != none and (i.type == BINARY_RELOCATION_TYPE_ABSOLUTE32 or i.type == BINARY_RELOCATION_TYPE_ABSOLUTE64))
@@ -1038,7 +1038,7 @@ namespace pe_format {
 
 	# Summary:
 	# Creates an object file from the specified sections
-	link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, output_name: String, executable: bool) {
+	link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, output_name: String, executable: bool): Array<u8> {
 		# Index all the specified object files
 		loop (i = 0, i < objects.size, i++) { objects[i].index = i }
 
@@ -1259,7 +1259,7 @@ namespace pe_format {
 
 	# Summary:
 	# Determines shared section flags from the specified section characteristics
-	get_shared_section_flags(characteristics: large) {
+	get_shared_section_flags(characteristics: large): large {
 		flags = 0
 
 		if has_flag(characteristics, PE_SECTION_CHARACTERISTICS_WRITE) { flags |= BINARY_SECTION_FLAGS_WRITE }
@@ -1273,7 +1273,7 @@ namespace pe_format {
 
 	# Summary:
 	# Extracts the section alignment from the specified section characteristics
-	get_section_alignment(characteristics: large) {
+	get_section_alignment(characteristics: large): large {
 		# Alignment flags are stored as follows:
 		# 1-byte alignment:    0x00100000
 		# 2-byte alignment:    0x00200000
@@ -1289,7 +1289,7 @@ namespace pe_format {
 
 	# Summary:
 	# Converts the PE-format relocation type to shared relocation type
-	get_shared_relocation_type(type: large) {
+	get_shared_relocation_type(type: large): large {
 		return when(type) {
 			PE_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE_32 => BINARY_RELOCATION_TYPE_PROGRAM_COUNTER_RELATIVE,
 			PE_RELOCATION_TYPE_ABSOLUTE64 => BINARY_RELOCATION_TYPE_ABSOLUTE64,
@@ -1300,7 +1300,7 @@ namespace pe_format {
 
 	# Summary:
 	# Imports all symbols and relocations from the represented object file
-	import_symbols_and_relocations(header: PeObjectFileHeader, sections: List<BinarySection>, section_tables: List<PeSectionTable>, bytes: link) {
+	import_symbols_and_relocations(header: PeObjectFileHeader, sections: List<BinarySection>, section_tables: List<PeSectionTable>, bytes: link): List<BinarySymbol> {
 		file_position = bytes + header.pointer_to_symbol_table
 		symbol_name_table_start = file_position + header.number_of_symbols * PeSymbolEntry.Size
 
@@ -1384,7 +1384,7 @@ namespace pe_format {
 
 	# Summary:
 	# Load the specified object file and constructs a object structure that represents it
-	import_object_file(name: String, bytes: Array<byte>) {
+	import_object_file(name: String, bytes: Array<byte>): BinaryObjectFile {
 		# Load the file header
 		header = binary_utility.read_object<PeObjectFileHeader>(bytes, 0)
 
@@ -1456,7 +1456,7 @@ namespace pe_format {
 
 	# Summary:
 	# Load the specified object file and constructs a object structure that represents it
-	import_object_file(path: String) {
+	import_object_file(path: String): Optional<BinaryObjectFile> {
 		if io.read_file(path) has not bytes return Optional<BinaryObjectFile>()
 		return Optional<BinaryObjectFile>(import_object_file(path, bytes))
 	}

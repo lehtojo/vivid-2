@@ -132,7 +132,7 @@ Table {
 		items.add(TableReferenceTableItem(subtable))
 	}
 
-	add(item: TableItem) {
+	add(item: TableItem): _ {
 		add(item, true)
 	}
 

@@ -34,7 +34,7 @@ DataEncoderModule DebugFrameEncoderModule {
 		write(operation)
 	}
 
-	start(name: String, offset: large) {
+	start(name: String, offset: large): _ {
 		active_entry_start = position
 		machine_code_start = offset
 
@@ -49,12 +49,12 @@ DataEncoderModule DebugFrameEncoderModule {
 		write(0) # Padding?
 	}
 
-	set_frame_offset(offset: large) {
+	set_frame_offset(offset: large): _ {
 		write_operation(DEBUG_FRAME_OPERATION_SET_FRAME_OFFSET)
 		write_uleb128(offset)
 	}
 
-	move(delta: large) {
+	move(delta: large): _ {
 		if delta == 0 return
 
 		if delta >= TINY_MIN and delta <= TINY_MAX {
@@ -74,12 +74,12 @@ DataEncoderModule DebugFrameEncoderModule {
 		return
 	}
 
-	end(offset: large) {
+	end(offset: large): _ {
 		write_int32(active_entry_start, position - active_entry_start - 4) # Compute the entry length now
 		write_int32(active_entry_start + 12, offset - machine_code_start)
 	}
 
-	build() {
+	build(): BinarySection {
 		name = String(`.`) + SECTION_NAME
 
 		section = DataEncoderModule.build()
@@ -122,12 +122,12 @@ DataEncoderModule DebugLineEncoderModule {
 	character: large = -1
 	offset: large = -1
 
-	private add_folder(folder: String) {
+	private add_folder(folder: String): _ {
 		components = folder.split(`\\`)
 		string(String.join("\\\\", components)) # Terminated folder path
 	}
 
-	private add_file(name: String, folder: large) {
+	private add_file(name: String, folder: large): _ {
 		string(name) # Terminated file name
 		write_uleb128(folder) # Folder index
 		write_uleb128(0) # Time
@@ -172,17 +172,17 @@ DataEncoderModule DebugLineEncoderModule {
 		write_int32(PROLOGUE_LENGTH_FIELD_OFFSET, position - (PROLOGUE_LENGTH_FIELD_OFFSET + 4))
 	}
 
-	private write_operation(operation: large) {
+	private write_operation(operation: large): _ {
 		write(operation)
 	}
 
-	private write_extended_operation(operation: large, parameter_bytes: large) {
+	private write_extended_operation(operation: large, parameter_bytes: large): _ {
 		write(0) # Begin extended operation code
 		write(parameter_bytes + 1) # write the number of bytes to read
 		write(operation)
 	}
 
-	move(section: BinarySection, line: large, character: large, offset: large) {
+	move(section: BinarySection, line: large, character: large, offset: large): _ {
 		if this.line >= 0 {
 			# Move to the specified line
 			write_operation(DEBUG_LINE_OPERATION_ADVANCE_LINE)
@@ -234,7 +234,7 @@ DataEncoderModule DebugLineEncoderModule {
 		this.line = line
 	}
 
-	build() {
+	build(): BinarySection {
 		write_extended_operation(DEBUG_LINE_EXTENDED_OPERATION_END_OF_SEQUENCE, 0)
 		write_int32(0, position - 4) # Compute the length now
 
@@ -358,19 +358,19 @@ Debug {
 
 	string_type: Type
 
-	shared get_debug_file_start_label(file_index: large) {
+	shared get_debug_file_start_label(file_index: large): String {
 		return "debug_file_" + to_string(file_index) + '_start'
 	}
 
-	shared get_debug_file_end_label(file_index: large) {
+	shared get_debug_file_end_label(file_index: large): String {
 		return "debug_file_" + to_string(file_index) + '_end'
 	}
 
-	shared get_offset(from: TableLabel, to: TableLabel) {
+	shared get_offset(from: TableLabel, to: TableLabel): LabelOffset {
 		return LabelOffset(from, to)
 	}
 
-	begin_file(file: SourceFile) {
+	begin_file(file: SourceFile): _ {
 		information.add(file_abbreviation) # DW_TAG_compile_unit
 		information.add(DWARF_PRODUCER_TEXT) # DW_AT_producer
 		information.add(DWARF_LANGUAGE_IDENTIFIER) # DW_AT_language
@@ -398,39 +398,39 @@ Debug {
 		information.add(get_offset(file_start, file_end)) # DW_AT_high_pc
 	}
 
-	shared get_end(implementation: FunctionImplementation) {
+	shared get_end(implementation: FunctionImplementation): TableLabel {
 		return TableLabel(implementation.get_fullname() + '_end', 8, false)
 	}
 
-	shared get_file(implementation: FunctionImplementation) {
+	shared get_file(implementation: FunctionImplementation): normal {
 		return implementation.metadata.start.file.index as normal
 	}
 
-	shared get_line(implementation: FunctionImplementation) {
+	shared get_line(implementation: FunctionImplementation): normal {
 		return implementation.metadata.start.friendly_line as normal
 	}
 
-	shared get_file(type: Type) {
+	shared get_file(type: Type): normal {
 		return type.position.file.index as normal
 	}
 
-	shared get_line(type: Type) {
+	shared get_line(type: Type): normal {
 		return type.position.friendly_line as normal
 	}
 
-	shared get_file(variable: Variable) {
+	shared get_file(variable: Variable): normal {
 		return variable.position.file.index as normal
 	}
 
-	shared get_line(variable: Variable) {
+	shared get_line(variable: Variable): normal {
 		return variable.position.friendly_line as normal
 	}
 
-	shared get_type_label_name(type: Type) {
+	shared get_type_label_name(type: Type): String {
 		return get_type_label_name(type, false)
 	}
 
-	shared get_type_label_name(type: Type, pointer: bool) {
+	shared get_type_label_name(type: Type, pointer: bool): String {
 		if primitives.is_primitive(type, primitives.LINK) return type.get_fullname()
 
 		if type.is_primitive {
@@ -445,18 +445,18 @@ Debug {
 		return fullname
 	}
 
-	shared get_type_label(type: Type, types: Map<String, Type>) {
+	shared get_type_label(type: Type, types: Map<String, Type>): TableLabel {
 		return get_type_label(type, types, false)
 	}
 
-	shared get_type_label(type: Type, types: Map<String, Type>, pointer: bool) {
+	shared get_type_label(type: Type, types: Map<String, Type>, pointer: bool): TableLabel {
 		label = get_type_label_name(type, pointer)
 		types[label] = type
 
 		return TableLabel(label, 8, false)
 	}
 
-	add_operation(command: byte) {
+	add_operation(command: byte): _ {
 		information.add(1 as byte) # Length of the operation
 		information.add(command)
 	}
@@ -482,7 +482,7 @@ Debug {
 		information.add(p3)
 	}
 
-	add_operation(command: byte, parameters: List<byte>) {
+	add_operation(command: byte, parameters: List<byte>): _ {
 		information.add((parameters.size + 1) as byte) # Length of the operation
 		information.add(command)
 
@@ -491,7 +491,7 @@ Debug {
 		}
 	}
 
-	add_function(implementation: FunctionImplementation, types: Map<String, Type>) {
+	add_function(implementation: FunctionImplementation, types: Map<String, Type>): _ {
 		file = get_file(implementation)
 		function_abbreviation = to_uleb128(index++) # DW_TAG_subprogram
 
@@ -576,7 +576,7 @@ Debug {
 		}
 	}
 
-	add_file_abbreviation() {
+	add_file_abbreviation(): _ {
 		abbreviation.add(index as byte) # Define the current abbreviation code
 
 		abbreviation.add(DWARF_TAG_COMPILE_UNIT) # This is a compile unit and it has children
@@ -609,7 +609,7 @@ Debug {
 		file_abbreviation = index++
 	}
 
-	add_object_type_with_members_abbreviation() {
+	add_object_type_with_members_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_CHILDREN)
@@ -635,7 +635,7 @@ Debug {
 		object_type_with_members_abbreviation = index++
 	}
 
-	add_object_type_without_members_abbreviation() {
+	add_object_type_without_members_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_OBJECT_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -661,7 +661,7 @@ Debug {
 		object_type_without_members_abbreviation = index++
 	}
 
-	add_base_type_abbreviation() {
+	add_base_type_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_BASE_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -681,7 +681,7 @@ Debug {
 		base_type_abbreviation = index++
 	}
 
-	add_pointer_type_abbreviation() {
+	add_pointer_type_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_POINTER_TYPE_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -695,7 +695,7 @@ Debug {
 		pointer_type_abbreviation = index++
 	}
 
-	add_member_variable_abbreviation() {
+	add_member_variable_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_MEMBER_DECLARATION)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -724,7 +724,7 @@ Debug {
 		member_variable_abbreviation = index++
 	}
 
-	add_local_variable_abbreviation() {
+	add_local_variable_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_VARIABLE)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -750,7 +750,7 @@ Debug {
 		local_variable_abbreviation = index++
 	}
 
-	add_parameter_variable_abbreviation() {
+	add_parameter_variable_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_PARAMETER)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -776,7 +776,7 @@ Debug {
 		parameter_variable_abbreviation = index++
 	}
 
-	add_array_type_abbreviation() {
+	add_array_type_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_ARRAY_TYPE)
 		abbreviation.add(DWARF_HAS_CHILDREN)
@@ -790,7 +790,7 @@ Debug {
 		array_type_abbreviation = index++
 	}
 
-	add_subrange_type_abbreviation() {
+	add_subrange_type_abbreviation(): _ {
 		abbreviation.add(index as byte)
 		abbreviation.add(DWARF_SUBRANGE_TYPE)
 		abbreviation.add(DWARF_HAS_NO_CHILDREN)
@@ -807,7 +807,7 @@ Debug {
 		subrange_type_abbreviation = index++
 	}
 
-	add_inheritance_abbreviation() {
+	add_inheritance_abbreviation(): _ {
 		abbreviation.add(index as byte)
 
 		abbreviation.add(DWARF_INHERITANCE)
@@ -828,11 +828,11 @@ Debug {
 		inheritance_abbreviation = index++
 	}
 
-	shared is_pointer_type(type: Type) {
+	shared is_pointer_type(type: Type): bool {
 		return not type.is_primitive and not type.is_pack
 	}
 
-	add_member_variable(variable: Variable, types: Map<String, Type>) {
+	add_member_variable(variable: Variable, types: Map<String, Type>): _ {
 		if variable.type.is_array_type return
 		
 		information.add(member_variable_abbreviation)
@@ -857,7 +857,7 @@ Debug {
 		}
 	}
 
-	add_object_type(type: Type, types: Map<String, Type>) {
+	add_object_type(type: Type, types: Map<String, Type>): _ {
 		members = type.variables.get_values().filter(i -> not i.is_static and not i.is_constant)
 		has_members = type.supertypes.size > 0 or members.size > 0
 
@@ -902,7 +902,7 @@ Debug {
 	
 	# Summary:
 	# Appends a link type which enables the user to see its elements
-	add_array_link(type: Type, element: Type, types: Map<String, Type>) {
+	add_array_link(type: Type, element: Type, types: Map<String, Type>): _ {
 		# Create the array type
 		is_pointer = is_pointer_type(element)
 		name = get_type_label_name(type, is_pointer) + ARRAY_TYPE_POSTFIX
@@ -925,7 +925,7 @@ Debug {
 		types[element.identity] = element
 	}
 
-	add_link(type: Type, types: Map<String, Type>) {
+	add_link(type: Type, types: Map<String, Type>): _ {
 		element = type.get_accessor_type()
 		if element == none abort('Missing link offset type')
 
@@ -941,7 +941,7 @@ Debug {
 		types[element.identity] = element
 	}
 
-	add_type(type: Type, types: Map<String, Type>) {
+	add_type(type: Type, types: Map<String, Type>): _ {
 		if primitives.is_primitive(type, primitives.LINK) {
 			add_link(type, types)
 			return
@@ -986,7 +986,7 @@ Debug {
 		information.add(type.allocation_size as normal)
 	}
 
-	shared to_uleb128(value: large) {
+	shared to_uleb128(value: large): List<u8> {
 		bytes = List<byte>()
 
 		loop {
@@ -1005,7 +1005,7 @@ Debug {
 		return bytes
 	}
 
-	shared to_sleb128(value: large) {
+	shared to_sleb128(value: large): List<u8> {
 		bytes = List<byte>()
 
 		more = true
@@ -1029,7 +1029,7 @@ Debug {
 		return bytes
 	}
 
-	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
+	add_local_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal): _ {
 		if variable.is_generated or variable.type.is_array_type return
 
 		# Before adding the local variable, it must have a stack alignment
@@ -1069,7 +1069,7 @@ Debug {
 		information.add(get_offset(start, get_type_label(type, types, is_pointer_type(type)))) # DW_AT_type
 	}
 
-	add_parameter_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal) {
+	add_parameter_variable(variable: Variable, types: Map<String, Type>, file: normal, local_memory_size: normal): _ {
 		# Do not add generated variables
 		if variable.is_generated or variable.type.is_array_type return
 
@@ -1148,7 +1148,7 @@ Debug {
 		register_default_string_type(context)
 	}
 
-	register_default_string_type(context: Context) {
+	register_default_string_type(context: Context): _ {
 		type = context.get_type(String(STRING_TYPE_IDENTIFIER))
 		if type === none or not type.parent.is_global return
 
@@ -1160,11 +1160,11 @@ Debug {
 		string_type = type
 	}
 
-	end_file() {
+	end_file(): _ {
 		information.add(DWARF_END)
 	}
 
-	build(file: SourceFile) {
+	build(file: SourceFile): AssemblyBuilder {
 		information.add(DWARF_END)
 		abbreviation.add(DWARF_END)
 

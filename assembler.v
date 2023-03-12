@@ -36,7 +36,7 @@ AssemblyBuilder {
 		this.instructions[file] = instructions
 	}
 
-	add(file: SourceFile, instruction: Instruction) {
+	add(file: SourceFile, instruction: Instruction): _ {
 		if instructions.contains_key(file) {
 			instructions[file].add(instruction)
 			return
@@ -45,7 +45,7 @@ AssemblyBuilder {
 		instructions[file] = [ instruction ]
 	}
 
-	add(file: SourceFile, constants: List<ConstantDataSectionHandle>) {
+	add(file: SourceFile, constants: List<ConstantDataSectionHandle>): _ {
 		if this.constants.contains_key(file) {
 			this.constants[file].add_all(constants)
 			return
@@ -54,7 +54,7 @@ AssemblyBuilder {
 		this.constants[file] = constants
 	}
 
-	add(file: SourceFile, modules: List<DataEncoderModule>) {
+	add(file: SourceFile, modules: List<DataEncoderModule>): _ {
 		if this.modules.contains_key(file) {
 			this.modules[file].add_all(modules)
 			return
@@ -63,7 +63,7 @@ AssemblyBuilder {
 		this.modules[file] = modules
 	}
 
-	add(builder: AssemblyBuilder) {
+	add(builder: AssemblyBuilder): _ {
 		loop iterator in builder.instructions { add(iterator.key, iterator.value) }
 		loop iterator in builder.constants { add(iterator.key, iterator.value) }
 		loop iterator in builder.modules { add(iterator.key, iterator.value) }
@@ -72,7 +72,7 @@ AssemblyBuilder {
 		if builder.text != none write(builder.text.string())
 	}
 
-	get_data_section(file: SourceFile, section: String) {
+	get_data_section(file: SourceFile, section: String): DataEncoderModule {
 		if section.length > 0 and section[] != `.` { section = String(`.`) + section }
 
 		file_modules = none as List<DataEncoderModule>
@@ -101,37 +101,37 @@ AssemblyBuilder {
 		}
 	}
 
-	export_symbols(symbols: List<String>) {
+	export_symbols(symbols: List<String>): _ {
 		loop symbol in symbols {
 			export_symbol(symbol)
 		}
 	}
 
-	export_symbol(symbol: String) {
+	export_symbol(symbol: String): _ {
 		exports.add(symbol)
 	}
 
-	write(text: String) {
+	write(text: String): _ {
 		if this.text == none return
 		this.text.append(text)
 	}
 
-	write(text: link) {
+	write(text: link): _ {
 		if this.text == none return
 		this.text.append(text)
 	}
 
-	write(character: char) {
+	write(character: char): _ {
 		if this.text == none return
 		this.text.append(character)
 	}
 
-	write_line(text: String) {
+	write_line(text: String): _ {
 		if this.text == none return
 		this.text.append_line(text)
 	}
 
-	write_line(text: link) {
+	write_line(text: link): _ {
 		if this.text == none return
 		this.text.append_line(text)
 	}
@@ -141,7 +141,7 @@ AssemblyBuilder {
 		this.text.append_line(character)
 	}
 
-	string() {
+	string(): String {
 		if this.text == none return String.empty
 		return this.text.string()
 	}
@@ -166,31 +166,31 @@ Register {
 		this.flags = flags
 	}
 
-	lock() {
+	lock(): _ {
 		is_locked = true
 	}
 
-	unlock() {
+	unlock(): _ {
 		is_locked = false
 	}
 
-	is_value_copy() {
+	is_value_copy(): bool {
 		return value != none and not (value.value.instance == INSTANCE_REGISTER and value.value.(RegisterHandle).register == this)
 	}
 
-	is_available() {
+	is_available(): bool {
 		return not is_locked and (value == none or not value.is_active() or is_value_copy())
 	}
 
-	is_deactivating() {
+	is_deactivating(): bool {
 		return not is_locked and value != none and value.is_deactivating()
 	}
 
-	is_releasable(unit: Unit) {
+	is_releasable(unit: Unit): bool {
 		return not is_locked and (value == none or value.is_releasable(unit))
 	}
 
-	get(size: large) {
+	get(size: large): String {
 		i = 1
 		count = partitions.size
 
@@ -202,11 +202,11 @@ Register {
 		abort('Could not find a register partition with the specified size')
 	}
 
-	reset() {
+	reset(): _ {
 		value = none
 	}
 
-	string() {
+	string(): String {
 		return partitions[]
 	}
 }
@@ -219,7 +219,7 @@ Lifetime {
 	}
 
 	# Summary: Returns whether this lifetime is active
-	is_active() {
+	is_active(): bool {
 		started = false
 
 		loop (i = 0, i < usages.size, i++) {
@@ -247,7 +247,7 @@ Lifetime {
 	}
 
 	# Summary: Returns true if the lifetime is active and is not starting or ending
-	is_only_active() {
+	is_only_active(): bool {
 		started = false
 
 		loop (i = 0, i < usages.size, i++) {
@@ -270,7 +270,7 @@ Lifetime {
 	}
 
 	# Summary: Returns true if the lifetime is expiring
-	is_deactivating() {
+	is_deactivating(): bool {
 		building = false
 
 		loop (i = 0, i < usages.size, i++) {
@@ -317,7 +317,7 @@ Result {
 
 	register => value.(RegisterHandle).register
 
-	is_releasable(unit: Unit) {
+	is_releasable(unit: Unit): bool {
 		return unit.is_variable_value(this)
 	}
 
@@ -336,7 +336,7 @@ Result {
 
 	is_unsigned => is_unsigned(format)
 
-	use(instruction: Instruction) {
+	use(instruction: Instruction): _ {
 		contains = false
 
 		loop usage in lifetime.usages {
@@ -350,7 +350,7 @@ Result {
 		value.use(instruction)
 	}
 
-	use(instructions: List<Instruction>) {
+	use(instructions: List<Instruction>): _ {
 		loop instruction in instructions { use(instruction) }
 	}
 }
@@ -384,7 +384,7 @@ Scope {
 		unit.add(inputter)
 	}
 
-	set_or_create_input(variable: Variable, handle: Handle, format: large) {
+	set_or_create_input(variable: Variable, handle: Handle, format: large): Result {
 		if not variable.is_predictable abort('Unpredictable variable can not be an input')
 
 		handle = handle.finalize()
@@ -412,7 +412,7 @@ Scope {
 	}
 
 	# Summary: Assigns a register or a stack address for the specified parameter depending on the situation
-	receive_parameter(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, parameter: Variable) {
+	receive_parameter(standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>, parameter: Variable): _ {
 		if parameter.type.is_pack {
 			proxies = common.get_pack_proxies(parameter)
 
@@ -442,7 +442,7 @@ Scope {
 		}
 	}
 
-	add_input(variable: Variable) {
+	add_input(variable: Variable): Result {
 		# If the variable is already in the input list, do nothing
 		if inputs.contains_key(variable) return inputs[variable]
 
@@ -457,7 +457,7 @@ Scope {
 		return input
 	}
 
-	add_output(variable: Variable, value: Result) {
+	add_output(variable: Variable, value: Result): _ {
 		# If the variable is already in the output list, do nothing
 		if outputs.contains_key(variable) return
 
@@ -468,7 +468,7 @@ Scope {
 		outputs[variable] = true
 	}
 
-	enter() {
+	enter(): _ {
 		# Exit the current scope before entering the new one
 		if unit.scope !== none unit.scope.exit()
 
@@ -510,7 +510,7 @@ Scope {
 		}
 	}
 
-	exit() {
+	exit(): _ {
 		if unit.mode == UNIT_MODE_ADD {
 			unit.add(outputter)
 		}
@@ -525,7 +525,7 @@ pack VariableState {
 	variable: Variable
 	handle: Handle
 
-	shared create(variable: Variable, result: Result) {
+	shared create(variable: Variable, result: Result): VariableState {
 		copy = result.value.finalize()
 		copy.format = result.format
 
@@ -610,7 +610,7 @@ Unit {
 		non_reserved_registers.add_all(non_volatile_registers)
 	}
 
-	load_architecture_x64() {
+	load_architecture_x64(): _ {
 		volatility_flag = REGISTER_VOLATILE
 		if settings.is_target_windows { volatility_flag = REGISTER_NONE }
 
@@ -653,14 +653,14 @@ Unit {
 		registers.add(Register(platform.x64.R15, "r15 r15d r15w r15b", REGISTER_NONE))
 	}
 
-	load_architecture_arm64() {
+	load_architecture_arm64(): _ {
 
 	}
 
 	# Summary:
 	# Requests a value for the specified variable from all scopes that arrive to the specified scope.
 	# Returns the input value for the specified variable.
-	require_variable_from_arrivals(variable: Variable, scope: Scope) {
+	require_variable_from_arrivals(variable: Variable, scope: Scope): Result {
 		# If we end up here, it means the specified scope does not have a value for the specified variable.
 		# We need to require the variable from all scopes that arrive to specified one:
 		input = scope.add_input(variable)
@@ -677,7 +677,7 @@ Unit {
 	# Summary:
 	# Requests a value for the specified variable from the specified scope.
 	# If the specified scope does not have a value for the specified variable, it will be required from all scopes that arrive to it.
-	require_variable(variable: Variable, scope: Scope) {
+	require_variable(variable: Variable, scope: Scope): _ {
 		# If the variable is already outputted, no need to do anything
 		if scope.outputs.contains_key(variable) return
 
@@ -693,7 +693,7 @@ Unit {
 	}
 
 	# Summary: Tries to return the current value of the specified variable
-	get_variable_value(variable: Variable) {
+	get_variable_value(variable: Variable): Result {
 		if scope === none return none as Result
 
 		# If the current scope has a value for the specified variable, we can return it
@@ -706,7 +706,7 @@ Unit {
 		return require_variable_from_arrivals(variable, scope)
 	}
 
-	add_arrival(id: String, scope: Scope) {
+	add_arrival(id: String, scope: Scope): _ {
 		if arrivals.contains_key(id) {
 			arrivals[id].add(scope)
 		}
@@ -715,7 +715,7 @@ Unit {
 		}
 	}
 
-	add(instruction: JumpInstruction) {
+	add(instruction: JumpInstruction): _ {
 		is_conditional = instruction.is_conditional
 		destination_scope_id = instruction.label.name
 		next_scope_id = get_next_scope()
@@ -743,7 +743,7 @@ Unit {
 		}
 	}
 
-	add(instruction: ReturnInstruction) {
+	add(instruction: ReturnInstruction): _ {
 		add(instruction, false)
 
 		next_scope_id = get_next_scope()
@@ -751,7 +751,7 @@ Unit {
 		add(EnterScopeInstruction(this, next_scope_id))
 	}
 
-	add(instruction: LabelInstruction) {
+	add(instruction: LabelInstruction): _ {
 		next_scope_id = instruction.label.name
 		previous_scope = scope
 
@@ -767,7 +767,7 @@ Unit {
 		add_arrival(next_scope_id, previous_scope)
 	}
 
-	add(instruction: Instruction) {
+	add(instruction: Instruction): _ {
 		if instruction.type === INSTRUCTION_JUMP return add(instruction as JumpInstruction)
 		if instruction.type === INSTRUCTION_LABEL return add(instruction as LabelInstruction)
 		if instruction.type === INSTRUCTION_RETURN return add(instruction as ReturnInstruction)
@@ -775,7 +775,7 @@ Unit {
 		return add(instruction, false)
 	}
 
-	add(instruction: Instruction, after: bool) {
+	add(instruction: Instruction, after: bool): _ {
 		if after and (instruction.type === INSTRUCTION_JUMP or instruction.type === INSTRUCTION_LABEL or instruction.type === INSTRUCTION_RETURN) {
 			abort('Can not add the instruction after the current instruction')
 		}
@@ -815,12 +815,12 @@ Unit {
 		}
 	}
 
-	write(instruction: String) {
+	write(instruction: String): _ {
 		builder.append(instruction)
 		builder.append(`\n`)
 	}
 
-	release(register: Register) {
+	release(register: Register): Register {
 		value = register.value
 		if value == none return register
 
@@ -859,7 +859,7 @@ Unit {
 	}
 
 	# Summary: Retrieves the next available register, releasing a register to memory if necessary
-	get_next_register() {
+	get_next_register(): Register {
 		# Try to find the next fully available volatile register
 		loop register in volatile_standard_registers { if register.is_available() return register }
 		# Try to find the next fully available non-volatile register
@@ -883,7 +883,7 @@ Unit {
 	}
 
 	# Summary: Retrieves the next available media register, releasing a media register to memory if necessary
-	get_next_media_register() {
+	get_next_media_register(): Register {
 		# Try to find the next fully available media register
 		loop register in media_registers { if register.is_available() return register }
 		# Try to find the next media register which contains a value that has a corresponding memory location
@@ -900,14 +900,14 @@ Unit {
 	}
 
 	# Summary: Tries to find an available standard register without releasing a register to memory
-	get_next_register_without_releasing() {
+	get_next_register_without_releasing(): Register {
 		loop register in volatile_standard_registers { if register.is_available() return register }
 		loop register in non_volatile_standard_registers { if register.is_available() return register }
 		return none as Register
 	}
 
 	# Summary: Tries to find an available register without releasing a register to memory, while excluding the specified registers
-	get_next_register_without_releasing(denylist: List<Register>) {
+	get_next_register_without_releasing(denylist: List<Register>): Register {
 		loop register in volatile_standard_registers {
 			if not denylist.contains(register) and register.is_available() return register
 		}
@@ -920,13 +920,13 @@ Unit {
 	}
 
 	# Summary: Tries to find an available media register without releasing a register to memory
-	get_next_media_register_without_releasing() {
+	get_next_media_register_without_releasing(): Register {
 		loop register in media_registers { if register.is_available() return register }
 		return none as Register
 	}
 
 	# Summary: Tries to find an available media register without releasing a register to memory, while excluding the specified registers
-	get_next_media_register_without_releasing(denylist: List<Register>) {
+	get_next_media_register_without_releasing(denylist: List<Register>): Register {
 		loop register in media_registers {
 			if not denylist.contains(register) and register.is_available() return register
 		}
@@ -934,7 +934,7 @@ Unit {
 		return none as Register
 	}
 
-	get_next_non_volatile_register(media_register: bool, release: bool) {
+	get_next_non_volatile_register(media_register: bool, release: bool): Register {
 		loop register in non_volatile_registers { if register.is_available() and register.is_media_register == media_register return register }
 		if not release return none as Register
 
@@ -948,57 +948,57 @@ Unit {
 		return none as Register
 	}
 
-	get_next_string() {
+	get_next_string(): String {
 		return function.get_fullname() + '_S' + to_string(indexer.string)
 	}
 
-	get_next_label() {
+	get_next_label(): Label {
 		return Label(function.get_fullname() + '_L' + to_string(indexer.label))
 	}
 
-	get_next_constant() {
+	get_next_constant(): String {
 		return function.get_fullname() + '_C' + to_string(indexer.constant_value)
 	}
 
-	get_next_identity() {
+	get_next_identity(): String {
 		return function.identity + '.' + to_string(indexer.identity)
 	}
 
-	get_next_scope() {
+	get_next_scope(): String {
 		return to_string(indexer.scope)
 	}
 
-	get_stack_pointer() {
+	get_stack_pointer(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_STACK_POINTER) return register }
 		abort('Architecture did not have stack pointer register')
 	}
 
-	get_standard_return_register() {
+	get_standard_return_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_RETURN) return register }
 		abort('Architecture did not have standard return register')
 	}
 
-	get_decimal_return_register() {
+	get_decimal_return_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_DECIMAL_RETURN) return register }
 		abort('Architecture did not have decimal return register')
 	}
 
-	get_numerator_register() {
+	get_numerator_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_NUMERATOR) return register }
 		abort('Architecture did not have numerator register')
 	}
 
-	get_remainder_register() {
+	get_remainder_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_REMAINDER) return register }
 		abort('Architecture did not have remainder register')
 	}
 
-	get_shift_register() {
+	get_shift_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_SHIFT) return register }
 		abort('Architecture did not have shift register')
 	}
 
-	get_return_address_register() {
+	get_return_address_register(): Register {
 		loop register in registers { if has_flag(register.flags, REGISTER_RETURN_ADDRESS) return register }
 		abort('Architecture did not have return address register')
 	}
@@ -1009,20 +1009,20 @@ Unit {
 	}
 
 	# Summary: Updates the value of the specified variable in the current scope
-	set_variable_value(variable: Variable, value: Result) {
+	set_variable_value(variable: Variable, value: Result): _ {
 		if scope == none abort('Unit did not have an active scope')
 		scope.variables[variable] = value
 	}
 
 	# Summary: Returns whether any variables owns the specified value
-	is_variable_value(result: Result) {
+	is_variable_value(result: Result): bool {
 		if scope == none return false
 		loop iterator in scope.variables { if iterator.value == result return true }
 		return false
 	}
 
 	# Summary: Returns the variable which owns the specified value, if it is owned by any
-	get_value_owner(value: Result) {
+	get_value_owner(value: Result): Variable {
 		if scope == none return none as Variable
 
 		loop iterator in scope.variables {
@@ -1032,11 +1032,11 @@ Unit {
 		return none as Variable
 	}
 
-	add_debug_position(node: Node) {
+	add_debug_position(node: Node): bool {
 		return add_debug_position(node.start)
 	}
 
-	add_debug_position(position: Position) {
+	add_debug_position(position: Position): bool {
 		if not settings.is_debugging_enabled return true
 		if position === none return false
 
@@ -1045,7 +1045,7 @@ Unit {
 		return true
 	}
 
-	string() {
+	string(): String {
 		return builder.string()
 	}
 }
@@ -1064,7 +1064,7 @@ ParameterAligner {
 	}
 
 	# Summary: Consumes the specified type while taking into account if it is a pack
-	align(parameter: Variable) {
+	align(parameter: Variable): _ {
 		type = parameter.type
 
 		if type.is_pack {
@@ -1086,13 +1086,13 @@ ParameterAligner {
 	}
 
 	# Summary: Aligns the specified parameters
-	align(parameters: List<Variable>) {
+	align(parameters: List<Variable>): _ {
 		loop parameter in parameters { align(parameter) }
 	}
 }
 
 # Summary: Goes through the specified instructions and returns all non-volatile registers
-get_all_used_non_volatile_registers(instructions: List<Instruction>) {
+get_all_used_non_volatile_registers(instructions: List<Instruction>): List<Register> {
 	registers = List<Register>()
 
 	loop instruction in instructions {
@@ -1109,7 +1109,7 @@ get_all_used_non_volatile_registers(instructions: List<Instruction>) {
 	return registers
 }
 
-get_all_handles(results: List<Result>) {
+get_all_handles(results: List<Result>): List<Handle> {
 	handles = List<Handle>()
 
 	loop result in results {
@@ -1120,7 +1120,7 @@ get_all_handles(results: List<Result>) {
 	return handles
 }
 
-get_all_handles(instructions: List<Instruction>) {
+get_all_handles(instructions: List<Instruction>): List<Handle> {
 	handles = List<Handle>()
 
 	loop instruction in instructions {
@@ -1134,7 +1134,7 @@ get_all_handles(instructions: List<Instruction>) {
 }
 
 # Summary: Collects all variables which are saved using stack memory handles
-get_all_saved_local_variables(handles: List<Handle>) {
+get_all_saved_local_variables(handles: List<Handle>): List<Variable> {
 	variables = List<Variable>()
 
 	loop handle in handles {
@@ -1146,7 +1146,7 @@ get_all_saved_local_variables(handles: List<Handle>) {
 }
 
 # Summary: Collects all temporary memory handles from the specified handle list
-get_all_temporary_handles(handles: List<Handle>) {
+get_all_temporary_handles(handles: List<Handle>): List<TemporaryMemoryHandle> {
 	temporary_handles = List<TemporaryMemoryHandle>()
 
 	loop handle in handles {
@@ -1157,7 +1157,7 @@ get_all_temporary_handles(handles: List<Handle>) {
 }
 
 # Summary: Collects all stack allocation handles from the specified handle list
-get_all_stack_allocation_handles(handles: List<Handle>) {
+get_all_stack_allocation_handles(handles: List<Handle>): List<StackAllocationHandle> {
 	stack_allocation_handles = List<StackAllocationHandle>()
 
 	loop handle in handles {
@@ -1183,7 +1183,7 @@ compute_allocated_memory_by_handles<T>(handles: List<T>): large {
 }
 
 # Summary: Collects all constant data section handles from the specified handle list
-get_all_constant_data_section_handles(handles: List<Handle>) {
+get_all_constant_data_section_handles(handles: List<Handle>): List<ConstantDataSectionHandle> {
 	constant_data_section_handles = List<ConstantDataSectionHandle>()
 
 	loop handle in handles {
@@ -1193,7 +1193,7 @@ get_all_constant_data_section_handles(handles: List<Handle>) {
 	return constant_data_section_handles
 }
 
-align_function(function: FunctionImplementation) {
+align_function(function: FunctionImplementation): _ {
 	parameters = List<Variable>(function.parameters)
 
 	# Align the self pointer as well, if it exists
@@ -1218,7 +1218,7 @@ align_function(function: FunctionImplementation) {
 	parameter_aligner.align(parameters)
 }
 
-align(context: Context) {
+align(context: Context): _ {
 	# Align all functions
 	functions = common.get_all_function_implementations(context)
 
@@ -1238,7 +1238,7 @@ align(context: Context) {
 # Align all used local packs and their proxies sequentially.
 # Returns the stack position after aligning.
 # NOTE: Available only in debugging mode, because in optimized builds pack proxies might not be available
-align_packs_for_debugging(local_variables: List<Variable>, position: large) {
+align_packs_for_debugging(local_variables: List<Variable>, position: large): large {
 	# Do nothing if debugging mode is not enabled
 	if not settings.is_debugging_enabled return position
 
@@ -1281,7 +1281,7 @@ align_packs_for_debugging(local_variables: List<Variable>, position: large) {
 }
 
 # Summary: Align all used local variables and allocate memory for other kinds of local memory such as temporary handles and stack allocation handles
-align_local_memory(local_variables: List<Variable>, temporary_handles: List<TemporaryMemoryHandle>, stack_allocation_handles: List<StackAllocationHandle>, top: normal) {
+align_local_memory(local_variables: List<Variable>, temporary_handles: List<TemporaryMemoryHandle>, stack_allocation_handles: List<StackAllocationHandle>, top: normal): _ {
 	position = -top
 
 	position = align_packs_for_debugging(local_variables, position)
@@ -1329,7 +1329,7 @@ align_local_memory(local_variables: List<Variable>, temporary_handles: List<Temp
 }
 
 # Summary: Allocates a data section identifier for each identical constant data section handle
-allocate_constant_data_section_handles(unit: Unit, constant_data_section_handles: List<ConstantDataSectionHandle>) {
+allocate_constant_data_section_handles(unit: Unit, constant_data_section_handles: List<ConstantDataSectionHandle>): _ {
 	loop (i = 0, i < constant_data_section_handles.size, i++) {
 		handle = constant_data_section_handles[i]
 		identifier = handle.identifier
@@ -1349,7 +1349,7 @@ allocate_constant_data_section_handles(unit: Unit, constant_data_section_handles
 }
 
 # Summary: Creates the virtual function entry label, which is used to convert the passed self pointer to a suitable type
-add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, fullname: String) {
+add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, fullname: String): _ {
 	unit.add(LabelInstruction(unit, Label(fullname + Mangle.VIRTUAL_FUNCTION_POSTFIX)))
 
 	# Do not try to convert the self pointer, if it is not used
@@ -1372,7 +1372,7 @@ add_virtual_function_header(unit: Unit, implementation: FunctionImplementation, 
 }
 
 # Summary: Finds sequential debug break instructions and separates them using NOP-instructions
-separate_debug_breaks(unit: Unit, instructions: List<Instruction>) {
+separate_debug_breaks(unit: Unit, instructions: List<Instruction>): _ {
 	i = 0
 
 	loop (i < instructions.size) {
@@ -1457,7 +1457,7 @@ postprocess(instructions: List<Instruction>) {
 }
 
 # Summary: Connects the specified scope to the destination scope.
-connect_backwards_jump(unit: Unit, from: Scope, to: Scope) {
+connect_backwards_jump(unit: Unit, from: Scope, to: Scope): _ {
 	# Require the input variables of the destination scope in the arrival scope
 	loop iterator in to.inputs {
 		unit.require_variable(iterator.key, from)
@@ -1466,7 +1466,7 @@ connect_backwards_jump(unit: Unit, from: Scope, to: Scope) {
 
 # Summary:
 # Finds all scopes that arrive to scopes before them and connects them.
-connect_backwards_jumps(unit: Unit) {
+connect_backwards_jumps(unit: Unit): _ {
 	loop i in unit.arrivals {
 		destination = unit.scopes[i.key]
 		arrivals = i.value
@@ -1478,7 +1478,7 @@ connect_backwards_jumps(unit: Unit) {
 	}
 }
 
-get_text_section(implementation: FunctionImplementation) {
+get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	builder = AssemblyBuilder()
 
 	fullname = implementation.get_fullname()
@@ -1682,12 +1682,12 @@ constant DATA_SECTION_DIRECTIVE = '.section .data'
 constant TEXT_SECTION_IDENTIFIER = 'text'
 constant DATA_SECTION_IDENTIFIER = 'data'
 
-get_default_entry_point() {
+get_default_entry_point(): String {
 	if settings.is_target_windows return "main"
 	return "_start"
 }
 
-add_linux_x64_header(entry_function_call: String) {
+add_linux_x64_header(entry_function_call: String): String {
 	builder = StringBuilder()
 	builder.append_line('.export _start')
 	builder.append_line('_start:')
@@ -1700,7 +1700,7 @@ add_linux_x64_header(entry_function_call: String) {
 	return builder.string()
 }
 
-add_windows_x64_header(entry_function_call: String) {
+add_windows_x64_header(entry_function_call: String): String {
 	builder = StringBuilder()
 	builder.append_line('.export main')
 	builder.append_line('main:')
@@ -1709,7 +1709,7 @@ add_windows_x64_header(entry_function_call: String) {
 	return builder.string()
 }
 
-add_linux_arm64_header(entry_function_call: String) {
+add_linux_arm64_header(entry_function_call: String): String {
 	builder = StringBuilder()
 	builder.append_line('.export _start')
 	builder.append_line('_start:')
@@ -1721,7 +1721,7 @@ add_linux_arm64_header(entry_function_call: String) {
 	return builder.string()
 }
 
-add_windows_arm64_header(entry_function_call: String) {
+add_windows_arm64_header(entry_function_call: String): String {
 	builder = StringBuilder()
 	builder.append_line('.export main')
 	builder.append_line('main:')
@@ -1751,7 +1751,7 @@ group_by<Ta, Tb>(items: List<Ta>, key_function: (Ta) -> Tb) {
 
 # Summary:
 # Allocates the specified static variable using assembly directives
-allocate_static_variable(variable: Variable) {
+allocate_static_variable(variable: Variable): String {
 	builder = StringBuilder()
 
 	name = variable.get_static_name()
@@ -1776,14 +1776,14 @@ allocate_static_variable(variable: Variable) {
 }
 
 # Summary: Allocates the specified table label using assembly directives
-add_table_label(label: TableLabel) {
+add_table_label(label: TableLabel): String {
 	if label.declare return label.name + `:`
 	if label.is_section_relative return String(SECTION_RELATIVE_DIRECTIVE) + to_string(label.size * 8) + ` ` + label.name
 	return String(to_data_section_allocator(label.size)) + ` ` + label.name
 }
 
 # Summary: Allocates the specified table using assembly directives
-add_table(builder: AssemblyBuilder, table: Table, marker: large) {
+add_table(builder: AssemblyBuilder, table: Table, marker: large): _ {
 	if (table.marker & marker) != 0 return
 	table.marker |= marker
 
@@ -1832,7 +1832,7 @@ add_table(builder: AssemblyBuilder, table: Table, marker: large) {
 }
 
 # Summary: Returns a list of directives, which allocate the specified string
-allocate_string(text: String) {
+allocate_string(text: String): String {
 	builder = StringBuilder()
 	position = 0
 
@@ -1907,7 +1907,7 @@ allocate_string(text: String) {
 }
 
 # Summary: Allocates the specified constants using the specified data section builder
-allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<ConstantDataSectionHandle>) {
+allocate_constants(builder: AssemblyBuilder, file: SourceFile, items: List<ConstantDataSectionHandle>): _ {
 	module = builder.get_data_section(file, String(DATA_SECTION_IDENTIFIER))
 	temporary: large[1]
 
@@ -2053,7 +2053,7 @@ get_implementations_grouped_by_files(context: Context): Map<SourceFile, List<Fun
 
 # Summary:
 # Constructs debugging information for each of the files inside the context
-get_debug_sections(context: Context, files: List<SourceFile>) {
+get_debug_sections(context: Context, files: List<SourceFile>): Map<SourceFile, AssemblyBuilder> {
 	builders = Map<SourceFile, AssemblyBuilder>()
 	if not settings.is_debugging_enabled return builders
 
@@ -2107,7 +2107,7 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 }
 
 # Summary: Constructs file specific data sections based on the specified context
-get_data_sections(context: Context, files: List<SourceFile>) {
+get_data_sections(context: Context, files: List<SourceFile>): Map<SourceFile, AssemblyBuilder> {
 	sections = Map<SourceFile, AssemblyBuilder>()
 	
 	types = get_types_grouped_by_files(context)
@@ -2191,7 +2191,7 @@ get_data_sections(context: Context, files: List<SourceFile>) {
 }
 
 # Summary: Constructs file specific text sections based on the specified context
-get_text_sections(context: Context, files: List<SourceFile>) {
+get_text_sections(context: Context, files: List<SourceFile>): Map<SourceFile, AssemblyBuilder> {
 	sections = Map<SourceFile, AssemblyBuilder>()
 
 	implementations = get_implementations_grouped_by_files(context)
@@ -2245,7 +2245,7 @@ get_text_sections(context: Context, files: List<SourceFile>) {
 }
 
 # Summary: Removes unnecessary line endings
-beautify(text: String) {
+beautify(text: String): String {
 	builder = StringBuilder()
 	builder.append(text)
 	i = 0
@@ -2271,7 +2271,7 @@ beautify(text: String) {
 }
 
 # Summary: Adds debug information to the header, if needed
-add_debug_information_to_header(builder: AssemblyBuilder, file: SourceFile) {
+add_debug_information_to_header(builder: AssemblyBuilder, file: SourceFile): _ {
 	# Do nothing if debugging information is not requested
 	if not settings.is_debugging_enabled return
 
@@ -2296,7 +2296,7 @@ add_debug_information_to_header(builder: AssemblyBuilder, file: SourceFile) {
 }
 
 # Summary: Creates an assembler header for the specified file from the specified context. Depending on the situation, the header might be empty or it might have a entry function call and other directives.
-create_header(context: Context, file: SourceFile, output_type: large) {
+create_header(context: Context, file: SourceFile, output_type: large): AssemblyBuilder {
 	builder = AssemblyBuilder()
 	builder.write_line(TEXT_SECTION_DIRECTIVE)
 
@@ -2351,7 +2351,7 @@ run(executable: link, arguments: List<String>) {
 }
 
 # Summary: Builds an object file from the specified properties and writes it into a file
-output_object_file(output: String, sections: List<BinarySection>, exports: Set<String>) {
+output_object_file(output: String, sections: List<BinarySection>, exports: Set<String>): _ {
 	binary = none as Array<byte>
 
 	if settings.is_target_windows {
@@ -2364,7 +2364,7 @@ output_object_file(output: String, sections: List<BinarySection>, exports: Set<S
 	io.write_file(output, binary)
 }
 
-assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large) {
+assemble(context: Context, files: List<SourceFile>, imports: List<String>, output_name: String, output_type: large): Map<SourceFile, String> {
 	align(context)
 
 	Keywords.all.clear() # Remove all keywords for parsing assembly
@@ -2509,7 +2509,7 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 	return assemblies
 }
 
-assemble() {
+assemble(): Status {
 	parse = settings.parse
 	files = settings.source_files
 	imports = settings.libraries

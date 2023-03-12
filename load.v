@@ -42,7 +42,7 @@ find_build_filter(filenames: List<String>, files: List<SourceFile>): _ {
 }
 
 # Summary: Loads the source files specified by the user
-load() {
+load(): Status {
 	filenames = settings.filenames
 	if filenames.size == 0 return Status('Please enter input files')
 

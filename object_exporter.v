@@ -10,7 +10,7 @@ create_template_name(name: String, template_argument_names: List<String>) {
 
 # Summary:
 # Converts the specified modifiers into source code
-get_modifiers(modifiers: large) {
+get_modifiers(modifiers: large): String {
 	result = List<String>()
 	if (has_flag(modifiers, MODIFIER_PRIVATE)) result.add(Keywords.PRIVATE.identifier)
 	if (has_flag(modifiers, MODIFIER_PROTECTED)) result.add(Keywords.PROTECTED.identifier)
@@ -27,7 +27,7 @@ get_modifiers(modifiers: large) {
 
 # Summary:
 # Exports the specified template function which may have the specified parent type
-export_template_function(builder: StringBuilder, function: TemplateFunction) {
+export_template_function(builder: StringBuilder, function: TemplateFunction): _ {
 	builder.append(get_modifiers(function.modifiers))
 	builder.append(` `)
 	builder.append(create_template_name(function.name, function.template_parameters))
@@ -41,7 +41,7 @@ export_template_function(builder: StringBuilder, function: TemplateFunction) {
 
 # Summary:
 # Exports the specified short template function which may have the specified parent type
-export_short_template_function(builder: StringBuilder, function: Function) {
+export_short_template_function(builder: StringBuilder, function: Function): _ {
 	builder.append(get_modifiers(function.modifiers))
 	builder.append(` `)
 	builder.append(function.name)
@@ -55,7 +55,7 @@ export_short_template_function(builder: StringBuilder, function: Function) {
 
 # Summary:
 # Exports the specified template type
-export_template_type(builder: StringBuilder, type: TemplateType) {
+export_template_type(builder: StringBuilder, type: TemplateType): _ {
 	builder.append(get_modifiers(type.modifiers))
 	builder.append(` `)
 
@@ -71,13 +71,13 @@ export_template_type(builder: StringBuilder, type: TemplateType) {
 
 # Summary:
 # Returns true if the specified function represents an actual template function or if any of its parameter types is not defined
-is_template_function(function: Function) {
+is_template_function(function: Function): bool {
 	return (function.is_template_function or function.parameters.any((i: Parameter) -> i.type == none)) and not function.is_template_function_variant
 }
 
 # Summary:
 # Returns true if the specified function represents an actual template function variant or if any of its parameter types is not defined
-is_template_function_variant(function: Function) {
+is_template_function_variant(function: Function): bool {
 	return function.is_template_function_variant or function.parameters.any((i: Parameter) -> i.type == none)
 }
 
@@ -181,7 +181,7 @@ get_template_export_files(context: Context) {
 	return files
 }
 
-node_to_string(node: Node) {
+node_to_string(node: Node): String {
 	if node.instance == NODE_CAST {
 		return (node_to_string(node.first) as String) + ' as ' + node.(CastNode).get_type().string()
 	}
@@ -201,7 +201,7 @@ node_to_string(node: Node) {
 # Summary:
 # Exports the specified function to the specified builder using the following pattern:
 # $modifiers import $name($parameters): $return_type
-export_function(builder: StringBuilder, function: Function, implementation: FunctionImplementation) {
+export_function(builder: StringBuilder, function: Function, implementation: FunctionImplementation): _ {
 	builder.append(get_modifiers(function.modifiers))
 	builder.append(` `)
 	builder.append(Keywords.IMPORT.identifier)
@@ -236,7 +236,7 @@ export_function(builder: StringBuilder, function: Function, implementation: Func
 # }
 #
 # }
-export_context(context: Context) {
+export_context(context: Context): String {
 	builder = StringBuilder()
 
 	loop iterator in context.variables {
@@ -329,7 +329,7 @@ export_context(context: Context) {
 
 # Summary:
 # Exports all the template type variants from the specified context 
-export_template_type_variants(context: Context) {
+export_template_type_variants(context: Context): String {
 	template_variants = common.get_all_types(context).filter(i -> i.is_template_type_variant)
 	if template_variants.size == 0 return String.empty
 
@@ -346,7 +346,7 @@ export_template_type_variants(context: Context) {
 # Summary:
 # Exports all the template function variants from the specified context using the following pattern:
 # $T1.$T2...$Tn.$name<$U1, $U2, ..., $Un>($V1, $V2, ..., $Vn)
-export_template_function_variants(context: Context) {
+export_template_function_variants(context: Context): String {
 	template_variants = common.get_all_function_implementations(context)
 		.filter(i -> i.metadata.is_template_function or i.metadata.parameters.any((j: Parameter) -> j.type == none))
 

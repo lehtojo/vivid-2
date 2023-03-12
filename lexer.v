@@ -204,7 +204,7 @@ namespace Operators {
 	
 	public overloads: Map<Operator, String>
 
-	private add(operator: Operator) {
+	private add(operator: Operator): _ {
 		all.add(operator.identifier, operator)
 
 		if operator.type == OPERATOR_TYPE_ASSIGNMENT and operator.(AssignmentOperator).operator != none and operator.(AssignmentOperator).operator.identifier.length > 0 {
@@ -212,12 +212,12 @@ namespace Operators {
 		}
 	}
 
-	get_assignment_operator(operator: Operator) {
+	get_assignment_operator(operator: Operator): Operator {
 		if assignments.contains_key(operator.identifier) return assignments[operator.identifier]
 		return none as Operator
 	}
 
-	initialize() {
+	initialize(): _ {
 		COLON = IndependentOperator(":")
 		POWER = ClassicOperator("^", 15)
 		MULTIPLY = ClassicOperator("*", 12)
@@ -320,11 +320,11 @@ namespace Operators {
 		overloads.add(EQUALS, "equals")
 	}
 
-	exists(identifier: String) {
+	exists(identifier: String): bool {
 		return all.contains_key(identifier)
 	}
 
-	get(identifier: String) {
+	get(identifier: String): Operator {
 		return all[identifier]
 	}
 }
@@ -349,7 +349,7 @@ Keyword ModifierKeyword {
 }
 
 # Summary: Returns a bit mask, which is used to determine, which modifiers should be excluded when combining modifiers
-get_modifier_excluder(modifiers: large) {
+get_modifier_excluder(modifiers: large): large {
 	if (modifiers & MODIFIER_PRIVATE) != 0 return MODIFIER_PUBLIC | MODIFIER_PROTECTED
 	if (modifiers & MODIFIER_PROTECTED) != 0 return MODIFIER_PUBLIC | MODIFIER_PRIVATE
 	if (modifiers & MODIFIER_PUBLIC) != 0 return MODIFIER_PRIVATE | MODIFIER_PROTECTED
@@ -357,7 +357,7 @@ get_modifier_excluder(modifiers: large) {
 }
 
 # Summary: Adds the specified modifier to the specified modifiers
-combine_modifiers(modifiers: large, modifier: large) {
+combine_modifiers(modifiers: large, modifier: large): large {
 	return (modifiers | modifier) & (!get_modifier_excluder(modifier))
 }
 
@@ -398,11 +398,11 @@ namespace Keywords {
 
 	public readable all: Map<String, Keyword>
 
-	private add(keyword: Keyword) {
+	private add(keyword: Keyword): _ {
 		all.add(keyword.identifier, keyword)
 	}
 
-	initialize() {
+	initialize(): _ {
 		AS = Keyword("as", KEYWORD_TYPE_NORMAL)
 		COMPILES = Keyword("compiles", KEYWORD_TYPE_NORMAL)
 		CONSTANT = ModifierKeyword("constant", MODIFIER_CONSTANT)
@@ -472,11 +472,11 @@ namespace Keywords {
 		add(WHEN)
 	}
 
-	exists(identifier: String) {
+	exists(identifier: String): bool {
 		return all.contains_key(identifier)
 	}
 
-	get(identifier: String) {
+	get(identifier: String): Keyword {
 		return all[identifier]
 	}
 }
@@ -514,7 +514,7 @@ Position {
 		this.absolute = 0
 	}
 
-	next_line() {
+	next_line(): Position {
 		line++
 		character = 0
 		local++
@@ -522,26 +522,26 @@ Position {
 		return this
 	}
 
-	next_character() {
+	next_character(): Position {
 		character++
 		local++
 		absolute++
 		return this
 	}
 
-	translate(characters: normal) {
+	translate(characters: normal): Position {
 		return Position(line, character + characters, local + characters, absolute + characters)
 	}
 
-	clone() {
+	clone(): Position {
 		return Position(line, character, local, absolute)
 	}
 
-	equals(other: Position) {
+	equals(other: Position): bool {
 		return absolute == other.absolute and file == other.file
 	}
 
-	string() {
+	string(): String {
 		if file === none return "<unknown>" + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
 		return file.fullname + ':' + to_string(friendly_line) + ':' + to_string(friendly_character)
 	}
@@ -555,11 +555,11 @@ Token {
 		this.type = type
 	}
 
-	match(types: large) {
+	match(types: large): bool {
 		return (this.type & types) != 0
 	}
 
-	string() {
+	string(): String {
 		if type == TOKEN_TYPE_END return "\n"
 		return String.empty
 	}
@@ -586,7 +586,7 @@ Token IdentifierToken {
 		this.position = position
 	}
 
-	string() {
+	string(): String {
 		return value
 	}
 
@@ -610,7 +610,7 @@ Token OperatorToken {
 		this.position = position
 	}
 
-	string() {
+	string(): String {
 		return operator.identifier
 	}
 
@@ -634,7 +634,7 @@ Token KeywordToken {
 		this.position = position
 	}
 
-	string() {
+	string(): String {
 		return keyword.identifier
 	}
 
@@ -676,11 +676,11 @@ Token NumberToken {
 		this.end = end
 	}
 
-	decimal_value() {
+	decimal_value(): decimal {
 		return bits_to_decimal(data)
 	}
 
-	string() {
+	string(): String {
 		if format == FORMAT_DECIMAL return to_string(decimal_value())
 		return to_string(data)
 	}
@@ -708,7 +708,7 @@ Token StringToken {
 		this.opening = opening
 	}
 
-	string() {
+	string(): String {
 		return String(opening) + text + opening
 	}
 
@@ -738,7 +738,7 @@ Token ParenthesisToken {
 		this.tokens = List<Token>(tokens)
 	}
 
-	get_sections() {
+	get_sections(): List<List<Token>> {
 		sections = List<List<Token>>()
 		if tokens.size == 0 return sections
 
@@ -758,7 +758,7 @@ Token ParenthesisToken {
 		return sections
 	}
 
-	string() {
+	string(): String {
 		values = List<String>(tokens.size, false)
 		loop token in tokens { values.add(to_string(token)) }
 
@@ -797,7 +797,7 @@ Token FunctionToken {
 	}
 
 	# Summary: Returns the parameters of this token
-	get_parameters(context: Context) {
+	get_parameters(context: Context): Outcome<List<Parameter>, String> {
 		tokens = List<Token>(parameters.tokens.size, false)
 		tokens.add_all(parameters.tokens)
 
@@ -849,7 +849,7 @@ Token FunctionToken {
 		return Ok<List<Parameter>, String>(result)
 	}
 
-	parse(context: Context) {
+	parse(context: Context): Node {
 		if node != none and node.first != none return node
 
 		result = parser.parse(context, List<Token>(parameters.tokens), parser.MIN_PRIORITY, parser.MAX_FUNCTION_BODY_PRIORITY)
@@ -860,7 +860,7 @@ Token FunctionToken {
 		return node
 	}
 	
-	string() {
+	string(): String {
 		return name + parameters.string()
 	}
 
@@ -882,7 +882,7 @@ TextArea {
 }
 
 # Summary: Converts the specified token to string based on its type
-to_string(token: Token) {
+to_string(token: Token): String {
 	if token.type == TOKEN_TYPE_IDENTIFIER return token.(IdentifierToken).string()
 	else token.type == TOKEN_TYPE_NUMBER return token.(NumberToken).string()
 	else token.type == TOKEN_TYPE_PARENTHESIS return token.(ParenthesisToken).string()
@@ -894,14 +894,14 @@ to_string(token: Token) {
 }
 
 # Summary: Returns a string, which represents the specified tokens
-to_string(tokens: List<Token>) {
+to_string(tokens: List<Token>): String {
 	values = List<String>(tokens.size, false)
 	loop token in tokens { values.add(to_string(token)) }
 	return String.join(` `, values)
 }
 
 # Summary: Returns whether the format is an unsigned format
-is_unsigned(format: large) {
+is_unsigned(format: large): bool {
 	return (format & 1) != 0
 }
 
@@ -910,36 +910,36 @@ is_signed(format: large) {
 	return (format & 1) == 0
 }
 
-to_format(bytes: large) {
+to_format(bytes: large): large {
 	return (bytes <| 1) | 1
 }
 
-to_format(bytes: large, unsigned: bool) {
+to_format(bytes: large, unsigned: bool): large {
 	return (bytes <| 1) | unsigned
 }
 
-to_bytes(format: large) {
+to_bytes(format: large): large {
 	return (format |> 1) & FORMAT_SIZE_MASK
 }
 
-to_bits(format: large) {
+to_bits(format: large): large {
 	return ((format |> 1) & FORMAT_SIZE_MASK) * 8
 }
 
 # Summary: Returns whether the specified flags contains the specified flag
-has_flag(flags: large, flag: large) {
+has_flag(flags: large, flag: large): bool {
 	return (flags & flag) == flag
 }
 
 # Summary: Removes the exponent or the number type from the specified string
-private get_number_part(text: String) {
+private get_number_part(text: String): String {
 	i = 0
 	loop (i < text.length and (is_digit(text[i]) or text[i] == DECIMAL_SEPARATOR), i++) {}
 	return text.slice(0, i)
 }
 
 # Summary: Returns the value of the exponent which is contained in the specified number string
-private get_exponent(text: String) {
+private get_exponent(text: String): Outcome<large, String> {
 	i = text.index_of(EXPONENT_SEPARATOR)
 	if i == -1 return Ok<large, String>(0)
 
@@ -966,7 +966,7 @@ private get_exponent(text: String) {
 }
 
 # Summary: Returns the format which has the same properties as specified
-private get_format(bits: large, unsigned: bool) {
+private get_format(bits: large, unsigned: bool): large {
 	# TODO: Compute this instead
 	format = when(bits) {
 		8 => FORMAT_INT8,
@@ -983,7 +983,7 @@ private get_format(bits: large, unsigned: bool) {
 }
 
 # Summary: Returns the format which is expressed in the specified number string
-private get_number_format(text: String) {
+private get_number_format(text: String): large {
 	i = text.index_of(SIGNED_TYPE_SEPARATOR)
 	unsigned = false
 
@@ -1008,7 +1008,7 @@ private get_number_format(text: String) {
 }
 
 # Summary: Tries to convert the specified string to a number token
-try_create_number_token(text: String, position: Position) {
+try_create_number_token(text: String, position: Position): Outcome<NumberToken, String> {
 	if get_exponent(text) has not exponent return Error<NumberToken, String>("Invalid exponent")
 
 	if text.index_of(DECIMAL_SEPARATOR) != -1 {
@@ -1041,20 +1041,20 @@ try_create_number_token(text: String, position: Position) {
 }
 
 # Summary: Returns the closing parenthesis of the specified opening parenthesis
-get_closing(opening: char) {
+get_closing(opening: char): large {
 	if opening == `(` return `)`
 	return opening + 2
 }
 
 # Summary: Returns whether the specified character is an operator
-is_operator(i: char) {
+is_operator(i: char): bool {
 	return (i >= `*` and i <= `/`) or (i >= `:` and i <= `?`) or i == `&` or i == `%` or i == `!` or i == `^` or i == `|` or i == -92 # 0xA4 = 164 => -92 as char
 }
 
 # Summary:
 # Returns all the characters which can mix with the specified character.
 # If this function returns null, it means the specified character can mix with any character.
-get_mixing_characters(i: char) {
+get_mixing_characters(i: char): u8* {
 	return when(i) {
 		`.` => '.0123456789',
 		`,` => '',
@@ -1066,7 +1066,7 @@ get_mixing_characters(i: char) {
 }
 
 # Summary: Returns whether the two specified characters can mix
-mixes(a: char, b: char) {
+mixes(a: char, b: char): bool {
 	allowed = get_mixing_characters(a)
 	if allowed != none return index_of(allowed, b) != -1
 
@@ -1077,37 +1077,37 @@ mixes(a: char, b: char) {
 }
 
 # Summary: Returns whether the characters represent a start of a number with base
-is_number_with_base(current: char, next: char) {
+is_number_with_base(current: char, next: char): bool {
 	return current == `0` and (next == BINARY_BASE_IDENTIFIER or next == HEXADECIMAL_BASE_IDENTIFIER)
 }
 
 # Summary: Returns whether the character is a text
-is_text(i: char) {
+is_text(i: char): bool {
 	return (i >= `a` and i <= `z`) or (i >= `A` and i <= `Z`) or (i == `_`)
 }
 
 # Summary: Returns whether the character is start of a parenthesis
-is_parenthesis(i: char) {
+is_parenthesis(i: char): bool {
 	return i == `(` or i == `[` or i == `{`
 }
 
 # Summary: Returns whether the character is start of a comment
-is_comment(i: char) {
+is_comment(i: char): bool {
 	return i == COMMENT
 }
 
 # Summary: Returns whether the character start of a string
-is_string(i: char) {
+is_string(i: char): bool {
 	return i == STRING or i == STRING_OBJECT
 }
 
 # Summary: Returns whether the character start of a character value
-is_character_value(i: char) {
+is_character_value(i: char): bool {
 	return i == CHARACTER
 }
 
 # Summary: Returns the type of the specified character
-get_text_type(current: char, next: char) {
+get_text_type(current: char, next: char): large {
 	if is_text(current) return TEXT_TYPE_TEXT
 	if is_number_with_base(current, next) return TEXT_TYPE_NUMBER_WITH_BASE
 	if is_digit(current) return TEXT_TYPE_NUMBER
@@ -1121,7 +1121,7 @@ get_text_type(current: char, next: char) {
 }
 
 # Summary: Returns whether the character is part of the progressing token
-is_part_of(previous_type: large, current_type: large, previous: char, current: char, next: char) {
+is_part_of(previous_type: large, current_type: large, previous: char, current: char, next: char): bool {
 	if not mixes(previous, current) return false
 
 	if current_type == previous_type or previous_type == TEXT_TYPE_UNSPECIFIED return true
@@ -1142,7 +1142,7 @@ is_part_of(previous_type: large, current_type: large, previous: char, current: c
 }
 
 # Summary: Skips all the spaces starting from the specified position
-skip_spaces(text: String, position: Position) {
+skip_spaces(text: String, position: Position): Position {
 	loop (position.local < text.length) {
 		if text[position.local] != ` ` stop
 		position.next_character()
@@ -1152,7 +1152,7 @@ skip_spaces(text: String, position: Position) {
 }
 
 # Summary: Finds the corresponding end parenthesis and returns its position
-skip_parenthesis(text: String, start: Position) {
+skip_parenthesis(text: String, start: Position): Position {
 	position = start.clone()
 
 	opening = text[position.local]
@@ -1194,12 +1194,12 @@ skip_parenthesis(text: String, start: Position) {
 }
 
 # Summary: Returns whether a multiline comment begins at the specified position
-is_multiline_comment(text: String, start: Position) {
+is_multiline_comment(text: String, start: Position): bool {
 	return start.local + MULTILINE_COMMENT_LENGTH * 2 <= text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
 }
 
 # Summary: Skips the current comment and returns the position
-skip_comment(text: String, start: Position) {
+skip_comment(text: String, start: Position): Position {
 	if is_multiline_comment(text, start) {
 		end = text.index_of(MULTILINE_COMMENT, start.local + MULTILINE_COMMENT_LENGTH)
 		if end == -1 abort('Multiline comment does not have a closing')
@@ -1239,7 +1239,7 @@ skip_comment(text: String, start: Position) {
 }
 
 # Summary: Skips closures which has the same character in both ends
-skip_closures(closure: char, text: String, start: Position) {
+skip_closures(closure: char, text: String, start: Position): Position {
 	loop (i = start.local + 1, i < text.length, i++) {
 		current = text[i]
 
@@ -1260,12 +1260,12 @@ skip_closures(closure: char, text: String, start: Position) {
 }
 
 # Summary: Skips the current character value and returns the position
-skip_character_value(text: String, start: Position) {
+skip_character_value(text: String, start: Position): Position {
 	return skip_closures(CHARACTER, text, start)
 }
 
 # Summary: Converts the specified hexadecimal string into an integer value
-hexadecimal_to_integer(text: String, offset: large) {
+hexadecimal_to_integer(text: String, offset: large): Optional<large> {
 	result = 0
 
 	loop (i = offset, i < text.length, i++) {
@@ -1284,7 +1284,7 @@ hexadecimal_to_integer(text: String, offset: large) {
 }
 
 # Summary: Converts the specified binary number string into an integer value
-binary_to_integer(text: String, offset: large) {
+binary_to_integer(text: String, offset: large): Optional<large> {
 	result = 0
 
 	loop (i = offset, i < text.length, i++) {
@@ -1298,17 +1298,17 @@ binary_to_integer(text: String, offset: large) {
 }
 
 # Summary: Converts the specified hexadecimal string into an integer value
-hexadecimal_to_integer(text: String) {
+hexadecimal_to_integer(text: String): Optional<large> {
 	return hexadecimal_to_integer(text, 0)
 }
 
 # Summary: Converts the specified binary number string into an integer value
-binary_to_integer(text: String) {
+binary_to_integer(text: String): Optional<large> {
 	return binary_to_integer(text, 0)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
-get_special_character_value(text: String) {
+get_special_character_value(text: String): Outcome<large, String> {
 	command = text[1]
 	length = 0
 	error = ''
@@ -1341,7 +1341,7 @@ get_special_character_value(text: String) {
 }
 
 # Summary: Returns the integer value of the character value
-get_character_value(text: String) {
+get_character_value(text: String): Outcome<large, String> {
 	text = text.slice(1, text.length - 1) # Remove the closures
 
 	if text.length == 0 return Error<large, String>("Character value is empty")
@@ -1359,7 +1359,7 @@ get_character_value(text: String) {
 	return get_special_character_value(text)
 }
 
-get_next_token(text: String, start: Position) {
+get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 	# Firstly the spaces must be skipped to find the next token
 	position = skip_spaces(text, start)
 
@@ -1438,14 +1438,14 @@ get_next_token(text: String, start: Position) {
 }
 
 # Summary: Parses a token from the specified text
-parse_text_token(text: String) {
+parse_text_token(text: String): Token {
 	if Operators.exists(text) return OperatorToken(text)
 	if Keywords.exists(text) return KeywordToken(text)
 	return IdentifierToken(text)
 }
 
 # Summary: Parses the specified number with custom base
-parse_number_with_base(area: TextArea) {
+parse_number_with_base(area: TextArea): Outcome<large, String> {
 	# Extract the base and digits from the text
 	base = area.text[1]
 	digits = area.text.slice(2)
@@ -1462,7 +1462,7 @@ parse_number_with_base(area: TextArea) {
 }
 
 # Summary: Parses a token from a text area
-parse_token(area: TextArea) {
+parse_token(area: TextArea): Outcome<Token, String> {
 	if area.type == TEXT_TYPE_OPERATOR {
 		if not Operators.exists(area.text) return Error<Token, String>("Unknown operator")
 		return Ok<Token, String>(OperatorToken(area.text))
@@ -1499,7 +1499,7 @@ parse_token(area: TextArea) {
 }
 
 # Summary: Join all sequential modifier keywords into one token
-join_sequential_modifiers(tokens: List<Token>) {
+join_sequential_modifiers(tokens: List<Token>): _ {
 	loop (i = tokens.size - 2, i >= 0, i--) {
 		# Require both the current and the next tokens to be modifier keywords
 		left_token = tokens[i]
@@ -1526,7 +1526,7 @@ join_sequential_modifiers(tokens: List<Token>) {
 }
 
 # Summary: Finds not-keywords and negates adjacent keywords when possible
-negate_keywords(tokens: List<Token>) {
+negate_keywords(tokens: List<Token>): _ {
 	loop (i = tokens.size - 2, i >= 0, i--) {
 		# Require the current token to be a keyword
 		token = tokens[i]
@@ -1549,13 +1549,13 @@ negate_keywords(tokens: List<Token>) {
 }
 
 # Summary: Postprocesses the specified tokens
-postprocess(tokens: List<Token>) {
+postprocess(tokens: List<Token>): _ {
 	join_sequential_modifiers(tokens)
 	negate_keywords(tokens)
 }
 
 # Summary: Preprocesses the specified text, meaning that a more suitable version of the text is returned for tokenization
-preprocess(text: String) {
+preprocess(text: String): String {
 	builder = StringBuilder()
 	builder.append(text)
 	builder.replace('\xC2\xA4', '\xA4') # Simplify U+00A4 (currency sign), so that XOR operations are supported
@@ -1594,12 +1594,12 @@ preprocess(text: String) {
 }
 
 # Summary: Returns a list of tokens which represents the specified text
-get_tokens(text: String, postprocess: bool) {
+get_tokens(text: String, postprocess: bool): Outcome<List<Token>, String> {
 	return get_tokens(text, Position(), postprocess)
 }
 
 # Summary: Returns a list of tokens which represents the specified text
-get_tokens(text: String, anchor: Position, postprocess: bool) {
+get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Token>, String> {
 	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
 	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
 
@@ -1627,7 +1627,7 @@ get_tokens(text: String, anchor: Position, postprocess: bool) {
 }
 
 # Summary: Ensures all the tokens have a reference to the specified file
-register_file(tokens: List<Token>, file: SourceFile) {
+register_file(tokens: List<Token>, file: SourceFile): _ {
 	loop token in tokens {
 		token.position.file = file
 
@@ -1645,7 +1645,7 @@ register_file(tokens: List<Token>, file: SourceFile) {
 }
 
 # Summary: Creates tokens from file contents
-tokenize() {
+tokenize(): Status {
 	files = settings.source_files
 
 	loop (i = 0, i < files.size, i++) {
@@ -1662,7 +1662,7 @@ tokenize() {
 }
 
 # Summary: Creates an identical list of tokens compared to the specified list
-clone(tokens: List<Token>) {
+clone(tokens: List<Token>): List<Token> {
 	clone = List<Token>(tokens.size, true)
 
 	loop (i = 0, i < tokens.size, i++) {

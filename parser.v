@@ -6,7 +6,7 @@ ParserState {
 	end: normal
 	error: Status
 
-	save() {
+	save(): ParserState {
 		result = ParserState()
 		result.all = List<Token>(all)
 		result.tokens = List<Token>(tokens)
@@ -15,7 +15,7 @@ ParserState {
 		return result
 	}
 
-	restore(from: ParserState) {
+	restore(from: ParserState): _ {
 		all.clear()
 		all.add_all(from.all)
 		tokens.clear()
@@ -24,13 +24,13 @@ ParserState {
 		end = from.end
 	}
 
-	consume() {
+	consume(): _ {
 		tokens.add(all[end])
 		end++
 	}
 
 	# Summary: Consumes the next token, if its type is contained in the specified types. This function returns true, if the next token is consumed, otherwise false.
-	consume(types: large) {
+	consume(types: large): bool {
 		if end >= all.size return false
 		next = all[end]
 		if not has_flag(types, next.type) return false
@@ -40,7 +40,7 @@ ParserState {
 	}
 
 	# Summary: Consumes the next token if it exists and it represents the specified operator
-	consume_operator(operator: Operator) {
+	consume_operator(operator: Operator): bool {
 		if end >= all.size return false
 		next = all[end]
 		if not next.match(operator) return false
@@ -50,7 +50,7 @@ ParserState {
 	}
 
 	# Summary: Consumes the next token if it exists and it represents the specified parenthesis
-	consume_parenthesis(type: char) {
+	consume_parenthesis(type: char): bool {
 		if end >= all.size return false
 		next = all[end]
 		if not next.match(type) return false
@@ -60,7 +60,7 @@ ParserState {
 	}
 
 	# Summary: Consumes the next token, if its type is contained in the specified types. This function returns true, if the next token is consumed, otherwise an empty token is consumed and false is returned.
-	consume_optional(types: large) {
+	consume_optional(types: large): bool {
 		if end >= all.size {
 			tokens.add(Token(TOKEN_TYPE_NONE))
 			return false
@@ -75,7 +75,7 @@ ParserState {
 		return true
 	}
 
-	peek() {
+	peek(): Token {
 		if all.size > end return all[end]
 		return none as Token
 	}
@@ -137,12 +137,12 @@ Token DynamicToken {
 }
 
 # Summary: Returns the patterns which have the specified priority
-get_patterns(priority: large) {
+get_patterns(priority: large): List<parser.Pattern> {
 	return patterns[priority]
 }
 
 # Summary: Adds the specified pattern to the pattern list
-add_pattern(pattern: Pattern) {
+add_pattern(pattern: Pattern): _ {
 	if pattern.priority != -1 {
 		get_patterns(pattern.priority).add(pattern)
 		return
@@ -153,7 +153,7 @@ add_pattern(pattern: Pattern) {
 	}
 }
 
-initialize() {
+initialize(): _ {
 	patterns = List<List<Pattern>>(MAX_PRIORITY + 1, false)
 	loop (i = 0, i < MAX_PRIORITY + 1, i++) { patterns.add(List<Pattern>()) }
 
@@ -205,7 +205,7 @@ initialize() {
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
-fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
+fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState): bool {
 	path = pattern.path
 	result = List<Token>(path.size, false)
 
@@ -253,7 +253,7 @@ fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState) {
 }
 
 # Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
-next(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState) {
+next(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState): bool {
 	all = patterns[priority]
 
 	loop (start < tokens.size, start++) {
@@ -268,7 +268,7 @@ next(context: Context, tokens: List<Token>, priority: normal, start: large, stat
 }
 
 # Summary: Tries to find the next pattern from the specified tokens, which has the specified priority
-next_consumable(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState, disabled: large) {
+next_consumable(context: Context, tokens: List<Token>, priority: normal, start: large, state: ParserState, disabled: large): bool {
 	all = patterns[priority]
 
 	loop (start < tokens.size, start++) {
@@ -286,12 +286,12 @@ next_consumable(context: Context, tokens: List<Token>, priority: normal, start: 
 	return false
 }
 
-parse(root: Node, context: Context, tokens: List<Token>) {
+parse(root: Node, context: Context, tokens: List<Token>): Status {
 	return parse(root, context, tokens, MIN_PRIORITY, MAX_PRIORITY)
 }
 
 # Summary: Forms function tokens from the specified tokens
-create_function_tokens(tokens: List<Token>) {
+create_function_tokens(tokens: List<Token>): _ {
 	if tokens.size < 2 return
 
 	loop (i = tokens.size - 2, i >= 0, i--) {
@@ -307,7 +307,7 @@ create_function_tokens(tokens: List<Token>) {
 	}
 }
 
-is_line_related(tokens: List<Token>, i: large, j: large, k: large) {
+is_line_related(tokens: List<Token>, i: large, j: large, k: large): bool {
 	first_line_end_index = j - 1
 	second_line_start_index = j + 1
 
@@ -330,7 +330,7 @@ is_line_related(tokens: List<Token>, i: large, j: large, k: large) {
 	return false
 }
 
-is_consuming_namespace(tokens: List<Token>, i: large) {
+is_consuming_namespace(tokens: List<Token>, i: large): List<Token> {
 	# Save the position of the namespace keyword
 	start = i
 
@@ -363,7 +363,7 @@ is_consuming_namespace(tokens: List<Token>, i: large) {
 # Summary:
 # Returns the first section from the specified tokens that consumes all the lines below it.
 # If such section can not be found, none is returned.
-find_consuming_section(tokens: List<Token>) {
+find_consuming_section(tokens: List<Token>): List<Token> {
 	loop (i = 0, i < tokens.size, i++) {
 		section = none as List<Token>
 		next = tokens[i]
@@ -378,7 +378,7 @@ find_consuming_section(tokens: List<Token>) {
 	return none as List<Token>
 }
 
-split(tokens: List<Token>) {
+split(tokens: List<Token>): List<List<Token>> {
 	consuming_section = find_consuming_section(tokens)
 
 	sections = List<List<Token>>()
@@ -439,7 +439,7 @@ split(tokens: List<Token>) {
 	return sections
 }
 
-parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal): Status {
 	create_function_tokens(tokens)
 	
 	state = ParserState()
@@ -481,7 +481,7 @@ parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, ma
 	return Status()
 }
 
-clear_sections(sections: List<List<Token>>) {
+clear_sections(sections: List<List<Token>>): _ {
 	loop section in sections {
 		section.clear()
 	}
@@ -489,7 +489,7 @@ clear_sections(sections: List<List<Token>>) {
 	sections.clear()
 }
 
-parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal) {
+parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: normal): Status {
 	sections = split(tokens)
 
 	loop section in sections {
@@ -505,28 +505,28 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 	return Status()
 }
 
-parse(context: Context, tokens: List<Token>, min: normal, max: normal) {
+parse(context: Context, tokens: List<Token>, min: normal, max: normal): Node {
 	result = Node()
 	parse(result, context, tokens, min, max)
 	return result
 }
 
 # Summary: Creates the root context, which might contain some default types
-create_root_context(index: large) {
+create_root_context(index: large): Context {
 	context = Context(to_string(index), NORMAL_CONTEXT)
 	primitives.inject(context)
 	return context
 }
 
 # Summary: Creates the root context, which might contain some default types
-create_root_context(identity: String) {
+create_root_context(identity: String): Context {
 	context = Context(identity, NORMAL_CONTEXT)
 	primitives.inject(context)
 	return context
 }
 
 # Summary: Creates the root node, which might contain some default initializations
-create_root_node(context: Context) {
+create_root_node(context: Context): ScopeNode {
 	root = ScopeNode(context, none as Position, none as Position, false)
 
 	positive_infinity = Variable(context, primitives.create_number(primitives.DECIMAL, FORMAT_DECIMAL), VARIABLE_CATEGORY_GLOBAL, String(POSITIVE_INFINITY_CONSTANT), MODIFIER_PRIVATE | MODIFIER_CONSTANT)
@@ -566,13 +566,13 @@ create_root_node(context: Context) {
 }
 
 # Summary: Finds all the extension functions under the specified node and tries to apply them
-apply_extension_functions(context: Context, root: Node) {
+apply_extension_functions(context: Context, root: Node): _ {
 	extensions = root.find_all(NODE_EXTENSION_FUNCTION)
 	loop extension in extensions { resolver.resolve(context, extension) }
 }
 
 # Summary: Ensures that all exported and imported functions are implemented
-implement_required_functions(context: Context, file: SourceFile, all: bool) {
+implement_required_functions(context: Context, file: SourceFile, all: bool): _ {
 	loop function in common.get_all_visible_functions(context) {
 		# If the file filter is specified, skip all functions which are not defined inside that file
 		if file !== none and function.start !== none and function.start.file !== file continue
@@ -613,7 +613,7 @@ implement_required_functions(context: Context, file: SourceFile, all: bool) {
 }
 
 # Summary: Ensures that all virtual function overrides are implemented
-implement_virtual_function_overrides(types: List<Type>, file: SourceFile) {
+implement_virtual_function_overrides(types: List<Type>, file: SourceFile): _ {
 	# Implement all virtual function overloads
 	loop type in types {
 		# Find all virtual functions
@@ -660,7 +660,7 @@ implement_virtual_function_overrides(types: List<Type>, file: SourceFile) {
 }
 
 # Summary: Ensures that all constructors are implemented
-implement_constructors(types: List<Type>) {
+implement_constructors(types: List<Type>): _ {
 	# Ensure all default constructors are implemented, because otherwise uncalled default constructors might be added after resolving and they might bypass reconstruction
 	loop type in types {
 		if type.is_template_type continue
@@ -671,7 +671,7 @@ implement_constructors(types: List<Type>) {
 # Summary:
 # Ensures that all necessary functions are implemented.
 # For example, libraries need all functions to be implemented even when they are not called.
-implement_functions(context: Context, file: SourceFile, all: bool) {
+implement_functions(context: Context, file: SourceFile, all: bool): _ {
 	is_output_library = settings.output_type == BINARY_TYPE_STATIC_LIBRARY or 
 		settings.output_type == BINARY_TYPE_SHARED_LIBRARY or 
 		settings.output_type == BINARY_TYPE_OBJECTS or 
@@ -687,7 +687,7 @@ implement_functions(context: Context, file: SourceFile, all: bool) {
 }
 
 # Summary: Goes through all the specified types and ensures all their supertypes are resolved
-validate_supertypes(types: List<Type>) {
+validate_supertypes(types: List<Type>): Status {
 	loop type in types {
 		resolver.resolve_supertypes(type.parent, type)
 		if type.supertypes.all(i -> i.is_resolved) continue
@@ -701,7 +701,7 @@ validate_supertypes(types: List<Type>) {
 # Summary:
 # Validates the shell of the context.
 # Shell means all the types, functions and variables, but not the code.
-validate_shell(context: Context) {
+validate_shell(context: Context): Status {
 	types = common.get_all_types(context)
 
 	result = validate_supertypes(types)
@@ -740,7 +740,37 @@ apply_build_filter(context: Context): _ {
 	}
 }
 
-parse() {
+# Summary:
+# Limits the compiling so that only the code in the specified source file (build filter) is built.
+# Of course, this is not always completely possible, because the specified source file might use template objects from other files.
+# Basically, the idea is to remove tokens from external functions with return type, so that they will not be parsed or assembled. 
+apply_build_filter(context: Context): _ {
+	functions = common.get_all_visible_functions(context)
+
+	loop function in functions {
+		# Skip functions that are inside the specified source file, because they must be built
+		if function.start.file === settings.build_filter continue
+
+		# Remove export flag from all functions from other source files, so that
+		# template functions and such stay local and do not conflict with other object files
+		function.modifiers &= (!MODIFIER_EXPORTED)
+
+		# Skip all functions that have parameters without explicit type
+		# Note: Unresolved return types are accepted as they will still be resolved
+		if function.parameters.any(i -> i.type === none) continue
+
+		# Skip all functions that do not have explicit return type
+		# Note: Unresolved return types are accepted as they will still be resolved
+		if function.return_type === none continue
+
+		# Clear the blueprint so that the external function will not be parsed or assembled.
+		# Set the function as imported, so that it will not be built.
+		function.modifiers |= MODIFIER_IMPORTED
+		function.blueprint.clear()
+	}
+}
+
+parse(): Status {
 	files = settings.source_files
 
 	loop (i = 0, i < files.size, i++) {
@@ -813,11 +843,11 @@ parse() {
 	return Status()
 }
 
-parse(environment: Context, token: Token) {
+parse(environment: Context, token: Token): Node {
 	return parse(environment, environment, token)
 }
 
-parse_identifier(context: Context, identifier: IdentifierToken, linked: bool) {
+parse_identifier(context: Context, identifier: IdentifierToken, linked: bool): Node {
 	position = identifier.position
 
 	if context.is_variable_declared(identifier.value, linked) {
@@ -857,7 +887,7 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, lin
 }
 
 # Summary: Tries to find a suitable function for the specified settings
-get_function_by_name(context: Context, name: String, parameters: List<Type>, template_arguments: List<Type>, linked: bool) {
+get_function_by_name(context: Context, name: String, parameters: List<Type>, template_arguments: List<Type>, linked: bool): FunctionImplementation {
 	functions = FunctionList()
 
 	if context.is_type_declared(name, linked) {
@@ -887,12 +917,12 @@ get_function_by_name(context: Context, name: String, parameters: List<Type>, tem
 }
 
 # Summary: Tries to build the specified function token into a node
-parse_function(environment: Context, primary: Context, token: FunctionToken, linked: bool) {
+parse_function(environment: Context, primary: Context, token: FunctionToken, linked: bool): Node {
 	return parse_function(environment, primary, token, List<Type>(), linked)
 }
 
 # Summary: Tries to build the specified function token into a node
-parse_function(environment: Context, primary: Context, token: FunctionToken, template_arguments: List<Type>, linked: bool) {
+parse_function(environment: Context, primary: Context, token: FunctionToken, template_arguments: List<Type>, linked: bool): Node {
 	descriptor = token.clone() as FunctionToken
 	arguments = descriptor.parse(environment)
 
@@ -946,21 +976,21 @@ parse_function(environment: Context, primary: Context, token: FunctionToken, tem
 }
 
 # Summary: Builds the specified parenthesis into a node
-parse_parenthesis(context: Context, parenthesis: ParenthesisToken) {
+parse_parenthesis(context: Context, parenthesis: ParenthesisToken): ParenthesisNode {
 	node = ParenthesisNode(parenthesis.position)
 	loop section in parenthesis.get_sections() { parse(node, context, section, MIN_PRIORITY, MAX_FUNCTION_BODY_PRIORITY) }
 	return node
 }
 
 # Summary: Creates a string object from the specified string node
-create_string_object(node: StringNode) {
+create_string_object(node: StringNode): UnresolvedFunction {
 	arguments = Node()
 	arguments.add(node)
 
 	return UnresolvedFunction(String(STANDARD_STRING_TYPE), node.start).set_arguments(arguments)
 }
 
-parse(environment: Context, primary: Context, token: Token) {
+parse(environment: Context, primary: Context, token: Token): Node {
 	if token.type == TOKEN_TYPE_IDENTIFIER {
 		return parse_identifier(primary, token as IdentifierToken, environment != primary)
 	}

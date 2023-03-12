@@ -18,7 +18,7 @@ export basename(path: String) {
 # Examples:
 # '/path/to/file.extension' => '/path/to'
 # '/path/to\\file' => '/path/to'
-export folder(path: String) {
+export folder(path: String): String {
 	i = path.last_index_of(`/`)
 	j = path.last_index_of(`\\`)
 	start = max(i, j)
@@ -31,7 +31,7 @@ export folder(path: String) {
 # Summary:
 # - Replaces all `\\` with `/`
 # - Replaces all sequential `/` with a single `/`
-export normalise(path: String) {
+export normalise(path: String): String {
 	result = StringBuilder(path.replace(`\\`, `/`))
 
 	loop (i = 0, i < result.length, i++) {
@@ -50,6 +50,6 @@ export normalise(path: String) {
 
 # Summary:
 # Corresponds to: path.normalise(first + second)
-export join(first: String, second: String) {
+export join(first: String, second: String): String {
 	return path.normalise(first + second)
 }

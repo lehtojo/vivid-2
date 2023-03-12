@@ -83,7 +83,7 @@ AssemblyParser {
 
 	# Summary:
 	# Handles symbol reference allocators: . $allocator $symbol
-	private execute_symbol_reference_allocator(tokens: List<Token>) {
+	private execute_symbol_reference_allocator(tokens: List<Token>): bool {
 		# Pattern: . $allocator $symbol
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
@@ -115,7 +115,7 @@ AssemblyParser {
 	# Summary:
 	# Executes the specified directive, if it represents a section directive.
 	# Section directive switches the active section.
-	private execute_section_directive(tokens: List<Token>) {
+	private execute_section_directive(tokens: List<Token>): bool {
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Pattern: .section $section
@@ -151,7 +151,7 @@ AssemblyParser {
 
 	# Summary:
 	# Executes the specified directive, if it exports a symbol.
-	private export_export_directive(tokens: List<Token>) {
+	private export_export_directive(tokens: List<Token>): bool {
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER return false
 
 		# Pattern: .export $symbol
@@ -163,7 +163,7 @@ AssemblyParser {
 
 	# Summary:
 	# Executes the specified directive, if it controls debug information.
-	private execute_debug_directive(tokens: List<Token>) {
+	private execute_debug_directive(tokens: List<Token>): bool {
 		if tokens.size < 2 or tokens[1].type != TOKEN_TYPE_IDENTIFIER return false
 
 		directive = tokens[1].(IdentifierToken).value
@@ -225,7 +225,7 @@ AssemblyParser {
 
 	# Summary:
 	# Executes the specified directive, if it allocates some primitive type such as byte or word.
-	private execute_constant_allocator(tokens: List<Token>) {
+	private execute_constant_allocator(tokens: List<Token>): bool {
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER return false
 
 		directive = tokens[1].(IdentifierToken).value
@@ -245,7 +245,7 @@ AssemblyParser {
 
 	# Summary:
 	# Allocates a string, if the specified tokens represent a allocator
-	private execute_string_allocator(tokens: List<Token>) {
+	private execute_string_allocator(tokens: List<Token>): bool {
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_STRING return false
 
 		allocator = tokens[1].(IdentifierToken).value
@@ -267,7 +267,7 @@ AssemblyParser {
 
 	# Summary:
 	# Align the current data section, if the specified tokens represent an alignment directive
-	private execute_alignment(tokens: List<Token>) {
+	private execute_alignment(tokens: List<Token>): bool {
 		# Pattern: .align $alignment
 		if tokens.size < 3 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_NUMBER return false
 		if not (tokens[1].(IdentifierToken).value == ALIGN_DIRECTIVE) return false
@@ -280,7 +280,7 @@ AssemblyParser {
 	# Summary:
 	# Applies a directive if the specified tokens represent a directive.
 	# Pattern: . $directive $1 $2 ... $n
-	private parse_directive(tokens: List<Token>) {
+	private parse_directive(tokens: List<Token>): bool {
 		# Directives start with a dot
 		if not tokens[].match(Operators.DOT) return false
 
@@ -306,7 +306,7 @@ AssemblyParser {
 	# Summary:
 	# Forms a label if the specified tokens represent a label.
 	# Pattern: $name :
-	private parse_label(tokens: List<Token>) {
+	private parse_label(tokens: List<Token>): bool {
 		# Labels must begin with an identifier
 		if not tokens[].match(TOKEN_TYPE_IDENTIFIER) return false
 
@@ -328,7 +328,7 @@ AssemblyParser {
 	# Summary:
 	# Tries to form a instruction parameter handle from the specified tokens starting at the specified offset.
 	# Instruction parameters are registers, memory addresses and numbers for instance.
-	private parse_instruction_parameter(all: List<Token>, i: large) {
+	private parse_instruction_parameter(all: List<Token>, i: large): Handle {
 		parameter = all[i]
 
 		if parameter.type == TOKEN_TYPE_IDENTIFIER {
@@ -571,7 +571,7 @@ AssemblyParser {
 
 	# Summary:
 	# Tries to create an instruction from the specified tokens
-	parse_instruction(tokens: List<Token>) {
+	parse_instruction(tokens: List<Token>): bool {
 		if tokens[].type != TOKEN_TYPE_IDENTIFIER return false
 		operation = tokens[].(IdentifierToken).value
 
@@ -603,7 +603,7 @@ AssemblyParser {
 	}
 
 	# Summary: Finds instruction prefixes and merges them into the instruction
-	join_instruction_prefixes(tokens: List<Token>) {
+	join_instruction_prefixes(tokens: List<Token>): _ {
 		loop (i = tokens.size - 2, i >= 0, i--) {
 			# Find adjacent identifier tokens
 			current = tokens[i]
@@ -620,7 +620,7 @@ AssemblyParser {
 		}
 	}
 
-	parse(file: SourceFile, assembly: String) {
+	parse(file: SourceFile, assembly: String): _ {
 		lines = assembly.split(`\n`)
 		position = Position(file, -1, 0) # Start from line -1, because the loop moves to the next line at the beginning
 
@@ -656,7 +656,7 @@ AssemblyParser {
 		}
 	}
 
-	reset() {
+	reset(): _ {
 		instructions.clear()
 		sections.clear()
 

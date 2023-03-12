@@ -17,7 +17,7 @@ get_all_captured_variables(implementation: FunctionImplementation): Map<Variable
 }
 
 # Summary: Finds all the variables which are not used and reports them
-report_unused_variables(diagnostics: List<Status>, implementation: FunctionImplementation) {
+report_unused_variables(diagnostics: List<Status>, implementation: FunctionImplementation): _ {
 	lambdas = implementation.node.find_all(NODE_LAMBDA) as List<LambdaNode>
 	captures = get_all_captured_variables(implementation)
 
@@ -41,14 +41,14 @@ report_unused_variables(diagnostics: List<Status>, implementation: FunctionImple
 }
 
 # Summary: Analyzes the specified function implementation tree and reports warnings
-report(diagnostics: List<Status>, implementation: FunctionImplementation) {
+report(diagnostics: List<Status>, implementation: FunctionImplementation): _ {
 	if not implementation.is_imported {
 		report_unused_variables(diagnostics, implementation)
 	}
 }
 
 # Summary: Analyzes the specified context and returns warnings concerning the functions and types in it
-report() {
+report(): _ {
 	context = settings.parse.context
 	diagnostics = List<Status>()
 	implementations = common.get_all_function_implementations(context)

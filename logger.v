@@ -3,15 +3,15 @@ namespace logger.verbose {
 		if settings.is_verbose_output_enabled { console.write(string) }
 	}
 
-	write_line(string: link) {
+	write_line(string: link): _ {
 		if settings.is_verbose_output_enabled { console.write_line(string) }
 	}
 
-	write(string: String) {
+	write(string: String): _ {
 		write(string.data)
 	}
 
-	write_line(string: String) {
+	write_line(string: String): _ {
 		write_line(string.data)
 	}
 
@@ -44,7 +44,7 @@ namespace logger.verbose {
 		write(string.data, at)
 	}
 
-	write_line(string: link, at: Node) {
+	write_line(string: link, at: Node): _ {
 		return
 		if not settings.is_verbose_output_enabled return
 	

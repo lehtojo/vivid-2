@@ -7,7 +7,7 @@ create_constant_number(value: large, format: large) {
 	return ConstantHandle(value, format)
 }
 
-create_variable_handle(unit: Unit, variable: Variable, mode: large) {
+create_variable_handle(unit: Unit, variable: Variable, mode: large): Handle {
 	category = variable.category
 
 	if category == VARIABLE_CATEGORY_PARAMETER return StackVariableHandle(unit, variable)
@@ -34,13 +34,13 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large) {
 	abort('Unsupported variable category')
 }
 
-get_variable_debug(unit: Unit, variable: Variable, mode: large) {
+get_variable_debug(unit: Unit, variable: Variable, mode: large): Result {
 	if variable.type.is_pack return unit.get_variable_value(variable)
 
 	return GetVariableInstruction(unit, variable, mode).add()
 }
 
-get_variable(unit: Unit, variable: Variable, mode: large) {
+get_variable(unit: Unit, variable: Variable, mode: large): Result {
 	if settings.is_debugging_enabled return get_variable_debug(unit, variable, mode)
 
 	if variable.is_static or variable.is_inlined {
@@ -50,7 +50,7 @@ get_variable(unit: Unit, variable: Variable, mode: large) {
 	return unit.get_variable_value(variable)
 }
 
-get_variable(unit: Unit, node: VariableNode, mode: large) {
+get_variable(unit: Unit, node: VariableNode, mode: large): Result {
 	if node.variable.is_member and not node.variable.is_static {
 		if unit.self == none abort('Missing self pointer')
 
@@ -62,11 +62,11 @@ get_variable(unit: Unit, node: VariableNode, mode: large) {
 	return get_variable(unit, node.variable, mode)
 }
 
-get_constant(unit: Unit, node: NumberNode) {
+get_constant(unit: Unit, node: NumberNode): Result {
 	return GetConstantInstruction(unit, node.value, is_unsigned(node.format), node.format == FORMAT_DECIMAL).add()
 }
 
-get(unit: Unit, node: Node, mode: large) {
+get(unit: Unit, node: Node, mode: large): Result {
 	instance = node.instance
 
 	if instance == NODE_VARIABLE return get_variable(unit, node as VariableNode, mode)

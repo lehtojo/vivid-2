@@ -23,7 +23,7 @@ cast(unit: Unit, result: Result, from: Type, to: Type) {
 	return result
 }
 
-build(unit: Unit, node: CastNode, mode: large) {
+build(unit: Unit, node: CastNode, mode: large): Result {
 	from = node.first.get_type()
 	to = node.get_type()
 

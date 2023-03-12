@@ -107,7 +107,7 @@ get_cost(node: Node) {
 
 # Summary:
 # Creates a node tree representing the specified components
-recreate(components: List<Component>) {
+recreate(components: List<Component>): Node {
 	result = recreate(components[])
 
 	loop (i = 1, i < components.size, i++) {
@@ -173,7 +173,7 @@ recreate(components: List<Component>) {
 
 # Summary:
 # Builds a node tree representing a variable with an order
-create_variable_with_order(variable: Variable, order: normal) {
+create_variable_with_order(variable: Variable, order: normal): Node {
 	if order == 0 return NumberNode(SYSTEM_SIGNED, 1, none as Position)
 
 	result = VariableNode(variable) as Node
@@ -191,7 +191,7 @@ create_variable_with_order(variable: Variable, order: normal) {
 
 # Summary:
 # Creates a node tree representing the specified component
-recreate(component: Component) {
+recreate(component: Component): Node {
 	if component.is_number {
 		number_component = component as NumberComponent
 		return NumberNode(number_component.value.format, number_component.value.data, none as Position)
@@ -241,7 +241,7 @@ recreate(component: Component) {
 
 # Summary:
 # Negates the all the specified components using their internal negation method
-perform_negate(components: List<Component>) {
+perform_negate(components: List<Component>): List<Component> {
 	loop component in components {
 		component.negation()
 	}
@@ -251,7 +251,7 @@ perform_negate(components: List<Component>) {
 
 # Summary:
 # Performs not operation when the specified components have exactly one component, otherwise builds a complex component
-perform_not(expression: NotNode, components: List<Component>) {
+perform_not(expression: NotNode, components: List<Component>): List<Component> {
 	if components.size == 1 and components[].is_integer {
 		data = components[].(NumberComponent).value.data
 
@@ -264,7 +264,7 @@ perform_not(expression: NotNode, components: List<Component>) {
 
 # Summary:
 # Returns a component list which describes the specified expression
-collect_components(expression: Node) {
+collect_components(expression: Node): List<Component> {
 	result = List<Component>()
 
 	if expression.match(NODE_NUMBER) {
@@ -324,7 +324,7 @@ collect_components(expression: Node) {
 
 # Summary:
 # Returns a component list which describes the specified operator node
-collect_components(node: OperatorNode) {
+collect_components(node: OperatorNode): List<Component> {
 	left_components = collect_components(node.first)
 	right_components = collect_components(node.last)
 
@@ -373,7 +373,7 @@ collect_components(node: OperatorNode) {
 
 # Summary:
 # Tries to simplify the specified components
-simplify(components: List<Component>) {
+simplify(components: List<Component>): List<Component> {
 	if components.size <= 1 return components
 
 	loop (i = 0, i < components.size, i++) {
@@ -417,7 +417,7 @@ simplify(components: List<Component>) {
 
 # Summary:
 # Simplifies the addition between the specified operands
-simplify_addition(left_components: List<Component>, right_components: List<Component>) {
+simplify_addition(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	components = List<Component>()
 	components.add_all(left_components)
 	components.add_all(right_components)
@@ -426,7 +426,7 @@ simplify_addition(left_components: List<Component>, right_components: List<Compo
 
 # Summary:
 # Simplifies the subtraction between the specified operands
-simplify_subtraction(left_components: List<Component>, right_components: List<Component>) {
+simplify_subtraction(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	perform_negate(right_components)
 
 	return simplify_addition(left_components, right_components)
@@ -434,7 +434,7 @@ simplify_subtraction(left_components: List<Component>, right_components: List<Co
 
 # Summary:
 # Simplifies the multiplication between the specified operands
-simplify_multiplication(left_components: List<Component>, right_components: List<Component>) {
+simplify_multiplication(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	components = List<Component>()
 
 	loop left_component in left_components {
@@ -454,7 +454,7 @@ simplify_multiplication(left_components: List<Component>, right_components: List
 
 # Summary:
 # Simplifies the division between the specified operands
-simplify_division(left_components: List<Component>, right_components: List<Component>) {
+simplify_division(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[] / right_components[]
 
@@ -466,7 +466,7 @@ simplify_division(left_components: List<Component>, right_components: List<Compo
 
 # Summary:
 # Simplifies left shift between the specified operands
-simplify_shift_left(left_components: List<Component>, right_components: List<Component>) {
+simplify_shift_left(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if right_components.size != 1 or not right_components[].is_number or right_components[].(NumberComponent).value.is_decimal {
 		return [ ComplexComponent(OperatorNode(Operators.SHIFT_LEFT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
@@ -490,7 +490,7 @@ simplify_shift_left(left_components: List<Component>, right_components: List<Com
 
 # Summary:
 # Simplifies right shift between the specified operands
-simplify_shift_right(left_components: List<Component>, right_components: List<Component>) {
+simplify_shift_right(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if right_components.size != 1 or not right_components[].is_number or right_components[].(NumberComponent).value.is_decimal {
 		return [ ComplexComponent(OperatorNode(Operators.SHIFT_RIGHT).set_operands(recreate(left_components), recreate(right_components))) as Component ]
 	}
@@ -514,7 +514,7 @@ simplify_shift_right(left_components: List<Component>, right_components: List<Co
 
 # Summary:
 # Simplifies bitwise and between the specified operands
-simplify_bitwise_and(left_components: List<Component>, right_components: List<Component>) {
+simplify_bitwise_and(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[].bitwise_and(right_components[])
 		if result !== none return [ result ]
@@ -525,7 +525,7 @@ simplify_bitwise_and(left_components: List<Component>, right_components: List<Co
 
 # Summary:
 # Simplifies bitwise xor between the specified operands
-simplify_bitwise_xor(left_components: List<Component>, right_components: List<Component>) {
+simplify_bitwise_xor(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[].bitwise_xor(right_components[])
 		if result !== none return [ result ]
@@ -536,7 +536,7 @@ simplify_bitwise_xor(left_components: List<Component>, right_components: List<Co
 
 # Summary:
 # Simplifies bitwise or between the specified operands
-simplify_bitwise_or(left_components: List<Component>, right_components: List<Component>) {
+simplify_bitwise_or(left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if left_components.size == 1 and right_components.size == 1 {
 		result = left_components[].bitwise_or(right_components[])
 		if result !== none return [ result ]
@@ -547,7 +547,7 @@ simplify_bitwise_or(left_components: List<Component>, right_components: List<Com
 
 # Summary:
 # Simplifies comparison operators between the specified operands
-simplify_comparison(operator: Operator, left_components: List<Component>, right_components: List<Component>) {
+simplify_comparison(operator: Operator, left_components: List<Component>, right_components: List<Component>): List<Component> {
 	if left_components.size == 1 and right_components.size == 1 {
 		comparison = left_components[].compare(right_components[])
 
@@ -573,7 +573,7 @@ simplify_comparison(operator: Operator, left_components: List<Component>, right_
 
 # Summary:
 # Tries to simplify the specified node
-get_simplified_value(value: Node) {
+get_simplified_value(value: Node): Node {
 	components = collect_components(value)
 	simplified = recreate(components)
 
@@ -647,7 +647,7 @@ optimize_comparisons(root: Node) {
 	return false
 }
 
-is_expression_root(root: Node) {
+is_expression_root(root: Node): bool {
 	if root.instance == NODE_OPERATOR {
 		type = root.(OperatorNode).operator.type
 		return type == OPERATOR_TYPE_CLASSIC or type == OPERATOR_TYPE_COMPARISON
@@ -658,7 +658,7 @@ is_expression_root(root: Node) {
 
 # Summary:
 # Tries to optimize all expressions in the specified node tree
-optimize_all_expressions(root: Node) {
+optimize_all_expressions(root: Node): Node {
 	if is_expression_root(root) {
 		result = get_simplified_value(root)
 		root.replace(result)

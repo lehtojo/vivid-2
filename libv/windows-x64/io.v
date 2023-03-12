@@ -1,6 +1,6 @@
 import init(): large
 
-export internal_init(root: link) {
+export internal_init(root: link): large {
 	internal.allocator.initialize()
 
 	# Call the actual init function here
@@ -162,7 +162,7 @@ export get_folder_items(folder: String, all: bool) {
 }
 
 # Summary: Returns all the filenames inside the specified folder
-export get_folder_files(folder: String, all: bool) {
+export get_folder_files(folder: String, all: bool): List<io.FolderItem> {
 	items = get_folder_items(folder, all)
 	files = List<FolderItem>()
 
@@ -180,12 +180,12 @@ export get_folder_files(folder: link, all: bool) {
 }
 
 # Summary: Writes the specified text to the specified file
-export write_file(filename: String, text: String) {
+export write_file(filename: String, text: String): bool {
 	return write_file(filename.data, Array<byte>(text.data, text.length))
 }
 
 # Summary: Writes the specified text to the specified file
-export write_file(filename: String, bytes: Array<byte>) {
+export write_file(filename: String, bytes: Array<byte>): bool {
 	return write_file(filename.data, bytes)
 }
 
@@ -195,7 +195,7 @@ export write_file(filename: link, text: String) {
 }
 
 # Summary: Writes the specified byte array to the specified file
-export write_file(filename: link, bytes: Array<byte>) {
+export write_file(filename: link, bytes: Array<byte>): bool {
 	# Try to open the specified file
 	file = internal.CreateFileA(filename, internal.GENERIC_WRITE, internal.FILE_SHARE_READ, none as link, internal.CREATE_ALWAYS, internal.FILE_ATTRIBUTE_NORMAL, none as link)
 	if file == none return false
@@ -211,12 +211,12 @@ export write_file(filename: link, bytes: Array<byte>) {
 }
 
 # Summary: Opens the specified file and returns its contents
-export read_file(filename: String) {
+export read_file(filename: String): Optional<Array<u8>> {
 	return read_file(filename.data)
 }
 
 # Summary: Opens the specified file and returns its contents
-export read_file(filename: link) {
+export read_file(filename: link): Optional<Array<u8>> {
 	# Try to open the specified file
 	file = internal.CreateFileA(filename, internal.GENERIC_READ, internal.FILE_SHARE_READ, none as link, internal.OPEN_ALWAYS, internal.FILE_ATTRIBUTE_NORMAL, none as link)
 	if file == none return Optional<Array<byte>>()
@@ -243,22 +243,22 @@ export read_file(filename: link) {
 }
 
 # Summary: Returns whether the specified file or folder exists
-export exists(path: String) {
+export exists(path: String): bool {
 	return exists(path.data)
 }
 
 # Summary: Returns whether the specified file or folder exists
-export exists(path: link) {
+export exists(path: link): bool {
 	return internal.GetFileAttributesA(path) != 4294967295 # 0xFFFFFFFF
 }
 
 # Summary: Returns whether the path represents a folder in the filesystem
-export is_folder(path: String) {
+export is_folder(path: String): bool {
 	return is_folder(path.data)
 }
 
 # Summary: Returns whether the path represents a folder in the filesystem
-export is_folder(path: link) {
+export is_folder(path: link): bool {
 	attributes = internal.GetFileAttributesA(path)
 	if attributes == 4294967295 return false
 
@@ -377,7 +377,7 @@ export wait_for_exit(pid: large) {
 }
 
 # Command line:
-export get_environment_variable(name: link) {
+export get_environment_variable(name: link): String {
 	# Try to get the size of the environment variable
 	temporary: byte[1]
 	size = internal.GetEnvironmentVariableA(name, temporary as link, 0)
@@ -391,7 +391,7 @@ export get_environment_variable(name: link) {
 }
 
 # Summary: Returns the filename of the currently running process executable
-export get_process_filename() {
+export get_process_filename(): String {
 	size = internal.MINIMUM_PROCESS_FILENAME_LENGTH
 	filename = allocate(size)
 
@@ -419,7 +419,7 @@ export get_process_filename() {
 }
 
 # Summary: Returns the working directory of the currently running process
-export get_process_working_folder() {
+export get_process_working_folder(): String {
 	# First, we need to get the size of the working folder. This can be done by requesting the working folder with an empty buffer
 	size = internal.GetCurrentDirectoryA(0, none as link)
 
@@ -431,7 +431,7 @@ export get_process_working_folder() {
 }
 
 # Summary: Returns the folder which contains the current process executable
-export get_process_folder() {
+export get_process_folder(): String {
 	filename = get_process_filename()
 	if filename === none return none as String
 
@@ -444,7 +444,7 @@ export get_process_folder() {
 }
 
 # Summary: Finds the specified ending character while taking into account special characters
-find_argument_ending(text: String, ending: char, i: large) {
+find_argument_ending(text: String, ending: char, i: large): large {
 	loop (i < text.length, i++) {
 		a = text[i]
 
@@ -461,7 +461,7 @@ find_argument_ending(text: String, ending: char, i: large) {
 }
 
 # Summary: Returns the list of the arguments passed to this application
-export get_command_line_arguments() {
+export get_command_line_arguments(): List<String> {
 	text = String(internal.GetCommandLineA())
 	empty = String.empty
 

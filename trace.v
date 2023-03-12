@@ -165,7 +165,7 @@ is_used_after_call(unit: Unit, result: Result) {
 }
 
 # Summary: Returns whether the specified result stays constant during the lifetime of the specified parent
-is_loading_required(unit: Unit, result: Result) {
+is_loading_required(unit: Unit, result: Result): bool {
 	usages = result.lifetime.usages
 	instructions = unit.instructions
 

@@ -1,10 +1,10 @@
 # Summary: Tries to convert the specified string to a decimal number
-export as_decimal(string: String) {
+export as_decimal(string: String): Optional<decimal> {
 	return as_decimal(string.data, string.length)
 }
 
 # Summary: Tries to convert the specified string to an integer number
-export as_integer(string: String) {
+export as_integer(string: String): Optional<large> {
 	return as_integer(string.data, string.length)
 }
 
@@ -14,12 +14,12 @@ export to_decimal(string: String) {
 }
 
 # Summary: Tries to convert the specified string to an integer number
-export to_integer(string: String) {
+export to_integer(string: String): large {
 	return to_integer(string.data, string.length)
 }
 
 # Summary: Converts the specified decimal to a string
-export to_string(value: decimal) {
+export to_string(value: decimal): String {
 	buffer: byte[64]
 	zero(buffer as link, 64)
 	length = to_string(value, buffer as link)
@@ -27,7 +27,7 @@ export to_string(value: decimal) {
 }
 
 # Summary: Converts the specified integer to a string
-export to_string(value: large) {
+export to_string(value: large): String {
 	buffer: byte[32]
 	zero(buffer as link, 32)
 	length = to_string(value, buffer as link)
@@ -72,7 +72,7 @@ export String {
 	}
 
 	# Summary: Combines all the specified strings while separating them the specified separator
-	shared join(separator: String, strings: List<String>) {
+	shared join(separator: String, strings: List<String>): String {
 		if strings.size == 0 return String.empty
 		if strings.size == 1 return strings[]
 
@@ -115,7 +115,7 @@ export String {
 	empty => length == 0
 
 	# Summary: Creates a string from the specified data. Does not copy the content of the specified data.
-	shared from(data: link, length: large) {
+	shared from(data: link, length: large): String {
 		result = String()
 		result.data = data
 		result.length = length
@@ -155,7 +155,7 @@ export String {
 	private init() {}
 
 	# Summary: Puts the specified character into the specified position without removing any other characters and returns a new string
-	insert(index: large, character: char) {
+	insert(index: large, character: char): String {
 		data: link = this.data
 		length: large = this.length
 		require(index >= 0 and index <= length)
@@ -216,12 +216,12 @@ export String {
 	}
 
 	# Summary: Returns whether the first characters match the specified string
-	starts_with(start: String) {
+	starts_with(start: String): bool {
 		return starts_with(start.data)
 	}
 
 	# Summary: Returns whether the first characters match the specified string
-	starts_with(start: link) {
+	starts_with(start: link): bool {
 		a = length_of(start)
 		if a == 0 or a > length return false
 
@@ -233,17 +233,17 @@ export String {
 	}
 
 	# Summary: Returns whether the first character matches the specified character
-	starts_with(value: char) {
+	starts_with(value: char): bool {
 		return length > 0 and data[] == value
 	}
 
 	# Summary: Returns whether the last character matches the specified character
-	ends_with(value: char) {
+	ends_with(value: char): bool {
 		return length > 0 and data[length - 1] == value
 	}
 
 	# Summary: Returns whether the last characters match the specified string
-	ends_with(end: link) {
+	ends_with(end: link): bool {
 		a = length_of(end)
 		b = length
 
@@ -257,7 +257,7 @@ export String {
 	}
 
 	# Summary: Returns the characters between the specified start and end index as a string
-	slice(start: large, end: large) {
+	slice(start: large, end: large): String {
 		require(start >= 0 and start <= end, 'Invalid slice start index')
 		require(end <= length, 'Invalid slice end index')
 
@@ -268,13 +268,13 @@ export String {
 	}
 
 	# Summary: Returns all the characters after the specified index as a string
-	slice(start: large) {
+	slice(start: large): String {
 		require(start >= 0 and start <= length, 'Invalid slice start index')
 		return slice(start, length)
 	}
 
 	# Summary: Replaces all the occurrences of the specified character with the specified replacement
-	replace(old: char, new: char) {
+	replace(old: char, new: char): String {
 		a = length
 		
 		result = String(data, a)
@@ -289,7 +289,7 @@ export String {
 	}
 
 	# Summary: Replaces all the occurrences of the specified string with the specified replacement
-	replace(old: link, old_length: large, new: link, new_length: large) {
+	replace(old: link, old_length: large, new: link, new_length: large): String {
 		length: large = this.length
 
 		# Compute the number of characters the length of the result string changes per occurrence
@@ -353,7 +353,7 @@ export String {
 	}
 
 	# Summary: Replaces all the occurrences of the specified string with the specified replacement
-	replace(old: link, new: link) {
+	replace(old: link, new: link): String {
 		return replace(old, length_of(old), new, length_of(new))
 	}
 
@@ -363,7 +363,7 @@ export String {
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified character
-	index_of(value: char) {
+	index_of(value: char): large {
 		a = length
 
 		loop (i = 0, i < a, i++) {
@@ -374,7 +374,7 @@ export String {
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified character
-	index_of(value: char, start: large) {
+	index_of(value: char, start: large): large {
 		require(start >= 0 and start <= length, 'Invalid start index')
 		
 		a = length
@@ -403,13 +403,13 @@ export String {
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified string
-	index_of(value: link, start: large) {
+	index_of(value: link, start: large): large {
 		require(start >= 0 and start <= length, 'Invalid start index')
 		return index_of(value, length_of(value), start)
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified string
-	index_of(value: link, value_length: large, start: large) {
+	index_of(value: link, value_length: large, start: large): large {
 		length: large = this.length
 		require(start >= 0 and start <= length, 'Invalid start index')
 
@@ -429,7 +429,7 @@ export String {
 	}
 
 	# Summary: Returns the index of the last occurrence of the specified character
-	last_index_of(value: char) {
+	last_index_of(value: char): large {
 		loop (i = length - 1, i >= 0, i--) {
 			if data[i] == value return i
 		}
@@ -438,7 +438,7 @@ export String {
 	}
 
 	# Summary: Converts all upper case alphabetic characters to lower case and returns a new string
-	to_lower() {
+	to_lower(): String {
 		buffer = allocate(length + 1)
 		buffer[length] = 0
 
@@ -466,7 +466,7 @@ export String {
 	}
 
 	# Summary: Adds the two strings together and returns a new string
-	plus(string: link, length: large) {
+	plus(string: link, length: large): String {
 		a = this.length
 		b = length
 		c = a + b
@@ -483,17 +483,17 @@ export String {
 	}
 
 	# Summary: Adds the two strings together and returns a new string
-	plus(string: String) {
+	plus(string: String): String {
 		return plus(string.data, string.length)
 	}
 
 	# Summary: Adds the two strings together and returns a new string
-	plus(other: link) {
+	plus(other: link): String {
 		return plus(other, length_of(other))
 	}
 
 	# Summary: Creates a new string which has this string in the beginning and the specified character added to the end
-	plus(other: char) {
+	plus(other: char): String {
 		a = length
 
 		# Allocate memory for new string
@@ -513,7 +513,7 @@ export String {
 	}
 
 	# Summary: Overrides the indexed accessor, returning the character in the specified position
-	get(i: large) {
+	get(i: large): tiny {
 		require(i >= 0 and i <= length, 'Invalid getter index')
 		return data.(char*)[i]
 	}
@@ -525,7 +525,7 @@ export String {
 	}
 
 	# Summary: Returns whether the two strings are equal
-	equals(other: String) {
+	equals(other: String): bool {
 		a = length
 		b = other.length
 
@@ -539,7 +539,7 @@ export String {
 	}
 
 	# Summary: Returns whether the two strings are equal
-	equals(data: link) {
+	equals(data: link): bool {
 		a = length
 		b = length_of(data)
 
@@ -553,7 +553,7 @@ export String {
 	}
 
 	# Summary: Computes hash code for the string
-	hash() {
+	hash(): large {
 		hash = 5381
 		a = length
 

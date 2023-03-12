@@ -13,7 +13,7 @@ NodeIterator {
 		return current
 	}
 
-	next() {
+	next(): bool {
 		current = next
 		if current == none return false
 
@@ -40,19 +40,19 @@ Node {
 		this.instance = NODE_NORMAL
 	}
 
-	match(instances: large) {
+	match(instances: large): bool {
 		return (instances & this.instance) != 0
 	}
 
-	match(operator: Operator) {
+	match(operator: Operator): bool {
 		return instance == NODE_OPERATOR and this.(OperatorNode).operator == operator
 	}
 
-	match(variable: Variable) {
+	match(variable: Variable): bool {
 		return instance == NODE_VARIABLE and this.(VariableNode).variable === variable
 	}
 
-	match(implementation: FunctionImplementation) {
+	match(implementation: FunctionImplementation): bool {
 		return instance == NODE_FUNCTION and this.(FunctionNode).function === implementation
 	}
 
@@ -64,14 +64,14 @@ Node {
 	}
 
 	# Summary: Finds the first parent, whose type is the specified type
-	find_parent(types: large) {
+	find_parent(types: large): Node {
 		if parent == none return none as Node
 		if (parent.instance & types) != 0 return parent
 		return parent.find_parent(types) as Node
 	}
 
 	# Summary: Returns all nodes, which pass the specified filter
-	find_all(filter: (Node) -> bool) {
+	find_all(filter: (Node) -> bool): List<Node> {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -83,7 +83,7 @@ Node {
 	}
 
 	# Summary: Finds all nodes, whose type matches the specified type
-	find_all(types: large) {
+	find_all(types: large): List<Node> {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -95,7 +95,7 @@ Node {
 	}
 
 	# Summary: Finds all nodes, whose type is one of the specified types
-	find_every(types: large) {
+	find_every(types: large): List<Node> {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -107,7 +107,7 @@ Node {
 	}
 
 	# Summary: Returns the first child node, which pass the specified filter. None is returned, if no child node passes the filter.
-	find(filter: (Node) -> bool) {
+	find(filter: (Node) -> bool): Node {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if filter(iterator) return iterator
 
@@ -119,7 +119,7 @@ Node {
 	}
 
 	# Summary: Returns the first node, whose type matches the specified type
-	find(types: large) {
+	find(types: large): Node {
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
 			if (iterator.instance & types) != none return iterator
 			
@@ -131,7 +131,7 @@ Node {
 	}
 
 	# Summary: Returns a list of nodes, which pass the specified filter. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
-	find_top(filter: (Node) -> bool) {
+	find_top(filter: (Node) -> bool): List<Node> {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -143,7 +143,7 @@ Node {
 	}
 
 	# Summary: Returns a list of nodes, whose type is the specified node type. However the list can not contain nodes, which are under other returned nodes, since only the top ones are returned.
-	find_top(types: large) {
+	find_top(types: large): List<Node> {
 		result = List<Node>()
 
 		loop (iterator = first, iterator != none, iterator = iterator.next) {
@@ -154,14 +154,14 @@ Node {
 		return result
 	}
 
-	find_context() {
+	find_context(): Node {
 		if has_flag(NODE_SCOPE | NODE_LOOP | NODE_TYPE, instance) return this
 		if parent == none return none as Node
 		return parent.find_context() as Node
 	}
 
 	# Summary: Returns whether this node is under the specified node
-	is_under(node: Node) {
+	is_under(node: Node): bool {
 		iterator = parent
 
 		loop (iterator != node and iterator != none) {
@@ -171,7 +171,7 @@ Node {
 		return iterator == node
 	}
 
-	try_get_parent_context() {
+	try_get_parent_context(): Context {
 		node = find_context()
 		if node == none return none as Context
 
@@ -183,7 +183,7 @@ Node {
 		}
 	}
 
-	get_parent_context() {
+	get_parent_context(): Context {
 		node = find_context()
 
 		return when(node.instance) {
@@ -197,7 +197,7 @@ Node {
 		}
 	}
 
-	add(node: Node) {
+	add(node: Node): _ {
 		node.parent = this
 		node.previous = last
 		node.next = none
@@ -214,7 +214,7 @@ Node {
 	}
 
 	# Summary: Transfers the child nodes of the specified node to this node and detaches the specified node
-	merge(node: Node) {
+	merge(node: Node): _ {
 		loop iterator in node {
 			add(iterator)
 		}
@@ -222,11 +222,11 @@ Node {
 		node.detach()
 	}
 
-	insert(node: Node) {
+	insert(node: Node): _ {
 		parent.insert(this, node)
 	}
 
-	insert(position: Node, child: Node) {
+	insert(position: Node, child: Node): _ {
 		if position == none {
 			if child.parent != none child.parent.remove(child)
 			add(child)
@@ -248,7 +248,7 @@ Node {
 		child.next = position
 	}
 
-	insert_children(children: Node) {
+	insert_children(children: Node): _ {
 		iterator = children.first
 
 		loop (iterator !== none) {
@@ -259,7 +259,7 @@ Node {
 	}
 
 	# Summary: Moves the specified node into the place of this node
-	replace(node: Node) {
+	replace(node: Node): _ {
 		# No need to replace if the replacement is this node
 		if node == this return
 
@@ -282,7 +282,7 @@ Node {
 		node.next = next
 	}
 
-	replace_with_children(root: Node) {
+	replace_with_children(root: Node): bool {
 		iterator = root.first
 
 		loop (iterator != none) {
@@ -294,11 +294,11 @@ Node {
 		return remove()
 	}
 
-	remove() {
+	remove(): bool {
 		return parent != none and parent.remove(this)
 	}
 
-	remove(child: Node) {
+	remove(child: Node): bool {
 		if child.parent != this return false
 
 		left = child.previous
@@ -314,7 +314,7 @@ Node {
 	}
 
 	# Summary: Removes all references from this node to other nodes
-	detach() {
+	detach(): _ {
 		parent = none
 		previous = none
 		next = none
@@ -390,23 +390,23 @@ Node {
 		return false
 	}
 
-	iterator() {
+	iterator(): NodeIterator {
 		return NodeIterator(this)
 	}
 
-	get_type() {
+	get_type(): Type {
 		type = try_get_type()
 		if type === none { abort('Could not get node type') }
 		return type
 	}
 
-	clone() {
+	clone(): Node {
 		result = copy()
 		loop child in this { result.add(child.clone()) }
 		return result
 	}
 
-	protected is_tree_equal(other: Node) {
+	protected is_tree_equal(other: Node): bool {
 		if this === none or other === none or this.instance != other.instance return false
 
 		expected = first

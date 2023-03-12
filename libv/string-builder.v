@@ -16,7 +16,7 @@ export StringBuilder {
 		append(value)
 	}
 
-	private grow(requirement: large) {
+	private grow(requirement: large): _ {
 		capacity: large = (position + requirement) * 2
 		buffer: link = allocate(capacity)
 
@@ -27,7 +27,7 @@ export StringBuilder {
 		this.buffer = buffer
 	}
 
-	append(text: link, length: large) {
+	append(text: link, length: large): _ {
 		if length == 0 return
 
 		if position + length > capacity grow(length)
@@ -36,12 +36,12 @@ export StringBuilder {
 		position += length
 	}
 
-	append(text: link) {
+	append(text: link): _ {
 		length = length_of(text)
 		append(text, length)
 	}
 
-	append(text: String) {
+	append(text: String): _ {
 		append(text.data, text.length)
 	}
 
@@ -53,17 +53,17 @@ export StringBuilder {
 		append(to_string(value))
 	}
 
-	append_line(text: link) {
+	append_line(text: link): _ {
 		append(text)
 		append(`\n`)
 	}
 
-	append_line(text: String) {
+	append_line(text: String): _ {
 		append(text.data, text.length)
 		append(`\n`)
 	}
 
-	append_line(text: large) {
+	append_line(text: large): _ {
 		append_line(to_string(text))
 	}
 
@@ -71,18 +71,18 @@ export StringBuilder {
 		append_line(to_string(text))
 	}
 
-	append_line(character: char) {
+	append_line(character: char): _ {
 		append(character)
 		append(`\n`)
 	}
 
-	append(character: char) {
+	append(character: char): _ {
 		if position + 1 > capacity grow(1)
 		buffer[position] = character
 		position++
 	}
 
-	remove(start: large, end: large) {
+	remove(start: large, end: large): _ {
 		count = end - start
 		if count == 0 return
 		
@@ -91,7 +91,7 @@ export StringBuilder {
 		position -= count
 	}
 
-	insert(index: large, text: link, length: large) {
+	insert(index: large, text: link, length: large): _ {
 		if length == 0 return
 		if position + length > capacity grow(length)
 
@@ -100,18 +100,18 @@ export StringBuilder {
 		position += length
 	}
 
-	insert(index: large, character: char) {
+	insert(index: large, character: char): _ {
 		if position + 1 > capacity grow(1)
 		move(buffer + index, buffer + index + 1, position - index)
 		buffer[index] = character
 		position++
 	}
 
-	insert(index: large, text: link) {
+	insert(index: large, text: link): _ {
 		return insert(index, text, length_of(text))
 	}
 
-	replace(from: link, to: link) {
+	replace(from: link, to: link): _ {
 		a = length_of(from)
 		b = length_of(to)
 
@@ -143,12 +143,12 @@ export StringBuilder {
 		}
 	}
 
-	get(i: large) {
+	get(i: large): u8 {
 		require(i >= 0 and i < position, 'Index out of bounds')
 		return buffer[i]
 	}
 
-	string() {
+	string(): String {
 		return String(buffer, position)
 	}
 

@@ -447,7 +447,7 @@ Pattern LinkPattern {
 		return true
 	}
 
-	private build_template_function_call(context: Context, tokens: List<Token>, left: Node) {
+	private build_template_function_call(context: Context, tokens: List<Token>, left: Node): LinkNode {
 		# Load the properties of the template function call
 		name = tokens[RIGHT].(IdentifierToken)
 		descriptor = FunctionToken(name, tokens[tokens.size - 1] as ParenthesisToken)
@@ -614,7 +614,7 @@ Pattern LoopPattern {
 		return tokens[KEYWORD].(KeywordToken).keyword == Keywords.LOOP and tokens[BODY].match(`{`)
 	}
 
-	private shared get_steps(context: Context, state: ParserState, parenthesis: ParenthesisToken) {
+	private shared get_steps(context: Context, state: ParserState, parenthesis: ParenthesisToken): Node {
 		if parenthesis.tokens.size == 0 return none as Node
 
 		steps = none as Node
@@ -902,12 +902,12 @@ Pattern ImportPattern {
 	}
 
 	# Summary: Return whether the captured tokens represent a function import instead of namespace import
-	private shared is_function_import(tokens: List<Token>) {
+	private shared is_function_import(tokens: List<Token>): bool {
 		return not tokens[TYPE_START].match(TOKEN_TYPE_IDENTIFIER)
 	}
 
 	# Summary: Imports the function contained in the specified tokens
-	private shared import_function(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared import_function(environment: Context, state: ParserState, tokens: List<Token>): Node {
 		descriptor = tokens[FUNCTION] as FunctionToken
 		language = LANGUAGE_VIVID
 
@@ -985,7 +985,7 @@ Pattern ImportPattern {
 	}
 
 	# Summary: Imports the namespace contained in the specified tokens
-	private shared import_namespace(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared import_namespace(environment: Context, state: ParserState, tokens: List<Token>): Node {
 		imported_namespace = common.read_type(environment, tokens, 1)
 		
 		if imported_namespace == none {
@@ -1368,7 +1368,7 @@ Pattern IterationLoopPattern {
 		return tokens[LOOP].match(Keywords.LOOP) and tokens[IN].match(Keywords.IN) and tokens[BODY].match(`{`)
 	}
 
-	get_iterator(context: Context, tokens: List<Token>) {
+	get_iterator(context: Context, tokens: List<Token>): Variable {
 		identifier = tokens[ITERATOR].(IdentifierToken).value
 		iterator = context.declare(none as Type, VARIABLE_CATEGORY_LOCAL, identifier)
 		iterator.position = tokens[ITERATOR].position
@@ -1654,7 +1654,7 @@ Pattern VirtualFunctionPattern {
 
 	# Summary:
 	# Creates a virtual function which does not have a default implementation
-	create_virtual_function_without_implementation(context: Context, state: ParserState, tokens: List<Token>) {
+	create_virtual_function_without_implementation(context: Context, state: ParserState, tokens: List<Token>): VirtualFunction {
 		# The default return type is unit, if the return type is not defined
 		return_type = primitives.create_unit()
 		colon = tokens[COLON]
@@ -1704,7 +1704,7 @@ Pattern VirtualFunctionPattern {
 	}
 
 	# Summary: Creates a virtual function which does have a default implementation
-	create_virtual_function_with_implementation(context: Context, state: ParserState, tokens: List<Token>) {
+	create_virtual_function_with_implementation(context: Context, state: ParserState, tokens: List<Token>): VirtualFunction {
 		# Try to resolve the return type
 		return_type = none as Type
 		colon = tokens[COLON]
@@ -2037,7 +2037,7 @@ Pattern LambdaPattern {
 		return true
 	}
 
-	private shared get_parameter_tokens(tokens: List<Token>) {
+	private shared get_parameter_tokens(tokens: List<Token>): ParenthesisToken {
 		parameter = tokens[PARAMETERS]
 		if parameter.type == TOKEN_TYPE_PARENTHESIS return parameter as ParenthesisToken
 
@@ -2252,11 +2252,11 @@ Pattern ExtensionFunctionPattern {
 		return true
 	}
 
-	private shared is_template_function(tokens: List<Token>) {
+	private shared is_template_function(tokens: List<Token>): bool {
 		return tokens[tokens.size - 1 - PARAMETERS_OFFSET].type != TOKEN_TYPE_FUNCTION
 	}
 
-	private shared find_template_arguments_start(tokens: List<Token>) {
+	private shared find_template_arguments_start(tokens: List<Token>): large {
 		i = tokens.size - 1 - TEMPLATE_FUNCTION_EXTENSION_TEMPLATE_ARGUMENTS_END_OFFSET
 		j = 0
 
@@ -2274,7 +2274,7 @@ Pattern ExtensionFunctionPattern {
 		return i
 	}
 
-	private shared create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared create_template_function_extension(environment: Context, state: ParserState, tokens: List<Token>): Node {
 		# Find the starting index of the template arguments
 		i = find_template_arguments_start(tokens)
 		if i < 0 {
@@ -2305,7 +2305,7 @@ Pattern ExtensionFunctionPattern {
 		return ExtensionFunctionNode(destination, descriptor, template_parameters, body.tokens, descriptor.position, body.end)
 	}
 
-	private shared create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>) {
+	private shared create_standard_function_extension(environment: Context, state: ParserState, tokens: List<Token>): Node {
 		destination = common.read_type(environment, tokens.slice(0, tokens.size - 1 - STANDARD_FUNCTION_EXTENSION_LAST_DOT_OFFSET))
 
 		if destination == none {

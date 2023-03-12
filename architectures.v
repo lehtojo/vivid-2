@@ -260,7 +260,7 @@ namespace x64 {
 		]
 	}
 
-	create_conditional_set_encoding(operation: large) {
+	create_conditional_set_encoding(operation: large): List<InstructionEncoding> {
 		return [
 			# set** r64 | set** r32 | set r16
 			InstructionEncoding(operation, 0, ENCODING_ROUTE_R, false, ENCODING_FILTER_TYPE_STANDARD_REGISTER, 0, 2, instruction_encoder.OPERAND_SIZE_OVERRIDE),
@@ -290,7 +290,7 @@ namespace x64 {
 	}
 	###
 
-	initialize() {
+	initialize(): _ {
 		JumpInstruction.initialize()
 
 		parameterless_encodings = List<List<InstructionEncoding>>()

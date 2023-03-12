@@ -11,7 +11,7 @@ build_body(unit: Unit, body: ScopeNode) {
 }
 
 # Summary: Builds an if-statement or an else-if-statement
-build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction) {
+build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction): Result {
 	# Set the next label to be the end label if there is no successor since then there wont be any other comparisons
 	interphase = end.label
 	if statement.successor != none { interphase = unit.get_next_label() }
@@ -41,7 +41,7 @@ build(unit: Unit, statement: IfNode, condition: Node, end: LabelInstruction) {
 	return build(unit, statement.successor, end) as Result
 }
 
-build(unit: Unit, node: Node, end: LabelInstruction) {
+build(unit: Unit, node: Node, end: LabelInstruction): Result {
 	unit.add_debug_position(node)
 
 	if node.match(NODE_IF | NODE_ELSE_IF) return build(unit, node as IfNode, node.(IfNode).condition, end)
@@ -51,7 +51,7 @@ build(unit: Unit, node: Node, end: LabelInstruction) {
 	return result
 }
 
-start(unit: Unit, node: IfNode) {
+start(unit: Unit, node: IfNode): Result {
 	end = LabelInstruction(unit, unit.get_next_label())
 	result = build(unit, node, end)
 	unit.add(end)
@@ -59,7 +59,7 @@ start(unit: Unit, node: IfNode) {
 	return result
 }
 
-build_condition(unit: Unit, condition: Node, failure: Label) {
+build_condition(unit: Unit, condition: Node, failure: Label): _ {
 	success = unit.get_next_label()
 
 	instructions = build_condition(unit, condition, success, failure) as List<Instruction>
@@ -68,7 +68,7 @@ build_condition(unit: Unit, condition: Node, failure: Label) {
 	build_condition_instructions(unit, instructions)
 }
 
-build_condition_instructions(unit: Unit, instructions: List<Instruction>) {
+build_condition_instructions(unit: Unit, instructions: List<Instruction>): _ {
 	# Remove all occurrences of the following pattern from the instructions:
 	# Jump L0
 	# L0:
@@ -161,7 +161,7 @@ TemporaryInstruction TemporaryCompareInstruction {
 		this.comparison = comparison
 	}
 
-	add() {
+	add(): _ {
 		if root != none {
 			# Build the code surrounding the comparison
 			instance = comparison.instance
@@ -179,7 +179,7 @@ TemporaryInstruction TemporaryCompareInstruction {
 	}
 }
 
-build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
+build_condition(unit: Unit, condition: Node, success: Label, failure: Label): List<Instruction> {
 	if condition.match(NODE_OPERATOR) {
 		operation = condition as OperatorNode
 		type = operation.operator.type
@@ -215,7 +215,7 @@ build_condition(unit: Unit, condition: Node, success: Label, failure: Label) {
 	return build_condition(unit, replacement, success, failure) as List<Instruction>
 }
 
-build_comparison(unit: Unit, condition: OperatorNode, success: Label, failure: Label) {
+build_comparison(unit: Unit, condition: OperatorNode, success: Label, failure: Label): List<Instruction> {
 	first_type = condition.first.get_type()
 	second_type = condition.last.get_type()
 	unsigned = (first_type.format == FORMAT_DECIMAL or second_type.format == FORMAT_DECIMAL) or (is_unsigned(first_type.format) and is_unsigned(second_type.format))
@@ -228,7 +228,7 @@ build_comparison(unit: Unit, condition: OperatorNode, success: Label, failure: L
 	return instructions
 }
 
-build_logical_condition(unit: Unit, condition: OperatorNode, success: Label, failure: Label) {
+build_logical_condition(unit: Unit, condition: OperatorNode, success: Label, failure: Label): List<Instruction> {
 	instructions = List<Instruction>()
 	interphase = unit.get_next_label()
 

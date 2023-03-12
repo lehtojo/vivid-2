@@ -64,13 +64,13 @@ FLAG_ALLOW_ADDRESS = 1 <| 12
 FLAG_LOCKED = 1 <| 13
 
 # Summary: Returns the largest format with the specified sign
-get_system_format(unsigned: bool) {
+get_system_format(unsigned: bool): large {
 	if unsigned return SYSTEM_FORMAT
 	return SYSTEM_SIGNED
 }
 
 # Summary: Returns the largest format with the specified sign
-get_system_format(format: large) {
+get_system_format(format: large): large {
 	if (format & 1) != 0 return SYSTEM_FORMAT
 	return SYSTEM_SIGNED
 }
@@ -120,7 +120,7 @@ InstructionParameter {
 	}
 
 	# Summary: Returns all valid handle options that are lower in cost than the current one
-	get_lower_cost_handle_options(type: large) {
+	get_lower_cost_handle_options(type: large): large {
 		mask = -1
 
 		loop (type != 0) {
@@ -131,7 +131,7 @@ InstructionParameter {
 		return types & mask
 	}
 
-	is_valid() {
+	is_valid(): bool {
 		if not has_flag(types, result.value.type) return false
 
 		# Watch out for bit limit
@@ -181,7 +181,7 @@ Instruction {
 	# Tells whether the instruction is built manually using textual assembly. This helps the assembler by telling it to use the assembly code parser.
 	is_manual: bool = false
 
-	destination() {
+	destination(): InstructionParameter {
 		loop parameter in parameters {
 			if parameter.is_destination return parameter
 		}
@@ -189,7 +189,7 @@ Instruction {
 		return none as InstructionParameter
 	}
 	
-	source() {
+	source(): InstructionParameter {
 		loop parameter in parameters {
 			if not parameter.is_destination return parameter
 		}
@@ -215,17 +215,17 @@ Instruction {
 		this.dependencies.add(result)
 	}
 
-	match(type: large) {
+	match(type: large): bool {
 		return this.type == type
 	}
 
 	# Summary: Adds this instruction to the unit and returns the result of this instruction
-	add() {
+	add(): Result {
 		unit.add(this)
 		return result
 	}
 
-	private validate_handle(handle: Handle, locked: List<Register>) {
+	private validate_handle(handle: Handle, locked: List<Register>): _ {
 		results = handle.get_register_dependent_results()
 		
 		loop iterator in results {
@@ -241,7 +241,7 @@ Instruction {
 	}
 
 	# Summary: Simulates the interactions between the instruction parameters such as relocating the source to the destination
-	apply_parameter_flags() {
+	apply_parameter_flags(): _ {
 		destination: Handle = none
 		source: Handle = none
 
@@ -324,7 +324,7 @@ Instruction {
 		}
 	}
 
-	convert(parameter: InstructionParameter) {
+	convert(parameter: InstructionParameter): Result {
 		protect = parameter.is_destination and parameter.is_protected
 		directives = none as List<Directive>
 
@@ -368,12 +368,12 @@ Instruction {
 	}
 
 	# Summary: Builds the given operation without any processing
-	build(operation: String) {
+	build(operation: String): _ {
 		this.operation = operation
 		this.is_manual = true
 	}
 
-	build(operation: link, size: large) {
+	build(operation: link, size: large): _ {
 		locked = List<Register>()
 
 		loop (i = 0, i < parameters.size, i++) {
@@ -422,25 +422,25 @@ Instruction {
 		loop register in locked { register.unlock() }
 	}
 
-	build(operation: link, size: large, parameter: InstructionParameter) {
+	build(operation: link, size: large, parameter: InstructionParameter): _ {
 		parameters.add(parameter)
 		build(operation, size)
 	}
 
-	build(operation: link, size: large, first: InstructionParameter, second: InstructionParameter) {
+	build(operation: link, size: large, first: InstructionParameter, second: InstructionParameter): _ {
 		parameters.add(first)
 		parameters.add(second)
 		build(operation, size)
 	}
 
-	build(operation: link, size: large, first: InstructionParameter, second: InstructionParameter, third: InstructionParameter) {
+	build(operation: link, size: large, first: InstructionParameter, second: InstructionParameter, third: InstructionParameter): _ {
 		parameters.add(first)
 		parameters.add(second)
 		parameters.add(third)
 		build(operation, size)
 	}
 
-	reindex() {
+	reindex(): _ {
 		dependencies: List<Result> = get_all_dependencies()
 		loop dependency in dependencies { dependency.use(this) }
 
@@ -448,7 +448,7 @@ Instruction {
 		result.use(result.lifetime.usages)
 	}
 
-	build() {
+	build(): _ {
 		if state == INSTRUCTION_STATE_BUILT {
 			loop parameter in parameters {
 				if not parameter.is_value_valid and parameter.value == none abort('During translation one instruction parameter was in incorrect format')
@@ -479,7 +479,7 @@ Instruction {
 		}
 	}
 
-	finish() {
+	finish(): _ {
 		# Skip empty instructions
 		if operation === none or operation.length == 0 return
 
@@ -517,7 +517,7 @@ Instruction {
 		return all
 	}
 
-	get_all_dependencies() {
+	get_all_dependencies(): List<Result> {
 		all = List<Result>()
 		loop parameter in parameters { all.add(parameter.result) }
 

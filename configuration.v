@@ -32,24 +32,24 @@ static_library_extension() {
 }
 
 # Summary: Returns the extension of a static library file
-shared_library_extension() {
+shared_library_extension(): u8* {
 	if settings.is_target_windows return '.dll'
 	return '.so'
 }
 
 # Summary: Returns the extension of an object file
-object_file_extension() {
+object_file_extension(): u8* {
 	if settings.is_target_windows return '.obj'
 	return '.o'
 }
 
 # Summary: Returns whether the element starts with '-'
-is_option(element: String) {
+is_option(element: String): bool {
 	return element[] == `-`
 }
 
 # Summary: Collect files from the specified folder
-collect(files: List<String>, folder: String, recursive: bool) {
+collect(files: List<String>, folder: String, recursive: bool): _ {
 	result = io.get_folder_files(folder, recursive)
 
 	loop file in result {
@@ -61,7 +61,7 @@ collect(files: List<String>, folder: String, recursive: bool) {
 }
 
 # Summary: Initializes the configuration by registering the folders which can be searched through
-initialize_configuration() {
+initialize_configuration(): _ {
 	settings.included_folders = List<String>()
 	settings.included_folders.add(io.get_process_working_folder())
 	settings.included_folders.add(io.get_process_folder())
@@ -105,7 +105,7 @@ initialize_configuration() {
 }
 
 # Summary: Tries to find the specified library using the include folders
-find_library(library: String) {
+find_library(library: String): String {
 
 	loop folder in settings.included_folders {
 		filename = folder + library
@@ -131,7 +131,7 @@ find_library(library: String) {
 	return none as String
 }
 
-configure(parameters: List<String>, files: List<String>, libraries: List<String>, value: String) {
+configure(parameters: List<String>, files: List<String>, libraries: List<String>, value: String): Status {
 	if value == '-help' {
 		console.write_line('Usage: v [options] <folders / files>')
 		console.write_line('Options:')
@@ -300,7 +300,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 	return Status()
 }
 
-configure(arguments: List<String>) {
+configure(arguments: List<String>): Status {
 	files = List<String>()
 	objects = List<String>()
 	libraries = List<String>()

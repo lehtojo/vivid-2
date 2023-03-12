@@ -20,11 +20,11 @@ namespace linker {
 
 	# Summary:
 	# Returns whether the specified section should be loaded into memory when the application starts
-	is_loadable_section(section: BinarySection) {
+	is_loadable_section(section: BinarySection): bool {
 		return section.type == BINARY_SECTION_TYPE_TEXT or section.type == BINARY_SECTION_TYPE_DATA
 	}
 
-	print_conflicting_symbols_and_abort(objects: List<BinaryObjectFile>, symbol: BinarySymbol) {
+	print_conflicting_symbols_and_abort(objects: List<BinaryObjectFile>, symbol: BinarySymbol): _ {
 		# Find the objects that have the same symbol
 		conflicting_objects = objects.filter(i -> i.exports.contains(symbol.name))
 		abort("Symbol " + symbol.name + ' is exported by multiple object files: ' + String.join(", ", conflicting_objects.map<String>((i: BinaryObjectFile) -> i.name)))
@@ -33,7 +33,7 @@ namespace linker {
 	# Summary:
 	# Resolves all external symbols from the specified binary objects by connecting them to the real symbols.
 	# This function throws an exception if no definition for an external symbol is found.
-	resolve_symbols(objects: List<BinaryObjectFile>) {
+	resolve_symbols(objects: List<BinaryObjectFile>): Map<String, BinarySymbol> {
 		definitions = Map<String, BinarySymbol>()
 
 		loop object in objects {
@@ -68,7 +68,7 @@ namespace linker {
 
 	# Summary:
 	# Combines the loadable sections of the specified object files
-	create_loadable_sections(fragments: List<BinarySection>) {
+	create_loadable_sections(fragments: List<BinarySection>): List<BinarySection> {
 		# Merge all sections that have the same type
 		result = List<BinarySection>()
 
@@ -145,7 +145,7 @@ namespace linker {
 
 	# Summary:
 	# Computes relocations inside the specified object files using section virtual addresses
-	compute_relocations(relocations: List<BinaryRelocation>, base_address: large) {
+	compute_relocations(relocations: List<BinaryRelocation>, base_address: large): _ {
 		loop relocation in relocations {
 			symbol = relocation.symbol
 			symbol_section = symbol.section

@@ -44,7 +44,7 @@ included_folders: List<String>
 
 is_x64 => settings.architecture == ARCHITECTURE_X64
 
-initialize() {
+initialize(): _ {
 	architecture = ARCHITECTURE_X64
 	is_optimization_enabled = false
 	is_instruction_analysis_enabled = false
