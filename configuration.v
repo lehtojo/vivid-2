@@ -158,6 +158,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-binary')
 		console.write_line('-base <address>')
 		console.write_line('-system')
+		console.write_line('-filter <file>')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -285,6 +286,12 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 	}
 	else value == '-system' {
 		settings.is_system_mode_enabled = true
+	}
+	else value == '-filter' {
+		argument = parameters.pop_or(none as String)
+		if argument === none return Status('Expected a source file path')
+
+		settings.build_filter_path = argument
 	}
 	else {
 		return Status("Unknown option " + value)

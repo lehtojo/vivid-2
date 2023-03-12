@@ -1483,11 +1483,13 @@ get_text_section(implementation: FunctionImplementation) {
 
 	fullname = implementation.get_fullname()
 
-	# Ensure this function is visible to other units
-	builder.write(EXPORT_DIRECTIVE)
-	builder.write(` `)
-	builder.write_line(fullname)
-	builder.export_symbol(fullname)
+	# Export the implementation if it is exported
+	if implementation.metadata.is_exported {
+		builder.write(EXPORT_DIRECTIVE)
+		builder.write(` `)
+		builder.write_line(fullname)
+		builder.export_symbol(fullname)
+	}
 
 	unit = Unit(implementation)
 	unit.mode = UNIT_MODE_ADD
@@ -1995,14 +1997,67 @@ get_constant_section(items: List<ConstantDataSectionHandle>) {
 }
 
 # Summary:
+# Returns all types in a map grouped by the containing source file
+get_types_grouped_by_files_default(context: Context): Map<SourceFile, List<Type>> {
+	# Find all types that have a position
+	types = common.get_all_types(context)
+	types = types.filter(i -> i.position !== none)
+	return group_by<Type, SourceFile>(types, (i: Type) -> i.position.file)
+}
+
+# Summary:
+# Returns all types grouped by source files depending on the build settings
+get_types_grouped_by_files(context: Context): Map<SourceFile, List<Type>> {
+	# If there is no build filter, group the types by files as default.
+	# This will result in multiple object files.
+	if settings.build_filter === none return get_types_grouped_by_files_default(context)
+
+	# Find all types that have a position
+	types = common.get_all_types(context)
+	types = types.filter(i -> i.position !== none)
+
+	# Put all the types under the build filter source file,  
+	# so that all will be build inside a single object file
+	result = Map<SourceFile, List<Type>>(1)
+	result.add(settings.build_filter, types)
+	return result
+}
+
+
+# Summary:
+# Returns all implementations in a map grouped by the containing source file
+get_implementations_grouped_by_files_default(context: Context): Map<SourceFile, List<FunctionImplementation>> {
+	# Group all non-imported implementations by their containing source files
+	implementations = common.get_all_function_implementations(context, false)
+	implementations = implementations.filter(i -> i.metadata.start !== none)
+	return group_by<FunctionImplementation, SourceFile>(implementations, (i: FunctionImplementation) -> i.metadata.start.file)
+}
+
+# Summary:
+# Returns all implementations grouped by source files depending on the build settings
+get_implementations_grouped_by_files(context: Context): Map<SourceFile, List<FunctionImplementation>> {
+	# If there is no build filter, group the implementations by files as default.
+	# This will result in multiple object files.
+	if settings.build_filter === none return get_implementations_grouped_by_files_default(context)
+
+	# Find all non-imported implementations that have a position
+	implementations = common.get_all_function_implementations(context, false)
+	implementations = implementations.filter(i -> i.metadata.start !== none)
+
+	# Put all the implementations under the build filter source file,  
+	# so that all will be build inside a single object file
+	result = Map<SourceFile, List<FunctionImplementation>>(1)
+	result.add(settings.build_filter, implementations)
+	return result
+}
+
+# Summary:
 # Constructs debugging information for each of the files inside the context
 get_debug_sections(context: Context, files: List<SourceFile>) {
 	builders = Map<SourceFile, AssemblyBuilder>()
 	if not settings.is_debugging_enabled return builders
 
-	all_implementations = common.get_all_function_implementations(context, false)
-	loop (i = all_implementations.size - 1, i >= 0, i--) { if all_implementations[i].metadata.is_imported all_implementations.remove_at(i) }
-	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
+	implementations = get_implementations_grouped_by_files(context)
 
 	loop file in files {
 		debug = Debug(context)
@@ -2052,12 +2107,10 @@ get_debug_sections(context: Context, files: List<SourceFile>) {
 }
 
 # Summary: Constructs file specific data sections based on the specified context
-get_data_sections(context: Context) {
+get_data_sections(context: Context, files: List<SourceFile>) {
 	sections = Map<SourceFile, AssemblyBuilder>()
 	
-	all_types = common.get_all_types(context)
-	loop (i = all_types.size - 1, i >= 0, i--) { if all_types[i].position === none all_types.remove_at(i) }
-	types = group_by<Type, SourceFile>(all_types, (i: Type) -> i.position.file)
+	types = get_types_grouped_by_files(context)
 
 	data_section_identifier = String(SECTION_DIRECTIVE) + ` ` + DATA_SECTION_IDENTIFIER + `\n`
 
@@ -2100,9 +2153,7 @@ get_data_sections(context: Context) {
 	}
 
 	# Add strings
-	all_implementations = common.get_all_function_implementations(context)
-	loop (i = all_implementations.size - 1, i >= 0, i--) { if all_implementations[i].metadata.is_imported all_implementations.remove_at(i) }
-	implementations = group_by<FunctionImplementation, SourceFile>(all_implementations, (i: FunctionImplementation) -> i.metadata.start.file)
+	implementations = get_implementations_grouped_by_files(context)
 
 	loop iterator in implementations {
 		nodes = List<StringNode>()
@@ -2139,17 +2190,12 @@ get_data_sections(context: Context) {
 	return sections
 }
 
-get_text_sections(files: List<SourceFile>, context: Context) {
+# Summary: Constructs file specific text sections based on the specified context
+get_text_sections(context: Context, files: List<SourceFile>) {
 	sections = Map<SourceFile, AssemblyBuilder>()
 
-	all = common.get_all_function_implementations(context, false)
-
-	# Remove all functions, which do not have start position
-	loop (i = all.size - 1, i >= 0, i--) {
-		if all[i].metadata.start === none all.remove_at(i)
-	}
-
-	implementations = group_by<FunctionImplementation, SourceFile>(all, (i: FunctionImplementation) -> i.metadata.start.file)
+	implementations = get_implementations_grouped_by_files(context)
+	implementation_count = implementations.map<large>((i: KeyValuePair<SourceFile, List<FunctionImplementation>>) -> i.value.size).sum<large>()
 
 	# Store the number of assembled functions
 	index = 0
@@ -2172,7 +2218,7 @@ get_text_sections(files: List<SourceFile>, context: Context) {
 					console.put(`[`)
 					console.write(index + 1)
 					console.put(`/`)
-					console.write(all.size)
+					console.write(implementation_count)
 					console.put(`]`)
 					console.write(' Assembling ')
 					console.write_line(implementation.string())
@@ -2323,8 +2369,8 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 
 	Keywords.all.clear() # Remove all keywords for parsing assembly
 
-	text_sections = get_text_sections(files, context)
-	data_sections = get_data_sections(context)
+	text_sections = get_text_sections(context, files)
+	data_sections = get_data_sections(context, files)
 	debug_sections = get_debug_sections(context, files)
 
 	assemblies = Map<SourceFile, String>()
@@ -2469,6 +2515,9 @@ assemble() {
 	imports = settings.libraries
 	output_name = settings.output_name
 	output_type = settings.output_type
+
+	# If the build filter is set, do not build other files
+	if settings.build_filter !== none { files = [ settings.build_filter ] }
 
 	assemblies = assemble(parse.context, files, imports, output_name, output_type)
 

@@ -33,6 +33,8 @@ service: bool # Whether to start a compiler service for code completion
 filenames: List<String> # Stores the user-defined source files to load
 textual_assembly: bool # Stores whether textual assembly mode is enabled
 base_address: u64 # Stores the base address used in binary mode
+build_filter_path: String # Stores the path of the source file that only should be built. None if all should be built.
+build_filter: SourceFile # Stores the source file that only should be built. None if all should be built.
 
 allocation_function: FunctionImplementation
 deallocation_function: FunctionImplementation
@@ -53,7 +55,7 @@ initialize() {
 	is_garbage_collector_enabled = false
 	is_debugging_enabled = false
 	is_verbose_output_enabled = false
-	is_target_windows = false
+	is_target_windows = true
 	use_indirect_access_tables = false
 	is_assembly_output_enabled = false
 	is_system_mode_enabled = false
@@ -72,4 +74,6 @@ initialize() {
 	textual_assembly = false
 	base_address = 0x1000
 	included_folders = List<String>()
+	build_filter_path	= none as String
+	build_filter = none as SourceFile
 }

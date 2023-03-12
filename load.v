@@ -27,6 +27,20 @@ SourceFile {
 	}
 }
 
+# Summary: Finds and sets the build filter
+find_build_filter(filenames: List<String>, files: List<SourceFile>): _ {
+	path = settings.build_filter_path
+	if path === none return
+
+	loop (i = 0, i < filenames.size, i++) {
+		if not (filenames[i] == path) continue
+		settings.build_filter = files[i]
+		stop
+	}
+
+	if settings.build_filter === none abort("Specified filter file was not in the build files: " + path)
+}
+
 # Summary: Loads the source files specified by the user
 load() {
 	filenames = settings.filenames
@@ -43,6 +57,8 @@ load() {
 		content = String(bytes.value.data, bytes.value.size).replace(`\r`, ` `).replace(`\t`, ` `)
 		files[i] = SourceFile(filename, content, i)
 	}
+
+	find_build_filter(filenames, files)
 
 	settings.source_files = files
 	return Status()

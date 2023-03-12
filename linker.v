@@ -15,7 +15,6 @@ namespace linker {
 					symbol.name = to_string(object.index) + '.' + symbol.name
 				}
 			}
-			
 		}
 	}
 

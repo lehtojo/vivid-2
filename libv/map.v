@@ -293,6 +293,17 @@ export Map<K, V> {
 		return Optional<V>(slots[index].value)
 	}
 
+	# Summary: Returns a new map with the values associated with the specified keys
+	only(keys): Map<K, V> {
+		result = Map<K, V>(capacity * 2)
+
+		loop key in keys {
+			if try_get(key) has value result.add(key, value)
+		}
+
+		return result
+	}
+
 	set(key: K, value: V) {
 		add(key, value)
 	}
@@ -346,7 +357,7 @@ export Map<K, V> {
 
 	# Summary: Converts the key-value pairs of this map into a list
 	map<U>(mapper: (KeyValuePair<K, V>) -> U) {
-		result = List<U>(items.size, false)
+		result = List<U>(size, false)
 		index = first
 
 		loop (index >= 0) {

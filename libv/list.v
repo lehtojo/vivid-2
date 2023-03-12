@@ -492,6 +492,17 @@ export List<T> {
 		return false
 	}
 
+	# Summary: Returns the sum of all the elements
+	sum<U>() {
+		result = 0 as U
+
+		loop (i = 0, i < size, i++) {
+			result += data[i]
+		}
+
+		return result
+	}
+
 	# Summary: Returns an iterator which can be used to inspect this list
 	iterator() {
 		return SequentialIterator<T>(data, size)
