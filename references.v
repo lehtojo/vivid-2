@@ -3,7 +3,7 @@ ACCESS_WRITE = 2
 
 namespace references
 
-create_constant_number(value: large, format: large) {
+create_constant_number(value: large, format: large): Handle {
 	return ConstantHandle(value, format)
 }
 

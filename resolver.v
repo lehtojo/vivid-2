@@ -1,6 +1,6 @@
 namespace resolver
 
-get_shared_type(expected: Type, actual: Type) {
+get_shared_type(expected: Type, actual: Type): Type {
 	if expected == none or actual == none return none as Type
 	if expected == actual or expected.match(actual) return expected
 
@@ -140,15 +140,28 @@ resolve(variable: Variable): _ {
 
 # Summary: Resolves the parameters of the specified function
 resolve(function: Function): _ {
-	# Resolve the parameters
+	# Resolve parameter types
 	loop parameter in function.parameters {
+		# Skip resolved and template parameters
 		type = parameter.type
 		if type == none or type.is_resolved continue
 
+		# Attempt to resolve the current parameter type
 		type = resolve(function, type)
 		if type == none continue
 
+		# Update the parameter type
 		parameter.type = type
+	}
+
+	# Resolve the return type
+	if function.return_type !== none and function.return_type.is_unresolved {
+		type = resolve(function, function.return_type)
+
+		if type !== none {
+			# Update the return type
+			function.return_type = type
+		}
 	}
 }
 
@@ -509,7 +522,7 @@ complain(report: List<Status>): _ {
 	loop status in report { output(status) }
 }
 
-debug_print(context: Context) {
+debug_print(context: Context): _ {
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {
@@ -537,7 +550,7 @@ resolve(): Status {
 		previous = current
 
 		parser.apply_extension_functions(context, root)
-		parser.implement_functions(context, none as SourceFile, false)
+		parser.implement_functions(context, settings.build_filter, false)
 
 		# Try to resolve problems in the node tree and get the status after that
 		resolve_context(context)

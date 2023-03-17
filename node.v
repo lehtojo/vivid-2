@@ -9,7 +9,7 @@ NodeIterator {
 		this.next = node.first
 	}
 
-	value() {
+	value(): Node {
 		return current
 	}
 
@@ -21,7 +21,7 @@ NodeIterator {
 		return true
 	}
 
-	reset() {
+	reset(): _ {
 		next = node.first
 	}
 }
@@ -57,7 +57,7 @@ Node {
 	}
 
 	# Summary: Finds the first parent, which passes the specified filter
-	find_parent(filter: (Node) -> bool) {
+	find_parent(filter: (Node) -> bool): Node {
 		if parent == none return none as Node
 		if filter(parent) return parent
 		return parent.find_parent(filter) as Node
@@ -322,7 +322,7 @@ Node {
 		last = none
 	}
 
-	private shared get_nodes_under_shared_parent(a: Node, b: Node) {
+	private shared get_nodes_under_shared_parent(a: Node, b: Node): Node {
 		path_a = List<Node>()
 		path_b = List<Node>()
 
@@ -349,7 +349,7 @@ Node {
 	}
 
 	# Summary: Returns whether this node is placed before the specified node
-	is_before(other: Node) {
+	is_before(other: Node): bool {
 		positions = get_nodes_under_shared_parent(other, this)
 		if positions == none abort('Nodes did not have a shared parent')
 		if positions.key == none return false
@@ -370,7 +370,7 @@ Node {
 	}
 	
 	# Summary: Returns whether this node is placed after the specified node
-	is_after(other: Node) {
+	is_after(other: Node): bool {
 		positions = get_nodes_under_shared_parent(other, this)
 		if positions == none abort('Nodes did not have a shared parent')
 		if positions.key == none return false
@@ -427,28 +427,28 @@ Node {
 		}
 	}
 
-	open is_equal(other: Node) {
+	open is_equal(other: Node): bool {
 		return is_tree_equal(other)
 	}
 
 	# Summary: Tries to resolve the potential error state of the node
-	open resolve(context: Context) {
+	open resolve(context: Context): Node {
 		return none as Node
 	}
 
-	open get_status() {
+	open get_status(): Status {
 		return none as Status
 	}
 
-	open try_get_type() {
+	open try_get_type(): Type {
 		return none as Type
 	}
 
-	open copy() {
+	open copy(): Node {
 		return Node()
 	}
 
-	open string() {
+	open string(): String {
 		return "Node"
 	}
 }

@@ -27,7 +27,7 @@ AssemblyBuilder {
 		if settings.is_assembly_output_enabled { this.text = StringBuilder(text) }
 	}
 
-	add(file: SourceFile, instructions: List<Instruction>) {
+	add(file: SourceFile, instructions: List<Instruction>): _ {
 		if this.instructions.contains_key(file) {
 			this.instructions[file].add_all(instructions)
 			return
@@ -95,7 +95,7 @@ AssemblyBuilder {
 		return module
 	}
 
-	export_symbols(symbols: Array<String>) {
+	export_symbols(symbols: Array<String>): _ {
 		loop symbol in symbols {
 			export_symbol(symbol)
 		}
@@ -136,7 +136,7 @@ AssemblyBuilder {
 		this.text.append_line(text)
 	}
 
-	write_line(character: char) {
+	write_line(character: char): _ {
 		if this.text == none return
 		this.text.append_line(character)
 	}
@@ -214,7 +214,7 @@ Register {
 Lifetime {
 	usages: List<Instruction> = List<Instruction>()
 
-	reset() {
+	reset(): _ {
 		usages.clear()
 	}
 
@@ -1406,7 +1406,7 @@ separate_debug_breaks(unit: Unit, instructions: List<Instruction>): _ {
 }
 
 # Summary: Removes unreachable instructions from the specified instructions.
-remove_unreachable_instructions(instructions: List<Instruction>) {
+remove_unreachable_instructions(instructions: List<Instruction>): _ {
 	loop (i = 0, i < instructions.size, i++) {
 		instruction = instructions[i]
 
@@ -1426,7 +1426,7 @@ remove_unreachable_instructions(instructions: List<Instruction>) {
 }
 
 # Summary: Remove unnecessary jumps from the specified instructions.
-remove_unnecessary_jumps(instructions: List<Instruction>) {
+remove_unnecessary_jumps(instructions: List<Instruction>): _ {
 	# Look for jumps whose destination label is the next instruction
 	loop (i = 0, i < instructions.size - 1, i++) {
 		# Find the next jump instruction
@@ -1451,7 +1451,7 @@ remove_unnecessary_jumps(instructions: List<Instruction>) {
 }
 
 # Summary: Performs some processing to the specified instructions such as removing unreachable instructions.
-postprocess(instructions: List<Instruction>) {
+postprocess(instructions: List<Instruction>): _ {
 	remove_unreachable_instructions(instructions)
 	remove_unnecessary_jumps(instructions)
 }
@@ -1962,40 +1962,6 @@ get_bytes<T>(value: T) {
 	return bytes
 }
 
-# Summary: Constructs data section for the specified constants
-get_constant_section(items: List<ConstantDataSectionHandle>) {
-	builder = StringBuilder()
-
-	loop item in items {
-		name = item.identifier
-
-		allocator = none as link
-		text = none as String
-
-		if item.value_type == CONSTANT_TYPE_BYTES {
-			values = List<String>()
-			loop value in item.(ByteArrayDataSectionHandle).value { values.add(to_string(value)) }
-			text = String.join(", ", values)
-			allocator = BYTE_ALLOCATOR
-		}
-		else {
-			text = to_string(item.(NumberDataSectionHandle).value)
-			allocator = QUAD_ALLOCATOR
-		}
-
-		if settings.is_x64 { builder.append_line(String(BYTE_ALIGNMENT_DIRECTIVE) + ' 16') }
-		else { builder.append_line(String(POWER_OF_TWO_ALIGNMENT_DIRECTIVE) + ' 4') }
-
-		builder.append(name)
-		builder.append_line(`:`)
-		builder.append(allocator)
-		builder.append(` `)
-		builder.append_line(text)
-	}
-
-	return builder.string()
-}
-
 # Summary:
 # Returns all types in a map grouped by the containing source file
 get_types_grouped_by_files_default(context: Context): Map<SourceFile, List<Type>> {
@@ -2014,7 +1980,7 @@ get_types_grouped_by_files(context: Context): Map<SourceFile, List<Type>> {
 
 	# Find all types that have a position
 	types = common.get_all_types(context)
-	types = types.filter(i -> i.position !== none)
+	types = types.filter(i -> i.position !== none and i.position.file === settings.build_filter)
 
 	# Put all the types under the build filter source file,  
 	# so that all will be build inside a single object file
@@ -2023,13 +1989,25 @@ get_types_grouped_by_files(context: Context): Map<SourceFile, List<Type>> {
 	return result
 }
 
+# Summary:
+# Returns all function implementations that should be assembled.
+# Imported implementations and template base type functions should not be assembled.
+get_all_function_implementations_for_assembling(context: Context): List<FunctionImplementation> {
+	# Get all implementations
+	implementations = common.get_all_function_implementations(context, false)
+	implementations = implementations.filter(i -> i.metadata.start !== none)
+
+	# Do not assemble anything from template base types
+	implementations = implementations.filter(i -> not (i.parent !== none and i.parent.is_type and i.parent.(Type).is_template_type and not i.parent.(Type).is_template_type_variant))
+
+	return implementations
+}
 
 # Summary:
 # Returns all implementations in a map grouped by the containing source file
 get_implementations_grouped_by_files_default(context: Context): Map<SourceFile, List<FunctionImplementation>> {
-	# Group all non-imported implementations by their containing source files
-	implementations = common.get_all_function_implementations(context, false)
-	implementations = implementations.filter(i -> i.metadata.start !== none)
+	# Group all implementations by their containing source files
+	implementations = get_all_function_implementations_for_assembling(context)
 	return group_by<FunctionImplementation, SourceFile>(implementations, (i: FunctionImplementation) -> i.metadata.start.file)
 }
 
@@ -2040,9 +2018,8 @@ get_implementations_grouped_by_files(context: Context): Map<SourceFile, List<Fun
 	# This will result in multiple object files.
 	if settings.build_filter === none return get_implementations_grouped_by_files_default(context)
 
-	# Find all non-imported implementations that have a position
-	implementations = common.get_all_function_implementations(context, false)
-	implementations = implementations.filter(i -> i.metadata.start !== none)
+	# Collect all implementations that should be assembled
+	implementations = get_all_function_implementations_for_assembling(context)
 
 	# Put all the implementations under the build filter source file,  
 	# so that all will be build inside a single object file
@@ -2343,7 +2320,7 @@ create_header(context: Context, file: SourceFile, output_type: large): AssemblyB
 	return builder
 }
 
-run(executable: link, arguments: List<String>) {
+run(executable: link, arguments: List<String>): Status {
 	command = String(executable) + ` ` + String.join(` `, arguments)
 	pid = io.shell(command)
 	io.wait_for_exit(pid)

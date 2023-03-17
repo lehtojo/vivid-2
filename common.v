@@ -22,7 +22,7 @@ ACCESS_TYPE_WRITE = 2
 
 namespace common
 
-get_self_pointer(context: Context, position: Position) {
+get_self_pointer(context: Context, position: Position): Node {
 	self = context.get_self_pointer()
 	if self != none return VariableNode(self, position) as Node
 
@@ -368,7 +368,7 @@ consume_type(state: ParserState): bool {
 }
 
 # Summary: Returns the types of the child nodes
-get_types(node: Node) {
+get_types(node: Node): List<Type> {
 	types = List<Type>()
 
 	loop iterator in node {
@@ -380,7 +380,7 @@ get_types(node: Node) {
 	return types
 }
 
-find_condition(start) {
+find_condition(start): Node {
 	iterator = start
 
 	loop (iterator != none) {
@@ -538,7 +538,7 @@ try_get_virtual_function_call(self: Node, self_type: Type, name: String, argumen
 
 	# Try to find a virtual function with the parameter types
 	overload = self_type.get_virtual_function(name).get_overload(argument_types) as VirtualFunction
-	if overload == none or overload.return_type == none return none as CallNode
+	if overload == none or overload.return_type == none or overload.return_type.is_unresolved return none as CallNode
 
 	required_self_type = overload.find_type_parent()
 	if required_self_type == none abort('Could not retrieve virtual function parent type')

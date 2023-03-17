@@ -1,5 +1,5 @@
 namespace logger.verbose {
-	write(string: link) {
+	write(string: link): _ {
 		if settings.is_verbose_output_enabled { console.write(string) }
 	}
 
@@ -15,7 +15,7 @@ namespace logger.verbose {
 		write_line(string.data)
 	}
 
-	write(string: link, at: Node) {
+	write(string: link, at: Node): _ {
 		return
 		if not settings.is_verbose_output_enabled return
 
@@ -40,7 +40,7 @@ namespace logger.verbose {
 		console.put(`)`)
 	}
 
-	write(string: String, at: Node) {
+	write(string: String, at: Node): _ {
 		write(string.data, at)
 	}
 
@@ -52,7 +52,7 @@ namespace logger.verbose {
 		console.write_line()
 	}
 
-	write_line(string: String, at: Node) {
+	write_line(string: String, at: Node): _ {
 		write_line(string.data, at)
 	}
 }

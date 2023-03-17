@@ -1992,7 +1992,7 @@ Pattern OverrideFunctionPattern {
 		start = descriptor.position
 		end = blueprint.end
 
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, start, end)
+		function = Function(context, MODIFIER_DEFAULT | MODIFIER_OVERRIDE_FUNCTION, descriptor.name, blueprint.tokens, start, end)
 
 		# Parse the function parameters
 		result = descriptor.get_parameters(function)

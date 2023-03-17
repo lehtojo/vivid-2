@@ -13,7 +13,7 @@ InstructionPrinterBuilder {
 		end()
 	}
 
-	append(string: link) {
+	append(string: link): _ {
 		length = length_of(string)
 
 		# If the line is too long, truncate it
@@ -26,7 +26,7 @@ InstructionPrinterBuilder {
 		position += length
 	}
 
-	append(character: char) {
+	append(character: char): _ {
 		# If the line is too long, truncate it
 		if position + 1 > MAX_CONTENT_LENGTH return
 
@@ -34,19 +34,19 @@ InstructionPrinterBuilder {
 		position++
 	}
 
-	append(string: String) {
+	append(string: String): _ {
 		append(string.data)
 	}
 
-	put(x: large, y: large, character: char) {
+	put(x: large, y: large, character: char): _ {
 		lines[y][x] = character
 	}
 
-	start(index: large) {
+	start(index: large): _ {
 		mappings[index] = lines.size - 1
 	}
 
-	lifetime(i: large, j: large) {
+	lifetime(i: large, j: large): _ {
 		from = mappings[i]
 		to = mappings[j]
 		x = MAX_CONTENT_LENGTH
@@ -77,7 +77,7 @@ InstructionPrinterBuilder {
 		}
 	}
 
-	end() {
+	end(): _ {
 		line = allocate(MAX_CONTENT_LENGTH + MAX_LIFETIMES + 1)
 		position = 0
 
@@ -92,7 +92,7 @@ InstructionPrinter {
 	variables: List<Result> = List<Result>()
 	verbose: bool = true
 
-	name_of(result: Result) {
+	name_of(result: Result): String {
 		if result.is_constant return String(`#`) + to_string(result.value.(ConstantHandle).value)
 		if result.is_any_register return result.value.(RegisterHandle).register.partitions[]
 
@@ -109,31 +109,31 @@ InstructionPrinter {
 		return String(`%`) + to_string(index)
 	}
 
-	name_of(variable: Variable) {
+	name_of(variable: Variable): String {
 		return String(`<`) + variable.name + `>`
 	}
 
-	name_of(instruction: DualParameterInstruction) {
+	name_of(instruction: DualParameterInstruction): link {
 		return when(instruction.type) {
 			INSTRUCTION_ADDITION => 'add',
 			INSTRUCTION_SUBTRACT => 'subtract',
 			INSTRUCTION_MULTIPLICATION => 'multiply',
 			INSTRUCTION_COMPARE => 'compare',
-			INSTRUCTION_DIVISION => 'divide'
+			INSTRUCTION_DIVISION => 'divide',
 			else => '?'
 		}
 	}
 
-	name_of(handle: Handle){
+	name_of(handle: Handle): String {
 		return handle.string()
 	}
 
-	print_result_assignment(builder: InstructionPrinterBuilder, instruction: Instruction) {
+	print_result_assignment(builder: InstructionPrinterBuilder, instruction: Instruction): _ {
 		builder.append(name_of(instruction.result))
 		builder.append(' = ')
 	}
 
-	print_access_mode(builder: InstructionPrinterBuilder, mode: large) {
+	print_access_mode(builder: InstructionPrinterBuilder, mode: large): _ {
 		if mode == ACCESS_WRITE {
 			builder.append(' (write)')
 		}
@@ -142,24 +142,24 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: AdditionInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: AdditionInstruction): _ {
 		print(builder, instruction as DualParameterInstruction)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: SubtractionInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: SubtractionInstruction): _ {
 		print(builder, instruction as DualParameterInstruction)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: MultiplicationInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: MultiplicationInstruction): _ {
 		print(builder, instruction as DualParameterInstruction)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: LabelInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: LabelInstruction): _ {
 		builder.append(instruction.label.name)
 		builder.append(`:`)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: RequireVariablesInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: RequireVariablesInstruction): _ {
 		if not verbose return
 
 		if instruction.is_inputter { builder.append('  input  ') }
@@ -175,7 +175,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: ReturnInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: ReturnInstruction): _ {
 		builder.append('return ')
 
 		if instruction.object !== none {
@@ -183,7 +183,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: MoveInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: MoveInstruction): _ {
 		builder.append(name_of(instruction.first))
 
 		if instruction.type == MOVE_COPY {
@@ -199,21 +199,21 @@ InstructionPrinter {
 		builder.append(name_of(instruction.second))
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: GetConstantInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: GetConstantInstruction): _ {
 		# Do not print this instruction
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: GetVariableInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: GetVariableInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(name_of(instruction.variable))
 		print_access_mode(builder, instruction.mode)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: InitializeInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: InitializeInstruction): _ {
 		builder.append('initialize')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: SetVariableInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: SetVariableInstruction): _ {
 		if instruction.is_copied {
 			builder.append(name_of(instruction.result))
 			builder.append(' = ')
@@ -231,7 +231,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: CallInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: CallInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append('call ')
 
@@ -243,7 +243,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: ReorderInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: ReorderInstruction): _ {
 		builder.append('reorder {')
 		builder.end()
 
@@ -261,22 +261,22 @@ InstructionPrinter {
 		builder.append('}')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: ExchangeInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: ExchangeInstruction): _ {
 		builder.append(name_of(instruction.first))
 		builder.append(' <-> ')
 		builder.append(name_of(instruction.second))
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: LockStateInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: LockStateInstruction): _ {
 		builder.append('lock ')
 		builder.append(instruction.register.partitions[])
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: EvacuateInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: EvacuateInstruction): _ {
 		builder.append('evacuate')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: GetObjectPointerInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: GetObjectPointerInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(to_size_modifier(to_bytes(instruction.variable.type.format)))
 		builder.append(` `)
@@ -288,7 +288,7 @@ InstructionPrinter {
 		print_access_mode(builder, instruction.mode)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: GetMemoryAddressInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: GetMemoryAddressInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(to_size_modifier(to_bytes(instruction.format)))
 		builder.append(` `)
@@ -302,7 +302,7 @@ InstructionPrinter {
 		print_access_mode(builder, instruction.mode)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: JumpInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: JumpInstruction): _ {
 		operation = none as link
 
 		if instruction.comparator == none {
@@ -320,7 +320,7 @@ InstructionPrinter {
 		builder.append(instruction.label.name)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: CompareInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: CompareInstruction): _ {
 		builder.append(name_of(instruction))
 		builder.append(` `)
 		builder.append(name_of(instruction.first))
@@ -328,15 +328,15 @@ InstructionPrinter {
 		builder.append(name_of(instruction.second))
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: DivisionInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: DivisionInstruction): _ {
 		print(builder, instruction as DualParameterInstruction)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: ExtendNumeratorInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: ExtendNumeratorInstruction): _ {
 		builder.append('extend-numerator')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: BitwiseInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: BitwiseInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(instruction.instruction)
 		builder.append(` `)
@@ -345,18 +345,18 @@ InstructionPrinter {
 		builder.append(name_of(instruction.second))
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: SingleParameterInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: SingleParameterInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(instruction.instruction)
 		builder.append(` `)
 		builder.append(name_of(instruction.first))
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: DebugBreakInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: DebugBreakInstruction): _ {
 		builder.append('break')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: ConvertInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: ConvertInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append('convert')
 		builder.append(` `)
@@ -373,14 +373,14 @@ InstructionPrinter {
 		builder.append(')')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: AllocateStackInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: AllocateStackInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append('allocate stack (')
 		builder.append(instruction.identity)
 		builder.append(`)`)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: CreatePackInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: CreatePackInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append('pack ')
 
@@ -395,11 +395,11 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: CreatePackInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: CreatePackInstruction): _ {
 		builder.append('nop')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: LabelMergeInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: LabelMergeInstruction): _ {
 		if not verbose return
 
 		builder.append('  merge $')
@@ -411,7 +411,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: EnterScopeInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: EnterScopeInstruction): _ {
 		builder.append('enter $')
 		builder.append(instruction.id)
 		builder.append(' {')
@@ -431,7 +431,7 @@ InstructionPrinter {
 		builder.append(`}`)
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: DualParameterInstruction) {
+	print(builder: InstructionPrinterBuilder, instruction: DualParameterInstruction): _ {
 		print_result_assignment(builder, instruction)
 		builder.append(name_of(instruction))
 		builder.append(` `)
@@ -440,11 +440,11 @@ InstructionPrinter {
 		builder.append(name_of(instruction.second))
 	}
 
-	print(builder: InstructionPrinterBuilder) {
+	print(builder: InstructionPrinterBuilder): _ {
 		builder.append('unknown')
 	}
 
-	print(builder: InstructionPrinterBuilder, instruction: Instruction) {
+	print(builder: InstructionPrinterBuilder, instruction: Instruction): _ {
 		when (instruction.type) {
 			INSTRUCTION_ADDITION => print(builder, instruction as AdditionInstruction),
 			INSTRUCTION_SUBTRACT => print(builder, instruction as SubtractionInstruction),
@@ -480,7 +480,7 @@ InstructionPrinter {
 		}
 	}
 
-	find_variable_results(unit: Unit) {
+	find_variable_results(unit: Unit): _ {
 		loop instruction in unit.instructions {
 			if instruction.type != INSTRUCTION_SET_VARIABLE continue
 
@@ -501,7 +501,7 @@ InstructionPrinter {
 		}
 	}
 
-	compute_lifetimes(unit: Unit, builder: InstructionPrinterBuilder) {
+	compute_lifetimes(unit: Unit, builder: InstructionPrinterBuilder): _ {
 		lifetimes = Map<Result, Pair<large, large>>()
 
 		loop result in variables {
@@ -530,7 +530,7 @@ InstructionPrinter {
 		}
 	}
 
-	print(unit: Unit) {
+	print(unit: Unit): _ {
 		builder = InstructionPrinterBuilder()
 
 		loop (i = 0, i < unit.instructions.size, i++) {

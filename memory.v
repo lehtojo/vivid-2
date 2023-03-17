@@ -1,7 +1,7 @@
 namespace memory
 
 # Summary: Minimizes intersection between the specified move instructions and tries to use exchange instructions
-minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>) {
+minimize_intersections(unit: Unit, moves: List<DualParameterInstruction>): List<DualParameterInstruction> {
 	# Find moves that can be replaced with an exchange instruction
 	result = List<DualParameterInstruction>(moves)
 	exchanges = List<DualParameterInstruction>()

@@ -12,7 +12,7 @@ DualParameterInstruction AdditionInstruction {
 		else { on_build_arm64() }
 	}
 
-	on_build_x64() {
+	on_build_x64(): _ {
 		if first.format == FORMAT_DECIMAL or second.format == FORMAT_DECIMAL {
 			if assigns and first.is_memory_address unit.add(MoveInstruction(unit, first, result), true)
 
@@ -285,7 +285,7 @@ Instruction ReturnInstruction {
 		}
 	}
 
-	restore_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
+	restore_registers_arm64(builder: StringBuilder, registers: List<Register>): _ {}
 
 	build(recover_registers: List<Register>, local_memory_top: large): _ {
 		builder = StringBuilder()
@@ -372,7 +372,7 @@ DualParameterInstruction MoveInstruction {
 		return first.size == second.size 
 	}
 
-	build_decimal_constant_move_x64(flags_first, flags_second) {
+	build_decimal_constant_move_x64(flags_first: large, flags_second: large): _ {
 		instruction = platform.x64.RAW_MEDIA_REGISTER_MOVE
 		if first.is_memory_address { instruction = platform.all.MOVE }
 
@@ -424,7 +424,7 @@ DualParameterInstruction MoveInstruction {
 		)
 	}
 
-	on_build_decimal_zero_move(flags_first, flags_second) {
+	on_build_decimal_zero_move(flags_first: large, flags_second: large): _ {
 		# Example: pxor x, x
 		return build(platform.x64.MEDIA_REGISTER_BITWISE_XOR, 0,
 			InstructionParameter(first, flags_first, HANDLE_MEDIA_REGISTER),
@@ -433,7 +433,7 @@ DualParameterInstruction MoveInstruction {
 		)
 	}
 
-	on_build_constant_to_decimal_move(flags_first, flags_second, first_parameter_type) {
+	on_build_constant_to_decimal_move(flags_first: large, flags_second: large, first_parameter_type: large): _ {
 		if type == MOVE_RELOCATE {
 			# Convert the source value to match the destination format
 			second.value.(ConstantHandle).convert(first.format)
@@ -460,7 +460,7 @@ DualParameterInstruction MoveInstruction {
 		)
 	}
 
-	on_build_decimal_conversion(flags_first, flags_second) {
+	on_build_decimal_conversion(flags_first: large, flags_second: large): _ {
 		is_destination_media_register = first.is_media_register or (first.is_empty and first.format == FORMAT_DECIMAL)
 		is_destination_register = first.is_standard_register or (first.is_empty and first.format != FORMAT_DECIMAL)
 		is_destination_memory_address = first.is_memory_address
@@ -511,7 +511,7 @@ DualParameterInstruction MoveInstruction {
 		}
 	}
 
-	on_build_decimal_moves(flags_first, flags_second) {
+	on_build_decimal_moves(flags_first: large, flags_second: large): _ {
 		if first.format != second.format return on_build_decimal_conversion(flags_first, flags_second)
 
 		# If the first operand can be a media register and the second is zero, special instructions can be used
@@ -811,7 +811,7 @@ Instruction InitializeInstruction {
 		}
 	}
 
-	save_registers_arm64(builder: StringBuilder, registers: List<Register>) {}
+	save_registers_arm64(builder: StringBuilder, registers: List<Register>): _ {}
 
 	build(save_registers: List<Register>, required_local_memory: large): _ {
 		# Collect all normal call instructions

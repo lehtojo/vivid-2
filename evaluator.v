@@ -1,7 +1,7 @@
 namespace evaluator
 
 # Summary: Tries to evaluate the result of the specified expression
-evaluate_logical_operator(expression: OperatorNode) {
+evaluate_logical_operator(expression: OperatorNode): _ {
 	if expression.first.match(Operators.LOGICAL_AND) or expression.first.match(Operators.LOGICAL_OR) {
 		evaluate_logical_operator(expression.first as OperatorNode)
 	}

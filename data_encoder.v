@@ -13,7 +13,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Ensures the internal buffer has the specified amount of bytes available
-	reserve(bytes: large) {
+	reserve(bytes: large): _ {
 		if output_size - position >= bytes return
 		expanded_output_size = (output_size + bytes) * 2
 		output = resize(output, output_size, expanded_output_size)
@@ -30,7 +30,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the specified position
-	write(position: large, value: large) {
+	write(position: large, value: large): _ {
 		output[position] = value
 	}
 
@@ -43,7 +43,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified character to the specified position
-	write(position: large, value: char) {
+	write(position: large, value: char): _ {
 		output[position] = value
 	}
 
@@ -79,7 +79,7 @@ DataEncoderModule {
 
 	# Summary:
 	# Writes the specified value to the current position and advances to the next position
-	write_int64(position: large, value: large) {
+	write_int64(position: large, value: large): _ {
 		binary_utility.write_int64(output, position, value)
 	}
 

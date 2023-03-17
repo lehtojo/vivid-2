@@ -12,12 +12,12 @@ SourceFile {
 		this.index = index
 	}
 
-	filename() {
+	filename(): String {
 		i = fullname.last_index_of(`/`)
 		return fullname.slice(i + 1, fullname.length)
 	}
 
-	filename_without_extension() {
+	filename_without_extension(): String {
 		start = fullname.last_index_of(`/`) + 1
 
 		end = fullname.last_index_of(`.`)

@@ -1,6 +1,6 @@
 DECIMAL_PRECISION = 0.000000001
 
-export are_equal(a: large, b: large) {
+export are_equal(a: large, b: large): _ {
 	console.write(a)
 	console.write(' == ')
 	console.write_line(b)
@@ -9,7 +9,7 @@ export are_equal(a: large, b: large) {
 	application.exit(1)
 }
 
-export are_equal(a: char, b: char) {
+export are_equal(a: char, b: char): _ {
 	console.write(String(a))
 	console.write(' == ')
 	console.write_line(String(b))
@@ -18,7 +18,7 @@ export are_equal(a: char, b: char) {
 	application.exit(1)
 }
 
-export are_equal(a: decimal, b: decimal) {
+export are_equal(a: decimal, b: decimal): _ {
 	console.write(to_string(a))
 	console.write(' == ')
 	console.write_line(b)
@@ -29,7 +29,7 @@ export are_equal(a: decimal, b: decimal) {
 	application.exit(1)
 }
 
-export are_equal(a: String, b: String) {
+export are_equal(a: String, b: String): _ {
 	console.write(a)
 	console.write(' == ')
 	console.write_line(b)
@@ -38,7 +38,7 @@ export are_equal(a: String, b: String) {
 	application.exit(1)
 }
 
-export are_equal(a: link, b: link) {
+export are_equal(a: link, b: link): _ {
 	console.write(a as large)
 	console.write(' == ')
 	console.write_line(b as large)
@@ -47,7 +47,7 @@ export are_equal(a: link, b: link) {
 	application.exit(1)
 }
 
-export are_equal(a: link, b: link, offset: large, length: large) {
+export are_equal(a: link, b: link, offset: large, length: large): _ {
 	console.write('Memory comparison: Offset=')
 	console.write(offset)
 	console.write(', Length=')
@@ -68,7 +68,7 @@ export are_equal(a: link, b: link, offset: large, length: large) {
 	}
 }
 
-export are_not_equal(a: large, b: large) {
+export are_not_equal(a: large, b: large): _ {
 	console.write(a)
 	console.write(' != ')
 	console.write_line(b)

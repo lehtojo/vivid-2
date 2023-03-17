@@ -21,7 +21,7 @@ StaticLibraryFormatFile {
 		this.bytes = Array<byte>(value.data, value.length)
 	}
 
-	load() {
+	load(): bool {
 		if bytes != none return true
 		if io.read_file(name) has not result return false
 		bytes = result

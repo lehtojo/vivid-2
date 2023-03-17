@@ -34,7 +34,7 @@ Status {
 
 	init() {}
 
-	equals(other: Status) {
+	equals(other: Status): bool {
 		if not (message == other.message) return false
 		
 		a = position

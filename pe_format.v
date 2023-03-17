@@ -22,7 +22,7 @@ namespace pe_format {
 	constant BaseRelocationSection = '.reloc'
 
 	# Summary: Encodes the specified name into a 64-bit integer (zero padded from the end)
-	encode_integer_name(name: String) {
+	encode_integer_name(name: String): large {
 		bytes: char[8]
 		zero(bytes as link, 8)
 
@@ -142,7 +142,7 @@ namespace pe_format {
 	# Summary:
 	# Finds a section with the specified name from the specified metadata.
 	# Ensure the specified name is exactly eight characters long, padded with none characters if necessary.
-	find_section(module: PeMetadata, name: String) {
+	find_section(module: PeMetadata, name: String): BinarySection {
 		encoded_name = encode_integer_name(name)
 		return module.sections.find_or(i -> i.name == encoded_name, none as BinarySection)
 	}
@@ -168,7 +168,7 @@ namespace pe_format {
 
 	# Summary:
 	# Loads strings starting from the specified position until the limit is reached.
-	load_strings_until(bytes: Array<byte>, position: large, limit: large) {
+	load_strings_until(bytes: Array<byte>, position: large, limit: large): List<String> {
 		if position < 0 return none as List<String>
 
 		strings = List<String>()

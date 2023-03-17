@@ -24,7 +24,7 @@ constant SMALL_FUNCTION_THRESHOLD = 20 * MEMORY_ACCESS_COST
 
 # Summary:
 # Approximates the complexity of the specified node tree to execute
-get_cost(node: Node) {
+get_cost(node: Node): large {
 	result = 0
 	iterator = node.first
 
@@ -583,7 +583,7 @@ get_simplified_value(value: Node): Node {
 # Summary:
 # Finds comparisons and tries to simplify them.
 # Returns whether any modifications were done.
-optimize_comparisons(root: Node) {
+optimize_comparisons(root: Node): bool {
 	comparisons = root.find_all(i -> i.instance == NODE_OPERATOR and i.(OperatorNode).operator.type == OPERATOR_TYPE_COMPARISON)
 	precomputed = false
 

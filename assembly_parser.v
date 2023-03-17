@@ -57,7 +57,7 @@ AssemblyParser {
 
 	# Summary:
 	# Handles offset directives: . $allocator $to - $from
-	private execute_offset_allocator(tokens: List<Token>) {
+	private execute_offset_allocator(tokens: List<Token>): bool {
 		# Pattern: . $allocator $to - $from
 		if tokens.size < 5 or tokens[1].type != TOKEN_TYPE_IDENTIFIER or tokens[2].type != TOKEN_TYPE_IDENTIFIER or not tokens[3].match(Operators.SUBTRACT) or tokens[4].type != TOKEN_TYPE_IDENTIFIER return false
 
@@ -553,7 +553,7 @@ AssemblyParser {
 
 	# Summary:
 	# Returns whether the specified operation represents a jump instruction
-	shared is_jump(operation) {
+	shared is_jump(operation: String): bool {
 		return operation == platform.x64.JUMP or
 			operation == platform.x64.JUMP_ABOVE or
 			operation == platform.x64.JUMP_ABOVE_OR_EQUALS or

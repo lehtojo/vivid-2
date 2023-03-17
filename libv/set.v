@@ -1,4 +1,4 @@
-export Set<T> {
+Set<T> {
 	private inline container: List<T>
 
 	# Summary: Creates a list with the specified initial size
@@ -21,21 +21,21 @@ export Set<T> {
 		container.init()
 	}
 
-	contains(element: T) {
+	contains(element: T): bool {
 		return container.contains(element)
 	}
 
-	add(element: T) {
+	add(element: T): bool {
 		if container.contains(element) return false
 		container.add(element)
 		return true
 	}
 
-	iterator() {
+	iterator(): SequentialIterator<T> {
 		return container.iterator()
 	}
 
-	to_list() {
+	to_list(): List<T> {
 		return List<T>(container)
 	}
 }

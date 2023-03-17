@@ -76,7 +76,7 @@ Component {
 		return addition(other)
 	}
 
-	minus(other: Component) {
+	minus(other: Component): Component {
 		return subtraction(other)
 	}
 
@@ -116,7 +116,7 @@ pack Number {
 		return data < 0
 	}
 
-	absolute() {
+	absolute(): large {
 		if is_decimal return data & 0x7FFFFFFFFFFFFFFF # Set the last bit to zero
 		return abs(data)
 	}

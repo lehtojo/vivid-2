@@ -1,10 +1,10 @@
-export List<T> {
+List<T> {
 	private capacity: large
 
 	readable data: T*
 	readable size: large
 
-	private shared allocate_elements(size: large) {
+	private shared allocate_elements(size: large): T* {
 		if size > 0 return allocate(size * strideof(T)) as T*
 		return none as T*
 	}
@@ -57,7 +57,7 @@ export List<T> {
 	init() {}
 
 	# Summary: Grows the list to the specified size
-	grow(to: large) {
+	grow(to: large): _ {
 		if to <= 0 { to = 1 }
 
 		memory = allocate(to * strideof(T))
@@ -73,7 +73,7 @@ export List<T> {
 	}
 
 	# Summary: Adds the specified element to this list
-	add(element: T) {
+	add(element: T): _ {
 		if size == capacity grow(capacity * 2)
 
 		data[size] = element
@@ -81,7 +81,7 @@ export List<T> {
 	}
 
 	# Summary: Adds all the elements contained in the specified list
-	add_all(other: List<T>) {
+	add_all(other: List<T>): _ {
 		count = other.size
 
 		# Ensure there is enough space left
@@ -96,7 +96,7 @@ export List<T> {
 	}
 
 	# Summary: Puts the specified element at the specified index without removing other elements
-	insert(at: large, element: T) {
+	insert(at: large, element: T): _ {
 		require(at >= 0 and at <= size, 'Invalid insertion index')
 
 		if size >= capacity {
@@ -115,7 +115,7 @@ export List<T> {
 	}
 
 	# Summary: Puts the specified range at the specified index without removing other elements
-	insert_all(at: large, other: List<T>) {
+	insert_all(at: large, other: List<T>): _ {
 		require(other != none, 'Invalid list to insert')
 		require(at >= 0 and at <= size, 'Invalid insertion index')
 
@@ -140,7 +140,7 @@ export List<T> {
 	}
 
 	# Summary: Removes the element which is located at the specified index
-	remove_at(at: large) {
+	remove_at(at: large): _ {
 		require(at >= 0 and at < size, 'Invalid removal index')
 
 		# Reset the element at the specified index
@@ -158,7 +158,7 @@ export List<T> {
 	}
 
 	# Summary: Tries to remove the first element which is equal to the specified value
-	remove(element: T) {
+	remove(element: T): bool {
 		size: large = this.size
 
 		loop (i = 0, i < size, i++) {
@@ -172,7 +172,7 @@ export List<T> {
 	}
 
 	# Summary: Removes the specified range from this list
-	remove_all(start: large, end: large) {
+	remove_all(start: large, end: large): _ {
 		require(start >= 0 and start <= end, 'Invalid removal start index')
 		require(end >= 0 and end <= size, 'Invalid removal end index')
 
@@ -189,7 +189,7 @@ export List<T> {
 	}
 
 	# Summary: Takes the value of the first element and removes it from the beginning of the list
-	pop_or(fallback: T) {
+	pop_or(fallback: T): T {
 		if size == 0 return fallback
 		first = data[]
 
@@ -203,7 +203,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the index, which contains the specified element. If it is not found, this function returns -1.
-	index_of(element: T) {
+	index_of(element: T): large {
 		loop (i = 0, i < size, i++) {
 			if data[i] == element return i
 		}
@@ -212,7 +212,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the index of the last occurrence of the specified element. If the specified element is not in the list, this function returns -1.
-	last_index_of(element: T) {
+	last_index_of(element: T): large {
 		loop (i = size - 1, i >= 0, i--) {
 			if data[i] == element return i
 		}
@@ -221,7 +221,7 @@ export List<T> {
 	}
 
 	# Summary: Returns whether the list contains the specified element
-	contains(element: T) {
+	contains(element: T): bool {
 		loop (i = 0, i < size, i++) {
 			if data[i] == element return true
 		}
@@ -230,7 +230,7 @@ export List<T> {
 	}
 
 	# Summary: Creates a new list, which contains the specified range of elements
-	slice(start: large, end: large) {
+	slice(start: large, end: large): List<T> {
 		require(start >= 0 and start <= end, 'Invalid slice start index')
 		require(end >= 0 and end <= this.size, 'Invalid slice end index')
 
@@ -242,7 +242,7 @@ export List<T> {
 	}
 
 	# Summary: Returns all the elements starting from the specified index
-	slice(start: large) {
+	slice(start: large): List<T> {
 		require(start >= 0 and start <= this.size, 'Invalid slice start index')
 
 		# Compute the size of the result list
@@ -253,7 +253,7 @@ export List<T> {
 	}
 
 	# Summary: Reverses the order of the elements
-	reverse() {
+	reverse(): List<T> {
 		size: large = this.size
 
 		loop (i = 0, i < size / 2, i++) {
@@ -266,7 +266,7 @@ export List<T> {
 	}
 
 	# Summary: Removes duplicated elements from this list
-	distinct() {
+	distinct(): List<T> {
 		loop (i = 0, i < size, i++) {
 			current = data[i]
 
@@ -280,31 +280,31 @@ export List<T> {
 	}
 
 	# Summary: Sets the value of the element at the specified index
-	set(i: large, value: T) {
+	set(i: large, value: T): _ {
 		require(i >= 0 and i < size, 'Invalid setter index')
 
 		data[i] = value
 	}
 
 	# Summary: Returns the value at the specified index
-	get(i: large) {
+	get(i: large): T {
 		require(i >= 0 and i < size, 'Invalid getter index')
 
 		return data[i]
 	}
 
 	# Summary: Adds the specified element to this list
-	assign_plus(element: T) {
+	assign_plus(element: T): _ {
 		add(element)
 	}
 
 	# Summary: Removes the specified element to this list
-	assign_minus(element: T) {
+	assign_minus(element: T): _ {
 		remove(element)
 	}
 
 	# Summary: Adds the elements from this and the specified list to a new list
-	plus(other: List<T>) {
+	plus(other: List<T>): List<T> {
 		require(other != none, 'Invalid list to combine')
 
 		size: large = this.size
@@ -324,7 +324,7 @@ export List<T> {
 	}
 
 	# Summary: Adds the elements from this and the specified element to a new list
-	plus(element: T) {
+	plus(element: T): List<T> {
 		size: large = this.size
 		result = List<T>(size + 1, true)
 
@@ -340,7 +340,7 @@ export List<T> {
 	}
 
 	# Summary: Removes all the elements from this list
-	clear() {
+	clear(): _ {
 		# Free the old data
 		if data !== none {
 			deallocate(data)
@@ -352,7 +352,7 @@ export List<T> {
 	}
 
 	# Summary: Returns a list of all elements which pass the specified filter
-	filter(filter: (T) -> bool) {
+	filter(filter: (T) -> bool): List<T> {
 		result = List<T>()
 
 		loop (i = 0, i < size, i++) {
@@ -363,7 +363,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the first element, which passes the specified filter, otherwise the function panics
-	find(filter: (T) -> bool) {
+	find(filter: (T) -> bool): T {
 		loop (i = 0, i < size, i++) {
 			element = data[i]
 			if filter(element) return element
@@ -373,7 +373,7 @@ export List<T> {
 	}
 
 	# Summary: Return the first element, which passes the specified filter, or the default value if no element passes the filter
-	find_or(filter: (T) -> bool, default: T) {
+	find_or(filter: (T) -> bool, default: T): T {
 		loop (i = 0, i < size, i++) {
 			element = data[i]
 			if filter(element) return element
@@ -383,7 +383,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the index of the first element, which passes the specified filter, otherwise the function returns -1
-	find_index(filter: (T) -> bool) {
+	find_index(filter: (T) -> bool): large {
 		loop (i = 0, i < size, i++) {
 			element = data[i]
 			if filter(element) return i
@@ -393,7 +393,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the first element to produce the maximum value using the specified mapper
-	find_max(mapper: (T) -> large) {
+	find_max(mapper: (T) -> large): T {
 		if size == 0 panic('Can not find the maximum value of an empty list')
 
 		max = data[]
@@ -413,7 +413,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the first element to produce the maximum value using the specified mapper
-	find_max_or(mapper: (T) -> large, default: T) {
+	find_max_or(mapper: (T) -> large, default: T): T {
 		if size == 0 return default
 
 		max = data[]
@@ -433,7 +433,7 @@ export List<T> {
 	}
 
 	# Summary: Converts the elements of this list into another types of elements
-	map<U>(mapper: (T) -> U) {
+	map<U>(mapper: (T) -> U): List<U> {
 		result = List<U>(size, true)
 
 		loop (i = 0, i < size, i++) {
@@ -444,7 +444,7 @@ export List<T> {
 	}
 
 	# Summary: Creates a new list of all the element collections returned by the mapper by adding them sequentially
-	flatten<U>(mapper: (T) -> List<U>) {
+	flatten<U>(mapper: (T) -> List<U>): List<U> {
 		result = List<U>(size, false)
 
 		loop (i = 0, i < size, i++) {
@@ -456,7 +456,7 @@ export List<T> {
 	}
 
 	# Summary: Sorts the elements in this list using the specified comparator
-	order(comparator: (T, T) -> large) {
+	order(comparator: (T, T) -> large): List<T> {
 		if size == 0 return this
 
 		sort<T>(data, size, comparator)
@@ -464,7 +464,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the number of elements which pass the specified filter
-	count(filter: (T) -> bool) {
+	count(filter: (T) -> bool): large {
 		count = 0
 
 		loop (i = 0, i < size, i++) {
@@ -475,7 +475,7 @@ export List<T> {
 	}
 	
 	# Summary: Returns whether all the elements pass the specified filter
-	all(filter: (T) -> bool) {
+	all(filter: (T) -> bool): bool {
 		loop (i = 0, i < size, i++) {
 			if not filter(data[i]) return false
 		}
@@ -484,7 +484,7 @@ export List<T> {
 	}
 
 	# Summary: Returns true if any of the elements pass the specified filter
-	any(filter: (T) -> bool) {
+	any(filter: (T) -> bool): bool {
 		loop (i = 0, i < size, i++) {
 			if filter(data[i]) return true
 		}
@@ -493,7 +493,7 @@ export List<T> {
 	}
 
 	# Summary: Returns the sum of all the elements
-	sum<U>() {
+	sum<U>(): U {
 		result = 0 as U
 
 		loop (i = 0, i < size, i++) {
@@ -504,7 +504,7 @@ export List<T> {
 	}
 
 	# Summary: Returns an iterator which can be used to inspect this list
-	iterator() {
+	iterator(): SequentialIterator<T> {
 		return SequentialIterator<T>(data, size)
 	}
 

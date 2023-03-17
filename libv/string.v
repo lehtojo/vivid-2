@@ -9,7 +9,7 @@ export as_integer(string: String): Optional<large> {
 }
 
 # Summary: Tries to convert the specified string to a decimal number
-export to_decimal(string: String) {
+export to_decimal(string: String): decimal {
 	return to_decimal(string.data, string.length)
 }
 
@@ -38,7 +38,7 @@ export String {
 	shared empty: String
 
 	# Summary: Combines all the specified strings while separating them the specified separator
-	shared join(separator: char, strings: List<String>) {
+	shared join(separator: char, strings: List<String>): String {
 		if strings.size == 0 return String.empty
 		if strings.size == 1 return strings[]
 
@@ -180,7 +180,7 @@ export String {
 	}
 
 	# Summary: Puts the specified string into the specified position without removing any other characters and returns a new string
-	insert(index: large, string: link, string_length: large) {
+	insert(index: large, string: link, string_length: large): String {
 		data: link = this.data
 		length: large = this.length
 
@@ -206,12 +206,12 @@ export String {
 	}
 
 	# Summary: Puts the specified string into the specified position without removing any other characters and returns a new string
-	insert(index: large, string: link) {
+	insert(index: large, string: link): String {
 		return insert(index, string, length_of(string))
 	}
 
 	# Summary: Puts the specified string into the specified position without removing any other characters and returns a new string
-	insert(index: large, string: String) {
+	insert(index: large, string: String): String {
 		return insert(index, string.data, string.length)
 	}
 
@@ -358,7 +358,7 @@ export String {
 	}
 
 	# Summary: Replaces all the occurrences of the specified string with the specified replacement
-	replace(old: String, new: String) {
+	replace(old: String, new: String): String {
 		return replace(old.data, old.length, new.data, new.length)
 	}
 
@@ -387,17 +387,17 @@ export String {
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified string
-	index_of(value: String) {
+	index_of(value: String): large {
 		return index_of(value.data, value.length, 0)
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified string
-	index_of(value: link) {
+	index_of(value: link): large {
 		return index_of(value, length_of(value), 0)
 	}
 
 	# Summary: Returns the index of the first occurrence of the specified string
-	index_of(value: String, start: large) {
+	index_of(value: String, start: large): large {
 		require(start >= 0 and start <= length, 'Invalid start index')
 		return index_of(value.data, value.length, start)
 	}
@@ -452,7 +452,7 @@ export String {
 	}
 
 	# Summary: Converts all lower case alphabetic characters to upper case and returns a new string
-	to_upper() {
+	to_upper(): String {
 		buffer = allocate(length + 1)
 		buffer[length] = 0
 
@@ -519,7 +519,7 @@ export String {
 	}
 
 	# Summary: Overrides the indexed accessor, allowing the user to edit the character in the specified position
-	set(i: large, value: char) {
+	set(i: large, value: char): _ {
 		require(i >= 0 and i <= length, 'Invalid setter index')
 		data[i] = value
 	}

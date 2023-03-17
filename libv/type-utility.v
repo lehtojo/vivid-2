@@ -6,7 +6,7 @@ TYPE_DESCRIPTOR_SUPERTYPES_FIRST = 3
 export TypeDescriptor {
 	private address: link
 
-	private get_supertype_count() {
+	private get_supertype_count(): normal {
 		return address[TYPE_DESCRIPTOR_SUPERTYPES_COUNT_OFFSET] as normal
 	}
 
@@ -14,15 +14,15 @@ export TypeDescriptor {
 		this.address = (address as large***)[][]
 	}
 
-	name() {
+	name(): String {
 		return String(address[TYPE_DESCRIPTOR_NAME_OFFSET] as link)
 	}
 
-	size() {
+	size(): normal {
 		return address[TYPE_DESCRIPTOR_SIZE_OFFSET] as normal
 	}
 
-	supertypes() {
+	supertypes(): List<TypeDescriptor> {
 		count = get_supertype_count()
 		supertypes = List<TypeDescriptor>(count, false)
 
@@ -35,6 +35,6 @@ export TypeDescriptor {
 	}
 }
 
-export typeof(object) {
+export typeof(object): TypeDescriptor {
 	return TypeDescriptor(object as link)
 }

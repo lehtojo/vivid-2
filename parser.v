@@ -660,10 +660,15 @@ implement_virtual_function_overrides(types: List<Type>, file: SourceFile): _ {
 }
 
 # Summary: Ensures that all constructors are implemented
-implement_constructors(types: List<Type>): _ {
+implement_constructors(types: List<Type>, file: SourceFile): _ {
 	# Ensure all default constructors are implemented, because otherwise uncalled default constructors might be added after resolving and they might bypass reconstruction
 	loop type in types {
-		if type.is_template_type continue
+		# Constructors of template base types should not be implemented as only the variants are used
+		if type.is_template_type and not type.is_template_type_variant continue
+
+		# If a filter file is specified, use it
+		if file !== none and type.position !== none type.position.file !== none and type.position.file !== file continue
+
 		type.constructors.get_implementation(List<Type>())
 	}
 }
@@ -683,7 +688,7 @@ implement_functions(context: Context, file: SourceFile, all: bool): _ {
 
 	implement_virtual_function_overrides(types, file)
 
-	implement_constructors(types)
+	implement_constructors(types, file)
 }
 
 # Summary: Goes through all the specified types and ensures all their supertypes are resolved
@@ -719,49 +724,32 @@ apply_build_filter(context: Context): _ {
 
 	loop function in functions {
 		# Skip functions that are inside the specified source file, because they must be built
-		if function.start.file === settings.build_filter continue
+		if function.start.file === settings.build_filter {
+			# Export all functions from the source file that should be built
+			function.modifiers |= MODIFIER_EXPORTED
+			continue
+		}
 
 		# Remove export flag from all functions from other source files, so that
 		# template functions and such stay local and do not conflict with other object files
 		function.modifiers &= (!MODIFIER_EXPORTED)
 
-		# Skip all functions that have parameters without explicit type
-		# Note: Unresolved return types are accepted as they will still be resolved
-		if function.parameters.any(i -> i.type === none) continue
+		# Override functions can always be resolved as they are dependent on the virtual function
+		if not function.is_override_function {
+			# Note: Unresolved return types are accepted as they will still be resolved
 
-		# Skip all functions that do not have explicit return type
-		# Note: Unresolved return types are accepted as they will still be resolved
-		if function.return_type === none continue
+			# Skip all functions that have parameters without explicit type
+			if function.parameters.any(i -> i.type === none) {
+				if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Parameters: " + function.name + ' ' + function.start.string())
+				continue
+			}
 
-		# Clear the blueprint so that the external function will not be parsed or assembled.
-		# Set the function as imported, so that it will not be built.
-		function.modifiers |= MODIFIER_IMPORTED
-		function.blueprint.clear()
-	}
-}
-
-# Summary:
-# Limits the compiling so that only the code in the specified source file (build filter) is built.
-# Of course, this is not always completely possible, because the specified source file might use template objects from other files.
-# Basically, the idea is to remove tokens from external functions with return type, so that they will not be parsed or assembled. 
-apply_build_filter(context: Context): _ {
-	functions = common.get_all_visible_functions(context)
-
-	loop function in functions {
-		# Skip functions that are inside the specified source file, because they must be built
-		if function.start.file === settings.build_filter continue
-
-		# Remove export flag from all functions from other source files, so that
-		# template functions and such stay local and do not conflict with other object files
-		function.modifiers &= (!MODIFIER_EXPORTED)
-
-		# Skip all functions that have parameters without explicit type
-		# Note: Unresolved return types are accepted as they will still be resolved
-		if function.parameters.any(i -> i.type === none) continue
-
-		# Skip all functions that do not have explicit return type
-		# Note: Unresolved return types are accepted as they will still be resolved
-		if function.return_type === none continue
+			# Skip all functions that do not have explicit return type
+			if function.return_type === none {
+				if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Return type missing: " + function.name + ' ' + function.start.string())
+				continue
+			}
+		}
 
 		# Clear the blueprint so that the external function will not be parsed or assembled.
 		# Set the function as imported, so that it will not be built.
@@ -830,7 +818,7 @@ parse(): Status {
 	apply_build_filter(context)
 
 	# Ensure exported and virtual functions are implemented
-	implement_functions(context, none as SourceFile, false)
+	implement_functions(context, settings.build_filter, false)
 
 	if settings.output_type != BINARY_TYPE_STATIC_LIBRARY and settings.output_type != BINARY_TYPE_OBJECTS {
 		function = context.get_function("init")
@@ -882,7 +870,7 @@ parse_identifier(context: Context, identifier: IdentifierToken, linked: bool): N
 }
 
 # Summary: Tries to find a suitable function for the specified settings
-get_function_by_name(context: Context, name: String, parameters: List<Type>, linked: bool) {
+get_function_by_name(context: Context, name: String, parameters: List<Type>, linked: bool): FunctionImplementation {
 	return get_function_by_name(context, name, parameters, List<Type>(), linked)
 }
 
@@ -1020,11 +1008,11 @@ parse(environment: Context, primary: Context, token: Token): Node {
 	abort("Could not understand token")
 }
 
-print(node: Node) {
+print(node: Node): _ {
 	print(node, 0, 0)
 }
 
-print(node: Node, indentation: large, total: large) {
+print(node: Node, indentation: large, total: large): _ {
 	padding = Array<char>(indentation * 2 + 1)
 	padding[padding.size - 1] = 0
 	fill(padding.data, padding.size, ` `)

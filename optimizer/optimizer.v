@@ -1,6 +1,6 @@
 namespace optimizer
 
-optimize(context: Context, root: Node) {
+optimize(context: Context, root: Node): Node {
 	minimum_cost_snapshot = root
 	minimum_cost = expression_optimizer.get_cost(root)
 

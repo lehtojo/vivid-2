@@ -45,11 +45,11 @@ export StringBuilder {
 		append(text.data, text.length)
 	}
 
-	append(value: large) {
+	append(value: large): _ {
 		append(to_string(value))
 	}
 
-	append(value: decimal) {
+	append(value: decimal): _ {
 		append(to_string(value))
 	}
 
@@ -67,7 +67,7 @@ export StringBuilder {
 		append_line(to_string(text))
 	}
 
-	append_line(text: decimal) {
+	append_line(text: decimal): _ {
 		append_line(to_string(text))
 	}
 
@@ -133,7 +133,7 @@ export StringBuilder {
 		}
 	}
 
-	reverse() {
+	reverse(): _ {
 		count = position / 2
 
 		loop (i = 0, i < count, i++) {

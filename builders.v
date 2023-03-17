@@ -1,7 +1,7 @@
 namespace builders
 
 # Summary: Tries to determine the local variable the specified result represents
-try_get_local_variable(unit: Unit, result: Result) {
+try_get_local_variable(unit: Unit, result: Result): Variable {
 	local = unit.get_value_owner(result)
 	if local != none return local
 	if result.value.instance == INSTANCE_STACK_VARIABLE return result.value.(StackVariableHandle).variable
@@ -41,7 +41,7 @@ build_multiplication_operator(unit: Unit, operator: OperatorNode, assigns: bool)
 	return MultiplicationInstruction(unit, left, right, type, assigns).add()
 }
 
-compute_reciprocal(divider: large) {
+compute_reciprocal(divider: large): u64 {
 	a = 0 as u64
 	result = 0 as u64
 

@@ -464,7 +464,7 @@ namespace instruction_encoder {
 
 	# Summary:
 	# Writes a SIB-byte, which contains scale, index and base parameters
-	write_sib(module: EncoderModule, scale: large, index: large, start: Register) {
+	write_sib(module: EncoderModule, scale: large, index: large, start: Register): _ {
 		write_sib(module, scale, index, start.name)
 	}
 

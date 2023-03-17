@@ -1,6 +1,6 @@
 namespace textual_assembler
 
-assemble() {
+assemble(): Status {
 	if not settings.textual_assembly return Status()
 
 	files = settings.source_files

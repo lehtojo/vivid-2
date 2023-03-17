@@ -75,11 +75,11 @@ get_system_format(format: large): large {
 	return SYSTEM_SIGNED
 }
 
-create_bit_limit_flag(bits) {
+create_bit_limit_flag(bits: large): large {
 	return FLAG_BIT_LIMIT | (bits <| 24)
 }
 
-get_bit_limit_from_flags(bits) {
+get_bit_limit_from_flags(bits: large): large {
 	return bits |> 24
 }
 
@@ -507,11 +507,11 @@ Instruction {
 		unit.write(builder.string())
 	}
 
-	open on_build() {}
-	open on_post_build() {}
-	open redirect(handle: Handle) { return false }
+	open on_build(): _ {}
+	open on_post_build(): _ {}
+	open redirect(handle: Handle): bool { return false }
 
-	open get_dependencies() {
+	open get_dependencies(): List<Result> {
 		all = List<Result>()
 		all.add(result)
 		return all

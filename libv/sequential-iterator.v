@@ -1,4 +1,4 @@
-export SequentialIterator<T> {
+SequentialIterator<T> {
 	elements: T*
 	position: normal
 	size: normal
@@ -9,15 +9,15 @@ export SequentialIterator<T> {
 		this.size = size
 	}
 
-	value() {
+	value(): T {
 		return elements[position]
 	}
 
-	next() {
+	next(): bool {
 		return ++position < size
 	}
 
-	reset() {
+	reset(): _ {
 		position = -1
 	}
 }

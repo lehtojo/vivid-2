@@ -159,10 +159,10 @@ Context {
 		return mangle.value
 	}
 
-	open on_mangle(mangle: Mangle) {}
+	open on_mangle(mangle: Mangle): _ {}
 
 	# Summary: Tries to find the self pointer variable
-	open get_self_pointer() {
+	open get_self_pointer(): Variable {
 		if parent != none return parent.get_self_pointer() as Variable
 		return none as Variable
 	}
@@ -427,7 +427,7 @@ Context {
 	}
 
 	# Summary: Returns the specified function by searching it from the local types, imports and parent types
-	open get_function(name: String) {
+	open get_function(name: String): FunctionList {
 		return get_function_default(name)
 	}
 
@@ -445,7 +445,7 @@ Context {
 	}
 
 	# Summary: Returns the specified variable by searching it from the local types, imports and parent types
-	open get_variable(name: String) {
+	open get_variable(name: String): Variable {
 		return get_variable_default(name)
 	}
 
@@ -548,11 +548,11 @@ Context {
 		subcontexts.clear()
 	}
 
-	open dispose() {
+	open dispose(): _ {
 		default_dispose()
 	}
 
-	open string() {
+	open string(): String {
 		return String.empty
 	}
 }
@@ -568,6 +568,7 @@ Function Constructor {
 	init(context: Context, modifiers: normal, start: Position, end: Position, is_default: bool) {
 		Function.init(context, modifiers, Keywords.INIT.identifier, start, end)
 		this.type |= CONSTRUCTOR_CONTEXT_MODIFIER
+		this.return_type = primitives.create_unit()
 		this.is_default = is_default
 	}
 
@@ -630,6 +631,7 @@ Function Destructor {
 	init(context: Context, modifiers: normal, start: Position, end: Position, is_default: bool) {
 		Function.init(context, modifiers, Keywords.DEINIT.identifier, start, end)
 		this.type |= DESTRUCTOR_CONTEXT_MODIFIER
+		this.return_type = primitives.create_unit()
 		this.is_default = is_default
 	}
 
@@ -721,7 +723,7 @@ Context Type {
 	# Summary:
 	# Returns how many bytes are required to store this type inside something such as a function.
 	# Some types only require the address of the actual memory to be stored so in those cases the allocation size is the address size.
-	open get_allocation_size() {
+	open get_allocation_size(): large {
 		if is_pack {
 			result = 0
 
@@ -806,12 +808,12 @@ Context Type {
 		configuration = RuntimeConfiguration(this)
 	}
 
-	open clone() {
+	open clone(): Type {
 		abort('Type did not support cloning')
 		return none as Type
 	}
 
-	open get_accessor_type() {
+	open get_accessor_type(): Type {
 		return none as Type
 	}
 
@@ -1064,7 +1066,7 @@ Context Type {
 		mangle.add(this, 0, true)
 	}
 
-	open match(other: Type) {
+	open match(other: Type): bool {
 		if is_pack {
 			# The other type should also be a pack
 			if not other.is_pack return false
@@ -1340,7 +1342,7 @@ Parameter {
 		return name + ': ' + type.string()
 	}
 
-	string() {
+	string(): String {
 		if type == none return name + ': any'
 		return name + ': ' + type.string()
 	}
@@ -1370,6 +1372,7 @@ Context Function {
 	is_outlined => has_flag(modifiers, MODIFIER_OUTLINE)
 	is_template_function => has_flag(modifiers, MODIFIER_TEMPLATE_FUNCTION)
 	is_template_function_variant => name.index_of(`<`) != -1
+	is_override_function => has_flag(modifiers, MODIFIER_OVERRIDE_FUNCTION)
 
 	init(parent: Context, modifiers: normal, name: String, blueprint: List<Token>, start: Position, end: Position) {
 		Context.init(parent, FUNCTION_CONTEXT)
@@ -1411,7 +1414,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter type
-	implement(type: Type) {
+	implement(type: Type): FunctionImplementation {
 		parameter_types = List<Type>()
 		parameter_types.add(type)
 		return implement(parameter_types)
@@ -1442,7 +1445,7 @@ Context Function {
 	}
 
 	# Summary: Implements the function with the specified parameter types
-	open implement(parameter_types: List<Type>) {
+	open implement(parameter_types: List<Type>): FunctionImplementation {
 		return implement_default(parameter_types)
 	}
 
@@ -1473,7 +1476,7 @@ Context Function {
 	}
 
 	# Summary: Tries to find function implementation with the specified parameter type
-	get(type: Type) {
+	get(type: Type): FunctionImplementation {
 		parameter_types = List<Type>()
 		parameter_types.add(type)
 		return get(parameter_types)
@@ -1724,7 +1727,7 @@ Function TemplateFunction {
 		return variant
 	}
 
-	passes(types: List<Type>) {
+	passes(types: List<Type>): bool {
 		return abort('Tried to execute pass function without template parameters') as bool
 	}
 
@@ -1761,7 +1764,7 @@ Function TemplateFunction {
 		return true
 	}
 
-	get(parameter_types: List<Type>) {
+	get(parameter_types: List<Type>): FunctionImplementation {
 		return abort('Tried to get overload of template function without template arguments') as FunctionImplementation
 	}
 
@@ -1893,7 +1896,7 @@ Context FunctionImplementation {
 	}
 
 	# Summary: Implements the function using the given blueprint
-	open implement(blueprint: List<Token>) {
+	open implement(blueprint: List<Token>): FunctionImplementation {
 		if metadata.is_member and not metadata.is_static {
 			self = Variable(this, metadata.find_type_parent(), VARIABLE_CATEGORY_PARAMETER, String(SELF_POINTER_IDENTIFIER), MODIFIER_DEFAULT)
 			self.is_self_pointer = true
@@ -1941,7 +1944,7 @@ Context FunctionImplementation {
 		}
 	}
 
-	open get_header() {
+	open get_header(): String {
 		start: String = String.empty
 		if parent != none and parent.is_type { start = parent.string() + `.` }
 
@@ -2124,7 +2127,7 @@ Label {
 		return name.hash()
 	}
 
-	string() {
+	string(): String {
 		return name
 	}
 }
@@ -2198,7 +2201,7 @@ Type UnresolvedType {
 		this.is_resolved = false
 	}
 
-	open resolve(context: Context) {
+	open resolve(context: Context): Node {
 		environment = context
 
 		loop component in components {
@@ -2441,7 +2444,7 @@ Number ArrayType {
 		is_resolved = true
 	}
 
-	get_status() {
+	get_status(): Status {
 		if is_resolved return none as Status
 		return Status(start, 'Can not convert the size of the array to a constant number')
 	}

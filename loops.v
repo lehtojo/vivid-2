@@ -1,7 +1,7 @@
 namespace loops
 
 # Summary: Builds a loop command such as continue and stop
-build_command(unit: Unit, node: CommandNode) {
+build_command(unit: Unit, node: CommandNode): Result {
 	# Add position of the command node as debug information
 	unit.add_debug_position(node.start)
 

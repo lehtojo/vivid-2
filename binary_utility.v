@@ -77,7 +77,7 @@ BinarySymbol {
 		this.section = section
 	}
 
-	equals(other: BinarySymbol) {
+	equals(other: BinarySymbol): bool {
 		return this.name == other.name
 	}
 }
@@ -192,7 +192,7 @@ BinaryStringTable {
 		if size { this.position = strideof(normal) }
 	}
 
-	add(item: String) {
+	add(item: String): large {
 		start = position
 		items.add(item)
 		position += item.length + 1
@@ -328,14 +328,14 @@ compute_offsets(sections: List<BinarySection>, symbols: Map<String, BinarySymbol
 
 # Summary:
 # Writes the specified source to the specified destination to the specified offset
-write<T>(destination: Array<byte>, offset: large, source: T) {
+write<T>(destination: Array<byte>, offset: large, source: T): large {
 	copy(source as link, sizeof(T), destination.data + offset)
 	return offset + sizeof(T)
 }
 
 # Summary:
 # Writes all the specified sources sequentially to the specified destination to the specified offset
-write_all<T>(destination: Array<byte>, offset: large, sources: List<T>) {
+write_all<T>(destination: Array<byte>, offset: large, sources: List<T>): _ {
 	loop source in sources {
 		offset = write<T>(destination, offset, source)
 	}
@@ -343,25 +343,25 @@ write_all<T>(destination: Array<byte>, offset: large, sources: List<T>) {
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
-read<T>(container: Array<byte>, offset: large) {
+read<T>(container: Array<byte>, offset: large): T {
 	return (container.data + offset).(T*)[]
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
-read<T>(container: link, offset: large) {
+read<T>(container: link, offset: large): T {
 	return (container + offset).(T*)[]
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
-read_object<T>(container: Array<byte>, offset: large) {
+read_object<T>(container: Array<byte>, offset: large): T {
 	return (container.data + offset) as T
 }
 
 # Summary:
 # Reads the specified type from the specified bytes to the specified offset
-read_object<T>(container: link, offset: large) {
+read_object<T>(container: link, offset: large): T {
 	return (container + offset) as T
 }
 
@@ -373,7 +373,7 @@ write(container: Array<byte>, offset: large, value: large): _ {
 
 # Summary:
 # Writes the specified value to the specified offset
-write(container: List<byte>, offset: large, value: large) {
+write(container: List<byte>, offset: large, value: large): _ {
 	container.data[offset] = value
 }
 
@@ -391,7 +391,7 @@ write_int16(container: Array<byte>, offset: large, value: large): _ {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int16(container: List<byte>, offset: large, value: large) {
+write_int16(container: List<byte>, offset: large, value: large): _ {
 	(container.data + offset).(small*)[] = value as small
 }
 
@@ -409,7 +409,7 @@ write_int32(container: Array<byte>, offset: large, value: large): _ {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int32(container: List<byte>, offset: large, value: large) {
+write_int32(container: List<byte>, offset: large, value: large): _ {
 	(container.data + offset).(normal*)[] = value as normal
 }
 
@@ -427,7 +427,7 @@ write_int64(container: Array<byte>, offset: large, value: large): _ {
 
 # Summary:
 # Writes the specified value to the specified offset
-write_int64(container: List<byte>, offset: large, value: large) {
+write_int64(container: List<byte>, offset: large, value: large): _ {
 	(container.data + offset).(large*)[] = value as large
 }
 
@@ -459,7 +459,7 @@ write_bytes(source: Array<byte>, destination: link, offset: large, bytes: large)
 
 # Summary:
 # Copies the specified number of bytes from the source array to the destination address
-write_bytes(source: Array<byte>, destination: link, bytes: large) {
+write_bytes(source: Array<byte>, destination: link, bytes: large): _ {
 	write_bytes(source, destination, 0, bytes)
 }
 

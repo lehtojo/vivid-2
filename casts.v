@@ -1,6 +1,6 @@
 namespace casts
 
-cast(unit: Unit, result: Result, from: Type, to: Type) {
+cast(unit: Unit, result: Result, from: Type, to: Type): Result {
 	if from == to return result
 
 	# Determine whether the cast is a down cast

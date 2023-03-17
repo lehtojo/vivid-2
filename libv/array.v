@@ -1,4 +1,4 @@
-export Array<T> {
+Array<T> {
 	readable data: T*
 	readable size: large
 
@@ -26,21 +26,21 @@ export Array<T> {
 	}
 
 	# Summary: Assigns the specified value to the specified index
-	set(i: large, value: T) {
+	set(i: large, value: T): _ {
 		require(i >= 0 and i < size, 'Index out of bounds')
 
 		data[i] = value
 	}
 
 	# Summary: Returns the element at the specified index
-	get(i: large) {
+	get(i: large): T {
 		require(i >= 0 and i < size, 'Index out of bounds')
 
 		return data[i]
 	}
 
 	# Summary: Returns the index of the specified element in the array. Returns -1 if the element is not found.
-	index_of(value: T) {
+	index_of(value: T): i64 {
 		loop (i = 0, i < size, i++) {
 			if data[i] == value return i
 		}
@@ -49,7 +49,7 @@ export Array<T> {
 	}
 
 	# Summary: Returns the elements between the specified range as an array.
-	slice(start: large, end: large) {
+	slice(start: large, end: large): Array<T> {
 		require(start >= 0 and start <= size, 'Invalid start index')
 		require(end >= 0 and end <= size, 'Invalid end index')
 		require(start <= end, 'Start index can not be greater than end index')
@@ -58,7 +58,7 @@ export Array<T> {
 	}
 
 	# Summary: Returns an iterator that can be used to inspect this array
-	iterator() {
+	iterator(): SequentialIterator<T> {
 		return SequentialIterator<T>(data, size)
 	}
 	

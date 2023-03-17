@@ -30,7 +30,7 @@ DataEncoderModule DebugFrameEncoderModule {
 		write([ 0x0C as byte, 0x07 as byte, 0x08 as byte, 0x90 as byte, 0x01 as byte, 0x00 as byte, 0x00 as byte ])
 	}
 
-	write_operation(operation: large) {
+	write_operation(operation: large): _ {
 		write(operation)
 	}
 
@@ -461,20 +461,20 @@ Debug {
 		information.add(command)
 	}
 
-	add_operation(command: byte, p1: byte) {
+	add_operation(command: byte, p1: byte): _ {
 		information.add(2 as byte) # Length of the operation
 		information.add(command)
 		information.add(p1)
 	}
 
-	add_operation(command: byte, p1: byte, p2: byte) {
+	add_operation(command: byte, p1: byte, p2: byte): _ {
 		information.add(3 as byte) # Length of the operation
 		information.add(command)
 		information.add(p1)
 		information.add(p2)
 	}
 
-	add_operation(command: byte, p1: byte, p2: byte, p3: byte) {
+	add_operation(command: byte, p1: byte, p2: byte, p3: byte): _ {
 		information.add(4 as byte) # Length of the operation
 		information.add(command)
 		information.add(p1)

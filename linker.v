@@ -5,7 +5,7 @@ namespace linker {
 	# Summary:
 	# Goes through all the symbols in the specified object files and makes their hidden symbols unique by adding their object file indices to their names.
 	# This way, if multiple object files have hidden symbols with same names, their names are made unique using the object file indices.
-	make_local_symbols_unique(objects: List<BinaryObjectFile>) {
+	make_local_symbols_unique(objects: List<BinaryObjectFile>): _ {
 		loop object in objects {
 			loop section in object.sections {
 				loop iterator in section.symbols {

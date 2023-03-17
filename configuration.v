@@ -26,7 +26,7 @@ LINK_FLAG = 'link'
 DEFAULT_OUTPUT_NAME = 'v'
 
 # Summary: Returns the extension of a static library file
-static_library_extension() {
+static_library_extension(): link {
 	if settings.is_target_windows return '.lib'
 	return '.a'
 }
@@ -291,7 +291,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		argument = parameters.pop_or(none as String)
 		if argument === none return Status('Expected a source file path')
 
-		settings.build_filter_path = argument
+		settings.build_filter_path = io.path.normalise(argument)
 	}
 	else {
 		return Status("Unknown option " + value)

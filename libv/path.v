@@ -4,7 +4,7 @@ namespace io.path
 # Examples:
 # '/path/to/file.extension' => 'file.extension'
 # '/path/to\\file' => 'file'
-export basename(path: String) {
+export basename(path: String): String {
 	i = path.last_index_of(`/`)
 	j = path.last_index_of(`\\`)
 	start = max(i, j)

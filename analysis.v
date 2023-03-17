@@ -1,7 +1,7 @@
 namespace analysis
 
 # Summary: Loads all variable usages from the specified function
-load_variable_usages(implementation: FunctionImplementation) {
+load_variable_usages(implementation: FunctionImplementation): _ {
 	# Reset all parameters and locals
 	loop variable in implementation.all_variables {
 		variable.usages.clear()

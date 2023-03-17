@@ -9,7 +9,7 @@ constant PAGE_READWRITE = 0x04
 import 'C' VirtualAlloc(address: link, size: large, type: large, protect: bool): link
 import 'C' VirtualFree(address: link, size: large, type: large)
 
-export allocate(size: large) {
+export allocate(size: large): link {
 	return VirtualAlloc(none as link, size, MEMORY_COMMIT | MEMORY_RESERVE, PAGE_READWRITE)
 }
 

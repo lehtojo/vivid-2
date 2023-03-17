@@ -12,7 +12,7 @@ MangleDefinition {
 		this.pointers = pointers
 	}
 
-	string() {
+	string(): String {
 		if hexadecimal === none {
 			digits = List<char>()
 			n = index - 1

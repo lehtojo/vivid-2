@@ -80,26 +80,26 @@ Handle {
 	}
 
 	# Summary: Returns all results which the handle requires to be in registers
-	open get_register_dependent_results() {
+	open get_register_dependent_results(): List<Result> {
 		return List<Result>()
 	}
 
 	# Summary: Returns all results used in the handle
-	open get_inner_results() {
+	open get_inner_results(): List<Result> {
 		return List<Result>()
 	}
 
-	open use(instruction: Instruction) {}
+	open use(instruction: Instruction): _ {}
 
-	open equals(other: Handle) {
+	open equals(other: Handle): bool {
 		return this.instance == other.instance and this.format == other.format
 	}
 
-	open finalize() {
+	open finalize(): Handle {
 		return Handle()
 	}
 
-	open string() {
+	open string(): String {
 		return "?"
 	}
 }
@@ -202,7 +202,7 @@ Handle MemoryHandle {
 		this.offset = offset
 	}
 
-	open get_absolute_offset() {
+	open get_absolute_offset(): large {
 		return offset
 	}
 
@@ -651,7 +651,7 @@ Handle ExpressionHandle {
 		return ExpressionHandle(left, 1, right, 0)
 	}
 
-	shared create_addition(left: Handle, right: Handle) {
+	shared create_addition(left: Handle, right: Handle): ExpressionHandle {
 		return ExpressionHandle(Result(left, SYSTEM_FORMAT), 1, Result(right, SYSTEM_FORMAT), 0)
 	}
 

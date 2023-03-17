@@ -22,24 +22,24 @@ export abs(a) {
 	else return -a
 }
 
-export ceil(a: decimal) {
+export ceil(a: decimal): large {
 	return (a + 0.5) as large
 }
 
-export floor(a: decimal) {
+export floor(a: decimal): large {
 	return a as large
 }
 
-export sign(a: decimal) {
+export sign(a: decimal): large {
 	if a > 0 return 1
 	else a < 0 return -1
 	else return 0 
 }
 
-export cbrt(a: large) {
+export cbrt(a: large): decimal {
 	return pow(a, 0.333333333333333)
 }
 
-export cbrt(a: decimal) {
+export cbrt(a: decimal): decimal {
 	return pow(a, 0.333333333333333)
 }

@@ -3,7 +3,7 @@ namespace calls
 constant SHADOW_SPACE_SIZE = 32
 constant STACK_ALIGNMENT = 16
 
-get_standard_parameter_register_names() {
+get_standard_parameter_register_names(): List<link> {
 	result = List<link>(8, false)
 
 	if settings.is_x64 {

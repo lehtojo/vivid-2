@@ -262,7 +262,7 @@ plain DynamicSectionBuilder {
 	}
 }
 
-get_section_type(section: BinarySection) {
+get_section_type(section: BinarySection): large {
 	if section.name == DYNAMIC_SYMBOL_TABLE_SECTION return ELF_SECTION_TYPE_DYNAMIC_SYMBOLS
 
 	return when(section.type) {

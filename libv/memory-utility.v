@@ -1,4 +1,4 @@
-export move(source: link, offset: large, destination: link, bytes: large) {
+export move(source: link, offset: large, destination: link, bytes: large): _ {
 	# Copy the area to be moved to a temporary buffer, since moving can override the bytes to be moved
 	buffer = allocate(bytes)
 	source += offset
@@ -53,13 +53,13 @@ export reverse(memory: link, size: large): _ {
 	}
 }
 
-export outline copy<T>(destination: T*, source: T*, size: large) {
+export outline copy<T>(destination: T*, source: T*, size: large): _ {
 	loop (i = 0, i < size, i++) {
 		destination[i] = source[i]
 	}
 }
 
-export outline zero<T>(destination: T*, size: large) {
+export outline zero<T>(destination: T*, size: large): _ {
 	loop (i = 0, i < size, i++) {
 		destination[i] = 0 as T
 	}

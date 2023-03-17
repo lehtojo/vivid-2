@@ -120,7 +120,7 @@ Table {
 		this.label = Label(name)
 	}
 
-	add(item: TableItem, inlined: bool) {
+	add(item: TableItem, inlined: bool): _ {
 		if inlined {
 			items.add(item)
 			return
@@ -136,15 +136,15 @@ Table {
 		add(item, true)
 	}
 
-	add(value: String) { add(StringTableItem(value)) }
-	add(value: link) { add(StringTableItem(String(value))) }
-	add(value: large) { add(IntegerTableItem(value, strideof(large))) }
-	add(value: normal) { add(IntegerTableItem(value, strideof(normal))) }
-	add(value: small) { add(IntegerTableItem(value, strideof(small))) }
-	add(value: tiny) { add(IntegerTableItem(value, strideof(tiny))) }
-	add(value: byte) { add(IntegerTableItem(value, strideof(byte))) }
-	add(value: Table) { add(TableReferenceTableItem(value)) }
-	add(value: Label) { add(LabelTableItem(value)) }
-	add(value: LabelOffset) { add(LabelOffsetTableItem(value)) }
-	add(value: TableLabel) { add(TableLabelTableItem(value)) }
+	add(value: String): _ { add(StringTableItem(value)) }
+	add(value: link): _ { add(StringTableItem(String(value))) }
+	add(value: large): _ { add(IntegerTableItem(value, strideof(large))) }
+	add(value: normal): _ { add(IntegerTableItem(value, strideof(normal))) }
+	add(value: small): _ { add(IntegerTableItem(value, strideof(small))) }
+	add(value: tiny): _ { add(IntegerTableItem(value, strideof(tiny))) }
+	add(value: byte): _ { add(IntegerTableItem(value, strideof(byte))) }
+	add(value: Table): _ { add(TableReferenceTableItem(value)) }
+	add(value: Label): _ { add(LabelTableItem(value)) }
+	add(value: LabelOffset): _ { add(LabelOffsetTableItem(value)) }
+	add(value: TableLabel): _ { add(TableLabelTableItem(value)) }
 }

@@ -53,6 +53,7 @@ MODIFIER_PLAIN = 1 <| 16
 MODIFIER_PACK = (1 <| 17) | MODIFIER_PLAIN
 MODIFIER_LINK = 1 <| 18
 MODIFIER_SELF = 1 <| 19
+MODIFIER_OVERRIDE_FUNCTION = 1 <| 20
 
 MODIFIER_DEFAULT = MODIFIER_PUBLIC
 ACCESS_LEVEL_MASK = 0b111
@@ -138,7 +139,7 @@ Operator ComparisonOperator {
 		Operator.init(identifier, OPERATOR_TYPE_COMPARISON, priority)
 	}
 
-	set_counterpart(counterpart: ComparisonOperator) {
+	set_counterpart(counterpart: ComparisonOperator): ComparisonOperator {
 		this.counterpart = counterpart
 		return this
 	}
@@ -333,7 +334,7 @@ Keyword {
 	readable type: tiny
 	readable identifier: String
 
-	init(identifier, type) {
+	init(identifier: String, type: tiny) {
 		this.identifier = identifier
 		this.type = type
 	}
@@ -564,7 +565,7 @@ Token {
 		return String.empty
 	}
 
-	open clone() {
+	open clone(): Token {
 		token = Token(type)
 		token.position = position
 		return token

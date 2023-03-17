@@ -6,7 +6,7 @@ namespace internal.random {
 }
 
 # Summary: Return a random integer number
-export random() {
+export random(): large {
 	b = internal.random.b
 	c = internal.random.c
 	x = internal.random.a + b + c + internal.random.n++
@@ -26,7 +26,7 @@ export random(a) {
 	return (random() as u64) % a
 }
 
-export set_random_seed(seed: large) {
+export set_random_seed(seed: large): _ {
 	internal.random.a = seed
 	internal.random.b = seed
 	internal.random.c = seed

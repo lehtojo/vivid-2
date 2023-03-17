@@ -15,7 +15,7 @@ pack VariableDescriptor {
 
 # Summary:
 # Safety check, which looks for assignments inside assignments. Such assignments have a high chance of causing trouble.
-capture_nested_assignments(root: Node) {
+capture_nested_assignments(root: Node): _ {
 	#warning Optimize this function away in release builds?
 	assignments = root.find_all(i -> i.match(Operators.ASSIGN))
 

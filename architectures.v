@@ -246,7 +246,7 @@ namespace x64 {
 	dual_parameter_encodings: List<List<InstructionEncoding>>
 	triple_parameter_encodings: List<List<InstructionEncoding>>
 
-	create_conditional_move_encoding(operation: large) {
+	create_conditional_move_encoding(operation: large): List<InstructionEncoding> {
 		return [
 			# cmov** r64, r64 | cmov** r32, r32 | cmov r16, r16
 			InstructionEncoding(operation, 0, ENCODING_ROUTE_RR, false, ENCODING_FILTER_TYPE_STANDARD_REGISTER, 0, 2, ENCODING_FILTER_TYPE_STANDARD_REGISTER, 0, 2, instruction_encoder.OPERAND_SIZE_OVERRIDE),

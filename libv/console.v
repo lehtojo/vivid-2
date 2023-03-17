@@ -4,7 +4,7 @@ namespace console
 constant CONSOLE_READ_LINE_MAX_LENGTH = 1000
 
 # Summary: Reads the next line of characters from the console
-export read_line() {
+export read_line(): String {
 	buffer: char[CONSOLE_READ_LINE_MAX_LENGTH]
 	size = internal.console.read(buffer as link, CONSOLE_READ_LINE_MAX_LENGTH) - 2
 
@@ -14,12 +14,12 @@ export read_line() {
 }
 
 # Summary: Reads the next line of characters from the console and returns it to the specified buffer
-export read_line(buffer: link, size: large) {
+export read_line(buffer: link, size: large): _ {
 	internal.console.read(buffer, size)
 }
 
 # Summary: Writes the specified string to the console
-export write(string: String) {
+export write(string: String): _ {
 	internal.console.write(string.data, string.length)
 }
 
@@ -29,7 +29,7 @@ export write(string: link): _ {
 }
 
 # Summary: Writes the specified number of characters from the specified string
-export write(string: link, length: large) {
+export write(string: link, length: large): _ {
 	internal.console.write(string, length)
 }
 
@@ -42,16 +42,16 @@ export write(value: large): _ {
 }
 
 # Summary: Writes the specified integer to the console
-export write(value: normal) { write(value as large) }
+export write(value: normal): _ { write(value as large) }
 
 # Summary: Writes the specified integer to the console
-export write(value: small) { write(value as large) }
+export write(value: small): _ { write(value as large) }
 
 # Summary: Writes the specified integer to the console
-export write(value: tiny) { write(value as large) }
+export write(value: tiny): _ { write(value as large) }
 
 # Summary: Writes the specified decimal to the console
-export write(value: decimal) {
+export write(value: decimal): _ {
 	buffer: byte[64]
 	zero(buffer as link, 64)
 	length = to_string(value, buffer as link)
@@ -59,7 +59,7 @@ export write(value: decimal) {
 }
 
 # Summary: Writes the specified bool to the console
-export write(value: bool) {
+export write(value: bool): _ {
 	if value {
 		write('true', 4)
 	}
@@ -81,13 +81,13 @@ export write_line(string: link): _ {
 }
 
 # Summary: Writes the specified number of characters from the specified string
-export write_line(string: link, length: large) {
+export write_line(string: link, length: large): _ {
 	internal.console.write(string, length)
 	put(`\n`)
 }
 
 # Summary: Writes the specified integer to the console
-export write_line(value: large) {
+export write_line(value: large): _ {
 	buffer: byte[32]
 	zero(buffer as link, 32)
 	length = to_string(value, buffer as link)
@@ -96,16 +96,16 @@ export write_line(value: large) {
 }
 
 # Summary: Writes the specified integer to the console
-export write_line(value: normal) { write_line(value as large) }
+export write_line(value: normal): _ { write_line(value as large) }
 
 # Summary: Writes the specified integer to the console
-export write_line(value: small) { write_line(value as large) }
+export write_line(value: small): _ { write_line(value as large) }
 
 # Summary: Writes the specified integer to the console
-export write_line(value: tiny) { write_line(value as large) }
+export write_line(value: tiny): _ { write_line(value as large) }
 
 # Summary: Writes the specified decimal to the console
-export write_line(value: decimal) {
+export write_line(value: decimal): _ {
 	buffer: byte[64]
 	zero(buffer as link, 64)
 	length = to_string(value, buffer as link)
@@ -114,7 +114,7 @@ export write_line(value: decimal) {
 }
 
 # Summary: Writes the specified bool to the console
-export write_line(value: bool) {
+export write_line(value: bool): _ {
 	if value {
 		write('true\n', 5)
 	}

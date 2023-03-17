@@ -3,7 +3,7 @@ namespace inliner
 constant INLINE_THRESHOLD = 3 * expression_optimizer.STANDARD_OPERATOR_COST
 
 # Summary: Finds all the labels under the specified root and localizes them by declaring new labels to the specified context
-localize_labels(context: Context, root: Node) {
+localize_labels(context: Context, root: Node): _ {
 	# Find all the labels and the jumps under the specified root
 	labels = root.find_all(NODE_LABEL) as List<LabelNode>
 	jumps = root.find_all(NODE_JUMP) as List<JumpNode>

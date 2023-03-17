@@ -1,7 +1,7 @@
 MIN_MAP_CAPACITY = 5
 REMOVED_SLOT_MARKER = -2
 
-export plain KeyValuePair<K, V> {
+plain KeyValuePair<K, V> {
 	key: K
 	value: V
 
@@ -11,7 +11,7 @@ export plain KeyValuePair<K, V> {
 	}
 }
 
-export plain MapIterator<K, V> {
+plain MapIterator<K, V> {
 	slot: MapSlot<K, V>
 	slots: MapSlot<K, V>*
 	first: normal
@@ -28,11 +28,11 @@ export plain MapIterator<K, V> {
 		slot.previous = 0
 	}
 
-	value() {
+	value(): KeyValuePair<K, V> {
 		return this as KeyValuePair<K, V> # NOTE: Map slot is identical to a pair
 	}
 
-	next() {
+	next(): bool {
 		if slot.next <= 0 return false
 
 		index = slot.next - 1
@@ -40,7 +40,7 @@ export plain MapIterator<K, V> {
 		return true
 	}
 
-	reset() {
+	reset(): _ {
 		slot.key = none as K
 		slot.value = none as V
 		slot.next = first + 1
@@ -48,14 +48,14 @@ export plain MapIterator<K, V> {
 	}
 }
 
-export pack MapSlot<K, V> {
+pack MapSlot<K, V> {
 	key: K
 	value: V
 	next: normal
 	previous: normal
 }
 
-export Map<K, V> {
+Map<K, V> {
 	private first: large = -1 # Zero-based index of first slot
 	private last: large = -1 # Zero-based index of last slot
 	private slots: MapSlot<K, V>* = none as MapSlot<K, V>*
@@ -70,7 +70,7 @@ export Map<K, V> {
 		rehash(capacity)
 	}
 
-	rehash(to: large) {
+	rehash(to: large): _ {
 		if to < MIN_MAP_CAPACITY { to = MIN_MAP_CAPACITY }
 
 		# Save the old slots for iteration
@@ -99,7 +99,7 @@ export Map<K, V> {
 		deallocate(previous_slots)
 	}
 
-	add(key: K, value: V) {
+	add(key: K, value: V): _ {
 		# If the load factor will exceed 50%, rehash the map now
 		load_factor = (size + removed + 1) as decimal / capacity
 
@@ -169,13 +169,13 @@ export Map<K, V> {
 		}
 	}
 
-	try_add(key: K, value: V) {
+	try_add(key: K, value: V): bool {
 		if contains_key(key) return false
 		add(key, value)
 		return true
 	}
 
-	remove(key: K) {
+	remove(key: K): _ {
 		# Just return if the map is empty, this also protects from the situation where the map is not allocated yet
 		if size == 0 return
 
@@ -245,7 +245,7 @@ export Map<K, V> {
 		}
 	}
 
-	try_find(key: K) {
+	try_find(key: K): i64 {
 		# Just return -1 if the map is empty, this also protects from the situation where the map is not allocated yet
 		if size == 0 return -1
 
@@ -275,18 +275,18 @@ export Map<K, V> {
 		}
 	}
 
-	contains_key(key: K) {
+	contains_key(key: K): bool {
 		return try_find(key) >= 0
 	}
 
-	get(key: K) {
+	get(key: K): V {
 		index = try_find(key)
 		if index < 0 panic('Map did not contain the specified key')
 
 		return slots[index].value
 	}
 
-	try_get(key: K) {
+	try_get(key: K): Optional<V> {
 		index = try_find(key)
 		if index < 0 return Optional<V>()
 
@@ -304,16 +304,16 @@ export Map<K, V> {
 		return result
 	}
 
-	set(key: K, value: V) {
+	set(key: K, value: V): _ {
 		add(key, value)
 	}
 
-	iterator() {
+	iterator(): MapIterator<K, V> {
 		return MapIterator<K, V>(slots, first)
 	}
 
 	# Summary: Returns the keys associated with the values in this map as a list
-	get_keys() {
+	get_keys(): List<K> {
 		result = List<K>(size, false)
 		index = first
 
@@ -328,7 +328,7 @@ export Map<K, V> {
 	}
 
 	# Summary: Returns the values associated with the keys in this map as a list
-	get_values() {
+	get_values(): List<V> {
 		result = List<V>(size, false)
 		index = first
 
@@ -342,7 +342,7 @@ export Map<K, V> {
 		return result
 	}
 
-	clear() {
+	clear(): _ {
 		if slots !== none {
 			deallocate(slots)
 		}
@@ -356,7 +356,7 @@ export Map<K, V> {
 	}
 
 	# Summary: Converts the key-value pairs of this map into a list
-	map<U>(mapper: (KeyValuePair<K, V>) -> U) {
+	map<U>(mapper: (KeyValuePair<K, V>) -> U): List<U> {
 		result = List<U>(size, false)
 		index = first
 

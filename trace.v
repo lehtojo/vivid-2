@@ -31,7 +31,7 @@ Directive AvoidRegistersDirective {
 
 namespace trace
 
-for(unit: Unit, result: Result) {
+for(unit: Unit, result: Result): List<Directive> {
 	directives = List<Directive>()
 	reorders = List<ReorderInstruction>()
 

@@ -12,7 +12,7 @@ DynamicBitset {
 		this.data = allocate(size / 8 + 1)
 	}
 
-	private grow(expanded_size: normal) {
+	private grow(expanded_size: normal): _ {
 		require(expanded_size <= max_size, 'Maximum bitset size was exceeded')
 
 		# Allocate a larger memory buffer, copy the old data there and deallocate the old memory
@@ -36,7 +36,7 @@ DynamicBitset {
 		data[slot] |= mask
 	}
 
-	unset(i: large) {
+	unset(i: large): _ {
 		require(i >= 0, 'Index can not be negative')
 
 		# Grow the bitset if the specified index is outside the allocated memory

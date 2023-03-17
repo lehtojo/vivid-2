@@ -10,12 +10,12 @@ namespace internal.allocator {
 	s512: Allocators<SlabAllocator<byte[512]>, byte[512]>
 	s1024: Allocators<SlabAllocator<byte[1024]>, byte[1024]>
 
-	export panic(message: link) {
+	export panic(message: link): _ {
 		internal.console.write(message, length_of(message))
 		application.exit(1)
 	}
 
-	export plain SlabAllocator<T> {
+	plain SlabAllocator<T> {
 		slabs: normal
 		start: link
 		end => start + slabs * sizeof(T)
@@ -113,7 +113,7 @@ namespace internal.allocator {
 		}
 	}
 
-	export plain Allocators<T, S> {
+	plain Allocators<T, S> {
 		allocations: u64 = 0
 		allocators: T*
 		deallocators: T*
@@ -237,7 +237,7 @@ namespace internal.allocator {
 	}
 }
 
-export outline allocate(bytes: large): u8* {
+outline allocate(bytes: large): u8* {
 	if bytes <= 16 return internal.allocator.s16.allocate()
 	if bytes <= 32 return internal.allocator.s32.allocate()
 	if bytes <= 64 return internal.allocator.s64.allocate()
@@ -256,7 +256,7 @@ export outline allocate(bytes: large): u8* {
 }
 
 
-export outline deallocate(address: link): _ {
+outline deallocate(address: link): _ {
 	if internal.allocator.s16.deallocate(address) return
 	if internal.allocator.s32.deallocate(address) return
 	if internal.allocator.s64.deallocate(address) return
@@ -358,15 +358,15 @@ export RangeIterator {
 		this.position = start - 1
 	}
 
-	next() {
+	next(): bool {
 		return ++position <= end
 	}
 
-	value() {
+	value(): large {
 		return position
 	}
 
-	reset() {
+	reset(): _ {
 		position = start - 1
 	}
 }
@@ -380,7 +380,7 @@ export Range {
 		this.end = end
 	}
 
-	iterator() {
+	iterator(): RangeIterator {
 		return RangeIterator(start, end)
 	}
 }

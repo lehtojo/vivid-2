@@ -1,7 +1,7 @@
 namespace conditionals
 
 # Summary: Builds the body of an if-statement or an else-if-statement
-build_body(unit: Unit, body: ScopeNode) {
+build_body(unit: Unit, body: ScopeNode): Result {
 	# Build the body
 	result = builders.build(unit, body) as Result
 

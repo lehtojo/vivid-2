@@ -62,7 +62,7 @@ Node NumberNode {
 		this.value = value
 	}
 
-	negate() {
+	negate(): NumberNode {
 		if format == FORMAT_DECIMAL {
 			value = value ¤ [1 <| 63]
 		}
@@ -1102,7 +1102,7 @@ Node IfNode {
 		return successors
 	}
 
-	get_branches() {
+	get_branches(): List<Node> {
 		branches = List<Node>(1, false)
 		branches.add(this)
 
@@ -2132,8 +2132,11 @@ Node LambdaNode {
 	}
 
 	override try_get_type() {
-		if implementation != none and implementation.return_type != none return get_incomplete_type()
-		return none as Type
+		# Before returning the type, verify the lambda is implemented and the return type is resolved
+		if implementation === none or implementation.return_type === none or implementation.return_type.is_unresolved return none as Type
+
+		# Note: Parameter types are resolved, because the implementation can not exist without them
+		return get_incomplete_type()
 	}
 
 	override copy() {

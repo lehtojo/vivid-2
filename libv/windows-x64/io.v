@@ -118,12 +118,12 @@ FolderItem {
 }
 
 # Summary: Returns all the filenames inside the specified folder
-export get_folder_items(folder: link, all: bool) {
+export get_folder_items(folder: link, all: bool): List<FolderItem> {
 	return get_folder_items(String(folder), all)
 }
 
 # Summary: Returns all the filenames inside the specified folder
-export get_folder_items(folder: String, all: bool) {
+export get_folder_items(folder: String, all: bool): List<FolderItem> {
 	iterator = inline internal.FileIterator()
 
 	filename: char[internal.MAXIMUM_PATH_LENGTH]
@@ -162,7 +162,7 @@ export get_folder_items(folder: String, all: bool) {
 }
 
 # Summary: Returns all the filenames inside the specified folder
-export get_folder_files(folder: String, all: bool): List<io.FolderItem> {
+export get_folder_files(folder: String, all: bool): List<FolderItem> {
 	items = get_folder_items(folder, all)
 	files = List<FolderItem>()
 
@@ -175,7 +175,7 @@ export get_folder_files(folder: String, all: bool): List<io.FolderItem> {
 }
 
 # Summary: Returns all the filenames inside the specified folder
-export get_folder_files(folder: link, all: bool) {
+export get_folder_files(folder: link, all: bool): List<FolderItem> {
 	return get_folder_files(String(folder), all)
 }
 
@@ -190,7 +190,7 @@ export write_file(filename: String, bytes: Array<byte>): bool {
 }
 
 # Summary: Writes the specified text to the specified file
-export write_file(filename: link, text: String) {
+export write_file(filename: link, text: String): bool {
 	return write_file(filename, Array<byte>(text.data, text.length))
 }
 
@@ -266,12 +266,12 @@ export is_folder(path: link): bool {
 }
 
 # Summary: Returns the size of the specified file or folder
-export size(path: String) {
+export size(path: String): large {
 	return size(path.data)
 }
 
 # Summary: Returns the size of the specified file or folder
-export size(path: link) {
+export size(path: link): large {
 	# TODO: Some folders do not work, that is, this function returns -1. This might be due to too long paths.
 	if is_folder(path) {
 		files = get_folder_files(path, true)
@@ -309,7 +309,7 @@ export size(path: link) {
 }
 
 # Processes:
-export start_process(executable: String, command_line_arguments: List<String>, working_folder: link) {
+export start_process(executable: String, command_line_arguments: List<String>, working_folder: link): large {
 	startup_information = inline internal.StartupInformation()
 	startup_information.size = 96
 	zero(startup_information as link, 96)
@@ -325,16 +325,16 @@ export start_process(executable: String, command_line_arguments: List<String>, w
 	return process_information.pid
 }
 
-export start_process(executable: String, command_line_arguments: List<String>, working_folder: String) {
+export start_process(executable: String, command_line_arguments: List<String>, working_folder: String): large {
 	if working_folder !== none return start_process(executable, command_line_arguments, working_folder.data)
 	return start_process(executable, command_line_arguments, none as link)
 }
 
-export start_process(executable: String, command_line_arguments: List<String>) {
+export start_process(executable: String, command_line_arguments: List<String>): large {
 	return start_process(executable, command_line_arguments, none as link)
 }
 
-shell(command: String, working_folder: link) {
+shell(command: String, working_folder: link): large {
 	shell = get_environment_variable('COMSPEC')
 	if shell === none return -1
 
@@ -352,17 +352,17 @@ shell(command: String, working_folder: link) {
 	return process_information.pid
 }
 
-export shell(command: String, working_folder: String) {
+export shell(command: String, working_folder: String): large {
 	if working_folder != none return shell(command, working_folder.data)
 	return shell(command, none as link)
 }
 
-export shell(command: String) {
+export shell(command: String): large {
 	return shell(command, none as link)
 }
 
 # Summary: Waits for the specified process to exit
-export wait_for_exit(pid: large) {
+export wait_for_exit(pid: large): large {
 	handle = internal.OpenProcess(internal.PROCESS_ACCESS_SYNCHRONIZE | internal.PROCESS_QUERY_INFORMATION, false, pid)
 	internal.WaitForSingleObject(handle, internal.INFINITE)
 

@@ -4,7 +4,7 @@ namespace object_exporter
 
 # Summary:
 # Creates a template name by combining the specified name and the template argument names together
-create_template_name(name: String, template_argument_names: List<String>) {
+create_template_name(name: String, template_argument_names: List<String>): String {
 	return name + `<` + String.join(", ", template_argument_names) + `>`
 }
 
@@ -83,7 +83,7 @@ is_template_function_variant(function: Function): bool {
 
 # Summary:
 # Looks for template functions and types and exports them to string builders
-get_template_export_files(context: Context) {
+get_template_export_files(context: Context): Map<SourceFile, StringBuilder> {
 	files = Map<SourceFile, StringBuilder>()
 
 	functions_with_sources = context.functions.get_values()

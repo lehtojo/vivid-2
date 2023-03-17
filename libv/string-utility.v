@@ -27,12 +27,12 @@ export is_digit(value: char): bool {
 }
 
 # Summary: Returns whether the specified character is an alphabet
-export is_alphabet(value: char) {
+export is_alphabet(value: char): bool {
 	return (value >= `a` and value <= `z`) or (value >= `A` and value <= `Z`)
 }
 
 # Summary: Converts the specified number into a string and stores it in the specified buffer
-export to_string(number: large, result: link) {
+export to_string(number: large, result: link): large {
 	position = 0
 
 	if number < 0 {

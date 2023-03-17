@@ -4,7 +4,7 @@ constant RUNTIME_HAS_VALUE_FUNCTION_IDENTIFIER = 'has_value'
 constant RUNTIME_GET_VALUE_FUNCTION_IDENTIFIER = 'get_value'
 
 # Summary: Completes the specified self returning function by adding the necessary statements and by modifying the function information
-complete_self_returning_function(implementation: FunctionImplementation) {
+complete_self_returning_function(implementation: FunctionImplementation): _ {
 	position = implementation.metadata.start
 
 	implementation.return_type = implementation.parent as Type
