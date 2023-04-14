@@ -54,6 +54,8 @@ init(): large {
 	result = configure(arguments)
 	if result.problematic complain(result)
 
+	jobs.execute()
+
 	result = load()
 	if result.problematic complain(result)
 

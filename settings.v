@@ -33,6 +33,7 @@ service: bool # Whether to start a compiler service for code completion
 filenames: List<String> # Stores the user-defined source files to load
 textual_assembly: bool # Stores whether textual assembly mode is enabled
 base_address: u64 # Stores the base address used in binary mode
+jobs: u64 # Stores the number of jobs to create
 build_filter_path: String # Stores the path of the source file that only should be built. None if all should be built.
 build_filter: SourceFile # Stores the source file that only should be built. None if all should be built.
 
@@ -74,6 +75,7 @@ initialize(): _ {
 	textual_assembly = false
 	base_address = 0x1000
 	included_folders = List<String>()
+	jobs = 0
 	build_filter_path	= none as String
 	build_filter = none as SourceFile
 }

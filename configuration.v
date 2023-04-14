@@ -158,6 +158,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-binary')
 		console.write_line('-base <address>')
 		console.write_line('-system')
+		console.write_line('-j / jobs <number>')
 		console.write_line('-filter <file>')
 		application.exit(1)
 	}
@@ -292,6 +293,12 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		if argument === none return Status('Expected a source file path')
 
 		settings.build_filter_path = io.path.normalise(argument)
+	}
+	else value == '-j' or value == '-jobs' {
+		argument = parameters.pop_or(none as String)
+		if argument === none or as_integer(argument) has not jobs return Status('Expected the number of jobs to create')
+
+		settings.jobs = jobs
 	}
 	else {
 		return Status("Unknown option " + value)
