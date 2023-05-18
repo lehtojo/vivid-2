@@ -197,6 +197,11 @@ export StringBuilder {
 		return buffer[i]
 	}
 
+	set(i: large, value: u8) {
+		require(i >= 0 and i < position, 'Index out of bounds')
+		buffer[i] = value
+	}
+
 	string(): String {
 		return String(buffer, position)
 	}

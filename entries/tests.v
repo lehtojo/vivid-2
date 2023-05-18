@@ -12,6 +12,10 @@ abort(message: link) {
 	application.exit(1)
 }
 
+abort(position: Position, message: String): _ {
+	abort(position, message.data)
+}
+
 abort(position: Position, message: link) {
 	console.write('Internal error: ')
 	console.write(message)
@@ -88,21 +92,26 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	result = load()
 	if result.problematic terminate(result)
 
+	Keywords.initialize()
+	Operators.initialize()
+
 	preprocessor = preprocessing.Preprocessor()
 
-	if not preprocessor.preprocess() {
+	if not preprocessor.preprocess(settings.source_files) {
 		common.report(preprocessor.errors)
 		terminate(Status('Preprocessor failed'))
 	}
-
-	Keywords.initialize()
-	Operators.initialize()
 
 	result = textual_assembler.assemble()
 	if result.problematic terminate(result)
 
 	result = tokenize()
 	if result.problematic terminate(result)
+
+	if not preprocessor.expand(settings.source_files) {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
 
 	primitives.initialize()
 	numbers.initialize()

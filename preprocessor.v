@@ -233,8 +233,13 @@ plain Macro {
 		return lines
 	}
 
+	# Summary: Applies the arguments into this macro
+	use(arguments: List<String>): List<String> {
+		return use(create_arguments(arguments))
+	}
+
 	# Summary: Applies this macro into the specified usage
-	use(code: StringBuilder, line_start_index: u64, usage_start: u64, usage_end: u64, arguments: List<String>): _ {		
+	apply(code: StringBuilder, line_start_index: u64, usage_start: u64, usage_end: u64, arguments: List<String>): _ {		
 		# Use the macro with the arguments and get the lines
 		lines: List<String> = use(create_arguments(arguments))
 
@@ -277,8 +282,31 @@ plain Macros {
 	}
 }
 
+pack MacroUsage {
+	start: Position
+	end: Position
+	macro: Macro
+	arguments: List<String>
+
+	shared new(start: Position, end: Position, macro: Macro, arguments: List<String>): MacroUsage {
+		return pack { start: start, end: end, macro: macro, arguments: arguments } as MacroUsage
+	}
+}
+
+pack MacroExpansion {
+	start: Position
+	tokens: List<Token>
+
+	shared new(start: Position, tokens: List<Token>): MacroExpansion {
+		return pack { start: start, tokens: tokens } as MacroExpansion
+	}
+}
+
 plain Preprocessor {
 	errors: List<Status> = List<Status>()
+
+	private macros: Map<String, Macros> = Map<String, Macros>()
+	private expansions: Map<SourceFile, List<MacroExpansion>> = Map<SourceFile, List<MacroExpansion>>()
 
 	private debug_print(file, code) {
 		if file.fullname.ends_with('simple-macros.v') {
@@ -321,7 +349,7 @@ plain Preprocessor {
 
 	# Summary:
 	# Loads macros from the specified code and inserts them to the specified map by name
-	private load_macros(code: StringBuilder, lines: List<String>, macros: Map<String, Macros>): _ {
+	private load_macros(code: StringBuilder, lines: List<String>): _ {
 		# Macros have the following syntax:
 		# $$name!($parameter-1, $parameter-2, ...) [\n] {...}
 		i = 0
@@ -395,21 +423,23 @@ plain Preprocessor {
 			i = body_area.end.absolute
 
 			# Replace the entire macro with spaces, so that it will not get parsed
-			code.fill(macro_start_index, i, ` `)
+			loop (j = macro_start_index, j < i, j++) {
+				# Skip line endings
+				character = code[j]
+				if character == `\n` continue
+
+				code[j] = ` `
+			}
 		}
 	}
 
 	# Loads all macros from the specified codes
-	private load_macros(): Map<String, Macros> {
-		macros = Map<String, Macros>()
-
-		loop file in settings.source_files {
+	private load_macros(files: List<SourceFile>): _ {
+		loop file in files {
 			code = StringBuilder(file.content)
-			load_macros(code, file.content.split(`\n`), macros)
+			load_macros(code, file.content.split(`\n`))
 			file.content = code.string()
 		}
-
-		return macros
 	}
 
 	# Summary: Extracts the arguments of the macro usage from the code
@@ -447,105 +477,226 @@ plain Preprocessor {
 		return arguments
 	}
 
-	# Summary: Applies macros in the specified code
-	private preprocess(code: StringBuilder, macros: Map<String, Macros>): _ {
-		# Find all macro usages and replace them with the macro body
-		search_offset = 0
+	# Summary: Find the next macro usage position
+	private find_next_macro_usage(code: StringBuilder, start: Position): MacroUsage {
+		position = start.clone()
 
-		loop {
-			# Find the next potential macro usage by searching '!('
-			exclamation_index = code.index_of('!(', search_offset)
+		# Note: Macro usage will require at least 3 characters after the name: !()
+		loop (position.absolute < code.length - 3) {
+			# We are looking for pattern '!(' while tracking the line number etc.
+			absolute = position.absolute
+			character = code[absolute]
 
-			# If there is no exclamation mark, there can not be any macros usages left to process
-			if exclamation_index < 0 stop
+			if character != `!` {
+				if character == `\n` { position.next_line() }
+				else { position.next_character() }
+				continue
+			}
+
+			# Verify there is `(` after the `!`
+			if code[absolute + 1] != `(` {
+				position.next_character()
+				continue
+			}
 
 			# Load the name of the macro by iterating backwards until we find non-identifier character
-			usage_name_start = exclamation_index - 1
+			name_start = absolute
 
 			loop {
 				# Iterate while we have not reached the start of the code
-				if usage_name_start < 0 stop
+				if name_start - 1 < 0 stop
 
 				# Iterate while we consume identifier characters
-				character = code[usage_name_start]
+				character = code[name_start - 1]
 				if not (is_text(character) or is_digit(character)) stop
 
 				# Move to the "next" character
-				usage_name_start--
+				name_start--
 			}
 
-			# Extract the name of the macro
-			usage_name = code.slice(usage_name_start + 1, exclamation_index)
+			# Extract the name
+			name = code.slice(name_start, absolute)
 
-			# Find the closing parenthesis for the macro arguments
-			code_view = String.from(code.buffer, code.length)
-			parenthesis_start = exclamation_index + 1
-			parenthesis_end_position = skip_parenthesis(code_view, Position(0, parenthesis_start, parenthesis_start, parenthesis_start))
+			# Find the closing parenthesis to extract the arguments
+			name_position = position.translate(name_start - absolute)
+			parenthesis_start = position.translate(1)
+			parenthesis_end = skip_parenthesis(String.from(code.buffer, code.length), parenthesis_start)
+
+			# Move over the `!` so that next search will not find it
+			position.next_character()
 
 			# If we could not find the closing parenthesis, then we have not found a macro usage
-			if parenthesis_end_position === none {
-				# Next search after the exclamation index
-				search_offset = parenthesis_start
-				continue
-			}
-
-			parenthesis_end = parenthesis_end_position.absolute
+			if parenthesis_end === none continue
 
 			# It seems we have found a macro usage, try to find the macro
-			if not macros.contains_key(usage_name) {
-				usage = code.slice(usage_name_start + 1, parenthesis_end)
-				report(none as Position, "Can not find the macro: " + usage)
-
-				# Next search after the exclamation index
-				search_offset = parenthesis_start
+			if not macros.contains_key(name) {
+				# Todo: Pass a macro call stack and report it
+				report(name_position, "Can not find the macro")
 				continue
 			}
-
-			# Find the index of the first character on the current line as we might need it to insert the macro body
-			line_start_index = code.last_index_of(`\n`, exclamation_index) + 1
-
-			# Next search will start after the previous line ending as the macro might add new macro usages
-			search_offset = line_start_index
 
 			# Extract the arguments of the macro usage
-			usage_arguments = get_macro_arguments(code, parenthesis_start, parenthesis_end)
+			arguments = get_macro_arguments(code, parenthesis_start.absolute, parenthesis_end.absolute)
 
 			# Attempt to find a suitable macro overload with the extracted arguments
-			macro = macros[usage_name].find(usage_arguments)
+			macro = macros[name].find(arguments)
 
 			if macro === none {
-				usage = code.slice(usage_name_start + 1, parenthesis_end)
-				report(none as Position, "Can not find suitable macro overload: " + usage)
-
-				# Next search after the exclamation index
-				search_offset = parenthesis_start
+				report(name_position, "Can not find suitable macro overload")
 				continue
 			}
 
-			# Apply the macro to the usage
-			macro.use(code, line_start_index as u64, usage_name_start as u64, parenthesis_end as u64, usage_arguments)
+			# Return the macro usage
+			return MacroUsage.new(name_position, parenthesis_end, macro, arguments)
+		}
+
+		return none as MacroUsage
+	}
+
+	# Summary: Expands all macro usages recursively in the specified code
+	private expand_all(content: String): String {
+		code = StringBuilder(content)
+		start = Position(0, 0, 0, 0)
+
+		loop {
+			# Attempt to find the next macro usage
+			usage = find_next_macro_usage(code, start)
+			if usage.start === none return code.string()
+
+			# Find the index of the first character on the current line
+			line_start_index = code.last_index_of(`\n`, usage.start.absolute) + 1
+
+			# Use the macro with the arguments
+			usage.macro.apply(code, line_start_index, usage.start.absolute, usage.end.absolute, usage.arguments)
+		}
+	}
+
+	# Summary: Applies macros in the specified code
+	private preprocess(content: String, position: Position, macros: Map<String, Macros>): List<MacroExpansion> {
+		code = StringBuilder(content)
+		expansions: List<MacroExpansion> = List<MacroExpansion>()
+
+		loop {
+			# Attempt to find the next macro usage
+			usage = find_next_macro_usage(code, position)
+			if usage.start === none return expansions
+
+			# Find the next macro usage after the processed usage
+			position = usage.end
+
+			# Use the macro with the arguments and expand all macros inside it
+			lines = usage.macro.use(usage.arguments)
+			expanded = expand_all(String.join(`\n`, lines))
+
+			# Tokenize the produced lines
+			result = get_tokens(expanded, usage.start, true)
+
+			if result has not tokens {
+				report(usage.start, result.get_error())
+				continue
+			}
+
+			# Create an expansion of the usage
+			expansions.add(MacroExpansion.new(usage.start, tokens))
 		}
 	}
 
 	# Summary: Preprocesses all loaded source files
-	preprocess(): bool {
-		# Todo:
-		# Problems:
-		# - We can not report macro expansion errors, because the lines expand and stuff
-		# - Normals errors get shifted, because macros expand
-		# Solution:
-		# - 1. Load and replace macros with white spaces
-		# - 2. Tokenize the source code so that original positions get assigned
-		# - 3. Now expand macros with the loaded macros and insert the expanded macro as tokens 
+	preprocess(files: List<SourceFile>): bool {
+		# Load all macros from the source files
+		load_macros(files)
 
-		# Load all macros from loaded source files
-		macros = load_macros()
+		# Apply macros in all the source files
+		loop file in files {
+			expansions.add(file, preprocess(file.content, Position(file, 0, 0), macros))
+		}
 
-		# Apply macros in all loaded source files
-		loop file in settings.source_files {
-			code = StringBuilder(file.content)
-			preprocess(code, macros)
-			file.content = code.string()
+		return errors.size == 0
+	}
+
+	# Summary: Extracts the tokens of the last line into a list
+	private extract_result_tokens(tokens: List<Token>): List<Token> {
+		# Find the last line ending token
+		result_start = tokens.find_last_index((i: Token) -> i.type == TOKEN_TYPE_END) + 1
+		result_tokens = tokens.slice(result_start)
+
+		# Remove the result line tokens
+		tokens.remove_all(result_start, tokens.size)
+
+		return result_tokens
+	}
+
+	# Summary: Applies macro expansions into the specified tokens
+	private expand(file: SourceFile, tokens: List<Token>, expansions: List<MacroExpansion>): _ {
+		line_start_index = 0
+
+		loop (i = 0, i < tokens.size and expansions.size > 0, ) {
+			token = tokens[i]
+
+			if token.type == TOKEN_TYPE_END {
+				line_start_index = i + 1
+				i++
+				continue
+			}
+
+			# Load the expansion we are looking for
+			expansion = expansions[0]
+
+			# Insert the expansion when we have found the token
+			if token.position.absolute == expansion.start.absolute {
+				# There must be at least 3 tokens to remove: $name ! (...)
+				require(tokens.size - i >= 3, 'Invalid macro expansion')
+
+				# Remove the expansion from the list
+				expansions.remove_at(0)
+
+				expansion_tokens = clone(expansion.tokens)
+				result_tokens = extract_result_tokens(expansion_tokens)
+
+				# Replace the "$name ! (...)" with the result tokens
+				tokens.remove_all(i, i + 3) # Remove: $name ! (...)
+				tokens.insert_all(i, result_tokens)
+
+				# Add the rest of the tokens before the current line
+				tokens.insert(line_start_index, Token(TOKEN_TYPE_END))
+				tokens.insert_all(line_start_index, expansion_tokens)
+
+				# Go past the processed area
+				i += result_tokens.size + expansion_tokens.size + 1
+				continue
+			}
+
+			# If we have gone past the expansion, we have a fatal error, because the expansion should exist
+			if token.position.absolute > expansion.start.absolute {
+				abort(token.position, "Failed to find macro expansion at offset " + to_string(expansion.start.absolute as large))
+			}
+
+			# If the current token contains tokens, examine them only if the expansion can be among them
+			if token.type == TOKEN_TYPE_PARENTHESIS {
+				# Do not examine the tokens, because all of the tokens are before the expansion
+				if token.(ParenthesisToken).end.absolute <= expansion.start.absolute {
+					i++
+					continue
+				}
+
+				# Examine the tokens
+				expand(file, token.(ParenthesisToken).tokens, expansions)
+			}
+
+			# Move to the next token
+			i++
+		}
+	}
+
+	# Summary: Expands macros into the specified files
+	expand(files: List<SourceFile>): bool {
+		loop file in files {
+			# If there are no expansions for the current file, skip the current file
+			if not expansions.contains_key(file) continue
+
+			# Expand macros in the current file
+			expand(file, file.tokens, expansions[file])
+			require(expansions[file].size == 0, 'All macro expansions were not expanded')
 		}
 
 		return errors.size == 0

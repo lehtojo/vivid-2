@@ -397,7 +397,7 @@ get_function_report(implementation: FunctionImplementation): List<Status> {
 
 	loop variable in implementation.locals {
 		if variable.is_resolved continue
-		errors.add(Status(variable.position, 'Can not resolve the type of the variable'))
+		errors.add(Status(variable.position, "Can not resolve the type of the variable " + variable.name))
 	}
 
 	if implementation.return_type === none or implementation.return_type.is_unresolved {
