@@ -483,32 +483,6 @@ register_default_functions(context: Context): _ {
 	}
 }
 
-output(status: Status): _ {
-	position = status.position
-
-	if position === none {
-		console.write('<Source>:<Line>:<Character>')
-	}
-	else {
-		file = position.file
-
-		if file != none console.write(file.fullname)
-		else { console.write('<Source>') }
-
-		console.write(':')
-		console.write(to_string(position.line + 1))
-		console.write(':')
-		console.write(to_string(position.character + 1))
-	}
-
-	console.write(': \e[1;31mError\e[0m: ')
-	console.write_line(status.message)
-}
-
-complain(report: List<Status>): _ {
-	loop status in report { output(status) }
-}
-
 debug_print(context: Context) {
 	implementations = common.get_all_function_implementations(context)
 
@@ -561,7 +535,7 @@ resolve(): Status {
 
 	# The compiler must not continue if there are errors in the report
 	if current.size > 0 {
-		complain(current)
+		common.report(current)
 		return Status('Compilation error')
 	}
 

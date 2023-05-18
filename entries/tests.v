@@ -35,7 +35,7 @@ abort(position: Position, message: link) {
 	application.exit(1)
 }
 
-complain(status: Status) {
+terminate(status: Status) {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)
 	application.exit(1)
@@ -83,36 +83,43 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	if optimization != 0 arguments.add("-O" + to_string(optimization))
 
 	result = configure(arguments)
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = load()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
+
+	preprocessor = preprocessing.Preprocessor()
+
+	if not preprocessor.preprocess() {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
 
 	Keywords.initialize()
 	Operators.initialize()
 
 	result = textual_assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = tokenize()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()
 	result = parser.parse()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = resolver.resolve()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	analysis.analyze()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	platform.x64.initialize()
 	assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 }
 
 execute(name: link) {

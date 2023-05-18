@@ -722,7 +722,7 @@ parse(): Status {
 		result = parse(root, context, file.tokens)
 
 		if result.problematic {
-			resolver.output(result)
+			common.report(result)
 		}
 
 		file.root = root

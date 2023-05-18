@@ -35,7 +35,7 @@ abort(position: Position, message: link): _ {
 	application.exit(1)
 }
 
-complain(status: Status): _ {
+terminate(status: Status): _ {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)
 	application.exit(1)
@@ -52,35 +52,42 @@ init(): large {
 	arguments.pop_or(none as String) # Remove the executable name
 
 	result = configure(arguments)
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = load()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
+
+	preprocessor = preprocessing.Preprocessor()
+
+	if not preprocessor.preprocess() {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
 
 	Keywords.initialize()
 	Operators.initialize()
 
 	result = textual_assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = tokenize()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()
 	result = parser.parse()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = resolver.resolve()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	analysis.analyze()
 
 	platform.x64.initialize()
 	assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	end = time.now()
 	console.write(to_string((end - start) / 10000.0))

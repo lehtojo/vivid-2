@@ -100,6 +100,11 @@ export StringBuilder {
 		position += length
 	}
 
+	# Summary: Inserts the specified string into the specified index
+	insert(index: large, string: String): _ {
+		insert(index, string.data, string.length)
+	}
+
 	insert(index: large, character: char): _ {
 		if position + 1 > capacity grow(1)
 		move(buffer + index, buffer + index + 1, position - index)
@@ -133,6 +138,21 @@ export StringBuilder {
 		}
 	}
 
+	# Summary: Replaces the specified region with the replacement
+	replace(start: large, end: large, replacement: String): _ {
+		remove(start, end)
+		insert(start, replacement)
+	}
+
+	# Summary: Fills the specified region with the specified character
+	fill(start: large, end: large, character: char): _ {
+		require(start >= 0 and start <= end and end <= position, 'Index out of bounds')
+
+		loop (i = start, i < end, i++) {
+			buffer[i] = character
+		}
+	}
+
 	reverse() {
 		count = position / 2
 
@@ -141,6 +161,35 @@ export StringBuilder {
 			buffer[i] = buffer[position - i - 1]
 			buffer[position - i - 1] = temporary
 		}
+	}
+
+	# Todo: Remove the underscore shenanigans once we have support for global scope access (global.index_of(...))
+	index_of(value: char): large {
+		return __index_of(buffer, position, value, 0) 
+	}
+
+	index_of(value: char, start: large): large {
+		return __index_of(buffer, position, value, start)
+	}
+
+	index_of(value: link): large {
+		return __index_of(buffer, position, value, length_of(value))
+	}
+
+	index_of(value: link, start: large): large {
+		return __index_of(buffer, position, value, length_of(value), start)
+	}
+
+	index_of(value: String, start: large): large {
+		return __index_of(buffer, position, value.data, value.length, start)
+	}
+
+	last_index_of(value: char, before: large): large {
+		return __last_index_of(buffer, position, value, before)
+	}
+
+	slice(start: large, end: large): String {
+		return String(buffer + start, end - start)
 	}
 
 	get(i: large): u8 {

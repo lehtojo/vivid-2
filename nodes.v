@@ -64,7 +64,7 @@ Node NumberNode {
 
 	negate() {
 		if format == FORMAT_DECIMAL {
-			value = value ¤ [1 <| 63]
+			value = value ¤ (1 <| 63)
 		}
 		else {
 			value = -value

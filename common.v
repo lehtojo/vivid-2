@@ -1065,11 +1065,15 @@ align_members(type: Type): _ {
 
 	# Member variables:
 	loop iterator in type.variables {
-		variable = iterator.value
-		if variable.is_static or variable.is_constant continue
-		variable.alignment = position
-		variable.is_aligned = true
-		position += variable.type.allocation_size
+		member = iterator.value
+		if member.is_static or member.is_constant continue
+
+		member.alignment = position
+		member.is_aligned = true
+
+		# Move over the member
+		if member.is_inlined { position += member.type.content_size }
+		else { position += member.type.allocation_size }
 	}
 }
 
@@ -1129,4 +1133,32 @@ get_non_static_members(type: Type): List<Variable> {
 # Returns true if the specified node represents integer zero
 is_zero(node: Node): bool {
 	return node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
+}
+
+# Summary: Reports the specified error to the user
+report(error: Status): _ {
+	position = error.position
+
+	if position === none {
+		console.write('<Unknown>')
+	}
+	else {
+		file = position.file
+
+		if file != none console.write(file.fullname)
+		else { console.write('<Unknown>') }
+
+		console.write(':')
+		console.write(position.line + 1)
+		console.write(':')
+		console.write(position.character + 1)
+	}
+
+	console.write(': \e[1;31mError\e[0m: ')
+	console.write_line(error.message)
+}
+
+# Summary: Reports the specified errors to the user
+report(errors: List<Status>): _ {
+	loop error in errors { report(error) }
 }

@@ -222,7 +222,7 @@ resolve(context: Context, root: Node): _ {
 	}
 
 	if current.size > 0 {
-		resolver.complain(current)
+		common.report(current)
 		abort('Failed to import a library')
 	}
 }
