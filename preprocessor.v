@@ -13,6 +13,16 @@ try_consume_next_token(code: StringBuilder, position: Position, type: u64): Text
 	return area
 }
 
+# Summary: Sets the positions of all tokens to the specified position
+set_token_positions(tokens: List<Token>, position: Position): _ {
+	loop token in tokens {
+		token.position = position
+
+		# Set the positions of the tokens inside the parenthesis
+		if token.type == TOKEN_TYPE_PARENTHESIS set_token_positions(token.(ParenthesisToken).tokens, position)
+	}
+}
+
 pack MacroArgument {
 	values: List<String>
 
@@ -684,6 +694,10 @@ plain Preprocessor {
 				trace.pop()
 				continue
 			}
+
+			# Set the positions of all expanded tokens to point to the usage, 
+			# so that the errors related to the expansion always point to the usage
+			set_token_positions(tokens, usage.start)
 
 			# Create an expansion of the usage
 			expansions.add(MacroExpansion.new(usage.start, tokens))
