@@ -492,6 +492,13 @@ Position {
 	friendly_line => line + 1
 	friendly_character => character + 1
 
+	init() {
+		this.line = 0
+		this.character = 0
+		this.local = 0
+		this.absolute = 0
+	}
+
 	init(file: SourceFile, line: normal, character: normal) {
 		this.file = file
 		this.line = line
@@ -500,18 +507,21 @@ Position {
 		this.absolute = 0
 	}
 
-	init(line: normal, character: normal, local: normal, absolute: normal) {
+	init(file: SourceFile, line: normal, character: normal, local: normal, absolute: normal) {
+		this.file = file
 		this.line = line
 		this.character = character
 		this.local = local
 		this.absolute = absolute
 	}
 
-	init() {
-		this.line = 0
-		this.character = 0
-		this.local = 0
-		this.absolute = 0
+	init(file: SourceFile, line: normal, character: normal, local: normal, absolute: normal, cursor: bool) {
+		this.file = file
+		this.line = line
+		this.character = character
+		this.local = local
+		this.absolute = absolute
+		this.cursor = cursor
 	}
 
 	next_line(): Position {
@@ -530,11 +540,11 @@ Position {
 	}
 
 	translate(characters: normal): Position {
-		return Position(line, character + characters, local + characters, absolute + characters)
+		return Position(file, line, character + characters, local + characters, absolute + characters, cursor)
 	}
 
 	clone(): Position {
-		return Position(line, character, local, absolute)
+		return Position(file, line, character, local, absolute, cursor)
 	}
 
 	equals(other: Position): bool {
@@ -1219,23 +1229,24 @@ skip_comment(text: String, start: Position): Position {
 		last_line_ending = comment.last_index_of(`\n`)
 
 		# If the 'multiline comment' is actually expressed in a single line, handle it separately
-		if last_line_ending == -1 return Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
+		if last_line_ending == -1 return Position(start.file, start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
 
 		last_line_ending += start.local # The index must be relative to the whole text
 		last_line_ending++ # Skip the line ending
-		return Position(start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
+		return Position(start.file, start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
 	}
 
 	i = text.index_of(LINE_ENDING, start.local)
+	length = 0
 
 	if i != -1 {
 		length = i - start.local
-		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
 	else {
 		length = text.length - start.local
-		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
+
+	return start.translate(length)
 }
 
 # Summary: Skips closures which has the same character in both ends
@@ -1245,7 +1256,7 @@ skip_closures(closure: char, text: String, start: Position): Position {
 
 		if current == closure {
 			length = (i + 1) - start.local
-			return Position(start.line, start.character + length, start.local + length, start.absolute + length)
+			return start.translate(length)
 		}
 
 		if current == ESCAPER {
@@ -1601,7 +1612,7 @@ get_tokens(text: String, postprocess: bool): Outcome<List<Token>, String> {
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Token>, String> {
 	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
-	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
+	position = Position(anchor.file, anchor.line, anchor.character, 0, anchor.absolute)
 
 	text = preprocess(text)
 

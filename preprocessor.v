@@ -190,7 +190,7 @@ plain Macro {
 
 			# Create a builder for the line so that we can modify it
 			builder = StringBuilder(line)
-			position = Position(0, 0, 0, 0)
+			position = Position()
 
 			# Replace all macro variables with the following naming pattern: __$macro-name_$variable-name_$usage
 			loop (macro_variable_start >= 0) {
@@ -302,6 +302,50 @@ pack MacroExpansion {
 	}
 }
 
+pack ExpansionStackFrame {
+	position: Position
+	preview: String
+
+	shared new(position: Position, preview: String): ExpansionStackFrame {
+		return pack { position: position, preview: preview } as ExpansionStackFrame
+	}
+}
+
+pack ExpansionStackTrace {
+	frames: List<ExpansionStackFrame>
+
+	shared new(): ExpansionStackTrace {
+		return pack { frames: List<ExpansionStackFrame>() } as ExpansionStackTrace
+	}
+
+	add(code: StringBuilder, usage: MacroUsage): _ {
+		preview = code.slice(usage.start.absolute, usage.end.absolute)
+		frame = ExpansionStackFrame.new(usage.start, preview)
+		frames.add(frame)
+	}
+
+	add(code: StringBuilder, position: Position, usage_start: u64, usage_end: u64): _ {
+		preview = code.slice(usage_start, usage_end)
+		frame = ExpansionStackFrame.new(position, preview)
+		frames.add(frame)
+	}
+
+	pop(): _ {
+		require(frames.size > 0, 'Macro expansion stack trace did not have frames')
+		frames.remove_at(frames.size - 1)
+	}
+
+	position(): Position {
+		if frames.size == 0 return none as Position
+		return frames[0].position
+	}
+
+	string(): String {
+		if frames.size == 0 return String.empty
+		return String.join(" -> ", frames.map<String>((i: ExpansionStackFrame) -> i.preview))
+	}
+}
+
 plain Preprocessor {
 	errors: List<Status> = List<Status>()
 
@@ -312,6 +356,11 @@ plain Preprocessor {
 		if file.fullname.ends_with('simple-macros.v') {
 			console.write_line(code.string())
 		}
+	}
+
+	# Summary: Adds the specified error
+	private report(trace: ExpansionStackTrace, message: String): _ {
+		errors.add(Status(trace.position, "Expansion: " + trace.string() + ': ' + message))
 	}
 
 	# Summary: Adds the specified error
@@ -347,9 +396,19 @@ plain Preprocessor {
 		return true
 	}
 
+	# Summary: Removes the specified range with spaces while preserving line endings
+	private remove_using_spaces(code: StringBuilder, start: u64, end: u64): _ {
+		# Replace all characters in the specified range with spaces
+		loop (i = start, i < end, i++) {
+			character = code[i]
+			if character == `\n` continue
+			code[i] = ` `
+		}
+	} 
+
 	# Summary:
 	# Loads macros from the specified code and inserts them to the specified map by name
-	private load_macros(code: StringBuilder, lines: List<String>): _ {
+	private load_macros(file: SourceFile, code: StringBuilder, lines: List<String>): _ {
 		# Macros have the following syntax:
 		# $$name!($parameter-1, $parameter-2, ...) [\n] {...}
 		i = 0
@@ -367,7 +426,7 @@ plain Preprocessor {
 
 			# Start consuming tokens from the start of the line.
 			# We expect the tokens to be: $identifier ! (...) [\n] {...}
-			position = Position(0, macro_start_index + 1, macro_start_index + 1, macro_start_index + 1)
+			position = Position(file, 0, macro_start_index + 1, macro_start_index + 1, macro_start_index + 1)
 
 			# Attempt to consume the name
 			name_area = try_consume_next_token(code, position, TEXT_TYPE_TEXT)
@@ -423,13 +482,7 @@ plain Preprocessor {
 			i = body_area.end.absolute
 
 			# Replace the entire macro with spaces, so that it will not get parsed
-			loop (j = macro_start_index, j < i, j++) {
-				# Skip line endings
-				character = code[j]
-				if character == `\n` continue
-
-				code[j] = ` `
-			}
+			remove_using_spaces(code, macro_start_index, i)
 		}
 	}
 
@@ -437,7 +490,7 @@ plain Preprocessor {
 	private load_macros(files: List<SourceFile>): _ {
 		loop file in files {
 			code = StringBuilder(file.content)
-			load_macros(code, file.content.split(`\n`))
+			load_macros(file, code, file.content.split(`\n`))
 			file.content = code.string()
 		}
 	}
@@ -448,7 +501,7 @@ plain Preprocessor {
 
 		content = code.slice(parenthesis_start + 1, parenthesis_end - 1)
 		argument_start_index = 0
-		position = Position(0, 0, 0, 0)
+		position = Position()
 
 		loop {
 			# Stop if there are no tokens left
@@ -478,7 +531,7 @@ plain Preprocessor {
 	}
 
 	# Summary: Find the next macro usage position
-	private find_next_macro_usage(code: StringBuilder, start: Position): MacroUsage {
+	private find_next_macro_usage(code: StringBuilder, start: Position, trace: ExpansionStackTrace): MacroUsage {
 		position = start.clone()
 
 		# Note: Macro usage will require at least 3 characters after the name: !()
@@ -530,8 +583,12 @@ plain Preprocessor {
 
 			# It seems we have found a macro usage, try to find the macro
 			if not macros.contains_key(name) {
-				# Todo: Pass a macro call stack and report it
-				report(name_position, "Can not find the macro")
+				trace.add(code, name_position, name_start, parenthesis_end.absolute)
+				report(trace, "Can not find the macro")
+				trace.pop()
+
+				# Remove the usage so that it will not cause error again
+				remove_using_spaces(code, name_start, parenthesis_end.absolute)
 				continue
 			}
 
@@ -542,7 +599,12 @@ plain Preprocessor {
 			macro = macros[name].find(arguments)
 
 			if macro === none {
-				report(name_position, "Can not find suitable macro overload")
+				trace.add(code, name_position, name_start, parenthesis_end.absolute)
+				report(trace, "Can not find suitable macro overload")
+				trace.pop()
+
+				# Remove the usage so that it will not cause error again
+				remove_using_spaces(code, name_start, parenthesis_end.absolute)
 				continue
 			}
 
@@ -553,32 +615,56 @@ plain Preprocessor {
 		return none as MacroUsage
 	}
 
+	# Summary: Places the specified expansion into the code 
+	private apply_expansion(code: StringBuilder, expansion: StringBuilder, line_start_index: u32, usage_start: u64, usage_end: u64, arguments: List<String>): _ {
+		# Remove the result line (last line) from the expansion
+		result_start = expansion.last_index_of(`\n`) + 1
+		result = expansion.slice(result_start, expansion.length)
+
+		# Replace the macro usage in the code with the result
+		code.replace(usage_start, usage_end, result)
+
+		# Insert the macro lines before the result line into the code
+		if result_start > 0 {
+			code.insert(line_start_index, expansion.slice(0, result_start))
+		}
+	}
+
 	# Summary: Expands all macro usages recursively in the specified code
-	private expand_all(content: String): String {
+	private expand_all(content: String, trace: ExpansionStackTrace): StringBuilder {
 		code = StringBuilder(content)
-		start = Position(0, 0, 0, 0)
+		start = Position()
 
 		loop {
 			# Attempt to find the next macro usage
-			usage = find_next_macro_usage(code, start)
-			if usage.start === none return code.string()
+			usage = find_next_macro_usage(code, start, trace)
+
+			if usage.start === none {
+				trace.pop()
+				return code
+			}
+
+			# Use the macro with the arguments and expand all macros inside it
+			lines = usage.macro.use(usage.arguments)
+			trace.add(code, usage)
+			expansion = expand_all(String.join(`\n`, lines), trace)
 
 			# Find the index of the first character on the current line
 			line_start_index = code.last_index_of(`\n`, usage.start.absolute) + 1
 
 			# Use the macro with the arguments
-			usage.macro.apply(code, line_start_index, usage.start.absolute, usage.end.absolute, usage.arguments)
+			apply_expansion(code, expansion, line_start_index, usage.start.absolute, usage.end.absolute, usage.arguments)
 		}
 	}
 
 	# Summary: Applies macros in the specified code
-	private preprocess(content: String, position: Position, macros: Map<String, Macros>): List<MacroExpansion> {
-		code = StringBuilder(content)
+	private preprocess(code: StringBuilder, position: Position, macros: Map<String, Macros>): List<MacroExpansion> {
 		expansions: List<MacroExpansion> = List<MacroExpansion>()
+		trace = ExpansionStackTrace.new()
 
 		loop {
 			# Attempt to find the next macro usage
-			usage = find_next_macro_usage(code, position)
+			usage = find_next_macro_usage(code, position, trace)
 			if usage.start === none return expansions
 
 			# Find the next macro usage after the processed usage
@@ -586,13 +672,16 @@ plain Preprocessor {
 
 			# Use the macro with the arguments and expand all macros inside it
 			lines = usage.macro.use(usage.arguments)
-			expanded = expand_all(String.join(`\n`, lines))
+			trace.add(code, usage)
+			expansion = expand_all(String.join(`\n`, lines), trace).string()
 
 			# Tokenize the produced lines
-			result = get_tokens(expanded, usage.start, true)
+			result = get_tokens(expansion, usage.start, true)
 
 			if result has not tokens {
-				report(usage.start, result.get_error())
+				trace.add(code, usage)
+				report(trace, result.get_error())
+				trace.pop()
 				continue
 			}
 
@@ -608,7 +697,9 @@ plain Preprocessor {
 
 		# Apply macros in all the source files
 		loop file in files {
-			expansions.add(file, preprocess(file.content, Position(file, 0, 0), macros))
+			code = StringBuilder(file.content)
+			expansions.add(file, preprocess(code, Position(file, 0, 0), macros))
+			file.content = code.string()
 		}
 
 		return errors.size == 0

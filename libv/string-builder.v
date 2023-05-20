@@ -188,6 +188,10 @@ export StringBuilder {
 		return __last_index_of(buffer, position, value, before)
 	}
 
+	last_index_of(value: char): large {
+		return __last_index_of(buffer, position, value, length)
+	}
+
 	slice(start: large, end: large): String {
 		return String(buffer + start, end - start)
 	}
