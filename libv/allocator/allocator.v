@@ -15,6 +15,12 @@ namespace internal.allocator {
 		application.exit(1)
 	}
 
+	export critical_allocate(size: large): link {
+		result = internal.allocate(size)
+		require(result !== none, 'Failed a critical allocation')
+		return result
+	}
+
 	export plain SlabAllocator<T> {
 		slabs: normal
 		start: link
@@ -37,7 +43,8 @@ namespace internal.allocator {
 			this.slabs = slabs
 
 			# NOTE: Debug mode only
-			this.states = internal.allocate(slabs / 8) # Allocate bits for each slab
+			this.states = critical_allocate(slabs / 8) # Allocate bits for each slab
+			require(this.states !== none, 'Failed to allocate slab states')
 		}
 
 		allocate() {
@@ -122,8 +129,8 @@ namespace internal.allocator {
 		slabs: normal
 
 		init(slabs: normal) {
-			this.allocators = internal.allocate(ESTIMATED_MAX_ALLOCATORS * strideof(T))
-			this.deallocators = internal.allocate(ESTIMATED_MAX_ALLOCATORS * strideof(T))
+			this.allocators = critical_allocate(ESTIMATED_MAX_ALLOCATORS * strideof(T))
+			this.deallocators = critical_allocate(ESTIMATED_MAX_ALLOCATORS * strideof(T))
 			this.slabs = slabs
 		}
 
@@ -135,8 +142,8 @@ namespace internal.allocator {
 			if size >= capacity {
 				# Allocate new allocator and deallocator lists
 				new_capacity = size * 2
-				new_allocators = internal.allocate(new_capacity * strideof(T))
-				new_deallocators = internal.allocate(new_capacity * strideof(T))
+				new_allocators = critical_allocate(new_capacity * strideof(T))
+				new_deallocators = critical_allocate(new_capacity * strideof(T))
 
 				# Copy the contents of the old allocator and deallocator lists to the new ones
 				copy(allocators, size * strideof(T), new_allocators)
@@ -152,9 +159,9 @@ namespace internal.allocator {
 			}
 
 			# Create a new allocator with its own memory
-			memory = internal.allocate(slabs * sizeof(S))
+			memory = critical_allocate(slabs * sizeof(S))
 
-			allocator = internal.allocate(sizeof(T)) as T
+			allocator = critical_allocate(sizeof(T)) as T
 			allocator.init(memory, slabs)
 
 			# Add the new allocator
@@ -219,13 +226,13 @@ namespace internal.allocator {
 	}
 
 	initialize(): _ {
-		s16 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[16]>, byte[16]>)) as Allocators<SlabAllocator<byte[16]>, byte[16]>
-		s32 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[32]>, byte[32]>)) as Allocators<SlabAllocator<byte[32]>, byte[32]>
-		s64 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[64]>, byte[64]>)) as Allocators<SlabAllocator<byte[64]>, byte[64]>
-		s128 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[128]>, byte[128]>)) as Allocators<SlabAllocator<byte[128]>, byte[128]>
-		s256 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[256]>, byte[256]>)) as Allocators<SlabAllocator<byte[256]>, byte[256]>
-		s512 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[512]>, byte[512]>)) as Allocators<SlabAllocator<byte[512]>, byte[512]>
-		s1024 = internal.allocate(sizeof(Allocators<SlabAllocator<byte[1024]>, byte[1024]>)) as Allocators<SlabAllocator<byte[1024]>, byte[1024]>
+		s16 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[16]>, byte[16]>)) as Allocators<SlabAllocator<byte[16]>, byte[16]>
+		s32 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[32]>, byte[32]>)) as Allocators<SlabAllocator<byte[32]>, byte[32]>
+		s64 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[64]>, byte[64]>)) as Allocators<SlabAllocator<byte[64]>, byte[64]>
+		s128 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[128]>, byte[128]>)) as Allocators<SlabAllocator<byte[128]>, byte[128]>
+		s256 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[256]>, byte[256]>)) as Allocators<SlabAllocator<byte[256]>, byte[256]>
+		s512 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[512]>, byte[512]>)) as Allocators<SlabAllocator<byte[512]>, byte[512]>
+		s1024 = critical_allocate(sizeof(Allocators<SlabAllocator<byte[1024]>, byte[1024]>)) as Allocators<SlabAllocator<byte[1024]>, byte[1024]>
 
 		s16.init(5000000)
 		s32.init(5000000 / 2)

@@ -236,7 +236,7 @@ namespace Operators {
 		ABSOLUTE_EQUALS = ComparisonOperator("===", 8)
 		ABSOLUTE_NOT_EQUALS = ComparisonOperator("!==", 8)
 		BITWISE_AND = ClassicOperator("&", 7)
-		BITWISE_XOR = ClassicOperator("\xA4", 6)
+		BITWISE_XOR = ClassicOperator("\xA4\xA4", 6)
 		BITWISE_OR = ClassicOperator("|", 5)
 		RANGE = IndependentOperator("..")
 		LOGICAL_AND = Operator("and", OPERATOR_TYPE_LOGICAL, 4)
@@ -249,7 +249,7 @@ namespace Operators {
 		ASSIGN_DIVIDE = AssignmentOperator("/=", DIVIDE, 1)
 		ASSIGN_MODULUS = AssignmentOperator("%=", MODULUS, 1)
 		ASSIGN_BITWISE_AND = AssignmentOperator("&=", BITWISE_AND, 1)
-		ASSIGN_BITWISE_XOR = AssignmentOperator("\xA4=", BITWISE_XOR, 1)
+		ASSIGN_BITWISE_XOR = AssignmentOperator("\xA4\xA4=", BITWISE_XOR, 1)
 		ASSIGN_BITWISE_OR = AssignmentOperator("|=", BITWISE_OR, 1)
 		EXCLAMATION = IndependentOperator("!")
 		COMMA = IndependentOperator(",")
@@ -1318,6 +1318,37 @@ binary_to_integer(text: String): Optional<large> {
 	return binary_to_integer(text, 0)
 }
 
+# Summary: Converts the specified character value text to hexadecimal character value text
+format_special_character(text: String): String {
+	# Return if the text is empty
+	if text.length == 0 return none as String
+
+	# Do nothing if the text does not start with an escape character
+	if text[0] != ESCAPER return text
+
+	# Expect at least one character after the escape character
+	if text.length < 2 return none as String
+
+	command = text[1]
+
+	# Just return the text if it is already in hexadecimal format
+	if command == `x` or command == `u` or command == `U` return text
+
+	return when(command) {
+		`a` => "\\x07"
+		`b` => "\\x08"
+		`f` => "\\x0C"
+		`n` => "\\x0A"
+		`r` => "\\x0D"
+		`t` => "\\x09"
+		`v` => "\\x0B"
+		`e` => "\\x1B"
+		`\"` => "\\x22"
+		`\'` => "\\x27"
+		else => text.slice(1)
+	}
+}
+
 # Summary: Returns a list of tokens which represents the specified text
 get_special_character_value(text: String): Outcome<large, String> {
 	command = text[1]
@@ -1342,9 +1373,7 @@ get_special_character_value(text: String): Outcome<large, String> {
 
 	hexadecimal = text.slice(2, text.length)
 	
-	if hexadecimal.length != length {
-		return Error<large, String>("Invalid character")
-	}
+	if hexadecimal.length != length return Error<large, String>("Invalid character")
 
 	if hexadecimal_to_integer(hexadecimal) has value return Ok<large, String>(value)
 
@@ -1353,21 +1382,21 @@ get_special_character_value(text: String): Outcome<large, String> {
 
 # Summary: Returns the integer value of the character value
 get_character_value(text: String): Outcome<large, String> {
-	text = text.slice(1, text.length - 1) # Remove the closures
+	# Remove the closures and format it so that its value can be extracted
+	formatted = format_special_character(text.slice(1, text.length - 1))
 
-	if text.length == 0 return Error<large, String>("Character value is empty")
+	if formatted === none return Error<large, String>("Invalid character")
+	if formatted.length == 0 return Error<large, String>("Character value is empty")
 
-	if text[] != `\\` {
-		if text.length != 1 return Error<large, String>("Character value allows only one character")
-		return Ok<large, String>(text[])
+	if formatted[] != `\\` or formatted.length == 1 {
+		if formatted.length != 1 return Error<large, String>("Character value allows only one character")
+
+		return Ok<large, String>(formatted[])
 	}
 
-	if text.length == 2 and text[1] == `\\` return Ok<large, String>(`\\`)
-	if text.length <= 2 {
-		return Error<large, String>("Invalid character")
-	}
+	if formatted.length <= 2 return Error<large, String>("Invalid character")
 
-	return get_special_character_value(text)
+	return get_special_character_value(formatted)
 }
 
 get_next_token(text: String, start: Position): Outcome<TextArea, String> {
@@ -1391,7 +1420,10 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 	}
 	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
-		if end === none return Error<TextArea, String>("Can not find the closing parenthesis")
+
+		if end === none {
+			return Error<TextArea, String>("Can not find the closing parenthesis")
+		}
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
@@ -1404,6 +1436,7 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 	}
 	else type == TEXT_TYPE_STRING {
 		end = skip_closures(current, text, area.start)
+
 		if end === none {
 			return Error<TextArea, String>("Can not find the end of the string")
 		}
@@ -1413,13 +1446,18 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_CHARACTER {
-		area.end = skip_character_value(text, area.start)
+		end = skip_character_value(text, area.start)
 
-		result = get_character_value(text.slice(area.start.local, area.end.local))
+		if end === none {
+			return Error<TextArea, String>("Can not find the end of the character")
+		}
+
+		result = get_character_value(text.slice(area.start.local, end.local))
 		if result has not value return Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
 
+		area.end = end
 		area.text = to_string(result.get_value()) + SIGNED_TYPE_SEPARATOR + to_string(bits)
 		area.type = TEXT_TYPE_NUMBER
 		return Ok<TextArea, String>(area)
@@ -1565,11 +1603,9 @@ postprocess(tokens: List<Token>): _ {
 	negate_keywords(tokens)
 }
 
-# Summary: Preprocesses the specified text, meaning that a more suitable version of the text is returned for tokenization
-preprocess(text: String): String {
-	builder = StringBuilder()
-	builder.append(text)
-	builder.replace('\xC2\xA4', '\xA4') # Simplify U+00A4 (currency sign), so that XOR operations are supported
+# Summary: Converts all escaped characters in the specified string to escaped hexadecimal characters
+postprocess_escaped_characters(text: String): String {
+	builder = StringBuilder(text)
 
 	# Converts all special characters in the text to use the hexadecimal character format:
 	# Start from the second last character and look for special characters
@@ -1604,6 +1640,21 @@ preprocess(text: String): String {
 	return builder.string()
 }
 
+# Summary: Converts all escaped characters in string tokens to escaped hexadecimal characters
+postprocess_escaped_characters(tokens: List<Token>): _ {
+	loop token in tokens {
+		if token.type == TOKEN_TYPE_STRING {
+			token.(StringToken).text = postprocess_escaped_characters(token.(StringToken).text)
+			continue
+		}
+
+		if token.type == TOKEN_TYPE_PARENTHESIS {
+			postprocess_escaped_characters(token.(ParenthesisToken).tokens)
+		}
+	}
+}
+
+
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, postprocess: bool): Outcome<List<Token>, String> {
 	return get_tokens(text, Position(), postprocess)
@@ -1614,7 +1665,7 @@ get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Toke
 	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
 	position = Position(anchor.file, anchor.line, anchor.character, 0, anchor.absolute)
 
-	text = preprocess(text)
+	text = text.replace('\xC2\xA4', '\xA4\xA4') # Simplify XOR-operator (U+00A4)
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())
@@ -1631,6 +1682,8 @@ get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Toke
 
 		position = area.end
 	}
+
+	postprocess_escaped_characters(tokens)
 
 	if postprocess postprocess(tokens)
 

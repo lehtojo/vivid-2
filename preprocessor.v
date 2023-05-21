@@ -202,7 +202,7 @@ plain Macro {
 			builder = StringBuilder(line)
 			position = Position()
 
-			# Replace all macro variables with the following naming pattern: __$macro-name_$variable-name_$usage
+			# Replace all macro variables with the following naming pattern: __<macro-name>_<variable-name>_<usage>
 			loop (macro_variable_start >= 0) {
 				# Attempt to consume an identifier token after the dollar sign
 				position.character = macro_variable_start + 1
@@ -420,7 +420,7 @@ plain Preprocessor {
 	# Loads macros from the specified code and inserts them to the specified map by name
 	private load_macros(file: SourceFile, code: StringBuilder, lines: List<String>): _ {
 		# Macros have the following syntax:
-		# $$name!($parameter-1, $parameter-2, ...) [\n] {...}
+		# $<name>!(<parameter-1>, <parameter-2>, ...) [\n] {...}
 		i = 0
 
 		loop (i < code.length) {
@@ -435,7 +435,7 @@ plain Preprocessor {
 			i = macro_start_index + 1
 
 			# Start consuming tokens from the start of the line.
-			# We expect the tokens to be: $identifier ! (...) [\n] {...}
+			# We expect the tokens to be: <identifier> ! (...) [\n] {...}
 			position = Position(file, 0, macro_start_index + 1, macro_start_index + 1, macro_start_index + 1)
 
 			# Attempt to consume the name
@@ -458,7 +458,7 @@ plain Preprocessor {
 			name = name_area.text
 
 			# Get the parameters of the macro:
-			# Parameters: ($parameter-1, $parameter-2, ...)
+			# Parameters: (<parameter-1>, <parameter-2>, ...)
 			parameters = parameters_area.text
 				.slice(1, parameters_area.text.length - 1)
 				.split(`,`)
@@ -575,6 +575,12 @@ plain Preprocessor {
 
 				# Move to the "next" character
 				name_start--
+			}
+
+			# Ensure the name is not empty
+			if name_start == absolute {
+				position.next_character()
+				continue
 			}
 
 			# Extract the name
@@ -749,7 +755,7 @@ plain Preprocessor {
 
 			# Insert the expansion when we have found the token
 			if token.position.absolute == expansion.start.absolute {
-				# There must be at least 3 tokens to remove: $name ! (...)
+				# There must be at least 3 tokens to remove: <name> ! (...)
 				require(tokens.size - i >= 3, 'Invalid macro expansion')
 
 				# Remove the expansion from the list
@@ -758,8 +764,8 @@ plain Preprocessor {
 				expansion_tokens = clone(expansion.tokens)
 				result_tokens = extract_result_tokens(expansion_tokens)
 
-				# Replace the "$name ! (...)" with the result tokens
-				tokens.remove_all(i, i + 3) # Remove: $name ! (...)
+				# Replace the "<name> ! (...)" with the result tokens
+				tokens.remove_all(i, i + 3) # Remove: <name> ! (...)
 				tokens.insert_all(i, result_tokens)
 
 				# Add the rest of the tokens before the current line

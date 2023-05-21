@@ -650,8 +650,21 @@ unnamed_packs(optimization: large) {
 	}
 }
 
+macros(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'macros.v'))
+	compile('macros', files, optimization, false)
+
+	log = execute('macros')
+	expected = 'Hello there :^)!\nHello there :^)!\nHello there :^)!\nHello there again :^)!\nElements: \n3\n7\n14\n42\nSum: 66\nGoodbye!\n'
+
+	if not (log == expected) {
+		console.write_line('Unnamed packs unit test did not produce the correct output')
+	}
+}
+
 init() {
-	optimization = 2
+	optimization = 1
 	console.write_line('Arithmetic')
 	arithmetic(optimization)
 	console.write_line('Assignment')
@@ -720,5 +733,7 @@ init() {
 	packs(optimization)
 	console.write_line('Unnamed packs')
 	unnamed_packs(optimization)
+	console.write_line('Macros')
+	macros(optimization)
 	return 0
 }
