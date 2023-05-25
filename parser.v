@@ -497,6 +497,7 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 
 		if result.problematic {
 			clear_sections(sections)
+			root.add(ErrorNode(result))
 			return result
 		}
 	}

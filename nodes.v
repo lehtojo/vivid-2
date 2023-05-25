@@ -49,6 +49,7 @@ NODE_UNDEFINED = 1 <| 47
 NODE_OBJECT_LINK = 1 <| 48
 NODE_OBJECT_UNLINK = 1 <| 49
 NODE_USING = 1 <| 50
+NODE_ERROR = 1 <| 51
 
 Node NumberNode {
 	value: large
@@ -2713,5 +2714,31 @@ Node UsingNode {
 
 	override string() {
 		return "Using"
+	}
+}
+
+Node ErrorNode {
+	error: Status
+
+	init(error: Status) {
+		this.instance = NODE_ERROR
+		this.error = error
+		this.start = error.position
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override get_status() {
+		return error
+	}
+
+	override copy() {
+		return ErrorNode(error)
+	}
+
+	override string() {
+		return "Error: " + error.message
 	}
 }
