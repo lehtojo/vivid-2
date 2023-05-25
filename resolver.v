@@ -150,6 +150,14 @@ resolve(function: Function): _ {
 
 		parameter.type = type
 	}
+
+	# Resolve the return type
+	return_type = function.return_type
+
+	if return_type !== none and not return_type.is_resolved {
+		return_type = resolve(function, return_type)
+		if return_type !== none { function.return_type = return_type }
+	}
 }
 
 # Summary: Tries to resolve all the locals in the specified context
@@ -392,6 +400,29 @@ get_type_report(type: Type): List<Status> {
 	return errors
 }
 
+get_function_report(function: Function): List<Status> {
+	errors = List<Status>()
+	if function.is_template_function return errors
+
+	loop parameter in function.parameters {
+		# Explicit parameter types are optional, but they must be resolved if specified
+		if parameter.type === none or parameter.type.is_resolved continue
+		errors.add(Status(parameter.position, "Can not resolve the type of the parameter " + parameter.name))
+	}
+
+	# Explicit return types are optional, but they must be resolved if specified
+	if function.return_type !== none {
+		if function.return_type.is_unresolved {
+			errors.add(Status(function.start, 'Can not resolve the return type'))
+		}
+		else function.return_type.is_array_type {
+			errors.add(Status(function.start, 'Array type is not allowed as a return type'))
+		}
+	}
+
+	return errors
+}
+
 get_function_report(implementation: FunctionImplementation): List<Status> {
 	errors = List<Status>()
 
@@ -422,6 +453,13 @@ get_report(context: Context, root: Node): List<Status> {
 
 	loop type in types {
 		errors.add_all(get_type_report(type))
+	}
+
+	# Report errors in function headers
+	functions = common.get_all_visible_functions(context)
+
+	loop function in functions {
+		errors.add_all(get_function_report(function))
 	}
 
 	# Report errors in defined functions
