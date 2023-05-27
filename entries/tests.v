@@ -659,7 +659,34 @@ macros(optimization: large) {
 	expected = 'Hello there :^)!\nHello there :^)!\nHello there :^)!\nHello there again :^)!\nElements: \n3\n7\n14\n42\nSum: 66\nGoodbye!\n'
 
 	if not (log == expected) {
-		console.write_line('Unnamed packs unit test did not produce the correct output')
+		console.write_line('Macros unit test did not produce the correct output')
+	}
+}
+
+global_scope_access(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'global_scope_access.v'))
+	compile('global_scope_access', files, optimization, false)
+
+	log = execute('global_scope_access')
+	expected = ':^)\n'
+
+	if not (log == expected) {
+		console.write_line('Global scope access unit test did not produce the correct output')
+	}
+}
+
+implicit_conversions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'implicit_conversions.v'))
+	files.add(project_file('tests', 'assert.v'))
+	compile('implicit_conversions', files, optimization, false)
+
+	log = execute('implicit_conversions')
+	expected = '1 == 1\n49 == 49\n1 == 1\na is not greater than b == a is not greater than b\nHello there :^) == Hello there :^)\n'
+
+	if not (log == expected) {
+		console.write_line('Implicit conversions unit test did not produce the correct output')
 	}
 }
 
@@ -735,5 +762,9 @@ init() {
 	unnamed_packs(optimization)
 	console.write_line('Macros')
 	macros(optimization)
+	console.write_line('Global scope access')
+	global_scope_access(optimization)
+	console.write_line('Implicit conversions')
+	implicit_conversions(optimization)
 	return 0
 }

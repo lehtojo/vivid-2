@@ -369,6 +369,7 @@ namespace Keywords {
 	readable DEINIT: Keyword
 	readable ELSE: Keyword
 	readable EXPORT: Keyword
+	readable GLOBAL: Keyword
 	readable HAS: Keyword
 	readable HAS_NOT: Keyword
 	readable IF: Keyword
@@ -410,6 +411,7 @@ namespace Keywords {
 		DEINIT = Keyword("deinit", KEYWORD_TYPE_NORMAL)
 		ELSE = Keyword("else", KEYWORD_TYPE_FLOW)
 		EXPORT = ModifierKeyword("export", MODIFIER_EXPORTED)
+		GLOBAL = Keyword("global", KEYWORD_TYPE_NORMAL)
 		HAS = Keyword("has", KEYWORD_TYPE_NORMAL)
 		HAS_NOT = Keyword("has not", KEYWORD_TYPE_NORMAL)
 		IF = Keyword("if", KEYWORD_TYPE_FLOW)
@@ -445,6 +447,7 @@ namespace Keywords {
 		add(CONTINUE)
 		add(ELSE)
 		add(EXPORT)
+		add(GLOBAL)
 		add(HAS)
 		add(HAS_NOT)
 		add(IF)

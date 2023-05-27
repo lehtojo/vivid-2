@@ -50,6 +50,7 @@ NODE_OBJECT_LINK = 1 <| 48
 NODE_OBJECT_UNLINK = 1 <| 49
 NODE_USING = 1 <| 50
 NODE_ERROR = 1 <| 51
+NODE_CONTEXT = 1 <| 52
 
 Node NumberNode {
 	value: large
@@ -152,6 +153,9 @@ Node OperatorNode {
 		# First resolve any problems in the other nodes
 		resolver.resolve(context, first)
 		resolver.resolve(context, last)
+
+		# Process implicit conversions
+		implicit_convertor.process(context, this)
 
 		# Check if the left node represents an accessor and if it is being assigned a value
 		if operator.type == OPERATOR_TYPE_ASSIGNMENT and first.match(NODE_ACCESSOR) {
@@ -320,7 +324,7 @@ OperatorNode LinkNode {
 	override resolve(environment: Context) {
 		# Try to resolve the left node
 		resolver.resolve(environment, first)
-		primary = first.try_get_type()
+		primary = common.get_context(first)
 
 		# Do not try to resolve the right node without the type of the left
 		if primary == none return none as Node
@@ -1001,6 +1005,8 @@ Node ReturnNode {
 
 	override resolve(context: Context) {
 		if first !== none resolver.resolve(context, first)
+
+		implicit_convertor.process(context, this)
 		return none as Node
 	}
 
@@ -2740,5 +2746,27 @@ Node ErrorNode {
 
 	override string() {
 		return "Error: " + error.message
+	}
+}
+
+Node ContextNode {
+	context: Context
+
+	init(context: Context, position: Position) {
+		this.instance = NODE_CONTEXT
+		this.context = context
+		this.start = position
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override copy() {
+		return ContextNode(context, start)
+	}
+
+	override string() {
+		return "Context " + context.identity
 	}
 }

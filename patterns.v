@@ -454,7 +454,7 @@ Pattern LinkPattern {
 		descriptor.position = name.position
 		template_arguments = common.read_template_arguments(context, tokens, RIGHT + 1)
 
-		primary = left.try_get_type()
+		primary = common.get_context(left)
 
 		if primary != none {
 			right = parser.parse_function(context, primary, descriptor, template_arguments, true)
@@ -486,7 +486,7 @@ Pattern LinkPattern {
 		}
 
 		# Try to retrieve the primary context from the left token
-		primary = left.try_get_type()
+		primary = common.get_context(left)
 		right = none as Node
 		token = tokens[RIGHT]
 
@@ -2588,5 +2588,24 @@ Pattern UsingPattern {
 		allocated = parser.parse(context, tokens[])
 		allocator = parser.parse(context, tokens[2])
 		return UsingNode(allocated, allocator, tokens[1].position)
+	}
+}
+
+Pattern GlobalScopeAccessPattern {
+	init() {
+		path.add(TOKEN_TYPE_KEYWORD)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		return tokens[].(KeywordToken).keyword === Keywords.GLOBAL
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		# Find the root context (global scope)
+		loop (context.parent !== none) { context = context.parent }
+
+		# Return the context as a node
+		return ContextNode(context, tokens[].position)
 	}
 }

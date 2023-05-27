@@ -850,6 +850,15 @@ get_editor(edited: Node): Node {
 	abort('Could not find the editor node')
 }
 
+# Summary: Attempts to return the context of the specified node. If there is no context, none is returned.
+get_context(node: Node): Context {
+	# If the node is a special context node (global scope syntax for example), return its context
+	if node.instance == NODE_CONTEXT return node.(ContextNode).context
+
+	# If the node has a type, return the type as a context
+	return node.try_get_type()
+}
+
 # Summary: Returns whether the specified node represents a statement
 is_statement(node: Node): bool {
 	type = node.instance
