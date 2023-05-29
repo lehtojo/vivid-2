@@ -72,6 +72,22 @@ read_type_component(context: Context, tokens: List<Token>): UnresolvedTypeCompon
 	return UnresolvedTypeComponent(name)
 }
 
+# Summary: Reads type components from the specified tokens
+read_type_components(context: Context, tokens: List<Token>): List<UnresolvedTypeComponent> {
+	components = List<UnresolvedTypeComponent>()
+
+	loop {
+		components.add(read_type_component(context, tokens))
+
+		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
+		if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
+
+		tokens.pop_or(none as Token)
+	}
+
+	return components
+}
+
 # Summary: Reads a type which represents a function from the specified tokens
 read_function_type(context: Context, tokens: List<Token>, position: Position): FunctionType {
 	# Dequeue the parameter types
@@ -142,17 +158,7 @@ read_type(context: Context, tokens: List<Token>): Type {
 	# Self return type:
 	if next.(IdentifierToken).value == SELF_POINTER_IDENTIFIER return primitives.SELF
 
-	components = List<UnresolvedTypeComponent>()
-
-	loop {
-		components.add(read_type_component(context, tokens))
-
-		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
-		if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
-
-		tokens.pop_or(none as Token)
-	}
-
+	components = read_type_components(context, tokens)
 	type = UnresolvedType(components, position)
 
 	# If there are no more tokens, return the type
@@ -249,6 +255,33 @@ consume_template_arguments(state: ParserState): bool {
 		}
 
 		# The template arguments must be invalid
+		return false
+	}
+}
+
+# Summary:
+# Pattern: <T1, T2, ..., Tn>
+consume_template_parameters(state: ParserState): bool {
+	# Next there must be the opening of the template parameters
+	if not state.consume_operator(Operators.LESS_THAN) return false
+
+	# Keep track whether at least one parameter has been consumed
+	is_parameter_consumed = false
+
+	loop {
+		# If the next token is a greater than operator, it means the template parameters have ended
+		if state.consume_operator(Operators.GREATER_THAN) return is_parameter_consumed
+
+		# If the next token is a comma, it means the template parameters have not ended
+		if state.consume_operator(Operators.COMMA) continue
+
+		# Now we expect a template parameter name
+		if state.consume(TOKEN_TYPE_IDENTIFIER) {
+			is_parameter_consumed = true
+			continue
+		}
+
+		# The template parameters must be invalid
 		return false
 	}
 }
@@ -478,17 +511,18 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large): Sta
 	return none as Status
 }
 
-get_template_parameters(template_parameter_tokens: List<Token>): List<String> {
-	template_parameters = List<String>()
+# Summary:
+# Returns the template parameters from the specified tokens.
+get_template_parameters(tokens: List<Token>): List<String> {
+	parameters = List<String>()
 
-	loop (i = 0, i < template_parameter_tokens.size, i++) {
-		if i % 2 != 0 continue
-		if template_parameter_tokens[i].type != TOKEN_TYPE_IDENTIFIER abort('Template parameter tokens were invalid')
+	loop (i = 0, i < tokens.size, i += 2) {
+		require(tokens[i].type == TOKEN_TYPE_IDENTIFIER, 'Template parameter tokens were invalid')
 
-		template_parameters.add(template_parameter_tokens[i].(IdentifierToken).value)
+		parameters.add(tokens[i].(IdentifierToken).value)
 	}
 
-	return template_parameters
+	return parameters
 }
 
 # Summary: Returns whether the two specified types are compatible

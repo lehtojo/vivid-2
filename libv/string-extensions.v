@@ -1,5 +1,5 @@
 # Summary: Finds the slices from this string which are separated by the specified character and returns them as an array
-String.split(character: char) {
+(String).split(character: char): List<String> {
 	count = 1
 
 	# Count the number of splits

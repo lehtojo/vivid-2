@@ -775,7 +775,11 @@ namespace pe_format {
 		extension = shared_library_extension()
 		imports = imports.filter(i -> i.ends_with(extension))
 
+		# If there are no relocations, do not create import tables
 		externals = relocations.filter(i -> i.symbol.external)
+		if externals.size == 0 return none as BinarySection
+
+		# Load exported symbols from the imported libraries
 		exports = imports.map<List<String>>((i: String) -> load_exported_symbols(i))
 
 		# There can be multiple relocations, which refer to the same symbol but the symbol object instances are different (relocations can be in different objects).

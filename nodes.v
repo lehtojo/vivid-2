@@ -345,10 +345,14 @@ OperatorNode LinkNode {
 			if types == none return none as Node
 
 			# Try to form a virtual function call
-			result = common.try_get_virtual_function_call(first, primary, function.name, function, types, start)
-			if result == none { result = common.try_get_lambda_call(primary, first, function.name, function, types) }
+			if primary.is_type { result = common.try_get_virtual_function_call(first, primary as Type, function.name, function, types, start) }
 
-			if result != none {
+			if result !== none return result
+
+			# Try to form a lambda function call
+			result = common.try_get_lambda_call(primary, first, function.name, function, types)
+
+			if result !== none {
 				result.start = start
 				return result
 			}
@@ -1006,6 +1010,7 @@ Node ReturnNode {
 	override resolve(context: Context) {
 		if first !== none resolver.resolve(context, first)
 
+		# Process implicit conversions
 		implicit_convertor.process(context, this)
 		return none as Node
 	}
@@ -2227,13 +2232,15 @@ Node ExtensionFunctionNode {
 	destination: Type
 	descriptor: FunctionToken
 	template_parameters: List<String>
+	return_type_tokens: List<Token>
 	body: List<Token>
 	end: Position
 
-	init(destination: Type, descriptor: FunctionToken, body: List<Token>, start: Position, end: Position) {
+	init(destination: Type, descriptor: FunctionToken, return_type_tokens: List<Token>, body: List<Token>, start: Position, end: Position) {
 		this.destination = destination
 		this.descriptor = descriptor
 		this.template_parameters = List<String>()
+		this.return_type_tokens = return_type_tokens
 		this.body = body
 		this.start = start
 		this.end = end
@@ -2241,10 +2248,11 @@ Node ExtensionFunctionNode {
 		this.is_resolvable = true
 	}
 
-	init(destination: Type, descriptor: FunctionToken, template_parameters: List<String>, body: List<Token>, start: Position, end: Position) {
+	init(destination: Type, descriptor: FunctionToken, template_parameters: List<String>, return_type_tokens: List<Token>, body: List<Token>, start: Position, end: Position) {
 		this.destination = destination
 		this.descriptor = descriptor
 		this.template_parameters = template_parameters
+		this.return_type_tokens = return_type_tokens
 		this.body = body
 		this.start = start
 		this.end = end
@@ -2256,7 +2264,8 @@ Node ExtensionFunctionNode {
 		if destination.is_unresolved {
 			resolved = resolver.resolve(context, destination)
 			if resolved == none return none as Node
-			this.destination = resolved
+
+			destination = resolved
 		}
 
 		function = none as Function
@@ -2265,11 +2274,19 @@ Node ExtensionFunctionNode {
 			function = TemplateFunction(destination, MODIFIER_DEFAULT, descriptor.name, template_parameters, descriptor.parameters.tokens, start, end)
 			function.(TemplateFunction).initialize()
 
-			token = ParenthesisToken(`{`, start, end, body)
 			function.blueprint.add(descriptor)
-			function.blueprint.add(token)
+			function.blueprint.add_all(return_type_tokens)
+			function.blueprint.add(ParenthesisToken(`{`, start, end, body))
 		}
 		else {
+			# Read the explicit return type if it is specified
+			return_type = none as Type
+
+			if return_type_tokens.size > 0 {
+				return_type = common.read_type(context, return_type_tokens, 1)
+				if return_type === none return none as Node
+			}
+
 			function = Function(destination, MODIFIER_DEFAULT, descriptor.name, body, start, end)
 
 			# Parse the parameters
@@ -2277,6 +2294,9 @@ Node ExtensionFunctionNode {
 			if result has not parameters return none as Node
 
 			function.parameters.add_all(parameters)
+
+			# Set the explicit return type if it is specified
+			function.return_type = return_type
 		}
 
 		# If the destination is a namespace, mark the function as a static function
@@ -2292,7 +2312,7 @@ Node ExtensionFunctionNode {
 	}
 
 	override copy() {
-		return ExtensionFunctionNode(destination, descriptor, template_parameters, body, start, end)
+		return ExtensionFunctionNode(destination, descriptor, template_parameters, return_type_tokens, body, start, end)
 	}
 
 	override string() {

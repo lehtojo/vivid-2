@@ -188,6 +188,7 @@ initialize(): _ {
 	add_pattern(IterationLoopPattern())
 	add_pattern(TemplateFunctionPattern())
 	add_pattern(TemplateFunctionCallPattern())
+	add_pattern(TemplateTypeMemberAccessPattern())
 	add_pattern(TemplateTypePattern())
 	add_pattern(VirtualFunctionPattern())
 	add_pattern(SpecificModificationPattern())
@@ -979,7 +980,7 @@ print(node: Node, indentation: large, total: large) {
 }
 
 # Summary: Returns whether the token matches the specified character
-Token.match(value: char) {
+(Token).match(value: char): bool {
 	if type != TOKEN_TYPE_PARENTHESIS return false
 	if value == `{` return this.(ParenthesisToken).opening == `{`
 	if value == `(` return this.(ParenthesisToken).opening == `(`
@@ -988,11 +989,11 @@ Token.match(value: char) {
 }
 
 # Summary: Returns whether the token represents the specified operator
-Token.match(operator: Operator) {
+(Token).match(operator: Operator): bool {
 	return type == TOKEN_TYPE_OPERATOR and this.(OperatorToken).operator == operator
 }
 
 # Summary: Returns whether the token represents the specified keyword
-Token.match(keyword: Keyword) {
+(Token).match(keyword: Keyword): bool {
 	return type == TOKEN_TYPE_KEYWORD and this.(KeywordToken).keyword == keyword
 }
