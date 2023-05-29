@@ -446,7 +446,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large): Sta
 		loop {
 			if not parser.next_consumable(context, tokens, priority, 0, state, disabled) stop
 			
-			state.error = none
+			state.error = none as Status
 			node = state.pattern.build(context, state, state.tokens)
 
 			length = state.end - state.start
@@ -1172,8 +1172,7 @@ get_non_static_members(type: Type): List<Variable> {
 	return result
 }
 
-# Summary:
-# Returns true if the specified node represents integer zero
+# Summary: Returns true if the specified node represents integer zero
 is_zero(node: Node): bool {
 	return node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
 }

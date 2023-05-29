@@ -451,7 +451,7 @@ parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, ma
 		loop {
 			if not next(context, tokens, priority, 0, state) stop
 			
-			state.error = none
+			state.error = none as Status
 			node = state.pattern.build(context, state, state.tokens)
 
 			# Remove the consumed tokens
@@ -571,7 +571,13 @@ create_root_node(context: Context): ScopeNode {
 # Summary: Finds all the extension functions under the specified node and tries to apply them
 apply_extension_functions(context: Context, root: Node): _ {
 	extensions = root.find_all(NODE_EXTENSION_FUNCTION)
-	loop extension in extensions { resolver.resolve(context, extension) }
+
+	loop extension in extensions {
+		result = extension.(ExtensionFunctionNode).resolve(context)
+		if result === none { result = ErrorNode(extension.get_status()) }
+
+		extension.replace(result)
+	}
 }
 
 # Summary: Ensures that all exported and imported functions are implemented
@@ -762,7 +768,7 @@ parse(): Status {
 	# Parse all namespaces
 	loop node in root.find_all(NODE_NAMESPACE) { node.(NamespaceNode).parse(context) }
 
-	# Applies all extension function
+	# Applies all extension functions
 	apply_extension_functions(context, root)
 
 	# Validate the shell before proceeding

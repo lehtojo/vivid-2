@@ -25,8 +25,8 @@ AssemblyParser {
 	instructions: List<Instruction> = List<Instruction>()
 	sections: Map<String, DataEncoderModule> = Map<String, DataEncoderModule>()
 	exports: Set<String> = Set<String>()
-	data: DataEncoderModule = none
-	debug_file: String = none
+	data: DataEncoderModule = none as DataEncoderModule
+	debug_file: String = none as String
 	section: String = String(TEXT_SECTION)
 
 	init() {
@@ -130,7 +130,7 @@ AssemblyParser {
 				sections[section] = data
 			}
 
-			data = none
+			data = none as DataEncoderModule
 			section = section
 			return true
 		}
@@ -661,7 +661,7 @@ AssemblyParser {
 		sections.clear()
 
 		if data != none data.reset()
-		data = none
+		data = none as DataEncoderModule
 
 		section = String(TEXT_SECTION)
 	}

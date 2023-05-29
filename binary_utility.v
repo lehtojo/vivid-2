@@ -62,7 +62,7 @@ BinarySymbol {
 	external: bool
 	exported: bool = false
 	index: large = 0
-	section: BinarySection = none
+	section: BinarySection = none as BinarySection
 
 	init(name: String, offset: large, external: bool) {
 		this.name = name

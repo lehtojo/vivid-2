@@ -5,7 +5,7 @@ NodeIterator {
 
 	init(node: Node) {
 		this.node = node
-		this.current = none
+		this.current = none as Node
 		this.next = node.first
 	}
 
@@ -200,7 +200,7 @@ Node {
 	add(node: Node): _ {
 		node.parent = this
 		node.previous = last
-		node.next = none
+		node.next = none as Node
 
 		if first == none {
 			first = node
@@ -315,11 +315,11 @@ Node {
 
 	# Summary: Removes all references from this node to other nodes
 	detach(): _ {
-		parent = none
-		previous = none
-		next = none
-		first = none
-		last = none
+		parent = none as Node
+		previous = none as Node
+		next = none as Node
+		first = none as Node
+		last = none as Node
 	}
 
 	private shared get_nodes_under_shared_parent(a: Node, b: Node) {

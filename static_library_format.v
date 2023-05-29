@@ -2,7 +2,7 @@ StaticLibraryFormatFile {
 	name: String
 	position: large = 0
 	symbols: List<String>
-	bytes: Array<byte> = none
+	bytes: Array<byte> = none as Array<byte>
 
 	init(name: String, symbols: List<String>) {
 		this.name = name

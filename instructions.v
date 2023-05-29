@@ -973,7 +973,7 @@ Instruction SetVariableInstruction {
 Instruction CallInstruction {
 	function: Result
 	return_type: Type
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	# Represents the destination handles where the required parameters are passed to
 	destinations: List<Handle> = List<Handle>()
@@ -1188,7 +1188,7 @@ Instruction ReorderInstruction {
 
 	init(unit: Unit, destinations: List<Handle>, sources: List<Result>, return_type: Type) {
 		Instruction.init(unit, INSTRUCTION_REORDER)
-		this.dependencies = none
+		this.dependencies = none as List<Result>
 		this.destinations = destinations
 		this.formats = List<large>(destinations.size, false)
 		this.return_type = return_type
@@ -1394,7 +1394,7 @@ Instruction GetObjectPointerInstruction {
 	start: Result
 	offset: large
 	mode: large
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	init(unit: Unit, variable: Variable, start: Result, offset: large, mode: large) {
 		Instruction.init(unit, INSTRUCTION_GET_OBJECT_POINTER)
@@ -1510,7 +1510,7 @@ Instruction GetMemoryAddressInstruction {
 	offset: Result
 	stride: large
 	mode: large
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	init(unit: Unit, type: Type, format: large, start: Result, offset: Result, stride: large, mode: large) {
 		Instruction.init(unit, INSTRUCTION_GET_MEMORY_ADDRESS)
@@ -1673,7 +1673,7 @@ Instruction JumpInstruction {
 	init(unit: Unit, label: Label) {
 		Instruction.init(unit, INSTRUCTION_JUMP)
 		this.label = label
-		this.comparator = none
+		this.comparator = none as ComparisonOperator
 	}
 
 	init(unit: Unit, comparator: ComparisonOperator, invert: bool, signed: bool, label: Label) {

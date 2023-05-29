@@ -1,5 +1,3 @@
-none = 0
-
 abort(message: String) {
 	console.write('Internal error: ')
 	console.write_line(message)

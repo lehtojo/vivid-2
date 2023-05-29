@@ -73,7 +73,7 @@ EncoderDebugFrameInformation EncoderDebugFrameOffsetInformation {
 
 EncoderModule {
 	index: large = 0
-	jump: Label = none
+	jump: Label = none as Label
 	is_conditional_jump: bool = false
 	is_short_jump: bool = false
 	instructions: List<Instruction> = List<Instruction>()
@@ -325,12 +325,12 @@ MemoryAddressDescriptor {
 		this.index = index
 		this.stride = stride
 		this.offset = offset
-		this.relocation = none
+		this.relocation = none as BinaryRelocation
 	}
 
 	init(symbol: String, modifier: large, offset: normal) {
-		this.start = none
-		this.index = none
+		this.start = none as Register
+		this.index = none as Register
 		this.stride = 0
 		this.offset = 0
 		this.relocation = BinaryRelocation(BinarySymbol(symbol, 0, true), 0, offset, data_access_modifier_to_relocation_type(modifier))

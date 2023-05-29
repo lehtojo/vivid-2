@@ -227,13 +227,14 @@ resolve_virtual_functions(type: Type): _ {
 		# Find all overrides with the same name as the virtual function
 		result = type.get_override(virtual_function.name)
 		if result == none continue
-		overloads = result.overloads
+
+		override_function_overloads = result.overloads
 
 		# Take out the expected parameter types
 		expected = List<Type>()
 		loop parameter in virtual_function.parameters { expected.add(parameter.type) }
 
-		loop overload in overloads {
+		loop overload in override_function_overloads {
 			# Ensure the actual parameter types match the expected types
 			actual = List<Type>(overload.parameters.size, false)
 			loop parameter in overload.parameters { actual.add(parameter.type) }
@@ -372,6 +373,41 @@ get_import_report(context: Context, errors: List<Status>): _ {
 	}
 }
 
+# Summary: Returns whether the specified type contains a member of the target type that causes an illegal cycle.
+find_illegal_cyclic_member(type: Type, target: Type, trace: Map<Type, bool>): bool {
+	# Remember that the current type has been visited, so that we do not get stuck in a loop
+	trace[type] = true
+
+	loop iterator in type.variables {
+		member_type = iterator.value.type
+
+		# If the member is the target type, return true
+		if member_type === target return true
+
+		# If the member is not a pack or inlining type, skip it
+		if member_type === none or not (member_type.is_pack or member_type.is_inlining) continue
+
+		# If the member has already been visited, skip it
+		if trace.contains_key(member_type) continue
+
+		# If the member is a pack or inlining type, check it recursively
+		if find_illegal_cyclic_member(member_type, target, trace) return true
+	}
+
+	return false
+}
+
+# Summary: Reports the specified type if it is illegally cyclic
+report_illegal_cyclic_type(type: Type, errors: List<Status>): _ {
+	# Only packs and inlining types might have illegal cycles
+	if not (type.is_pack or type.is_inlining) return
+
+	# Attempt to find a member of the type that causes an illegal cycle
+	if not find_illegal_cyclic_member(type, type, Map<Type, bool>()) return
+
+	errors.add(Status(type.position, 'Illegal cyclic type'))
+}
+
 get_type_report(type: Type): List<Status> {
 	errors = List<Status>()
 
@@ -381,6 +417,8 @@ get_type_report(type: Type): List<Status> {
 	if not (type.parent.is_global or type.parent.is_namespace) {
 		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
 	}
+
+	report_illegal_cyclic_type(type, errors)
 
 	loop iterator in type.variables {
 		variable = iterator.value
@@ -548,7 +586,6 @@ resolve(): Status {
 	loop {
 		previous = current
 
-		parser.apply_extension_functions(context, root)
 		parser.implement_functions(context, none as SourceFile, false)
 
 		# Try to resolve problems in the node tree and get the status after that

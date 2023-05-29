@@ -294,7 +294,7 @@ import zero(destination: link, count: large)
 import copy(source: link, bytes: large, destination: link)
 import offset_copy(source: link, bytes: large, destination: link, offset: large)
 
-none = 0
+none: u64 = 0
 
 outline allocate<T>(count: large) {
 	return allocate(count * strideof(T)) as T*

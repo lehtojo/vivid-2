@@ -203,7 +203,7 @@ Register {
 	}
 
 	reset(): _ {
-		value = none
+		value = none as Result
 	}
 
 	string(): String {
@@ -588,8 +588,8 @@ Unit {
 	}
 
 	init() {
-		this.function = none
-		this.self = none
+		this.function = none as FunctionImplementation
+		this.self = none as Variable
 		this.builder = StringBuilder()
 
 		if settings.is_x64 { load_architecture_x64() }
@@ -1542,7 +1542,7 @@ get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	loop instruction in unit.instructions { instruction.reindex() }
 
 	# Build:
-	unit.scope = none
+	unit.scope = none as Scope
 	unit.stack_offset = 0
 	unit.mode = UNIT_MODE_BUILD
 

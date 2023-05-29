@@ -242,8 +242,8 @@ Instruction {
 
 	# Summary: Simulates the interactions between the instruction parameters such as relocating the source to the destination
 	apply_parameter_flags(): _ {
-		destination: Handle = none
-		source: Handle = none
+		destination: Handle = none as Handle
+		source: Handle = none as Handle
 
 		# Determine the destination and the source
 		loop (i = 0, i < parameters.size, i++) {

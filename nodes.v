@@ -215,6 +215,14 @@ Node OperatorNode {
 		}
 	}
 
+	override get_status() {
+		if operator === Operators.ASSIGN and not common.compatible(first.try_get_type(), last.try_get_type()) {
+			return Status(start, 'Destination and source types are not compatible')
+		}
+
+		return none as Status
+	}
+
 	override copy() {
 		return OperatorNode(operator, start)
 	}
@@ -1034,7 +1042,14 @@ Node ReturnNode {
 		# Unit type represents no return type. Exceptionally allow returning units when the return type is unit.
 		has_return_type = not primitives.is_primitive(environment.(FunctionImplementation).return_type, primitives.UNIT)
 		has_return_value = first !== none and not primitives.is_primitive(return_value_type, primitives.UNIT)
-		if has_return_type == has_return_value return none as Status
+
+		if has_return_type == has_return_value {
+			if has_return_type and not common.compatible(return_value_type, environment.(FunctionImplementation).return_type) {
+				return Status(start, 'Type of the returned value is not compatible with the return type')
+			}
+
+			return none as Status
+		}
 
 		if has_return_type return Status(start, 'Can not return without a value, because the function has a return type')
 		return Status(start, 'Can not return with a value, because the function does not return a value')
@@ -2307,8 +2322,7 @@ Node ExtensionFunctionNode {
 	}
 
 	override get_status() {
-		message = "Can not resolve the destination " + destination.string() + ' of the extension function'
-		return Status(start, message)
+		return Status(start, 'Can not resolve the extension function')
 	}
 
 	override copy() {
@@ -2415,7 +2429,7 @@ Node WhenNode {
 }
 
 Node ListConstructionNode {
-	type: Type = none
+	type: Type = none as Type
 
 	init(elements: Node, position: Position) {
 		this.instance = NODE_LIST_CONSTRUCTION
@@ -2487,7 +2501,7 @@ Node ListConstructionNode {
 }
 
 Node PackConstructionNode {
-	type: Type = none
+	type: Type = none as Type
 	members: List<String>
 
 	init(members: List<String>, arguments: List<Node>, position: Position) {

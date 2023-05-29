@@ -529,7 +529,8 @@ Context {
 
 	destroy(): _ {
 		if parent != none parent.subcontexts.remove(this)
-		parent = none
+
+		parent = none as Context
 	}
 
 	default_dispose(): _ {
@@ -1065,6 +1066,8 @@ Context Type {
 	}
 
 	open match(other: Type) {
+		if this === other return true
+
 		if is_pack {
 			# The other type should also be a pack
 			if not other.is_pack return false
@@ -1834,7 +1837,7 @@ Context FunctionImplementation {
 	size_of_locals: large = 0
 	size_of_local_memory: large = 0
 
-	virtual_function: VirtualFunction = none
+	virtual_function: VirtualFunction = none as VirtualFunction
 	is_imported: bool = false
 	is_self_returning: bool = false
 
