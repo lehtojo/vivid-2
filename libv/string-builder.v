@@ -163,33 +163,32 @@ export StringBuilder {
 		}
 	}
 
-	# Todo: Remove the underscore shenanigans once we have support for global scope access (global.index_of(...))
 	index_of(value: char): large {
-		return __index_of(buffer, position, value, 0) 
+		return global.index_of(buffer, position, value, 0) 
 	}
 
 	index_of(value: char, start: large): large {
-		return __index_of(buffer, position, value, start)
+		return global.index_of(buffer, position, value, start)
 	}
 
 	index_of(value: link): large {
-		return __index_of(buffer, position, value, length_of(value))
+		return global.index_of(buffer, position, value, length_of(value))
 	}
 
 	index_of(value: link, start: large): large {
-		return __index_of(buffer, position, value, length_of(value), start)
+		return global.index_of(buffer, position, value, length_of(value), start)
 	}
 
 	index_of(value: String, start: large): large {
-		return __index_of(buffer, position, value.data, value.length, start)
+		return global.index_of(buffer, position, value.data, value.length, start)
 	}
 
 	last_index_of(value: char, before: large): large {
-		return __last_index_of(buffer, position, value, before)
+		return global.last_index_of(buffer, position, value, before)
 	}
 
 	last_index_of(value: char): large {
-		return __last_index_of(buffer, position, value, length)
+		return global.last_index_of(buffer, position, value, length)
 	}
 
 	slice(start: large, end: large): String {

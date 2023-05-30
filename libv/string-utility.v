@@ -10,10 +10,8 @@ export length_of(text: link): large {
 	}
 }
 
-# Todo: Remove the underscore shenanigans once we have support for global scope access (global.index_of(...))
-
 # Summary: Returns the index of the first occurrence of the specified character in the specified string
-export __index_of(string: link, string_length: large, character: char, start: large): large {
+export index_of(string: link, string_length: large, character: char, start: large): large {
 	loop (i = start, i < string_length, i++) {
 		if string[i] == character return i
 	}
@@ -24,21 +22,16 @@ export __index_of(string: link, string_length: large, character: char, start: la
 
 # Summary: Returns the index of the first occurrence of the specified character in the specified string
 export index_of(string: link, character: char): large {
-	return __index_of(string, length_of(string), character, 0)
-}
-
-# Summary: Returns the index of the first occurrence of the specified character in the specified string
-export __index_of(string: link, character: char): large {
-	return index_of(string, character)
+	return index_of(string, length_of(string), character, 0)
 }
 
 # Summary: Returns the index of the first occurrence of the specified string
-export __index_of(string: link, string_length: large, value: link, value_length: large): large {
-	return __index_of(string, string_length, value, value_length, 0)
+export index_of(string: link, string_length: large, value: link, value_length: large): large {
+	return index_of(string, string_length, value, value_length, 0)
 }
 
 # Summary: Returns the index of the first occurrence of the specified string
-export __index_of(string: link, string_length: large, value: link, value_length: large, start: large): large {
+export index_of(string: link, string_length: large, value: link, value_length: large, start: large): large {
 	require(start >= 0 and start <= string_length, 'Invalid start index')
 
 	loop (i = start, i <= string_length - value_length, i++) {
@@ -57,7 +50,7 @@ export __index_of(string: link, string_length: large, value: link, value_length:
 }
 
 # Summary: Returns the index of the last occurrence of the specified character before the specified position
-export __last_index_of(string: link, string_length: large, value: char, before: large): large {
+export last_index_of(string: link, string_length: large, value: char, before: large): large {
 	require(before >= 0 and before <= string_length, 'Invalid before index')
 
 	loop (i = before - 1, i >= 0, i--) {
