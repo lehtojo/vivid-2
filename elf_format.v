@@ -1383,8 +1383,10 @@ link(objects: List<BinaryObjectFile>, imports: List<String>, entry: String, exec
 	# 1. Add dynamic information if we have runtime imported symbols
 	# 2. Runtime shared library dependencies require dynamic information
 	# 3. Shared libraries must have dynamic information
-	if relocations.any(i -> i.symbol.external) or imports.size > 0 or not executable {
-		dynamic_linking_information = create_dynamic_sections(fragments, symbols, relocations, imports)
+	dynamic_imports = imports.filter(i -> i.ends_with(shared_library_extension))
+
+	if relocations.any(i -> i.symbol.external) or dynamic_imports.size > 0 or not executable {
+		dynamic_linking_information = create_dynamic_sections(fragments, symbols, relocations, dynamic_imports)
 	}
 
 	# Order the fragments so that allocated fragments come first
