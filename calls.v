@@ -4,36 +4,13 @@ constant SHADOW_SPACE_SIZE = 32
 constant STACK_ALIGNMENT = 16
 
 get_standard_parameter_register_names() {
-	result = List<link>(8, false)
-
 	if settings.is_x64 {
-		if settings.is_target_windows {
-			result.add('rcx')
-			result.add('rdx')
-			result.add('r8')
-			result.add('r9')
-		}
-		else {
-			result.add('rdi')
-			result.add('rsi')
-			result.add('rdx')
-			result.add('rcx')
-			result.add('r8')
-			result.add('r9')
-		}
-	}
-	else {
-		result.add('x0')
-		result.add('x1')
-		result.add('x2')
-		result.add('x3')
-		result.add('x4')
-		result.add('x5')
-		result.add('x6')
-		result.add('x7')
+		if settings.is_target_windows return [ 'rcx', 'rdx', 'r8', 'r9' ]
+
+		return [ 'rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9' ]
 	}
 
-	return result
+	return [ 'x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7' ]
 }
 
 get_standard_parameter_register_count(): large {

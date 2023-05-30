@@ -351,29 +351,17 @@ start_process(executable: String, command_line_arguments: List<String>, working_
 		# If a separate working folder is defined, change the current folder to it
 		if working_folder != none internal.system_change_folder(working_folder.data)
 
-		# Linux needs the internal data pointers of the specified command line argument strings
-		arguments = List<link>(4, false)
-		arguments.add('/usr/bin/sh') # TODO: Use environment variables to determine the shell to use
-		arguments.add('-c')
+		shell = '/usr/bin/sh' # Todo: Use environment variables to determine the shell to use
+		command_line = executable + ` ` + String.join(` `, command_line_arguments)
 
-		builder = StringBuilder()
-		builder.append(executable.data)
-		builder.append(` `)
-
-		loop command_line_argument in command_line_arguments {
-			builder.append(command_line_argument.data)
-			builder.append(` `)
-		}
-
-		arguments.add(builder.buffer)
-		arguments.add(none as link)
+		arguments = [ shell, '-c', command_line.data, none as link ]
 
 		# Linux needs the internal data pointers of the current environment variable strings
 		environment_variables = List<link>(internal.environment_variables.size + 1, false)
 		loop environment_variable in internal.environment_variables { environment_variables.add(environment_variable.data) }
 		environment_variables.add(none as link)
 
-		result = internal.system_execute('/usr/bin/sh', arguments.elements, environment_variables.elements)
+		result = internal.system_execute('/usr/bin/sh', arguments.data, environment_variables.data)
 		exit(result)
 		return -1
 	}
@@ -397,19 +385,15 @@ shell(command: String, working_folder: String) {
 		# If a separate working folder is defined, change the current folder to it
 		if working_folder != none internal.system_change_folder(working_folder.data)
 
-		# Linux needs the internal data pointers of the specified command line argument strings
-		arguments = List<link>(4, false)
-		arguments.add('/usr/bin/sh') # TODO: Use environment variables to determine the shell to use
-		arguments.add('-c')
-		arguments.add(command.data)
-		arguments.add(none as link)
+		shell = '/usr/bin/sh' # Todo: Use environment variables to determine the shell to use
+		arguments = [ shell, '-c', command.data, none as link ]
 
 		# Linux needs the internal data pointers of the current environment variable strings
 		environment_variables = List<link>(internal.environment_variables.size + 1, false)
 		loop environment_variable in internal.environment_variables { environment_variables.add(environment_variable.data) }
 		environment_variables.add(none as link)
 
-		result = internal.system_execute('/usr/bin/sh', arguments.elements, environment_variables.elements)
+		result = internal.system_execute(shell, arguments.data, environment_variables.data)
 		exit(result)
 		return -1
 	}

@@ -62,9 +62,10 @@ collect(files: List<String>, folder: String, recursive: bool): _ {
 
 # Summary: Initializes the configuration by registering the folders which can be searched through
 initialize_configuration(): _ {
-	settings.included_folders = List<String>()
-	settings.included_folders.add(io.get_process_working_folder())
-	settings.included_folders.add(io.get_process_folder())
+	settings.included_folders = [
+		io.get_process_working_folder(),
+		io.get_process_folder()
+	]
 
 	# Load the path environment variable and include folders from it
 	path = io.get_environment_variable('PATH')

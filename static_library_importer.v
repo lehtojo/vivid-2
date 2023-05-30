@@ -21,6 +21,12 @@ constant GENERAL_IMPORT_FILE_EXTENSION = '.exports'
 constant EXPORT_TABLE_FILENAME = '/'
 constant FILENAME_TABLE_NAME = '//'
 
+# Summary: Returns whether the specified bytes start with the correct signature
+is_signature_valid(bytes: Array<u8>): bool {
+	signature = static_library_format.SIGNATURE.(u64*)[]
+	return bytes.size >= sizeof(u64) and bytes.data.(u64*)[] == signature
+}
+
 # Summary:
 # Iterates through the specified headers and looks for an export file and imports it.
 # Export files contain exported source code such as template types and functions.
@@ -231,6 +237,10 @@ resolve(context: Context, root: Node): _ {
 # Imports the specified static library by finding the exported symbols and importing them
 internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>): _ {
 	if io.read_file(file) has not bytes abort('Failed to open a library')
+
+	# Verify the signature
+	require(is_signature_valid(bytes), 'Static library did not have valid signature')
+
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
 

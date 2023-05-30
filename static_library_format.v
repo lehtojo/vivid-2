@@ -57,7 +57,6 @@ constant DEFAULT_FILEMODE = '100666'
 constant END_COMMAND = '\x60\n'
 
 constant FILE_HEADER_LENGTH = 60
-
 constant FILENAME_LENGTH = 16
 constant TIMESTAMP_LENGTH = 12
 constant IDENTITY_LENGTH = 6

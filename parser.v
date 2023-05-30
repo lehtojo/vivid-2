@@ -756,7 +756,7 @@ parse(): Status {
 			importer.import_static_library(context, library, files, object_files)
 		}
 		else {
-			# console.write_line('Warning: Shared libraries are not supported yet')
+			# Shared libraries could distribute source code as well (custom section)?
 		}
 	}
 

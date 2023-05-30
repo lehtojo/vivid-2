@@ -124,6 +124,12 @@ namespace pe_format {
 		# Read the PE-header
 		header = binary_utility.read_object<PeHeader>(bytes, header_offset)
 
+		# Verify the signature
+		if header.signature != PE_SIGNATURE return none as PeMetadata
+
+		# Verify we are dealing with 64-bit version, because we do not support 32-bit ones
+		if header.machine != PE_MACHINE_X64 return none as PeMetadata
+
 		# Load the data directories, which come after the header
 		data_directories_offset = header_offset + PeHeader.Size
 		data_directories = load_data_directories(bytes, data_directories_offset, header.data_directories)
@@ -1391,6 +1397,7 @@ namespace pe_format {
 	import_object_file(name: String, bytes: Array<byte>): BinaryObjectFile {
 		# Load the file header
 		header = binary_utility.read_object<PeObjectFileHeader>(bytes, 0)
+		require(header.machine == PE_MACHINE_X64, "Can not import object file " + name)
 
 		# Load all the section tables
 		file_position = bytes.data + PeObjectFileHeader.Size
@@ -1466,6 +1473,8 @@ namespace pe_format {
 	}
 }
 
+PE_SIGNATURE = 0x00004550 # 'PE\0\0'
+
 PE_MACHINE_X64 = 0x8664
 PE_MACHINE_ARM64 = 0xAA64
 
@@ -1532,7 +1541,7 @@ plain PeHeader {
 	constant Size = 136
 	constant OptionalHeaderOffset = 0x18
 
-	signature: normal = 0x00004550 # 'PE\0\0'
+	signature: normal = PE_SIGNATURE
 	machine: u16
 	number_of_sections: small
 	timestamp: u32

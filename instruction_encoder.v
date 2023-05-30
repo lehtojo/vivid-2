@@ -695,10 +695,15 @@ namespace instruction_encoder {
 	# Returns whether the specified handle passes the configured filter
 	private passes_size(value: Handle, filter: large, size: small): bool {
 		if value.instance == INSTANCE_CONSTANT {
-			if filter == ENCODING_FILTER_TYPE_CONSTANT return value.(ConstantHandle).bits / 8 <= size
+			encoding_bits = when(filter) {
+				ENCODING_FILTER_TYPE_CONSTANT => value.(ConstantHandle).bits,
 
-			# Do not care about the sign, just verify all the bits can be stored in the specified size
-			return get_number_of_bits_for_encoding(value.(ConstantHandle).value) / 8 <= size
+				# Do not care about the sign, just verify all the bits can be stored in the specified size
+				else => get_number_of_bits_for_encoding(value.(ConstantHandle).value)
+			}
+
+			# Size of the handle limits the size of the value
+			return min(encoding_bits / 8, value.size) <= size
 		}
 
 		return value.size == size

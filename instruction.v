@@ -540,18 +540,10 @@ Instruction DualParameterInstruction {
 		this.second = second
 		this.unsigned = is_unsigned(format)
 		this.result.format = format
-
-		this.dependencies = List<Result>(3, false)
-		this.dependencies.add(result)
-		this.dependencies.add(first)
-		this.dependencies.add(second)
+		this.dependencies = [ result, first, second ]
 	}
 
 	override get_dependencies() {
-		all = List<Result>(3, false)
-		all.add(result)
-		all.add(first)
-		all.add(second)
-		return all
+		return [ result, first, second ]
 	}
 }

@@ -1,5 +1,7 @@
 namespace elf_format
 
+constant ELF_MAGIC_NUMBER = 0x464c457F
+
 constant ELF_OBJECT_FILE_TYPE_RELOCATABLE = 1
 constant ELF_OBJECT_FILE_TYPE_EXECUTABLE = 2
 constant ELF_OBJECT_FILE_TYPE_DYNAMIC = 3
@@ -17,7 +19,7 @@ constant ELF_SEGMENT_FLAG_WRITE = 2
 constant ELF_SEGMENT_FLAG_READ = 4
 
 plain ElfFileHeader {
-	magic_number: u32 = 0x464c457F
+	magic_number: u32 = ELF_MAGIC_NUMBER
 	class: byte = 2
 	endianness: byte = 1
 	version: byte = 1
@@ -788,6 +790,7 @@ import_object_file(name: String, source: Array<byte>): BinaryObjectFile {
 
 	# Load the file header
 	header = binary_utility.read_object<ElfFileHeader>(bytes, 0)
+	require(header.magic_number == ELF_MAGIC_NUMBER, "Can not import object file " + name)
 
 	# Create a pointer, which points to the start of the section headers
 	section_headers_start = bytes + header.section_header_offset
