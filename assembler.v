@@ -1642,7 +1642,7 @@ get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
 
 	# Postprocess the instructions before giving them to the builder
-	# postprocess(instructions) TODO: Enable back
+	postprocess(instructions)
 
 	file = unit.function.metadata.start.file
 

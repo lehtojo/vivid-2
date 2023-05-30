@@ -159,7 +159,6 @@ build_debug_assign_operator(unit: Unit, node: OperatorNode): Result {
 build_assign_operator(unit: Unit, node: OperatorNode): Result {
 	if settings.is_debugging_enabled return build_debug_assign_operator(unit, node)
 
-	# TODO: Support conditions
 	if common.is_local_variable(node.first) {
 		local = node.first.(VariableNode).variable
 		right = references.get(unit, node.last, ACCESS_READ)
@@ -281,7 +280,6 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 # Summary:
 # Builds the specified jump node, while merging with its container scope
 build_jump(unit: Unit, node: JumpNode): Result {
-	# TODO: Support conditional jumps
 	unit.add(JumpInstruction(unit, node.label))
 	return Result()
 }
