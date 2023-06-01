@@ -201,7 +201,6 @@ namespace Operators {
 
 	public all: Map<String, Operator>
 	public assignments: Map<String, AssignmentOperator>
-	
 	public overloads: Map<Operator, String>
 
 	private add(operator: Operator): _ {
@@ -1208,7 +1207,7 @@ skip_parenthesis(text: String, start: Position): Position {
 
 # Summary: Returns whether a multiline comment begins at the specified position
 is_multiline_comment(text: String, start: Position): bool {
-	return start.local + MULTILINE_COMMENT_LENGTH * 2 <= text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
+	return start.local + MULTILINE_COMMENT_LENGTH * 2 < text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
 }
 
 # Summary: Skips the current comment and returns the position

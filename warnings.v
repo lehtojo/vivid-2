@@ -62,7 +62,7 @@ report(): _ {
 			console.write(diagnostic.position.string())
 		}
 		else {
-			console.write('<Source>:<Line>:<Character>')
+			console.write('<unknown>')
 		}
 
 		console.write(': \e[1;33mWarning\e[0m: ')

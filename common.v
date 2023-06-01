@@ -1182,13 +1182,13 @@ report(error: Status): _ {
 	position = error.position
 
 	if position === none {
-		console.write('<Unknown>')
+		console.write('<unknown>')
 	}
 	else {
 		file = position.file
 
 		if file != none console.write(file.fullname)
-		else { console.write('<Unknown>') }
+		else { console.write('<unknown>') }
 
 		console.write(':')
 		console.write(position.line + 1)
