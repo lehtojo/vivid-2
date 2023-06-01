@@ -209,47 +209,68 @@ initialize(): _ {
 # Summary: Returns whether the specified pattern can be built at the specified position
 fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState): bool {
 	path = pattern.path
-	result = List<Token>(path.size, false)
+	consumed = 0
 
-	i = 0
-	j = 0
-
-	loop (i < path.size, i++) {
-		types = path[i]
+	# First, attempt fitting the pattern without collecting tokens, because most patterns fail
+	loop (path_index = 0, path_index < path.size, path_index++) {
+		types = path[path_index]
+		token_index = start + consumed
 
 		# Ensure there is a token available
-		if start + j >= tokens.size {
+		if token_index >= tokens.size {
 			# If the token type is optional on the path, we can add a none token even though there are no tokens available
-			if has_flag(types, TOKEN_TYPE_OPTIONAL) {
-				result.add(Token(TOKEN_TYPE_NONE))
-				continue
-			}
+			if has_flag(types, TOKEN_TYPE_OPTIONAL) continue
 
 			return false
 		}
 
-		token = tokens[start + j]
-		type = token.type
-		
+		type = tokens[token_index].type
+
 		# Add the token if the allowed types contains its type
 		if has_flag(types, type) {
-			result.add(token)
-			j++
+			consumed++
+			continue
 		}
-		else has_flag(types, TOKEN_TYPE_OPTIONAL) {
-			result.add(Token(TOKEN_TYPE_NONE))
-			# NOTE: Do not skip the current token, since it was not consumed
+
+		# If the allowed types contain optional, we can just ignore the current token
+		if has_flag(types, TOKEN_TYPE_OPTIONAL) {
+			# Note: Do not skip the current token, since it was not consumed
+			continue
 		}
-		else {
-			result.clear()
-			return false
-		}
+
+		return false
 	}
 
-	state.tokens = result
+	# Since we ended up here, it means the pattern was successfully consumed.
+	# Now collect the tokens that were consumed by the pattern.
+	consumed_tokens = List<Token>()
+
+	consumed = 0
+
+	loop (path_index = 0, path_index < path.size, path_index++) {
+		types = path[path_index]
+		token_index = start + consumed
+
+		if token_index >= tokens.size {
+			consumed_tokens.add(Token(TOKEN_TYPE_NONE))
+			continue
+		}
+
+		token = tokens[token_index]
+
+		if not has_flag(types, token.type) {
+			consumed_tokens.add(Token(TOKEN_TYPE_NONE))
+			continue
+		}
+
+		consumed_tokens.add(token)
+		consumed++
+	}
+
+	state.tokens = consumed_tokens
 	state.pattern = pattern
 	state.start = start
-	state.end = start + j
+	state.end = start + consumed
 
 	return true
 }
