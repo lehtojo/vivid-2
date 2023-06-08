@@ -11,7 +11,7 @@ export internal_init(root: link) {
 	# Load all the command line arguments
 	loop (i = 0, i < count, i++) {
 		argument = root.(link*)[i + 1]
-		arguments.add(String.from(argument, length_of(argument)))
+		arguments.add(String(argument, length_of(argument)))
 	}
 
 	# Load all the environment variables
@@ -22,7 +22,7 @@ export internal_init(root: link) {
 		environment_variable = root.(link*)[i]
 		if environment_variable == none stop
 
-		environment_variables.add(String.from(environment_variable, length_of(environment_variable)))
+		environment_variables.add(String(environment_variable, length_of(environment_variable)))
 		i++
 	}
 
@@ -416,7 +416,7 @@ wait_for_exit(pid: large) {
 # Command line:
 # Summary: Tries to find the specified environment variable and return its value, on failure none is returned.
 export get_environment_variable(name: link) {
-	start = String.from(name, length_of(name)) + '='
+	start = String(name, length_of(name)) + '='
 
 	loop environment_variable in internal.environment_variables {
 		if environment_variable.starts_with(start) return environment_variable.slice(start.length, environment_variable.length)

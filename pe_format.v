@@ -164,7 +164,7 @@ namespace pe_format {
 			end = position
 			loop (end < bytes.size and bytes[end] != 0, end++) { }
 
-			strings[i] = String.from(bytes.data + position, end - position)
+			strings[i] = String(bytes.data + position, end - position)
 
 			position = end + 1
 		}
@@ -183,7 +183,7 @@ namespace pe_format {
 			end = position
 			loop (end < limit and bytes[end] != 0, end++) { }
 
-			strings.add(String.from(bytes.data + position, end - position))
+			strings.add(String(bytes.data + position, end - position))
 
 			position = end + 1
 		}

@@ -560,7 +560,7 @@ Node UnresolvedFunction {
 			if actual_types.size != overload.parameters.size return false
 
 			# Collect the expected parameter types
-			expected_types = overload.parameters.map<Type>((j: Parameter) -> j.type)
+			expected_types: List<Type> = overload.parameters.map<Type>((j: Parameter) -> j.type)
 
 			# Determine the final parameter types as follows:
 			# - Prefer the actual parameter types over the expected parameter types
@@ -2382,7 +2382,10 @@ Node WhenNode {
 			NODE_IF => section.(IfNode).body
 			NODE_ELSE_IF => section.(ElseIfNode).body
 			NODE_ELSE => section.(ElseNode).body
-			else => abort('Unsupported section') as ScopeNode
+			else => {
+				abort('Unsupported section')
+				none as ScopeNode
+			}
 		}
 	}
 

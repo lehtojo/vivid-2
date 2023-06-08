@@ -403,9 +403,7 @@ export get_process_filename(): String {
 		if length < size {
 			filename[length] = 0
 
-			result = String.from(filename, length).replace(`\\`, `/`)
-			deallocate(filename)
-
+			result = String(filename, length).replace(`\\`, `/`)
 			return result
 		}
 

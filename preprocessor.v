@@ -3,8 +3,7 @@ namespace preprocessing
 # Summary: Attempts to consume a token from the specified position that has the specified type
 try_consume_next_token(code: StringBuilder, position: Position, type: u64): TextArea {
 	# Get the next token
-	code_view = String.from(code.buffer, code.length)
-	if get_next_token(code_view, position) has not area return none as TextArea
+	if get_next_token(code.string(), position) has not area return none as TextArea
 
 	# If the text area is not of the specified type, return none
 	if area.type != type return none as TextArea
@@ -589,7 +588,7 @@ plain Preprocessor {
 			# Find the closing parenthesis to extract the arguments
 			name_position = position.translate(name_start - absolute)
 			parenthesis_start = position.translate(1)
-			parenthesis_end = skip_parenthesis(String.from(code.buffer, code.length), parenthesis_start)
+			parenthesis_end = skip_parenthesis(code.string(), parenthesis_start)
 
 			# Move over the `!` so that next search will not find it
 			position.next_character()

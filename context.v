@@ -1969,7 +1969,7 @@ Context FunctionImplementation {
 			delete_node_tree(iterator)
 		}
 
-		deallocate(tree as link)
+		tree.detach()
 	}
 
 	override dispose() {

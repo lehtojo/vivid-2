@@ -50,7 +50,7 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 		}
 		
 		# Since the file is source code, it can be converted into text
-		text = String.from(bytes.data + start, end - start)
+		text = String(bytes.data + start, end - start)
 		file = SourceFile(library + '/' + header.filename, text, index)
 
 		files.add(file)
@@ -122,7 +122,7 @@ import_template_type_variants(context: Context, headers: List<StaticLibraryForma
 		if not header.filename.ends_with(TEMPLATE_TYPE_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
+		template_variants = String(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant in template_variants {
 			if template_variant.length == 0 continue
@@ -144,7 +144,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 		if not header.filename.ends_with(TEMPLATE_FUNCTION_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
+		template_variants = String(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant_text in template_variants {
 			if template_variant_text.length == 0 continue
@@ -295,7 +295,7 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 		end = position
 		loop (bytes[end] != 0, end++) {}
 
-		header.filename = String.from(bytes.data + position, end - position)
+		header.filename = String(bytes.data + position, end - position)
 	}
 
 	return true

@@ -1813,7 +1813,10 @@ add_table(builder: AssemblyBuilder, table: Table, marker: large): _ {
 			TABLE_ITEM_LABEL => String(to_data_section_allocator(SYSTEM_BYTES)) + ` ` + item.(LabelTableItem).value.name
 			TABLE_ITEM_LABEL_OFFSET => String(LONG_ALLOCATOR) + ` ` + item.(LabelOffsetTableItem).value.to.name + ' - ' + item.(LabelOffsetTableItem).value.from.name
 			TABLE_ITEM_TABLE_LABEL => add_table_label(item.(TableLabelTableItem).value)
-			else => abort('Invalid table item') as String
+			else => {
+				abort('Invalid table item')
+				none as String
+			}
 		}
 
 		builder.write_line(result)

@@ -278,7 +278,7 @@ export String {
 		a = length
 		
 		result = String(data, a)
-		data = result.data
+		data: link = result.data
 
 		loop (i = 0, i < a, i++) {
 			if data[i] != old continue
@@ -581,5 +581,9 @@ export String {
 		}
 
 		return hash
+	}
+
+	deinit() {
+		deallocate(data)
 	}
 }

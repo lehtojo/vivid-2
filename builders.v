@@ -286,8 +286,9 @@ build_jump(unit: Unit, node: JumpNode): Result {
 
 # Summary:
 # Adds the label to the specified unit
-build_label(unit: Unit, node: LabelNode): _ {
+build_label(unit: Unit, node: LabelNode): Result {
 	unit.add(LabelInstruction(unit, node.label))
+	return Result()
 }
 
 build_link(unit: Unit, node: LinkNode, mode: large): Result {
@@ -415,7 +416,7 @@ build(unit: Unit, node: Node): Result {
 		NODE_FUNCTION => calls.build(unit, node as FunctionNode)
 		NODE_IF => conditionals.start(unit, node as IfNode) as Result
 		NODE_JUMP => build_jump(unit, node as JumpNode) as Result
-		NODE_LABEL => build_label(unit, node as LabelNode) as Result
+		NODE_LABEL => build_label(unit, node as LabelNode)
 		NODE_LINK => build_link(unit, node as LinkNode, ACCESS_READ)
 		NODE_LOOP => loops.build(unit, node as LoopNode)
 		NODE_NOT => build_not(unit, node as NotNode)

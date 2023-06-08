@@ -476,7 +476,7 @@ pi(optimization: large) {
 		console.write_line('Could not load the expected Pi unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Pi unit test did not produce the correct output')
@@ -530,7 +530,7 @@ virtuals(optimization: large) {
 		console.write_line('Could not load the expected Virtuals unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Virtuals unit test did not produce the correct output')
@@ -549,7 +549,7 @@ expression_variables(optimization: large) {
 		console.write_line('Could not load the expected Expression variables unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Expression variables unit test did not produce the correct output')
@@ -577,7 +577,7 @@ lambdas(optimization: large) {
 		console.write_line('Could not load the expected Lambdas unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Lambdas unit test did not produce the correct output')
