@@ -777,28 +777,7 @@ Instruction InitializeInstruction {
 	}
 
 	get_required_call_memory(call_instructions: List<CallInstruction>): large {
-		if call_instructions.size == 0 return 0
-
-		# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
-		max_parameter_memory_offset = -1
-
-		loop call in call_instructions {
-			loop destination in call.destinations {
-				if destination.type != HANDLE_MEMORY continue
-				
-				offset = destination.(MemoryHandle).offset
-				if offset > max_parameter_memory_offset { max_parameter_memory_offset = offset }
-			}
-		}
-
-		# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
-		if max_parameter_memory_offset < 0 {
-			# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
-			if settings.is_target_windows return calls.SHADOW_SPACE_SIZE
-			return 0
-		}
-
-		return max_parameter_memory_offset + SYSTEM_BYTES
+		return max(common.compute_parameter_overflow(call_instructions), common.compute_return_overflow(unit, call_instructions))
 	}
 
 	save_registers_x64(builder: StringBuilder, registers: List<Register>): _ {
@@ -1197,46 +1176,11 @@ Instruction ReorderInstruction {
 		loop iterator in destinations { formats.add(iterator.format) }
 	}
 
-	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>): large {
-		loop iterator in type.variables {
-			member = iterator.value
-
-			if member.type.is_pack {
-				overflow = compute_return_overflow(member.type, overflow, standard_parameter_registers, decimal_parameter_registers)
-				continue
-			}
-
-			# First, drain out the registers
-			register = none as Register
-
-			if member.type.format == FORMAT_DECIMAL {
-				register = decimal_parameter_registers.pop_or(none as Register)
-			}
-			else {
-				register = standard_parameter_registers.pop_or(none as Register)
-			}
-
-			if register != none continue
-			overflow += SYSTEM_BYTES
-		}
-
-		return overflow
-	}
-
-	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type): large {
-		decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
-		standard_parameter_registers = calls.get_standard_parameter_registers(unit)
-
-		return compute_return_overflow(type, 0, decimal_parameter_registers, standard_parameter_registers)
-	}
-
 	# Summary: Evacuates variables that are located at the overflow zone of the stack
 	evacuate_overflow_zone(type: Type): _ {
 		shadow_space_size = 0
 		if settings.is_target_windows { shadow_space_size = calls.SHADOW_SPACE_SIZE }
-		overflow = max(compute_return_overflow(type), shadow_space_size)
+		overflow = max(common.compute_return_overflow(unit, type), shadow_space_size)
 
 		loop iterator in unit.scope.variables {
 			# Find all memory handles

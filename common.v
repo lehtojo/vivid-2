@@ -1172,6 +1172,85 @@ get_non_static_members(type: Type): List<Variable> {
 	return result
 }
 
+# Summary:
+# Computes the number of bytes of stack memory required to pass parameters to calls
+compute_parameter_overflow(call_instructions: List<CallInstruction>): large {
+	if call_instructions.size == 0 return 0
+
+	# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
+	max_parameter_memory_offset = -1
+
+	loop call in call_instructions {
+		loop destination in call.destinations {
+			if destination.type != HANDLE_MEMORY continue
+			
+			offset = destination.(MemoryHandle).offset
+			if offset > max_parameter_memory_offset { max_parameter_memory_offset = offset }
+		}
+	}
+
+	# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
+	if max_parameter_memory_offset < 0 {
+		# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
+		if settings.is_target_windows return calls.SHADOW_SPACE_SIZE
+		return 0
+	}
+
+	return max_parameter_memory_offset + SYSTEM_BYTES
+}
+
+# Summary: Computes the number of bytes of stack memory required to receive the specified pack type as return value
+compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>): large {
+	loop iterator in type.variables {
+		member = iterator.value
+
+		# Do not process static or constant member variables
+		if member.is_static or member.is_constant continue
+
+		if member.type.is_pack {
+			overflow = compute_return_overflow(member.type, overflow, standard_parameter_registers, decimal_parameter_registers)
+			continue
+		}
+
+		# First, drain out the registers
+		register = none as Register
+
+		if member.type.format == FORMAT_DECIMAL {
+			register = decimal_parameter_registers.pop_or(none as Register)
+		}
+		else {
+			register = standard_parameter_registers.pop_or(none as Register)
+		}
+
+		if register != none continue
+		overflow += SYSTEM_BYTES
+	}
+
+	return overflow
+}
+
+# Summary: Computes the number of bytes of stack memory required to receive the specified pack type as return value
+compute_return_overflow(unit: Unit, type: Type): large {
+	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+
+	return compute_return_overflow(type, 0, standard_parameter_registers, decimal_parameter_registers)
+}
+
+# Summary: Computes the number of bytes of stack memory to receive the return values from the specified calls
+compute_return_overflow(unit: Unit, call_instructions: List<CallInstruction>): large {
+	overflow = 0
+
+	loop call in call_instructions {
+		# Note: Non-pack types will not require any stack memory
+		if call.return_type === none or not call.return_type.is_pack continue
+
+		overflow = max(overflow, compute_return_overflow(unit, call.return_type))
+	}
+
+	return overflow
+}
+
 # Summary: Returns true if the specified node represents integer zero
 is_zero(node: Node): bool {
 	return node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
