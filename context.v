@@ -1439,7 +1439,7 @@ Context Function {
 		# Add the created implementation to the list
 		implementations.add(implementation)
 
-		implementation.implement(clone(blueprint))
+		implementation.implement(common.clone(blueprint))
 
 		return implementation
 	}
@@ -1609,9 +1609,9 @@ Type TemplateType {
 		identifier: String = get_variant_identifier(arguments)
 		
 		# Copy the blueprint and insert the specified arguments to their places
-		tokens = clone(inherited)
+		tokens = common.clone(inherited)
 
-		blueprint: List<Token> = clone(this.blueprint)
+		blueprint: List<Token> = common.clone(this.blueprint)
 		blueprint[].(IdentifierToken).value = name + `<` + identifier + `>`
 
 		tokens.add_all(blueprint)
@@ -1710,7 +1710,7 @@ Function TemplateFunction {
 		variant_identifier = String.join(", ", names)
 
 		# Copy the blueprint and insert the specified arguments to their places
-		blueprint: List<Token> = clone(this.blueprint)
+		blueprint: List<Token> = common.clone(this.blueprint)
 		blueprint[].(FunctionToken).identifier.value = name + `<` + variant_identifier + `>`
 
 		insert_arguments(blueprint, template_arguments)

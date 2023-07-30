@@ -2456,6 +2456,7 @@ Pattern ListConstructionPattern {
 Pattern PackConstructionPattern {
 	constant PARENTHESIS = 1
 
+	# Pattern: pack { $member-1 : $value-1, $member-2 : $value-2, ... }
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		path.add(TOKEN_TYPE_PARENTHESIS)
@@ -2529,6 +2530,7 @@ Pattern PackConstructionPattern {
 }
 
 Pattern UsingPattern {
+	# Pattern: ... using ...
 	init() {
 		path.add(TOKEN_TYPE_ANY)
 		path.add(TOKEN_TYPE_IDENTIFIER)
@@ -2548,6 +2550,7 @@ Pattern UsingPattern {
 }
 
 Pattern GlobalScopeAccessPattern {
+	# Pattern: global
 	init() {
 		path.add(TOKEN_TYPE_KEYWORD)
 		priority = 19
@@ -2563,5 +2566,25 @@ Pattern GlobalScopeAccessPattern {
 
 		# Return the context as a node
 		return ContextNode(context, tokens[].position)
+	}
+}
+
+Pattern DeinitializerPattern {
+	# Pattern: deinit [\n] {...}
+	init() {
+		path.add(TOKEN_TYPE_IDENTIFIER)
+		path.add(TOKEN_TYPE_END | TOKEN_TYPE_OPTIONAL)
+		path.add(TOKEN_TYPE_PARENTHESIS)
+		priority = 19
+	}
+
+	override passes(context: Context, state: ParserState, tokens: List<Token>, priority: tiny) {
+		if not (tokens[].(IdentifierToken).value == Keywords.DEINIT.identifier) return false
+
+		return tokens[2].match(`{`)
+	}
+
+	override build(context: Context, state: ParserState, tokens: List<Token>) {
+		return DeinitializerNode(tokens[2].(ParenthesisToken).tokens, tokens[].position)
 	}
 }

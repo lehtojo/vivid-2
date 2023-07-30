@@ -22,6 +22,17 @@ ACCESS_TYPE_WRITE = 2
 
 namespace common
 
+# Summary: Creates an identical list of tokens compared to the specified list
+clone(tokens: List<Token>): List<Token> {
+	clone = List<Token>(tokens.size, true)
+
+	loop (i = 0, i < tokens.size, i++) {
+		clone[i] = tokens[i].clone()
+	}
+
+	return clone
+}
+
 get_self_pointer(context: Context, position: Position) {
 	self = context.get_self_pointer()
 	if self != none return VariableNode(self, position) as Node

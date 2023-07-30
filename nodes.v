@@ -51,6 +51,7 @@ NODE_OBJECT_UNLINK = 1 <| 49
 NODE_USING = 1 <| 50
 NODE_ERROR = 1 <| 51
 NODE_CONTEXT = 1 <| 52
+NODE_DEINITIALIZER = 1 <| 53
 
 Node NumberNode {
 	value: large
@@ -2805,5 +2806,115 @@ Node ContextNode {
 
 	override string() {
 		return "Context " + context.identity
+	}
+}
+
+Node DeinitializerNode {
+	tokens: List<Token>
+
+	init(tokens: List<Token>, position: Position) {
+		this.instance = NODE_DEINITIALIZER
+		this.tokens = tokens
+		this.start = position
+		this.is_resolvable = true
+	}
+
+	# Summary: Adds the command statements (continue/stop) at which the deinitializer code should be executed in the specified loop
+	private add_loop_insertion_points(node: LoopNode, points: List<Node>): _ {
+		commands = node.find_all(NODE_COMMAND)
+
+		loop command in commands {
+			if command.(CommandNode).container !== node continue
+			points.add(command)
+		}
+	}
+
+	# Summary: Adds the points at which the deinitializer code should be executed in the specified scope
+	private add_insertion_points(scope: ScopeNode, points: List<Node>) {
+		# Place deinitializer code before each return
+		points.add_all(scope.find_all(NODE_RETURN))
+
+		# If the scope is the body of a loop,
+		# place the deinitializer code before each command statement (continue/stop) of that loop.
+		if scope.parent !== none and scope.parent.instance == NODE_LOOP and scope.parent.(LoopNode).body === scope {
+			add_loop_insertion_points(scope.parent as LoopNode, points)
+		}
+	}
+
+	# Summary: Inserts the deinitializer code at the specified point
+	private insert_deinitializer_code(point: Node): _ {
+		# Parse the deinitializer code at the specified point
+		point_context = point.get_parent_context()
+		deinitializer_code = parser.parse(point_context, common.clone(tokens), 0, parser.MAX_FUNCTION_BODY_PRIORITY)
+
+		# If the point is a return statement and it has a complex return value,
+		# ensure the return value is resolved before deinitializer code
+		if point.instance == NODE_RETURN {
+			return_value = point.(ReturnNode).value
+			return_value_position = return_value.start
+
+			if return_value !== none and not return_value.match(NODE_NUMBER | NODE_VARIABLE) {
+				# Remove the return value from the return statement, because we are going to replace it
+				return_value.remove()
+
+				# Create a hidden variable for the return value and give it the correct type if possible
+				return_value_variable = point_context.declare_hidden(return_value.try_get_type())
+
+				# Assign the return value to the hidden variable
+				assignment = OperatorNode(Operators.ASSIGN, return_value_position).set_operands(
+					VariableNode(return_value_variable, return_value_position),
+					return_value
+				)
+
+				# Place the assignment before the return statement and add the return value variable as return value
+				point.insert(assignment)
+				point.add(VariableNode(return_value_variable, return_value_position))
+			}
+		}
+
+		# Place the deinitializer code before the point
+		point.insert_children(deinitializer_code)
+	}
+
+	private insert_deinitializer_code_at_end_of_scope(context: Context, scope: Node): _ {
+		# Place deinitializer code at the end of the scope, if the last statement is not command (continue/stop) or return statement.
+		# Basically, add it if it can be executed.
+		last_node = scope.last
+
+		if last_node !== none and not last_node.match(NODE_COMMAND | NODE_RETURN) {
+			parser.parse(scope, context, common.clone(tokens))
+		}
+	}
+
+	generate(context: Context) {
+		# Find the parent scope, so that we can place deinitializer code at correct points
+		scope = find_parent(NODE_SCOPE) as ScopeNode
+
+		# Find the points where the deinitializer code should be placed
+		points = List<Node>()
+		add_insertion_points(scope, points)
+
+		# Add the deinitializer code at the points
+		loop point in points {
+			insert_deinitializer_code(point)
+		}
+
+		insert_deinitializer_code_at_end_of_scope(context, scope)
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override get_status() {
+		return Status(start, 'Can not generate deinitializer code')
+	}
+
+	override copy() {
+		return DeinitializerNode(tokens, start)
+	}
+
+	override string() {
+		return "Deinitializer"
 	}
 }

@@ -690,6 +690,19 @@ implicit_conversions(optimization: large) {
 	}
 }
 
+deinitializers(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'deinitializers.v'))
+	compile('deinitializers', files, optimization, false)
+
+	log = execute('deinitializers')
+	expected = 'Test 1: Start\nDeallocating...\nTest 1: End\nTest 2: Start\nTick tock\nTick tock\nTick tock\nTick tock\nTick tock\nTest 2: End\nNumber: 13\nExiting...\n'
+
+	if not (log == expected) {
+		console.write_line('Deinitializers unit test did not produce the correct output')
+	}
+}
+
 init() {
 	optimization = 1
 	console.write_line('Arithmetic')
@@ -766,5 +779,7 @@ init() {
 	global_scope_access(optimization)
 	console.write_line('Implicit conversions')
 	implicit_conversions(optimization)
+	console.write_line('Deinitializers')
+	deinitializers(optimization)
 	return 0
 }

@@ -291,6 +291,17 @@ resolve_supertypes(context: Context, type: Type): _ {
 	}
 }
 
+# Summary: Generates deinitializer code in the specified node tree
+resolve_deinitializers(node: Node): _ {
+	deinitializers = node.find_all(NODE_DEINITIALIZER).reverse()
+
+	loop deinitializer in deinitializers {
+		context = deinitializer.get_parent_context()
+		deinitializer.(DeinitializerNode).generate(context)
+		deinitializer.remove()
+	}
+}
+
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context): _ {
 	functions = common.get_all_visible_functions(context)
@@ -330,7 +341,9 @@ resolve_context(context: Context): _ {
 		resolve_variables(implementation)
 
 		if implementation.node == none continue
+
 		resolve_tree(implementation, implementation.node)
+		resolve_deinitializers(implementation.node)
 	}
 
 	# Resolve constants

@@ -159,6 +159,8 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-binary')
 		console.write_line('-base <address>')
 		console.write_line('-system')
+		console.write_line('-windows')
+		console.write_line('-linux')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -286,6 +288,12 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 	}
 	else value == '-system' {
 		settings.is_system_mode_enabled = true
+	}
+	else value == '-windows' {
+		settings.is_target_windows = true
+	}
+	else value == '-linux' {
+		settings.is_target_windows = false
 	}
 	else {
 		return Status("Unknown option " + value)

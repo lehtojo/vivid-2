@@ -760,7 +760,7 @@ plain Preprocessor {
 				# Remove the expansion from the list
 				expansions.remove_at(0)
 
-				expansion_tokens = clone(expansion.tokens)
+				expansion_tokens = common.clone(expansion.tokens)
 				result_tokens = extract_result_tokens(expansion_tokens)
 
 				# Replace the "<name> ! (...)" with the result tokens

@@ -204,6 +204,7 @@ initialize(): _ {
 	add_pattern(WhenPattern())
 	add_pattern(UsingPattern())
 	add_pattern(GlobalScopeAccessPattern())
+	add_pattern(DeinitializerPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
