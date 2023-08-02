@@ -64,19 +64,19 @@ apply_constants(context: Context): _ {
 		if not classify_variable_usages(variable) continue
 
 		if variable.writes.size == 0 {
-			resolver.output(Status(variable.position, "Value for constant " + variable.name + ' is never assigned'))
+			common.report(Status(variable.position, "Value for constant " + variable.name + ' is never assigned'))
 			application.exit(1)
 		}
 
 		if variable.writes.size > 1 {
-			resolver.output(Status(variable.position, "Value for constant " + variable.name + ' is assigned more than once'))
+			common.report(Status(variable.position, "Value for constant " + variable.name + ' is assigned more than once'))
 			application.exit(1)
 		}
 
 		value = evaluate_constant(variable)
 
 		if value === none {
-			resolver.output(Status(variable.position, "Could not evaluate a constant value for " + variable.name))
+			common.report(Status(variable.position, "Could not evaluate a constant value for " + variable.name))
 			application.exit(1)
 		}
 

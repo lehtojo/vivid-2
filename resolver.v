@@ -155,13 +155,11 @@ resolve(function: Function): _ {
 	}
 
 	# Resolve the return type
-	if function.return_type !== none and function.return_type.is_unresolved {
-		type = resolve(function, function.return_type)
+	return_type = function.return_type
 
-		if type !== none {
-			# Update the return type
-			function.return_type = type
-		}
+	if return_type !== none and not return_type.is_resolved {
+		return_type = resolve(function, return_type)
+		if return_type !== none { function.return_type = return_type }
 	}
 }
 
@@ -232,13 +230,14 @@ resolve_virtual_functions(type: Type): _ {
 		# Find all overrides with the same name as the virtual function
 		result = type.get_override(virtual_function.name)
 		if result == none continue
-		overloads = result.overloads
+
+		override_function_overloads = result.overloads
 
 		# Take out the expected parameter types
 		expected = List<Type>()
 		loop parameter in virtual_function.parameters { expected.add(parameter.type) }
 
-		loop overload in overloads {
+		loop overload in override_function_overloads {
 			# Ensure the actual parameter types match the expected types
 			actual = List<Type>(overload.parameters.size, false)
 			loop parameter in overload.parameters { actual.add(parameter.type) }
@@ -295,6 +294,17 @@ resolve_supertypes(context: Context, type: Type): _ {
 	}
 }
 
+# Summary: Generates deinitializer code in the specified node tree
+resolve_deinitializers(node: Node): _ {
+	deinitializers = node.find_all(NODE_DEINITIALIZER).reverse()
+
+	loop deinitializer in deinitializers {
+		context = deinitializer.get_parent_context()
+		deinitializer.(DeinitializerNode).generate(context)
+		deinitializer.remove()
+	}
+}
+
 # Summary: Tries to resolve every problem in the specified context
 resolve_context(context: Context): _ {
 	functions = common.get_all_visible_functions(context)
@@ -334,7 +344,9 @@ resolve_context(context: Context): _ {
 		resolve_variables(implementation)
 
 		if implementation.node == none continue
+
 		resolve_tree(implementation, implementation.node)
+		resolve_deinitializers(implementation.node)
 	}
 
 	# Resolve constants
@@ -377,6 +389,41 @@ get_import_report(context: Context, errors: List<Status>): _ {
 	}
 }
 
+# Summary: Returns whether the specified type contains a member of the target type that causes an illegal cycle.
+find_illegal_cyclic_member(type: Type, target: Type, trace: Map<Type, bool>): bool {
+	# Remember that the current type has been visited, so that we do not get stuck in a loop
+	trace[type] = true
+
+	loop iterator in type.variables {
+		member_type = iterator.value.type
+
+		# If the member is the target type, return true
+		if member_type === target return true
+
+		# If the member is not a pack or inlining type, skip it
+		if member_type === none or not (member_type.is_pack or member_type.is_inlining) continue
+
+		# If the member has already been visited, skip it
+		if trace.contains_key(member_type) continue
+
+		# If the member is a pack or inlining type, check it recursively
+		if find_illegal_cyclic_member(member_type, target, trace) return true
+	}
+
+	return false
+}
+
+# Summary: Reports the specified type if it is illegally cyclic
+report_illegal_cyclic_type(type: Type, errors: List<Status>): _ {
+	# Only packs and inlining types might have illegal cycles
+	if not (type.is_pack or type.is_inlining) return
+
+	# Attempt to find a member of the type that causes an illegal cycle
+	if not find_illegal_cyclic_member(type, type, Map<Type, bool>()) return
+
+	errors.add(Status(type.position, 'Illegal cyclic type'))
+}
+
 get_type_report(type: Type): List<Status> {
 	errors = List<Status>()
 
@@ -386,6 +433,8 @@ get_type_report(type: Type): List<Status> {
 	if not (type.parent.is_global or type.parent.is_namespace) {
 		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
 	}
+
+	report_illegal_cyclic_type(type, errors)
 
 	loop iterator in type.variables {
 		variable = iterator.value
@@ -405,12 +454,35 @@ get_type_report(type: Type): List<Status> {
 	return errors
 }
 
+get_function_report(function: Function): List<Status> {
+	errors = List<Status>()
+	if function.is_template_function return errors
+
+	loop parameter in function.parameters {
+		# Explicit parameter types are optional, but they must be resolved if specified
+		if parameter.type === none or parameter.type.is_resolved continue
+		errors.add(Status(parameter.position, "Can not resolve the type of the parameter " + parameter.name))
+	}
+
+	# Explicit return types are optional, but they must be resolved if specified
+	if function.return_type !== none {
+		if function.return_type.is_unresolved {
+			errors.add(Status(function.start, 'Can not resolve the return type'))
+		}
+		else function.return_type.is_array_type {
+			errors.add(Status(function.start, 'Array type is not allowed as a return type'))
+		}
+	}
+
+	return errors
+}
+
 get_function_report(implementation: FunctionImplementation): List<Status> {
 	errors = List<Status>()
 
 	loop variable in implementation.locals {
 		if variable.is_resolved continue
-		errors.add(Status(variable.position, 'Can not resolve the type of the variable'))
+		errors.add(Status(variable.position, "Can not resolve the type of the variable " + variable.name))
 	}
 
 	if implementation.return_type === none or implementation.return_type.is_unresolved {
@@ -435,6 +507,13 @@ get_report(context: Context, root: Node): List<Status> {
 
 	loop type in types {
 		errors.add_all(get_type_report(type))
+	}
+
+	# Report errors in function headers
+	functions = common.get_all_visible_functions(context)
+
+	loop function in functions {
+		errors.add_all(get_function_report(function))
 	}
 
 	# Report errors in defined functions
@@ -480,9 +559,7 @@ register_default_functions(context: Context): _ {
 	inheritance_function_overloads = context.get_function("internal_is")
 	if inheritance_function_overloads == none abort('Missing the inheritance function, please implement it or include the standard library')
 
-	types = List<Type>(2, false)
-	types.add(Link())
-	types.add(Link())
+	types = [ Link() as Type, Link() as Type ]
 	
 	settings.inheritance_function = inheritance_function_overloads.get_implementation(types)
 	if settings.inheritance_function == none abort('Missing the inheritance function, please implement it or include the standard library')
@@ -549,7 +626,7 @@ resolve(): Status {
 	loop {
 		previous = current
 
-		parser.apply_extension_functions(context, root)
+		parser.apply_extension_functions(context, root) # Todo: Remove?
 		parser.implement_functions(context, settings.build_filter, false)
 
 		# Try to resolve problems in the node tree and get the status after that
@@ -574,7 +651,7 @@ resolve(): Status {
 
 	# The compiler must not continue if there are errors in the report
 	if current.size > 0 {
-		complain(current)
+		common.report(current)
 		return Status('Compilation error')
 	}
 

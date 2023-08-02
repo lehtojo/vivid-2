@@ -26,8 +26,11 @@ create_variable_handle(unit: Unit, variable: Variable, mode: large): Handle {
 			abort('Global packs are not supported yet')
 		}
 
-		handle = DataSectionHandle(variable.get_static_name(), false)
+		address = variable.is_inlined or variable.type.is_array_type
+		handle = DataSectionHandle(variable.get_static_name(), address)
+
 		if settings.use_indirect_access_tables { handle.modifier = DATA_SECTION_MODIFIER_GLOBAL_OFFSET_TABLE }
+
 		return handle
 	}
 

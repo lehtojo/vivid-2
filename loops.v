@@ -8,13 +8,7 @@ build_command(unit: Unit, node: CommandNode): Result {
 	if node.container == none abort('Loop command was not inside a loop')
 
 	if node.instruction == Keywords.STOP {
-		# TODO: Support conditions
-		#if node.condition != none arithmetic.build_condition(unit, node.condition)
-
 		label = node.container.exit_label
-
-		# TODO: Support conditions
-		#if node.condition != none return JumpInstruction(unit, node.condition.operator, false, not node.condition.is_decimal, label).add()
 
 		return JumpInstruction(unit, label).add()
 	}

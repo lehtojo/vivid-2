@@ -188,6 +188,7 @@ initialize(): _ {
 	add_pattern(IterationLoopPattern())
 	add_pattern(TemplateFunctionPattern())
 	add_pattern(TemplateFunctionCallPattern())
+	add_pattern(TemplateTypeMemberAccessPattern())
 	add_pattern(TemplateTypePattern())
 	add_pattern(VirtualFunctionPattern())
 	add_pattern(SpecificModificationPattern())
@@ -202,52 +203,75 @@ initialize(): _ {
 	add_pattern(ExtensionFunctionPattern())
 	add_pattern(WhenPattern())
 	add_pattern(UsingPattern())
+	add_pattern(GlobalScopeAccessPattern())
+	add_pattern(DeinitializerPattern())
 }
 
 # Summary: Returns whether the specified pattern can be built at the specified position
 fits(pattern: Pattern, tokens: List<Token>, start: large, state: ParserState): bool {
 	path = pattern.path
-	result = List<Token>(path.size, false)
+	consumed = 0
 
-	i = 0
-	j = 0
-
-	loop (i < path.size, i++) {
-		types = path[i]
+	# First, attempt fitting the pattern without collecting tokens, because most patterns fail
+	loop (path_index = 0, path_index < path.size, path_index++) {
+		types = path[path_index]
+		token_index = start + consumed
 
 		# Ensure there is a token available
-		if start + j >= tokens.size {
+		if token_index >= tokens.size {
 			# If the token type is optional on the path, we can add a none token even though there are no tokens available
-			if has_flag(types, TOKEN_TYPE_OPTIONAL) {
-				result.add(Token(TOKEN_TYPE_NONE))
-				continue
-			}
+			if has_flag(types, TOKEN_TYPE_OPTIONAL) continue
 
 			return false
 		}
 
-		token = tokens[start + j]
-		type = token.type
-		
+		type = tokens[token_index].type
+
 		# Add the token if the allowed types contains its type
 		if has_flag(types, type) {
-			result.add(token)
-			j++
+			consumed++
+			continue
 		}
-		else has_flag(types, TOKEN_TYPE_OPTIONAL) {
-			result.add(Token(TOKEN_TYPE_NONE))
-			# NOTE: Do not skip the current token, since it was not consumed
+
+		# If the allowed types contain optional, we can just ignore the current token
+		if has_flag(types, TOKEN_TYPE_OPTIONAL) {
+			# Note: Do not skip the current token, since it was not consumed
+			continue
 		}
-		else {
-			result.clear()
-			return false
-		}
+
+		return false
 	}
 
-	state.tokens = result
+	# Since we ended up here, it means the pattern was successfully consumed.
+	# Now collect the tokens that were consumed by the pattern.
+	consumed_tokens = List<Token>()
+
+	consumed = 0
+
+	loop (path_index = 0, path_index < path.size, path_index++) {
+		types = path[path_index]
+		token_index = start + consumed
+
+		if token_index >= tokens.size {
+			consumed_tokens.add(Token(TOKEN_TYPE_NONE))
+			continue
+		}
+
+		token = tokens[token_index]
+
+		if not has_flag(types, token.type) {
+			consumed_tokens.add(Token(TOKEN_TYPE_NONE))
+			continue
+		}
+
+		consumed_tokens.add(token)
+		consumed++
+	}
+
+	state.tokens = consumed_tokens
 	state.pattern = pattern
 	state.start = start
-	state.end = start + j
+	state.end = start + consumed
 
 	return true
 }
@@ -449,7 +473,7 @@ parse_section(root: Node, context: Context, tokens: List<Token>, min: normal, ma
 		loop {
 			if not next(context, tokens, priority, 0, state) stop
 			
-			state.error = none
+			state.error = none as Status
 			node = state.pattern.build(context, state, state.tokens)
 
 			# Remove the consumed tokens
@@ -497,6 +521,7 @@ parse(root: Node, context: Context, tokens: List<Token>, min: normal, max: norma
 
 		if result.problematic {
 			clear_sections(sections)
+			root.add(ErrorNode(result))
 			return result
 		}
 	}
@@ -568,7 +593,13 @@ create_root_node(context: Context): ScopeNode {
 # Summary: Finds all the extension functions under the specified node and tries to apply them
 apply_extension_functions(context: Context, root: Node): _ {
 	extensions = root.find_all(NODE_EXTENSION_FUNCTION)
-	loop extension in extensions { resolver.resolve(context, extension) }
+
+	loop extension in extensions {
+		result = extension.(ExtensionFunctionNode).resolve(context)
+		if result === none { result = ErrorNode(extension.get_status()) }
+
+		extension.replace(result)
+	}
 }
 
 # Summary: Ensures that all exported and imported functions are implemented
@@ -770,7 +801,7 @@ parse(): Status {
 		result = parse(root, context, file.tokens)
 
 		if result.problematic {
-			resolver.output(result)
+			common.report(result)
 		}
 
 		file.root = root
@@ -795,7 +826,7 @@ parse(): Status {
 			importer.import_static_library(context, library, files, object_files)
 		}
 		else {
-			# console.write_line('Warning: Shared libraries are not supported yet')
+			# Shared libraries could distribute source code as well (custom section)?
 		}
 	}
 
@@ -807,7 +838,7 @@ parse(): Status {
 	# Parse all namespaces
 	loop node in root.find_all(NODE_NAMESPACE) { node.(NamespaceNode).parse(context) }
 
-	# Applies all extension function
+	# Applies all extension functions
 	apply_extension_functions(context, root)
 
 	# Validate the shell before proceeding
@@ -1028,7 +1059,7 @@ print(node: Node, indentation: large, total: large): _ {
 }
 
 # Summary: Returns whether the token matches the specified character
-Token.match(value: char) {
+(Token).match(value: char): bool {
 	if type != TOKEN_TYPE_PARENTHESIS return false
 	if value == `{` return this.(ParenthesisToken).opening == `{`
 	if value == `(` return this.(ParenthesisToken).opening == `(`
@@ -1037,11 +1068,11 @@ Token.match(value: char) {
 }
 
 # Summary: Returns whether the token represents the specified operator
-Token.match(operator: Operator) {
+(Token).match(operator: Operator): bool {
 	return type == TOKEN_TYPE_OPERATOR and this.(OperatorToken).operator == operator
 }
 
 # Summary: Returns whether the token represents the specified keyword
-Token.match(keyword: Keyword) {
+(Token).match(keyword: Keyword): bool {
 	return type == TOKEN_TYPE_KEYWORD and this.(KeywordToken).keyword == keyword
 }

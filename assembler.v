@@ -203,7 +203,7 @@ Register {
 	}
 
 	reset(): _ {
-		value = none
+		value = none as Result
 	}
 
 	string(): String {
@@ -588,8 +588,8 @@ Unit {
 	}
 
 	init() {
-		this.function = none
-		this.self = none
+		this.function = none as FunctionImplementation
+		this.self = none as Variable
 		this.builder = StringBuilder()
 
 		if settings.is_x64 { load_architecture_x64() }
@@ -1544,7 +1544,7 @@ get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	loop instruction in unit.instructions { instruction.reindex() }
 
 	# Build:
-	unit.scope = none
+	unit.scope = none as Scope
 	unit.stack_offset = 0
 	unit.mode = UNIT_MODE_BUILD
 
@@ -1644,7 +1644,7 @@ get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	allocate_constant_data_section_handles(unit, constant_data_section_handles)
 
 	# Postprocess the instructions before giving them to the builder
-	# postprocess(instructions) TODO: Enable back
+	postprocess(instructions)
 
 	file = unit.function.metadata.start.file
 
@@ -1815,7 +1815,10 @@ add_table(builder: AssemblyBuilder, table: Table, marker: large): _ {
 			TABLE_ITEM_LABEL => String(to_data_section_allocator(SYSTEM_BYTES)) + ` ` + item.(LabelTableItem).value.name
 			TABLE_ITEM_LABEL_OFFSET => String(LONG_ALLOCATOR) + ` ` + item.(LabelOffsetTableItem).value.to.name + ' - ' + item.(LabelOffsetTableItem).value.from.name
 			TABLE_ITEM_TABLE_LABEL => add_table_label(item.(TableLabelTableItem).value)
-			else => abort('Invalid table item') as String
+			else => {
+				abort('Invalid table item')
+				none as String
+			}
 		}
 
 		builder.write_line(result)

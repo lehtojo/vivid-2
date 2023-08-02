@@ -100,6 +100,11 @@ export StringBuilder {
 		position += length
 	}
 
+	# Summary: Inserts the specified string into the specified index
+	insert(index: large, string: String): _ {
+		insert(index, string.data, string.length)
+	}
+
 	insert(index: large, character: char): _ {
 		if position + 1 > capacity grow(1)
 		move(buffer + index, buffer + index + 1, position - index)
@@ -133,6 +138,21 @@ export StringBuilder {
 		}
 	}
 
+	# Summary: Replaces the specified region with the replacement
+	replace(start: large, end: large, replacement: String): _ {
+		remove(start, end)
+		insert(start, replacement)
+	}
+
+	# Summary: Fills the specified region with the specified character
+	fill(start: large, end: large, character: char): _ {
+		require(start >= 0 and start <= end and end <= position, 'Index out of bounds')
+
+		loop (i = start, i < end, i++) {
+			buffer[i] = character
+		}
+	}
+
 	reverse(): _ {
 		count = position / 2
 
@@ -143,9 +163,46 @@ export StringBuilder {
 		}
 	}
 
+	index_of(value: char): large {
+		return global.index_of(buffer, position, value, 0) 
+	}
+
+	index_of(value: char, start: large): large {
+		return global.index_of(buffer, position, value, start)
+	}
+
+	index_of(value: link): large {
+		return global.index_of(buffer, position, value, length_of(value))
+	}
+
+	index_of(value: link, start: large): large {
+		return global.index_of(buffer, position, value, length_of(value), start)
+	}
+
+	index_of(value: String, start: large): large {
+		return global.index_of(buffer, position, value.data, value.length, start)
+	}
+
+	last_index_of(value: char, before: large): large {
+		return global.last_index_of(buffer, position, value, before)
+	}
+
+	last_index_of(value: char): large {
+		return global.last_index_of(buffer, position, value, length)
+	}
+
+	slice(start: large, end: large): String {
+		return String(buffer + start, end - start)
+	}
+
 	get(i: large): u8 {
 		require(i >= 0 and i < position, 'Index out of bounds')
 		return buffer[i]
+	}
+
+	set(i: large, value: u8) {
+		require(i >= 0 and i < position, 'Index out of bounds')
+		buffer[i] = value
 	}
 
 	string(): String {

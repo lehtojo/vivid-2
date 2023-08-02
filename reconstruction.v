@@ -1332,7 +1332,7 @@ rewrite_lambda_constructions(root: Node): _ {
 
 		# If system mode is enabled, lambdas are just function pointers and capturing variables is not allowed
 		if settings.is_system_mode_enabled {
-			function_pointer_assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+			function_pointer_assignment: OperatorNode = OperatorNode(Operators.ASSIGN, position).set_operands(
 				VariableNode(container.result),
 				FunctionDataPointerNode(implementation, 0, position)
 			)
@@ -1360,7 +1360,7 @@ rewrite_lambda_constructions(root: Node): _ {
 
 		container.node.add(allocation)
 
-		function_pointer_assignment = OperatorNode(Operators.ASSIGN, position).set_operands(
+		function_pointer_assignment: OperatorNode = OperatorNode(Operators.ASSIGN, position).set_operands(
 			LinkNode(CastNode(VariableNode(container.result), TypeNode(type), position), VariableNode(implementation.function), position),
 			FunctionDataPointerNode(implementation, 0, position)
 		)

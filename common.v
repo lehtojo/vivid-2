@@ -22,6 +22,17 @@ ACCESS_TYPE_WRITE = 2
 
 namespace common
 
+# Summary: Creates an identical list of tokens compared to the specified list
+clone(tokens: List<Token>): List<Token> {
+	clone = List<Token>(tokens.size, true)
+
+	loop (i = 0, i < tokens.size, i++) {
+		clone[i] = tokens[i].clone()
+	}
+
+	return clone
+}
+
 get_self_pointer(context: Context, position: Position): Node {
 	self = context.get_self_pointer()
 	if self != none return VariableNode(self, position) as Node
@@ -70,6 +81,22 @@ read_type_component(context: Context, tokens: List<Token>): UnresolvedTypeCompon
 	}
 
 	return UnresolvedTypeComponent(name)
+}
+
+# Summary: Reads type components from the specified tokens
+read_type_components(context: Context, tokens: List<Token>): List<UnresolvedTypeComponent> {
+	components = List<UnresolvedTypeComponent>()
+
+	loop {
+		components.add(read_type_component(context, tokens))
+
+		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
+		if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
+
+		tokens.pop_or(none as Token)
+	}
+
+	return components
 }
 
 # Summary: Reads a type which represents a function from the specified tokens
@@ -142,17 +169,7 @@ read_type(context: Context, tokens: List<Token>): Type {
 	# Self return type:
 	if next.(IdentifierToken).value == SELF_POINTER_IDENTIFIER return primitives.SELF
 
-	components = List<UnresolvedTypeComponent>()
-
-	loop {
-		components.add(read_type_component(context, tokens))
-
-		# Stop collecting type components if there are no tokens left or if the next token is not a dot operator
-		if tokens.size == 0 or not tokens[].match(Operators.DOT) stop
-
-		tokens.pop_or(none as Token)
-	}
-
+	components = read_type_components(context, tokens)
 	type = UnresolvedType(components, position)
 
 	# If there are no more tokens, return the type
@@ -249,6 +266,33 @@ consume_template_arguments(state: ParserState): bool {
 		}
 
 		# The template arguments must be invalid
+		return false
+	}
+}
+
+# Summary:
+# Pattern: <T1, T2, ..., Tn>
+consume_template_parameters(state: ParserState): bool {
+	# Next there must be the opening of the template parameters
+	if not state.consume_operator(Operators.LESS_THAN) return false
+
+	# Keep track whether at least one parameter has been consumed
+	is_parameter_consumed = false
+
+	loop {
+		# If the next token is a greater than operator, it means the template parameters have ended
+		if state.consume_operator(Operators.GREATER_THAN) return is_parameter_consumed
+
+		# If the next token is a comma, it means the template parameters have not ended
+		if state.consume_operator(Operators.COMMA) continue
+
+		# Now we expect a template parameter name
+		if state.consume(TOKEN_TYPE_IDENTIFIER) {
+			is_parameter_consumed = true
+			continue
+		}
+
+		# The template parameters must be invalid
 		return false
 	}
 }
@@ -413,7 +457,7 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large): Sta
 		loop {
 			if not parser.next_consumable(context, tokens, priority, 0, state, disabled) stop
 			
-			state.error = none
+			state.error = none as Status
 			node = state.pattern.build(context, state, state.tokens)
 
 			length = state.end - state.start
@@ -478,17 +522,18 @@ consume_block(from: ParserState, destination: List<Token>, disabled: large): Sta
 	return none as Status
 }
 
-get_template_parameters(template_parameter_tokens: List<Token>): List<String> {
-	template_parameters = List<String>()
+# Summary:
+# Returns the template parameters from the specified tokens.
+get_template_parameters(tokens: List<Token>): List<String> {
+	parameters = List<String>()
 
-	loop (i = 0, i < template_parameter_tokens.size, i++) {
-		if i % 2 != 0 continue
-		if template_parameter_tokens[i].type != TOKEN_TYPE_IDENTIFIER abort('Template parameter tokens were invalid')
+	loop (i = 0, i < tokens.size, i += 2) {
+		require(tokens[i].type == TOKEN_TYPE_IDENTIFIER, 'Template parameter tokens were invalid')
 
-		template_parameters.add(template_parameter_tokens[i].(IdentifierToken).value)
+		parameters.add(tokens[i].(IdentifierToken).value)
 	}
 
-	return template_parameters
+	return parameters
 }
 
 # Summary: Returns whether the two specified types are compatible
@@ -850,6 +895,15 @@ get_editor(edited: Node): Node {
 	abort('Could not find the editor node')
 }
 
+# Summary: Attempts to return the context of the specified node. If there is no context, none is returned.
+get_context(node: Node): Context {
+	# If the node is a special context node (global scope syntax for example), return its context
+	if node.instance == NODE_CONTEXT return node.(ContextNode).context
+
+	# If the node has a type, return the type as a context
+	return node.try_get_type()
+}
+
 # Summary: Returns whether the specified node represents a statement
 is_statement(node: Node): bool {
 	type = node.instance
@@ -1065,11 +1119,15 @@ align_members(type: Type): _ {
 
 	# Member variables:
 	loop iterator in type.variables {
-		variable = iterator.value
-		if variable.is_static or variable.is_constant continue
-		variable.alignment = position
-		variable.is_aligned = true
-		position += variable.type.allocation_size
+		member = iterator.value
+		if member.is_static or member.is_constant continue
+
+		member.alignment = position
+		member.is_aligned = true
+
+		# Move over the member
+		if member.is_inlined { position += member.type.content_size }
+		else { position += member.type.allocation_size }
 	}
 }
 
@@ -1126,7 +1184,113 @@ get_non_static_members(type: Type): List<Variable> {
 }
 
 # Summary:
-# Returns true if the specified node represents integer zero
+# Computes the number of bytes of stack memory required to pass parameters to calls
+compute_parameter_overflow(call_instructions: List<CallInstruction>): large {
+	if call_instructions.size == 0 return 0
+
+	# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
+	max_parameter_memory_offset = -1
+
+	loop call in call_instructions {
+		loop destination in call.destinations {
+			if destination.type != HANDLE_MEMORY continue
+			
+			offset = destination.(MemoryHandle).offset
+			if offset > max_parameter_memory_offset { max_parameter_memory_offset = offset }
+		}
+	}
+
+	# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
+	if max_parameter_memory_offset < 0 {
+		# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
+		if settings.is_target_windows return calls.SHADOW_SPACE_SIZE
+		return 0
+	}
+
+	return max_parameter_memory_offset + SYSTEM_BYTES
+}
+
+# Summary: Computes the number of bytes of stack memory required to receive the specified pack type as return value
+compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>): large {
+	loop iterator in type.variables {
+		member = iterator.value
+
+		# Do not process static or constant member variables
+		if member.is_static or member.is_constant continue
+
+		if member.type.is_pack {
+			overflow = compute_return_overflow(member.type, overflow, standard_parameter_registers, decimal_parameter_registers)
+			continue
+		}
+
+		# First, drain out the registers
+		register = none as Register
+
+		if member.type.format == FORMAT_DECIMAL {
+			register = decimal_parameter_registers.pop_or(none as Register)
+		}
+		else {
+			register = standard_parameter_registers.pop_or(none as Register)
+		}
+
+		if register != none continue
+		overflow += SYSTEM_BYTES
+	}
+
+	return overflow
+}
+
+# Summary: Computes the number of bytes of stack memory required to receive the specified pack type as return value
+compute_return_overflow(unit: Unit, type: Type): large {
+	decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
+	standard_parameter_registers = calls.get_standard_parameter_registers(unit)
+
+	return compute_return_overflow(type, 0, standard_parameter_registers, decimal_parameter_registers)
+}
+
+# Summary: Computes the number of bytes of stack memory to receive the return values from the specified calls
+compute_return_overflow(unit: Unit, call_instructions: List<CallInstruction>): large {
+	overflow = 0
+
+	loop call in call_instructions {
+		# Note: Non-pack types will not require any stack memory
+		if call.return_type === none or not call.return_type.is_pack continue
+
+		overflow = max(overflow, compute_return_overflow(unit, call.return_type))
+	}
+
+	return overflow
+}
+
+# Summary: Returns true if the specified node represents integer zero
 is_zero(node: Node): bool {
 	return node != none and node.instance == NODE_NUMBER and node.(NumberNode).value == 0
+}
+
+# Summary: Reports the specified error to the user
+report(error: Status): _ {
+	position = error.position
+
+	if position === none {
+		console.write('<unknown>')
+	}
+	else {
+		file = position.file
+
+		if file != none console.write(file.fullname)
+		else { console.write('<unknown>') }
+
+		console.write(':')
+		console.write(position.line + 1)
+		console.write(':')
+		console.write(position.character + 1)
+	}
+
+	console.write(': \e[1;31mError\e[0m: ')
+	console.write_line(error.message)
+}
+
+# Summary: Reports the specified errors to the user
+report(errors: List<Status>): _ {
+	loop error in errors { report(error) }
 }

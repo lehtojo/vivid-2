@@ -8,15 +8,15 @@ namespace Foo {
 
 Factory {}
 
-Foo.is_larger<Ta, Tb>() {
+(Foo).is_larger<Ta, Tb>(): bool {
 	return strideof(Ta) > strideof(Tb)
 }
 
-Foo.Bar.Counter.increment() {
+(Foo.Bar.Counter).increment() {
 	return ++value
 }
 
-Factory.create<T>() {
+(Factory).create<T>(): T {
 	console.write_line(String('Factory created new ') + nameof(T))
 	return T()
 }

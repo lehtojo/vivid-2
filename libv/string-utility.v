@@ -11,11 +11,50 @@ export length_of(text: link): large {
 }
 
 # Summary: Returns the index of the first occurrence of the specified character in the specified string
-export index_of(string: link, character: char): large {
-	length = length_of(string)
-
-	loop (i = 0, i < length, i++) {
+export index_of(string: link, string_length: large, character: char, start: large): large {
+	loop (i = start, i < string_length, i++) {
 		if string[i] == character return i
+	}
+
+	return -1
+}
+
+
+# Summary: Returns the index of the first occurrence of the specified character in the specified string
+export index_of(string: link, character: char): large {
+	return index_of(string, length_of(string), character, 0)
+}
+
+# Summary: Returns the index of the first occurrence of the specified string
+export index_of(string: link, string_length: large, value: link, value_length: large): large {
+	return index_of(string, string_length, value, value_length, 0)
+}
+
+# Summary: Returns the index of the first occurrence of the specified string
+export index_of(string: link, string_length: large, value: link, value_length: large, start: large): large {
+	require(start >= 0 and start <= string_length, 'Invalid start index')
+
+	loop (i = start, i <= string_length - value_length, i++) {
+		match = true
+
+		loop (j = 0, j < value_length, j++) {
+			if string[i + j] == value[j] continue
+			match = false
+			stop
+		}
+
+		if match return i
+	}
+
+	return -1
+}
+
+# Summary: Returns the index of the last occurrence of the specified character before the specified position
+export last_index_of(string: link, string_length: large, value: char, before: large): large {
+	require(before >= 0 and before <= string_length, 'Invalid before index')
+
+	loop (i = before - 1, i >= 0, i--) {
+		if string[i] == value return i
 	}
 
 	return -1

@@ -392,6 +392,16 @@ List<T> {
 		return -1
 	}
 
+	# Summary: Returns the index of the last element, which passes the specified filter, otherwise the function returns -1
+	find_last_index(filter: (T) -> bool) {
+		loop (i = size - 1, i >= 0, i--) {
+			element = data[i]
+			if filter(element) return i
+		}
+
+		return -1
+	}
+
 	# Summary: Returns the first element to produce the maximum value using the specified mapper
 	find_max(mapper: (T) -> large): T {
 		if size == 0 panic('Can not find the maximum value of an empty list')

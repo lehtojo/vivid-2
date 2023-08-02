@@ -777,28 +777,7 @@ Instruction InitializeInstruction {
 	}
 
 	get_required_call_memory(call_instructions: List<CallInstruction>): large {
-		if call_instructions.size == 0 return 0
-
-		# Find all parameter move instructions which move the source value into memory and determine the maximum offset used in them
-		max_parameter_memory_offset = -1
-
-		loop call in call_instructions {
-			loop destination in call.destinations {
-				if destination.type != HANDLE_MEMORY continue
-				
-				offset = destination.(MemoryHandle).offset
-				if offset > max_parameter_memory_offset { max_parameter_memory_offset = offset }
-			}
-		}
-
-		# Call parameter offsets are always positive, so if the maximum offset is negative, it means that there are no parameters
-		if max_parameter_memory_offset < 0 {
-			# Even though no instruction writes to memory, on Windows there is a requirement to allocate so called 'shadow space' for the first four parameters
-			if settings.is_target_windows return calls.SHADOW_SPACE_SIZE
-			return 0
-		}
-
-		return max_parameter_memory_offset + SYSTEM_BYTES
+		return max(common.compute_parameter_overflow(call_instructions), common.compute_return_overflow(unit, call_instructions))
 	}
 
 	save_registers_x64(builder: StringBuilder, registers: List<Register>): _ {
@@ -973,7 +952,7 @@ Instruction SetVariableInstruction {
 Instruction CallInstruction {
 	function: Result
 	return_type: Type
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	# Represents the destination handles where the required parameters are passed to
 	destinations: List<Handle> = List<Handle>()
@@ -1188,7 +1167,7 @@ Instruction ReorderInstruction {
 
 	init(unit: Unit, destinations: List<Handle>, sources: List<Result>, return_type: Type) {
 		Instruction.init(unit, INSTRUCTION_REORDER)
-		this.dependencies = none
+		this.dependencies = none as List<Result>
 		this.destinations = destinations
 		this.formats = List<large>(destinations.size, false)
 		this.return_type = return_type
@@ -1197,46 +1176,11 @@ Instruction ReorderInstruction {
 		loop iterator in destinations { formats.add(iterator.format) }
 	}
 
-	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type, overflow: large, standard_parameter_registers: List<Register>, decimal_parameter_registers: List<Register>): large {
-		loop iterator in type.variables {
-			member = iterator.value
-
-			if member.type.is_pack {
-				overflow = compute_return_overflow(member.type, overflow, standard_parameter_registers, decimal_parameter_registers)
-				continue
-			}
-
-			# First, drain out the registers
-			register = none as Register
-
-			if member.type.format == FORMAT_DECIMAL {
-				register = decimal_parameter_registers.pop_or(none as Register)
-			}
-			else {
-				register = standard_parameter_registers.pop_or(none as Register)
-			}
-
-			if register != none continue
-			overflow += SYSTEM_BYTES
-		}
-
-		return overflow
-	}
-
-	# Summary: Returns how many bytes of the specified type are returned using the stack
-	compute_return_overflow(type: Type): large {
-		decimal_parameter_registers = calls.get_decimal_parameter_registers(unit)
-		standard_parameter_registers = calls.get_standard_parameter_registers(unit)
-
-		return compute_return_overflow(type, 0, decimal_parameter_registers, standard_parameter_registers)
-	}
-
 	# Summary: Evacuates variables that are located at the overflow zone of the stack
 	evacuate_overflow_zone(type: Type): _ {
 		shadow_space_size = 0
 		if settings.is_target_windows { shadow_space_size = calls.SHADOW_SPACE_SIZE }
-		overflow = max(compute_return_overflow(type), shadow_space_size)
+		overflow = max(common.compute_return_overflow(unit, type), shadow_space_size)
 
 		loop iterator in unit.scope.variables {
 			# Find all memory handles
@@ -1394,7 +1338,7 @@ Instruction GetObjectPointerInstruction {
 	start: Result
 	offset: large
 	mode: large
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	init(unit: Unit, variable: Variable, start: Result, offset: large, mode: large) {
 		Instruction.init(unit, INSTRUCTION_GET_OBJECT_POINTER)
@@ -1510,7 +1454,7 @@ Instruction GetMemoryAddressInstruction {
 	offset: Result
 	stride: large
 	mode: large
-	return_pack: DisposablePackHandle = none
+	return_pack: DisposablePackHandle = none as DisposablePackHandle
 
 	init(unit: Unit, type: Type, format: large, start: Result, offset: Result, stride: large, mode: large) {
 		Instruction.init(unit, INSTRUCTION_GET_MEMORY_ADDRESS)
@@ -1673,7 +1617,7 @@ Instruction JumpInstruction {
 	init(unit: Unit, label: Label) {
 		Instruction.init(unit, INSTRUCTION_JUMP)
 		this.label = label
-		this.comparator = none
+		this.comparator = none as ComparisonOperator
 	}
 
 	init(unit: Unit, comparator: ComparisonOperator, invert: bool, signed: bool, label: Label) {

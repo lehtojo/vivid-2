@@ -73,7 +73,7 @@ EncoderDebugFrameInformation EncoderDebugFrameOffsetInformation {
 
 EncoderModule {
 	index: large = 0
-	jump: Label = none
+	jump: Label = none as Label
 	is_conditional_jump: bool = false
 	is_short_jump: bool = false
 	instructions: List<Instruction> = List<Instruction>()
@@ -325,12 +325,12 @@ MemoryAddressDescriptor {
 		this.index = index
 		this.stride = stride
 		this.offset = offset
-		this.relocation = none
+		this.relocation = none as BinaryRelocation
 	}
 
 	init(symbol: String, modifier: large, offset: normal) {
-		this.start = none
-		this.index = none
+		this.start = none as Register
+		this.index = none as Register
 		this.stride = 0
 		this.offset = 0
 		this.relocation = BinaryRelocation(BinarySymbol(symbol, 0, true), 0, offset, data_access_modifier_to_relocation_type(modifier))
@@ -649,7 +649,10 @@ namespace instruction_encoder {
 			INSTANCE_CONSTANT_DATA_SECTION => MemoryAddressDescriptor(handle.(ConstantDataSectionHandle).identifier, handle.(DataSectionHandle).modifier, handle.(DataSectionHandle).offset),
 			INSTANCE_STACK_VARIABLE => MemoryAddressDescriptor(handle.(StackVariableHandle).get_start(), none as Register, 1, handle.(StackVariableHandle).get_offset()),
 			INSTANCE_TEMPORARY_MEMORY => MemoryAddressDescriptor(handle.(StackMemoryHandle).get_start(), none as Register, 1, handle.(StackMemoryHandle).get_offset()),
-			else => abort('Unsupported handle') as MemoryAddressDescriptor
+			else => {
+				abort('Unsupported handle')
+				none as MemoryAddressDescriptor
+			}
 		}
 	}
 
@@ -695,10 +698,15 @@ namespace instruction_encoder {
 	# Returns whether the specified handle passes the configured filter
 	private passes_size(value: Handle, filter: large, size: small): bool {
 		if value.instance == INSTANCE_CONSTANT {
-			if filter == ENCODING_FILTER_TYPE_CONSTANT return value.(ConstantHandle).bits / 8 <= size
+			encoding_bits = when(filter) {
+				ENCODING_FILTER_TYPE_CONSTANT => value.(ConstantHandle).bits,
 
-			# Do not care about the sign, just verify all the bits can be stored in the specified size
-			return get_number_of_bits_for_encoding(value.(ConstantHandle).value) / 8 <= size
+				# Do not care about the sign, just verify all the bits can be stored in the specified size
+				else => get_number_of_bits_for_encoding(value.(ConstantHandle).value)
+			}
+
+			# Size of the handle limits the size of the value
+			return min(encoding_bits / 8, value.size) <= size
 		}
 
 		return value.size == size

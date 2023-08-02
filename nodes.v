@@ -49,6 +49,9 @@ NODE_UNDEFINED = 1 <| 47
 NODE_OBJECT_LINK = 1 <| 48
 NODE_OBJECT_UNLINK = 1 <| 49
 NODE_USING = 1 <| 50
+NODE_ERROR = 1 <| 51
+NODE_CONTEXT = 1 <| 52
+NODE_DEINITIALIZER = 1 <| 53
 
 Node NumberNode {
 	value: large
@@ -64,7 +67,7 @@ Node NumberNode {
 
 	negate(): NumberNode {
 		if format == FORMAT_DECIMAL {
-			value = value ¤ [1 <| 63]
+			value = value ¤ (1 <| 63)
 		}
 		else {
 			value = -value
@@ -152,6 +155,9 @@ Node OperatorNode {
 		resolver.resolve(context, first)
 		resolver.resolve(context, last)
 
+		# Process implicit conversions
+		implicit_convertor.process(context, this)
+
 		# Check if the left node represents an accessor and if it is being assigned a value
 		if operator.type == OPERATOR_TYPE_ASSIGNMENT and first.match(NODE_ACCESSOR) {
 			result = try_resolve_as_setter_accessor()
@@ -208,6 +214,14 @@ Node OperatorNode {
 				none as Type
 			}
 		}
+	}
+
+	override get_status() {
+		if operator === Operators.ASSIGN and not common.compatible(first.try_get_type(), last.try_get_type()) {
+			return Status(start, 'Destination and source types are not compatible')
+		}
+
+		return none as Status
 	}
 
 	override copy() {
@@ -319,7 +333,7 @@ OperatorNode LinkNode {
 	override resolve(environment: Context) {
 		# Try to resolve the left node
 		resolver.resolve(environment, first)
-		primary = first.try_get_type()
+		primary = common.get_context(first)
 
 		# Do not try to resolve the right node without the type of the left
 		if primary == none return none as Node
@@ -340,10 +354,14 @@ OperatorNode LinkNode {
 			if types == none return none as Node
 
 			# Try to form a virtual function call
-			result = common.try_get_virtual_function_call(first, primary, function.name, function, types, start)
-			if result == none { result = common.try_get_lambda_call(primary, first, function.name, function, types) }
+			if primary.is_type { result = common.try_get_virtual_function_call(first, primary as Type, function.name, function, types, start) }
 
-			if result != none {
+			if result !== none return result
+
+			# Try to form a lambda function call
+			result = common.try_get_lambda_call(primary, first, function.name, function, types)
+
+			if result !== none {
 				result.start = start
 				return result
 			}
@@ -543,7 +561,7 @@ Node UnresolvedFunction {
 			if actual_types.size != overload.parameters.size return false
 
 			# Collect the expected parameter types
-			expected_types = overload.parameters.map<Type>((j: Parameter) -> j.type)
+			expected_types: List<Type> = overload.parameters.map<Type>((j: Parameter) -> j.type)
 
 			# Determine the final parameter types as follows:
 			# - Prefer the actual parameter types over the expected parameter types
@@ -1000,6 +1018,9 @@ Node ReturnNode {
 
 	override resolve(context: Context) {
 		if first !== none resolver.resolve(context, first)
+
+		# Process implicit conversions
+		implicit_convertor.process(context, this)
 		return none as Node
 	}
 
@@ -1022,7 +1043,14 @@ Node ReturnNode {
 		# Unit type represents no return type. Exceptionally allow returning units when the return type is unit.
 		has_return_type = not primitives.is_primitive(environment.(FunctionImplementation).return_type, primitives.UNIT)
 		has_return_value = first !== none and not primitives.is_primitive(return_value_type, primitives.UNIT)
-		if has_return_type == has_return_value return none as Status
+
+		if has_return_type == has_return_value {
+			if has_return_type and not common.compatible(return_value_type, environment.(FunctionImplementation).return_type) {
+				return Status(start, 'Type of the returned value is not compatible with the return type')
+			}
+
+			return none as Status
+		}
 
 		if has_return_type return Status(start, 'Can not return without a value, because the function has a return type')
 		return Status(start, 'Can not return with a value, because the function does not return a value')
@@ -2223,13 +2251,15 @@ Node ExtensionFunctionNode {
 	destination: Type
 	descriptor: FunctionToken
 	template_parameters: List<String>
+	return_type_tokens: List<Token>
 	body: List<Token>
 	end: Position
 
-	init(destination: Type, descriptor: FunctionToken, body: List<Token>, start: Position, end: Position) {
+	init(destination: Type, descriptor: FunctionToken, return_type_tokens: List<Token>, body: List<Token>, start: Position, end: Position) {
 		this.destination = destination
 		this.descriptor = descriptor
 		this.template_parameters = List<String>()
+		this.return_type_tokens = return_type_tokens
 		this.body = body
 		this.start = start
 		this.end = end
@@ -2237,10 +2267,11 @@ Node ExtensionFunctionNode {
 		this.is_resolvable = true
 	}
 
-	init(destination: Type, descriptor: FunctionToken, template_parameters: List<String>, body: List<Token>, start: Position, end: Position) {
+	init(destination: Type, descriptor: FunctionToken, template_parameters: List<String>, return_type_tokens: List<Token>, body: List<Token>, start: Position, end: Position) {
 		this.destination = destination
 		this.descriptor = descriptor
 		this.template_parameters = template_parameters
+		this.return_type_tokens = return_type_tokens
 		this.body = body
 		this.start = start
 		this.end = end
@@ -2252,7 +2283,8 @@ Node ExtensionFunctionNode {
 		if destination.is_unresolved {
 			resolved = resolver.resolve(context, destination)
 			if resolved == none return none as Node
-			this.destination = resolved
+
+			destination = resolved
 		}
 
 		function = none as Function
@@ -2261,11 +2293,19 @@ Node ExtensionFunctionNode {
 			function = TemplateFunction(destination, MODIFIER_DEFAULT, descriptor.name, template_parameters, descriptor.parameters.tokens, start, end)
 			function.(TemplateFunction).initialize()
 
-			token = ParenthesisToken(`{`, start, end, body)
 			function.blueprint.add(descriptor)
-			function.blueprint.add(token)
+			function.blueprint.add_all(return_type_tokens)
+			function.blueprint.add(ParenthesisToken(`{`, start, end, body))
 		}
 		else {
+			# Read the explicit return type if it is specified
+			return_type = none as Type
+
+			if return_type_tokens.size > 0 {
+				return_type = common.read_type(context, return_type_tokens, 1)
+				if return_type === none return none as Node
+			}
+
 			function = Function(destination, MODIFIER_DEFAULT, descriptor.name, body, start, end)
 
 			# Parse the parameters
@@ -2273,6 +2313,9 @@ Node ExtensionFunctionNode {
 			if result has not parameters return none as Node
 
 			function.parameters.add_all(parameters)
+
+			# Set the explicit return type if it is specified
+			function.return_type = return_type
 		}
 
 		# If the destination is a namespace, mark the function as a static function
@@ -2283,12 +2326,11 @@ Node ExtensionFunctionNode {
 	}
 
 	override get_status() {
-		message = "Can not resolve the destination " + destination.string() + ' of the extension function'
-		return Status(start, message)
+		return Status(start, 'Can not resolve the extension function')
 	}
 
 	override copy() {
-		return ExtensionFunctionNode(destination, descriptor, template_parameters, body, start, end)
+		return ExtensionFunctionNode(destination, descriptor, template_parameters, return_type_tokens, body, start, end)
 	}
 
 	override string() {
@@ -2344,7 +2386,10 @@ Node WhenNode {
 			NODE_IF => section.(IfNode).body
 			NODE_ELSE_IF => section.(ElseIfNode).body
 			NODE_ELSE => section.(ElseNode).body
-			else => abort('Unsupported section') as ScopeNode
+			else => {
+				abort('Unsupported section')
+				none as ScopeNode
+			}
 		}
 	}
 
@@ -2391,7 +2436,7 @@ Node WhenNode {
 }
 
 Node ListConstructionNode {
-	type: Type = none
+	type: Type = none as Type
 
 	init(elements: Node, position: Position) {
 		this.instance = NODE_LIST_CONSTRUCTION
@@ -2463,7 +2508,7 @@ Node ListConstructionNode {
 }
 
 Node PackConstructionNode {
-	type: Type = none
+	type: Type = none as Type
 	members: List<String>
 
 	init(members: List<String>, arguments: List<Node>, position: Position) {
@@ -2716,5 +2761,163 @@ Node UsingNode {
 
 	override string() {
 		return "Using"
+	}
+}
+
+Node ErrorNode {
+	error: Status
+
+	init(error: Status) {
+		this.instance = NODE_ERROR
+		this.error = error
+		this.start = error.position
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override get_status() {
+		return error
+	}
+
+	override copy() {
+		return ErrorNode(error)
+	}
+
+	override string() {
+		return "Error: " + error.message
+	}
+}
+
+Node ContextNode {
+	context: Context
+
+	init(context: Context, position: Position) {
+		this.instance = NODE_CONTEXT
+		this.context = context
+		this.start = position
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override copy() {
+		return ContextNode(context, start)
+	}
+
+	override string() {
+		return "Context " + context.identity
+	}
+}
+
+Node DeinitializerNode {
+	tokens: List<Token>
+
+	init(tokens: List<Token>, position: Position) {
+		this.instance = NODE_DEINITIALIZER
+		this.tokens = tokens
+		this.start = position
+		this.is_resolvable = true
+	}
+
+	# Summary: Adds the command statements (continue/stop) at which the deinitializer code should be executed in the specified loop
+	private add_loop_insertion_points(node: LoopNode, points: List<Node>): _ {
+		commands = node.find_all(NODE_COMMAND)
+
+		loop command in commands {
+			if command.(CommandNode).container !== node continue
+			points.add(command)
+		}
+	}
+
+	# Summary: Adds the points at which the deinitializer code should be executed in the specified scope
+	private add_insertion_points(scope: ScopeNode, points: List<Node>) {
+		# Place deinitializer code before each return
+		points.add_all(scope.find_all(NODE_RETURN))
+
+		# If the scope is the body of a loop,
+		# place the deinitializer code before each command statement (continue/stop) of that loop.
+		if scope.parent !== none and scope.parent.instance == NODE_LOOP and scope.parent.(LoopNode).body === scope {
+			add_loop_insertion_points(scope.parent as LoopNode, points)
+		}
+	}
+
+	# Summary: Inserts the deinitializer code at the specified point
+	private insert_deinitializer_code(point: Node): _ {
+		# Parse the deinitializer code at the specified point
+		point_context = point.get_parent_context()
+		deinitializer_code = parser.parse(point_context, common.clone(tokens), 0, parser.MAX_FUNCTION_BODY_PRIORITY)
+
+		# If the point is a return statement and it has a complex return value,
+		# ensure the return value is resolved before deinitializer code
+		if point.instance == NODE_RETURN {
+			return_value = point.(ReturnNode).value
+			return_value_position = return_value.start
+
+			if return_value !== none and not return_value.match(NODE_NUMBER | NODE_VARIABLE) {
+				# Remove the return value from the return statement, because we are going to replace it
+				return_value.remove()
+
+				# Create a hidden variable for the return value and give it the correct type if possible
+				return_value_variable = point_context.declare_hidden(return_value.try_get_type())
+
+				# Assign the return value to the hidden variable
+				assignment = OperatorNode(Operators.ASSIGN, return_value_position).set_operands(
+					VariableNode(return_value_variable, return_value_position),
+					return_value
+				)
+
+				# Place the assignment before the return statement and add the return value variable as return value
+				point.insert(assignment)
+				point.add(VariableNode(return_value_variable, return_value_position))
+			}
+		}
+
+		# Place the deinitializer code before the point
+		point.insert_children(deinitializer_code)
+	}
+
+	private insert_deinitializer_code_at_end_of_scope(context: Context, scope: Node): _ {
+		# Place deinitializer code at the end of the scope, if the last statement is not command (continue/stop) or return statement.
+		# Basically, add it if it can be executed.
+		last_node = scope.last
+
+		if last_node !== none and not last_node.match(NODE_COMMAND | NODE_RETURN) {
+			parser.parse(scope, context, common.clone(tokens))
+		}
+	}
+
+	generate(context: Context) {
+		# Find the parent scope, so that we can place deinitializer code at correct points
+		scope = find_parent(NODE_SCOPE) as ScopeNode
+
+		# Find the points where the deinitializer code should be placed
+		points = List<Node>()
+		add_insertion_points(scope, points)
+
+		# Add the deinitializer code at the points
+		loop point in points {
+			insert_deinitializer_code(point)
+		}
+
+		insert_deinitializer_code_at_end_of_scope(context, scope)
+	}
+
+	override try_get_type() {
+		return none as Type
+	}
+
+	override get_status() {
+		return Status(start, 'Can not generate deinitializer code')
+	}
+
+	override copy() {
+		return DeinitializerNode(tokens, start)
+	}
+
+	override string() {
+		return "Deinitializer"
 	}
 }

@@ -242,8 +242,8 @@ Instruction {
 
 	# Summary: Simulates the interactions between the instruction parameters such as relocating the source to the destination
 	apply_parameter_flags(): _ {
-		destination: Handle = none
-		source: Handle = none
+		destination: Handle = none as Handle
+		source: Handle = none as Handle
 
 		# Determine the destination and the source
 		loop (i = 0, i < parameters.size, i++) {
@@ -540,18 +540,10 @@ Instruction DualParameterInstruction {
 		this.second = second
 		this.unsigned = is_unsigned(format)
 		this.result.format = format
-
-		this.dependencies = List<Result>(3, false)
-		this.dependencies.add(result)
-		this.dependencies.add(first)
-		this.dependencies.add(second)
+		this.dependencies = [ result, first, second ]
 	}
 
 	override get_dependencies() {
-		all = List<Result>(3, false)
-		all.add(result)
-		all.add(first)
-		all.add(second)
-		return all
+		return [ result, first, second ]
 	}
 }

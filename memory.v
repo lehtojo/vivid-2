@@ -237,7 +237,10 @@ consider(unit: Unit, directive: Directive, media_register: bool): Register {
 			register
 		},
 		DIRECTIVE_SPECIFIC_REGISTER => directive.(SpecificRegisterDirective).register,
-		else => abort('Unknown directive type encountered') as Register
+		else => {
+			abort('Unknown directive type encountered')
+			none as Register
+		}
 	}
 }
 

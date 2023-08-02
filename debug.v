@@ -890,7 +890,7 @@ Debug {
 			add_member_variable(member, types)
 
 			# Remove the temporary position
-			if hidden { member.position = none }
+			if hidden { member.position = none as Position }
 		}
 
 		if has_members information.add(DWARF_END)

@@ -202,7 +202,6 @@ namespace Operators {
 
 	public all: Map<String, Operator>
 	public assignments: Map<String, AssignmentOperator>
-	
 	public overloads: Map<Operator, String>
 
 	private add(operator: Operator): _ {
@@ -237,7 +236,7 @@ namespace Operators {
 		ABSOLUTE_EQUALS = ComparisonOperator("===", 8)
 		ABSOLUTE_NOT_EQUALS = ComparisonOperator("!==", 8)
 		BITWISE_AND = ClassicOperator("&", 7)
-		BITWISE_XOR = ClassicOperator("\xA4", 6)
+		BITWISE_XOR = ClassicOperator("\xA4\xA4", 6)
 		BITWISE_OR = ClassicOperator("|", 5)
 		RANGE = IndependentOperator("..")
 		LOGICAL_AND = Operator("and", OPERATOR_TYPE_LOGICAL, 4)
@@ -250,7 +249,7 @@ namespace Operators {
 		ASSIGN_DIVIDE = AssignmentOperator("/=", DIVIDE, 1)
 		ASSIGN_MODULUS = AssignmentOperator("%=", MODULUS, 1)
 		ASSIGN_BITWISE_AND = AssignmentOperator("&=", BITWISE_AND, 1)
-		ASSIGN_BITWISE_XOR = AssignmentOperator("\xA4=", BITWISE_XOR, 1)
+		ASSIGN_BITWISE_XOR = AssignmentOperator("\xA4\xA4=", BITWISE_XOR, 1)
 		ASSIGN_BITWISE_OR = AssignmentOperator("|=", BITWISE_OR, 1)
 		EXCLAMATION = IndependentOperator("!")
 		COMMA = IndependentOperator(",")
@@ -370,6 +369,7 @@ namespace Keywords {
 	readable DEINIT: Keyword
 	readable ELSE: Keyword
 	readable EXPORT: Keyword
+	readable GLOBAL: Keyword
 	readable HAS: Keyword
 	readable HAS_NOT: Keyword
 	readable IF: Keyword
@@ -411,6 +411,7 @@ namespace Keywords {
 		DEINIT = Keyword("deinit", KEYWORD_TYPE_NORMAL)
 		ELSE = Keyword("else", KEYWORD_TYPE_FLOW)
 		EXPORT = ModifierKeyword("export", MODIFIER_EXPORTED)
+		GLOBAL = Keyword("global", KEYWORD_TYPE_NORMAL)
 		HAS = Keyword("has", KEYWORD_TYPE_NORMAL)
 		HAS_NOT = Keyword("has not", KEYWORD_TYPE_NORMAL)
 		IF = Keyword("if", KEYWORD_TYPE_FLOW)
@@ -446,6 +447,7 @@ namespace Keywords {
 		add(CONTINUE)
 		add(ELSE)
 		add(EXPORT)
+		add(GLOBAL)
 		add(HAS)
 		add(HAS_NOT)
 		add(IF)
@@ -493,6 +495,13 @@ Position {
 	friendly_line => line + 1
 	friendly_character => character + 1
 
+	init() {
+		this.line = 0
+		this.character = 0
+		this.local = 0
+		this.absolute = 0
+	}
+
 	init(file: SourceFile, line: normal, character: normal) {
 		this.file = file
 		this.line = line
@@ -501,18 +510,21 @@ Position {
 		this.absolute = 0
 	}
 
-	init(line: normal, character: normal, local: normal, absolute: normal) {
+	init(file: SourceFile, line: normal, character: normal, local: normal, absolute: normal) {
+		this.file = file
 		this.line = line
 		this.character = character
 		this.local = local
 		this.absolute = absolute
 	}
 
-	init() {
-		this.line = 0
-		this.character = 0
-		this.local = 0
-		this.absolute = 0
+	init(file: SourceFile, line: normal, character: normal, local: normal, absolute: normal, cursor: bool) {
+		this.file = file
+		this.line = line
+		this.character = character
+		this.local = local
+		this.absolute = absolute
+		this.cursor = cursor
 	}
 
 	next_line(): Position {
@@ -531,11 +543,11 @@ Position {
 	}
 
 	translate(characters: normal): Position {
-		return Position(line, character + characters, local + characters, absolute + characters)
+		return Position(file, line, character + characters, local + characters, absolute + characters, cursor)
 	}
 
 	clone(): Position {
-		return Position(line, character, local, absolute)
+		return Position(file, line, character, local, absolute, cursor)
 	}
 
 	equals(other: Position): bool {
@@ -1196,7 +1208,7 @@ skip_parenthesis(text: String, start: Position): Position {
 
 # Summary: Returns whether a multiline comment begins at the specified position
 is_multiline_comment(text: String, start: Position): bool {
-	return start.local + MULTILINE_COMMENT_LENGTH * 2 <= text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
+	return start.local + MULTILINE_COMMENT_LENGTH * 2 < text.length and text.slice(start.local, start.local + MULTILINE_COMMENT_LENGTH) == MULTILINE_COMMENT and text[start.local + MULTILINE_COMMENT_LENGTH] != COMMENT
 }
 
 # Summary: Skips the current comment and returns the position
@@ -1220,23 +1232,24 @@ skip_comment(text: String, start: Position): Position {
 		last_line_ending = comment.last_index_of(`\n`)
 
 		# If the 'multiline comment' is actually expressed in a single line, handle it separately
-		if last_line_ending == -1 return Position(start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
+		if last_line_ending == -1 return Position(start.file, start.line + lines, start.character + comment.length, end, start.absolute + comment.length)
 
 		last_line_ending += start.local # The index must be relative to the whole text
 		last_line_ending++ # Skip the line ending
-		return Position(start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
+		return Position(start.file, start.line + lines, end - last_line_ending, end, start.absolute + comment.length)
 	}
 
 	i = text.index_of(LINE_ENDING, start.local)
+	length = 0
 
 	if i != -1 {
 		length = i - start.local
-		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
 	else {
 		length = text.length - start.local
-		return Position(start.line, start.character + length, start.local + length, start.absolute + length)
 	}
+
+	return start.translate(length)
 }
 
 # Summary: Skips closures which has the same character in both ends
@@ -1246,7 +1259,7 @@ skip_closures(closure: char, text: String, start: Position): Position {
 
 		if current == closure {
 			length = (i + 1) - start.local
-			return Position(start.line, start.character + length, start.local + length, start.absolute + length)
+			return start.translate(length)
 		}
 
 		if current == ESCAPER {
@@ -1308,6 +1321,37 @@ binary_to_integer(text: String): Optional<large> {
 	return binary_to_integer(text, 0)
 }
 
+# Summary: Converts the specified character value text to hexadecimal character value text
+format_special_character(text: String): String {
+	# Return if the text is empty
+	if text.length == 0 return none as String
+
+	# Do nothing if the text does not start with an escape character
+	if text[0] != ESCAPER return text
+
+	# Expect at least one character after the escape character
+	if text.length < 2 return none as String
+
+	command = text[1]
+
+	# Just return the text if it is already in hexadecimal format
+	if command == `x` or command == `u` or command == `U` return text
+
+	return when(command) {
+		`a` => "\\x07"
+		`b` => "\\x08"
+		`f` => "\\x0C"
+		`n` => "\\x0A"
+		`r` => "\\x0D"
+		`t` => "\\x09"
+		`v` => "\\x0B"
+		`e` => "\\x1B"
+		`\"` => "\\x22"
+		`\'` => "\\x27"
+		else => text.slice(1)
+	}
+}
+
 # Summary: Returns a list of tokens which represents the specified text
 get_special_character_value(text: String): Outcome<large, String> {
 	command = text[1]
@@ -1332,9 +1376,7 @@ get_special_character_value(text: String): Outcome<large, String> {
 
 	hexadecimal = text.slice(2, text.length)
 	
-	if hexadecimal.length != length {
-		return Error<large, String>("Invalid character")
-	}
+	if hexadecimal.length != length return Error<large, String>("Invalid character")
 
 	if hexadecimal_to_integer(hexadecimal) has value return Ok<large, String>(value)
 
@@ -1343,21 +1385,21 @@ get_special_character_value(text: String): Outcome<large, String> {
 
 # Summary: Returns the integer value of the character value
 get_character_value(text: String): Outcome<large, String> {
-	text = text.slice(1, text.length - 1) # Remove the closures
+	# Remove the closures and format it so that its value can be extracted
+	formatted = format_special_character(text.slice(1, text.length - 1))
 
-	if text.length == 0 return Error<large, String>("Character value is empty")
+	if formatted === none return Error<large, String>("Invalid character")
+	if formatted.length == 0 return Error<large, String>("Character value is empty")
 
-	if text[] != `\\` {
-		if text.length != 1 return Error<large, String>("Character value allows only one character")
-		return Ok<large, String>(text[])
+	if formatted[] != `\\` or formatted.length == 1 {
+		if formatted.length != 1 return Error<large, String>("Character value allows only one character")
+
+		return Ok<large, String>(formatted[])
 	}
 
-	if text.length == 2 and text[1] == `\\` return Ok<large, String>(`\\`)
-	if text.length <= 2 {
-		return Error<large, String>("Invalid character")
-	}
+	if formatted.length <= 2 return Error<large, String>("Invalid character")
 
-	return get_special_character_value(text)
+	return get_special_character_value(formatted)
 }
 
 get_next_token(text: String, start: Position): Outcome<TextArea, String> {
@@ -1381,7 +1423,10 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 	}
 	else type == TEXT_TYPE_PARENTHESIS {
 		end = skip_parenthesis(text, area.start)
-		if end === none return Error<TextArea, String>("Can not find the closing parenthesis")
+
+		if end === none {
+			return Error<TextArea, String>("Can not find the closing parenthesis")
+		}
 
 		area.end = end
 		area.text = text.slice(area.start.local, area.end.local)
@@ -1394,6 +1439,7 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 	}
 	else type == TEXT_TYPE_STRING {
 		end = skip_closures(current, text, area.start)
+
 		if end === none {
 			return Error<TextArea, String>("Can not find the end of the string")
 		}
@@ -1403,13 +1449,18 @@ get_next_token(text: String, start: Position): Outcome<TextArea, String> {
 		return Ok<TextArea, String>(area)
 	}
 	else type == TEXT_TYPE_CHARACTER {
-		area.end = skip_character_value(text, area.start)
+		end = skip_character_value(text, area.start)
 
-		result = get_character_value(text.slice(area.start.local, area.end.local))
+		if end === none {
+			return Error<TextArea, String>("Can not find the end of the character")
+		}
+
+		result = get_character_value(text.slice(area.start.local, end.local))
 		if result has not value return Error<TextArea, String>(result.get_error())
 
 		bits = common.get_bits(value, false)
 
+		area.end = end
 		area.text = to_string(result.get_value()) + SIGNED_TYPE_SEPARATOR + to_string(bits)
 		area.type = TEXT_TYPE_NUMBER
 		return Ok<TextArea, String>(area)
@@ -1555,11 +1606,9 @@ postprocess(tokens: List<Token>): _ {
 	negate_keywords(tokens)
 }
 
-# Summary: Preprocesses the specified text, meaning that a more suitable version of the text is returned for tokenization
-preprocess(text: String): String {
-	builder = StringBuilder()
-	builder.append(text)
-	builder.replace('\xC2\xA4', '\xA4') # Simplify U+00A4 (currency sign), so that XOR operations are supported
+# Summary: Converts all escaped characters in the specified string to escaped hexadecimal characters
+postprocess_escaped_characters(text: String): String {
+	builder = StringBuilder(text)
 
 	# Converts all special characters in the text to use the hexadecimal character format:
 	# Start from the second last character and look for special characters
@@ -1594,6 +1643,21 @@ preprocess(text: String): String {
 	return builder.string()
 }
 
+# Summary: Converts all escaped characters in string tokens to escaped hexadecimal characters
+postprocess_escaped_characters(tokens: List<Token>): _ {
+	loop token in tokens {
+		if token.type == TOKEN_TYPE_STRING {
+			token.(StringToken).text = postprocess_escaped_characters(token.(StringToken).text)
+			continue
+		}
+
+		if token.type == TOKEN_TYPE_PARENTHESIS {
+			postprocess_escaped_characters(token.(ParenthesisToken).tokens)
+		}
+	}
+}
+
+
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, postprocess: bool): Outcome<List<Token>, String> {
 	return get_tokens(text, Position(), postprocess)
@@ -1602,9 +1666,9 @@ get_tokens(text: String, postprocess: bool): Outcome<List<Token>, String> {
 # Summary: Returns a list of tokens which represents the specified text
 get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Token>, String> {
 	tokens = List<Token>(text.length / 5, false) # Guess the amount of tokens and preallocate memory for the tokens
-	position = Position(anchor.line, anchor.character, 0, anchor.absolute)
+	position = Position(anchor.file, anchor.line, anchor.character, 0, anchor.absolute)
 
-	text = preprocess(text)
+	text = text.replace('\xC2\xA4', '\xA4\xA4') # Simplify XOR-operator (U+00A4)
 
 	loop (position.local < text.length) {
 		area_result = get_next_token(text, position.clone())
@@ -1621,6 +1685,8 @@ get_tokens(text: String, anchor: Position, postprocess: bool): Outcome<List<Toke
 
 		position = area.end
 	}
+
+	postprocess_escaped_characters(tokens)
 
 	if postprocess postprocess(tokens)
 
@@ -1660,15 +1726,4 @@ tokenize(): Status {
 	}
 
 	return Status()
-}
-
-# Summary: Creates an identical list of tokens compared to the specified list
-clone(tokens: List<Token>): List<Token> {
-	clone = List<Token>(tokens.size, true)
-
-	loop (i = 0, i < tokens.size, i++) {
-		clone[i] = tokens[i].clone()
-	}
-
-	return clone
 }

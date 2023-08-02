@@ -159,7 +159,6 @@ build_debug_assign_operator(unit: Unit, node: OperatorNode): Result {
 build_assign_operator(unit: Unit, node: OperatorNode): Result {
 	if settings.is_debugging_enabled return build_debug_assign_operator(unit, node)
 
-	# TODO: Support conditions
 	if common.is_local_variable(node.first) {
 		local = node.first.(VariableNode).variable
 		right = references.get(unit, node.last, ACCESS_READ)
@@ -281,15 +280,15 @@ get_member_function_call(unit: Unit, function: FunctionNode, left: Node, type: T
 # Summary:
 # Builds the specified jump node, while merging with its container scope
 build_jump(unit: Unit, node: JumpNode): Result {
-	# TODO: Support conditional jumps
 	unit.add(JumpInstruction(unit, node.label))
 	return Result()
 }
 
 # Summary:
 # Adds the label to the specified unit
-build_label(unit: Unit, node: LabelNode): _ {
+build_label(unit: Unit, node: LabelNode): Result {
 	unit.add(LabelInstruction(unit, node.label))
+	return Result()
 }
 
 build_link(unit: Unit, node: LinkNode, mode: large): Result {
@@ -417,7 +416,7 @@ build(unit: Unit, node: Node): Result {
 		NODE_FUNCTION => calls.build(unit, node as FunctionNode)
 		NODE_IF => conditionals.start(unit, node as IfNode) as Result
 		NODE_JUMP => build_jump(unit, node as JumpNode) as Result
-		NODE_LABEL => build_label(unit, node as LabelNode) as Result
+		NODE_LABEL => build_label(unit, node as LabelNode)
 		NODE_LINK => build_link(unit, node as LinkNode, ACCESS_READ)
 		NODE_LOOP => loops.build(unit, node as LoopNode)
 		NODE_NOT => build_not(unit, node as NotNode)

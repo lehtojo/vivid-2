@@ -1,5 +1,3 @@
-none = 0
-
 abort(message: String) {
 	console.write('Internal error: ')
 	console.write_line(message)
@@ -10,6 +8,10 @@ abort(message: link): _ {
 	console.write('Internal error: ')
 	console.write_line(message)
 	application.exit(1)
+}
+
+abort(position: Position, message: String): _ {
+	abort(position, message.data)
 }
 
 abort(position: Position, message: link): _ {
@@ -35,7 +37,7 @@ abort(position: Position, message: link): _ {
 	application.exit(1)
 }
 
-complain(status: Status): _ {
+terminate(status: Status): _ {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)
 	application.exit(1)
@@ -52,37 +54,49 @@ init(): large {
 	arguments.pop_or(none as String) # Remove the executable name
 
 	result = configure(arguments)
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	jobs.execute()
 
 	result = load()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	Keywords.initialize()
 	Operators.initialize()
 
+	preprocessor = preprocessing.Preprocessor()
+
+	if not preprocessor.preprocess(settings.source_files) {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
+
 	result = textual_assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = tokenize()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
+
+	if not preprocessor.expand(settings.source_files) {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
 
 	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()
 	result = parser.parse()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = resolver.resolve()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	analysis.analyze()
 
 	platform.x64.initialize()
 	assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	end = time.now()
 	console.write(to_string((end - start) / 10000.0))

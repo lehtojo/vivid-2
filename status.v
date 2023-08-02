@@ -9,13 +9,13 @@ Status {
 	}
 
 	init(message: link) {
-		this.position = none
+		this.position = none as Position
 		this.message = String(message)
 		this.problematic = true
 	}
 
 	init(message: String) {
-		this.position = none
+		this.position = none as Position
 		this.message = message
 		this.problematic = true
 	}

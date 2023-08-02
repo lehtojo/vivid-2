@@ -12,6 +12,10 @@ abort(message: link) {
 	application.exit(1)
 }
 
+abort(position: Position, message: String): _ {
+	abort(position, message.data)
+}
+
 abort(position: Position, message: link) {
 	console.write('Internal error: ')
 	console.write(message)
@@ -35,7 +39,7 @@ abort(position: Position, message: link) {
 	application.exit(1)
 }
 
-complain(status: Status) {
+terminate(status: Status) {
 	console.write('Compilation terminated: ')
 	console.write_line(status.message)
 	application.exit(1)
@@ -83,36 +87,48 @@ compile(output: link, source_files: List<String>, optimization: large, prebuilt:
 	if optimization != 0 arguments.add("-O" + to_string(optimization))
 
 	result = configure(arguments)
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = load()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	Keywords.initialize()
 	Operators.initialize()
 
+	preprocessor = preprocessing.Preprocessor()
+
+	if not preprocessor.preprocess(settings.source_files) {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
+
 	result = textual_assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = tokenize()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
+
+	if not preprocessor.expand(settings.source_files) {
+		common.report(preprocessor.errors)
+		terminate(Status('Preprocessor failed'))
+	}
 
 	primitives.initialize()
 	numbers.initialize()
 
 	parser.initialize()
 	result = parser.parse()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	result = resolver.resolve()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	analysis.analyze()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 
 	platform.x64.initialize()
 	assembler.assemble()
-	if result.problematic complain(result)
+	if result.problematic terminate(result)
 }
 
 execute(name: link) {
@@ -460,7 +476,7 @@ pi(optimization: large) {
 		console.write_line('Could not load the expected Pi unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Pi unit test did not produce the correct output')
@@ -514,7 +530,7 @@ virtuals(optimization: large) {
 		console.write_line('Could not load the expected Virtuals unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Virtuals unit test did not produce the correct output')
@@ -533,7 +549,7 @@ expression_variables(optimization: large) {
 		console.write_line('Could not load the expected Expression variables unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Expression variables unit test did not produce the correct output')
@@ -561,7 +577,7 @@ lambdas(optimization: large) {
 		console.write_line('Could not load the expected Lambdas unit test output')
 	}
 
-	expected = String.from(bytes.data, bytes.size)
+	expected = String(bytes.data, bytes.size)
 
 	if not (log == expected) {
 		console.write_line('Lambdas unit test did not produce the correct output')
@@ -634,8 +650,61 @@ unnamed_packs(optimization: large) {
 	}
 }
 
+macros(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'macros.v'))
+	compile('macros', files, optimization, false)
+
+	log = execute('macros')
+	expected = 'Hello there :^)!\nHello there :^)!\nHello there :^)!\nHello there again :^)!\nElements: \n3\n7\n14\n42\nSum: 66\nGoodbye!\n'
+
+	if not (log == expected) {
+		console.write_line('Macros unit test did not produce the correct output')
+	}
+}
+
+global_scope_access(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'global_scope_access.v'))
+	compile('global_scope_access', files, optimization, false)
+
+	log = execute('global_scope_access')
+	expected = ':^)\n'
+
+	if not (log == expected) {
+		console.write_line('Global scope access unit test did not produce the correct output')
+	}
+}
+
+implicit_conversions(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'implicit_conversions.v'))
+	files.add(project_file('tests', 'assert.v'))
+	compile('implicit_conversions', files, optimization, false)
+
+	log = execute('implicit_conversions')
+	expected = '1 == 1\n49 == 49\n1 == 1\na is not greater than b == a is not greater than b\nHello there :^) == Hello there :^)\n'
+
+	if not (log == expected) {
+		console.write_line('Implicit conversions unit test did not produce the correct output')
+	}
+}
+
+deinitializers(optimization: large) {
+	files = List<String>()
+	files.add(project_file('tests', 'deinitializers.v'))
+	compile('deinitializers', files, optimization, false)
+
+	log = execute('deinitializers')
+	expected = 'Test 1: Start\nDeallocating...\nTest 1: End\nTest 2: Start\nTick tock\nTick tock\nTick tock\nTick tock\nTick tock\nTest 2: End\nNumber: 13\nExiting...\n'
+
+	if not (log == expected) {
+		console.write_line('Deinitializers unit test did not produce the correct output')
+	}
+}
+
 init() {
-	optimization = 2
+	optimization = 1
 	console.write_line('Arithmetic')
 	arithmetic(optimization)
 	console.write_line('Assignment')
@@ -704,5 +773,13 @@ init() {
 	packs(optimization)
 	console.write_line('Unnamed packs')
 	unnamed_packs(optimization)
+	console.write_line('Macros')
+	macros(optimization)
+	console.write_line('Global scope access')
+	global_scope_access(optimization)
+	console.write_line('Implicit conversions')
+	implicit_conversions(optimization)
+	console.write_line('Deinitializers')
+	deinitializers(optimization)
 	return 0
 }

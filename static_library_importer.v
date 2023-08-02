@@ -21,6 +21,12 @@ constant GENERAL_IMPORT_FILE_EXTENSION = '.exports'
 constant EXPORT_TABLE_FILENAME = '/'
 constant FILENAME_TABLE_NAME = '//'
 
+# Summary: Returns whether the specified bytes start with the correct signature
+is_signature_valid(bytes: Array<u8>): bool {
+	signature = static_library_format.SIGNATURE.(u64*)[]
+	return bytes.size >= sizeof(u64) and bytes.data.(u64*)[] == signature
+}
+
 # Summary:
 # Iterates through the specified headers and looks for an export file and imports it.
 # Export files contain exported source code such as template types and functions.
@@ -44,7 +50,7 @@ import_export_file(context: Context, bytes: Array<byte>, headers: List<StaticLib
 		}
 		
 		# Since the file is source code, it can be converted into text
-		text = String.from(bytes.data + start, end - start)
+		text = String(bytes.data + start, end - start)
 		file = SourceFile(library + '/' + header.filename, text, index)
 
 		files.add(file)
@@ -116,7 +122,7 @@ import_template_type_variants(context: Context, headers: List<StaticLibraryForma
 		if not header.filename.ends_with(TEMPLATE_TYPE_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
+		template_variants = String(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant in template_variants {
 			if template_variant.length == 0 continue
@@ -138,7 +144,7 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 		if not header.filename.ends_with(TEMPLATE_FUNCTION_VARIANT_IMPORT_FILE_EXTENSION) continue
 
 		template_variant_bytes = bytes.slice(header.pointer_of_data, header.pointer_of_data + header.size)
-		template_variants = String.from(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
+		template_variants = String(template_variant_bytes.data, template_variant_bytes.size).split(`\n`)
 
 		loop template_variant_text in template_variants {
 			if template_variant_text.length == 0 continue
@@ -222,7 +228,7 @@ resolve(context: Context, root: Node): _ {
 	}
 
 	if current.size > 0 {
-		resolver.complain(current)
+		common.report(current)
 		abort('Failed to import a library')
 	}
 }
@@ -231,6 +237,10 @@ resolve(context: Context, root: Node): _ {
 # Imports the specified static library by finding the exported symbols and importing them
 internal_import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>): _ {
 	if io.read_file(file) has not bytes abort('Failed to open a library')
+
+	# Verify the signature
+	require(is_signature_valid(bytes), 'Static library did not have valid signature')
+
 	entries = binary_utility.read<normal>(bytes, STATIC_LIBRARY_SYMBOL_TABLE_OFFSET)
 	entries = binary_utility.swap_endianness_int32(entries)
 
@@ -285,7 +295,7 @@ load_filenames(bytes: Array<byte>, filenames: StaticLibraryFormatFileHeader, hea
 		end = position
 		loop (bytes[end] != 0, end++) {}
 
-		header.filename = String.from(bytes.data + position, end - position)
+		header.filename = String(bytes.data + position, end - position)
 	}
 
 	return true

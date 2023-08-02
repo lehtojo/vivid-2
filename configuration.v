@@ -62,9 +62,10 @@ collect(files: List<String>, folder: String, recursive: bool): _ {
 
 # Summary: Initializes the configuration by registering the folders which can be searched through
 initialize_configuration(): _ {
-	settings.included_folders = List<String>()
-	settings.included_folders.add(io.get_process_working_folder())
-	settings.included_folders.add(io.get_process_folder())
+	settings.included_folders = [
+		io.get_process_working_folder(),
+		io.get_process_folder()
+	]
 
 	# Load the path environment variable and include folders from it
 	path = io.get_environment_variable('PATH')
@@ -160,6 +161,8 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		console.write_line('-system')
 		console.write_line('-j / jobs <number>')
 		console.write_line('-filter <file>')
+		console.write_line('-windows')
+		console.write_line('-linux')
 		application.exit(1)
 	}
 	else value == '-r' or value == '-recursive' {
@@ -299,6 +302,11 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		if argument === none or as_integer(argument) has not jobs return Status('Expected the number of jobs to create')
 
 		settings.jobs = jobs
+	else value == '-windows' {
+		settings.is_target_windows = true
+	}
+	else value == '-linux' {
+		settings.is_target_windows = false
 	}
 	else {
 		return Status("Unknown option " + value)

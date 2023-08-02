@@ -370,4 +370,9 @@ Map<K, V> {
 
 		return result
 	}
+
+	deinit() {
+		if slots === none return
+		deallocate(slots)
+	}
 }

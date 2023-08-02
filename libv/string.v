@@ -278,7 +278,7 @@ export String {
 		a = length
 		
 		result = String(data, a)
-		data = result.data
+		data: link = result.data
 
 		loop (i = 0, i < a, i++) {
 			if data[i] != old continue
@@ -430,7 +430,14 @@ export String {
 
 	# Summary: Returns the index of the last occurrence of the specified character
 	last_index_of(value: char): large {
-		loop (i = length - 1, i >= 0, i--) {
+		return last_index_of(value, length)
+	}
+
+	# Summary: Returns the index of the last occurrence of the specified character before the specified position
+	last_index_of(value: char, before: large): large {
+		require(before >= 0 and before <= length, 'Invalid before index')
+
+		loop (i = before - 1, i >= 0, i--) {
 			if data[i] == value return i
 		}
 
@@ -463,6 +470,18 @@ export String {
 		}
 
 		return String.from(buffer, length)
+	}
+
+	# Summary: Removes all leading and trailing  Removes all leading and trailing instances of a character from the current string
+	trim(character: char): String {
+		length: large = this.length
+		start: large = 0
+		end: large = length
+
+		loop (start < length and data[start] == character, start++) {}
+		loop (end > start and data[end - 1] == character, end--) {}
+
+		return slice(start, end)
 	}
 
 	# Summary: Adds the two strings together and returns a new string
@@ -562,5 +581,9 @@ export String {
 		}
 
 		return hash
+	}
+
+	deinit() {
+		deallocate(data)
 	}
 }

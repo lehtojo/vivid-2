@@ -529,7 +529,8 @@ Context {
 
 	destroy(): _ {
 		if parent != none parent.subcontexts.remove(this)
-		parent = none
+
+		parent = none as Context
 	}
 
 	default_dispose(): _ {
@@ -1067,6 +1068,8 @@ Context Type {
 	}
 
 	open match(other: Type): bool {
+		if this === other return true
+
 		if is_pack {
 			# The other type should also be a pack
 			if not other.is_pack return false
@@ -1439,7 +1442,7 @@ Context Function {
 		# Add the created implementation to the list
 		implementations.add(implementation)
 
-		implementation.implement(clone(blueprint))
+		implementation.implement(common.clone(blueprint))
 
 		return implementation
 	}
@@ -1609,9 +1612,9 @@ Type TemplateType {
 		identifier: String = get_variant_identifier(arguments)
 		
 		# Copy the blueprint and insert the specified arguments to their places
-		tokens = clone(inherited)
+		tokens = common.clone(inherited)
 
-		blueprint: List<Token> = clone(this.blueprint)
+		blueprint: List<Token> = common.clone(this.blueprint)
 		blueprint[].(IdentifierToken).value = name + `<` + identifier + `>`
 
 		tokens.add_all(blueprint)
@@ -1710,7 +1713,7 @@ Function TemplateFunction {
 		variant_identifier = String.join(", ", names)
 
 		# Copy the blueprint and insert the specified arguments to their places
-		blueprint: List<Token> = clone(this.blueprint)
+		blueprint: List<Token> = common.clone(this.blueprint)
 		blueprint[].(FunctionToken).identifier.value = name + `<` + variant_identifier + `>`
 
 		insert_arguments(blueprint, template_arguments)
@@ -1837,7 +1840,7 @@ Context FunctionImplementation {
 	size_of_locals: large = 0
 	size_of_local_memory: large = 0
 
-	virtual_function: VirtualFunction = none
+	virtual_function: VirtualFunction = none as VirtualFunction
 	is_imported: bool = false
 	is_self_returning: bool = false
 
@@ -1969,7 +1972,7 @@ Context FunctionImplementation {
 			delete_node_tree(iterator)
 		}
 
-		deallocate(tree as link)
+		tree.detach()
 	}
 
 	override dispose() {
