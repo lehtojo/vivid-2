@@ -322,7 +322,7 @@ Node {
 		last = none as Node
 	}
 
-	private shared get_nodes_under_shared_parent(a: Node, b: Node): Node {
+	private shared get_nodes_under_shared_parent(a: Node, b: Node): Pair<Node, Node> {
 		path_a = List<Node>()
 		path_b = List<Node>()
 
@@ -351,18 +351,18 @@ Node {
 	# Summary: Returns whether this node is placed before the specified node
 	is_before(other: Node): bool {
 		positions = get_nodes_under_shared_parent(other, this)
-		if positions == none abort('Nodes did not have a shared parent')
-		if positions.key == none return false
+		if positions === none abort('Nodes did not have a shared parent')
+		if positions.first === none return false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
-		iterator = positions.value
-		target = positions.key
+		iterator = positions.second
+		target = positions.first
 
-		if target == iterator return false
+		if target === iterator return false
 
 		# Iterate backwards and try to find the target node
-		loop (iterator != none) {
-			if iterator == target return false
+		loop (iterator !== none) {
+			if iterator === target return false
 			iterator = iterator.previous
 		}
 
@@ -372,18 +372,18 @@ Node {
 	# Summary: Returns whether this node is placed after the specified node
 	is_after(other: Node): bool {
 		positions = get_nodes_under_shared_parent(other, this)
-		if positions == none abort('Nodes did not have a shared parent')
-		if positions.key == none return false
+		if positions === none abort('Nodes did not have a shared parent')
+		if positions.first === none return false
 
 		# If this node is after the specified position node (other), the position node can be found by iterating backwards
-		iterator = positions.value
-		target = positions.key
+		iterator = positions.second
+		target = positions.first
 
-		if target == iterator return false
+		if target === iterator return false
 
 		# Iterate backwards and try to find the target node
-		loop (iterator != none) {
-			if iterator == target return true
+		loop (iterator !== none) {
+			if iterator === target return true
 			iterator = iterator.previous
 		}
 

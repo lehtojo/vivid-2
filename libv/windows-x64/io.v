@@ -102,9 +102,22 @@ namespace internal {
 	constant PROCESS_QUERY_INFORMATION = 0x0400
 
 	import 'C' OpenProcess(desired_access: normal, inherit_handles: bool, pid: normal): link
+
+	constant WAIT_FAILED = 0xffffffff
+
 	import 'C' WaitForSingleObject(handle: link, milliseconds: normal): normal
+	import 'C' WaitForMultipleObjects(count: normal, handles: link*, wait_all: bool, milliseconds: normal): normal
 
 	import 'C' GetCurrentDirectoryA(size: large, buffer: link): large
+}
+
+pack ExitInformation {
+	index: large
+	exit_code: large
+
+	shared new(index: large, exit_code: large) {
+		return pack { index: index, exit_code: exit_code } as ExitInformation
+	}
 }
 
 FolderItem {
@@ -364,16 +377,41 @@ export shell(command: String): large {
 # Summary: Waits for the specified process to exit
 export wait_for_exit(pid: large): large {
 	handle = internal.OpenProcess(internal.PROCESS_ACCESS_SYNCHRONIZE | internal.PROCESS_QUERY_INFORMATION, false, pid)
-	internal.WaitForSingleObject(handle, internal.INFINITE)
+	require(handle !== none, 'Failed to convert a specified pid to a handle')
 
-	exit_code: u32[1]
+	wait_result = internal.WaitForSingleObject(handle, internal.INFINITE)
+	require(wait_result == 0, 'Failed to wait for the process')
 
-	if not internal.GetExitCodeProcess(handle, exit_code as u32*) {
-		exit_code[] = 1
-	}
+	require(internal.GetExitCodeProcess(handle, exit_code: u32[1]), 'Failed to get the exit code of the process')
 
 	internal.CloseHandle(handle)
 	return exit_code[] as large
+}
+
+# Summary: Wait for any of the specified processes to exit
+export wait_for_any_to_exit(pids: List<large>): ExitInformation {
+	handles = List<link>(pids.size, false)
+
+	loop pid in pids {
+		handle = internal.OpenProcess(internal.PROCESS_ACCESS_SYNCHRONIZE | internal.PROCESS_QUERY_INFORMATION, false, pid)
+		require(handle !== none, 'Failed to convert a specified pid to a handle')
+
+		handles.add(handle)
+	}
+
+	wait_result = internal.WaitForMultipleObjects(handles.size, handles.data, false, internal.INFINITE)
+	require(wait_result != internal.WAIT_FAILED, 'Failed to wait for multiple processes')
+	require(wait_result < handles.size, 'Failed to determine the exited process')
+
+	exited_index = wait_result
+	exited_handle = handles[exited_index]
+	require(internal.GetExitCodeProcess(exited_handle, exit_code: u32[1]), 'Failed to get the exit code of the process')
+
+	loop handle in handles {
+		internal.CloseHandle(handle)
+	}
+
+	return ExitInformation.new(wait_result, exit_code[])
 }
 
 # Command line:

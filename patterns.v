@@ -1736,7 +1736,7 @@ Pattern VirtualFunctionPattern {
 		virtual_function.parameters.add_all(parameters)
 
 		# Create the default implementation of the virtual function
-		function = Function(context, MODIFIER_DEFAULT, descriptor.name, blueprint.tokens, descriptor.position, end)
+		function = Function(context, MODIFIER_DEFAULT | MODIFIER_OVERRIDE_FUNCTION, descriptor.name, blueprint.tokens, descriptor.position, end)
 
 		# Define the parameters of the default implementation
 		if descriptor.get_parameters(function) has not implementation_parameters {

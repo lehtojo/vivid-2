@@ -262,7 +262,6 @@ outline allocate(bytes: large): u8* {
 	return address + strideof(large)
 }
 
-
 outline deallocate(address: link): _ {
 	if internal.allocator.s16.deallocate(address) return
 	if internal.allocator.s32.deallocate(address) return

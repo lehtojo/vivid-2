@@ -200,7 +200,7 @@ export StringBuilder {
 		return buffer[i]
 	}
 
-	set(i: large, value: u8) {
+	set(i: large, value: u8): _ {
 		require(i >= 0 and i < position, 'Index out of bounds')
 		buffer[i] = value
 	}

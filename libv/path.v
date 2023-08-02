@@ -4,6 +4,7 @@ namespace io.path
 # Examples:
 # '/path/to/file.extension' => 'file.extension'
 # '/path/to\\file' => 'file'
+# 'file' => 'file'
 export basename(path: String): String {
 	i = path.last_index_of(`/`)
 	j = path.last_index_of(`\\`)
@@ -18,6 +19,7 @@ export basename(path: String): String {
 # Examples:
 # '/path/to/file.extension' => '/path/to'
 # '/path/to\\file' => '/path/to'
+# 'file' => '.'
 export folder(path: String): String {
 	i = path.last_index_of(`/`)
 	j = path.last_index_of(`\\`)
@@ -25,7 +27,7 @@ export folder(path: String): String {
 
 	if start >= 0 return path.slice(0, start)
 
-	return path
+	return "."
 }
 
 # Summary:

@@ -146,14 +146,6 @@ namespace pe_format {
 	}
 
 	# Summary:
-	# Finds a section with the specified name from the specified metadata.
-	# Ensure the specified name is exactly eight characters long, padded with none characters if necessary.
-	find_section(module: PeMetadata, name: String): BinarySection {
-		encoded_name = encode_integer_name(name)
-		return module.sections.find_or(i -> i.name == encoded_name, none as BinarySection)
-	}
-
-	# Summary:
 	# Loads strings the specified amount starting from the specified position.
 	load_number_of_strings(bytes: Array<byte>, position: large, count: large): List<String> {
 		if position < 0 return none as List<String>

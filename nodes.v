@@ -2833,7 +2833,7 @@ Node DeinitializerNode {
 	}
 
 	# Summary: Adds the points at which the deinitializer code should be executed in the specified scope
-	private add_insertion_points(scope: ScopeNode, points: List<Node>) {
+	private add_insertion_points(scope: ScopeNode, points: List<Node>): _ {
 		# Place deinitializer code before each return
 		points.add_all(scope.find_all(NODE_RETURN))
 
@@ -2889,7 +2889,7 @@ Node DeinitializerNode {
 		}
 	}
 
-	generate(context: Context) {
+	generate(context: Context): _ {
 		# Find the parent scope, so that we can place deinitializer code at correct points
 		scope = find_parent(NODE_SCOPE) as ScopeNode
 

@@ -1,5 +1,19 @@
 namespace jobs
 
+plain Worker {
+	pid: u64
+	file: String
+
+	init(pid: u64, file: String) {
+		this.pid = pid
+		this.file = file
+	}
+
+	wait(): u64 {
+		return io.wait_for_exit(pid)
+	}
+}
+
 # Summary: Removes the job argument from the specified arguments
 remove_job_argument(arguments: List<String>): _ {
 	loop (i = 0, i < arguments.size, i++) {
@@ -11,6 +25,18 @@ remove_job_argument(arguments: List<String>): _ {
 		return
 	}
 }
+
+# Summary: Starts a new compiler worker for the specified source file
+start_worker(compiler: String, file: String, arguments: List<String>): Worker {
+	process_arguments = List<String>(arguments)
+	process_arguments.add("-objects")
+	process_arguments.add("-filter")
+	process_arguments.add(file)
+
+	pid = io.start_process(compiler, process_arguments)
+
+	return Worker(pid, file)
+} 
 
 # Summary: Executes compilation using jobs if they are requested
 execute(): _ {
@@ -28,41 +54,42 @@ execute(): _ {
 	# Load the source files to be built
 	files = settings.filenames
 
-	i = 0
+	# Track progress
+	number_of_files = files.size
+	number_of_compiled_files = 0
 
-	loop (i < files.size) {
-		# Compute the number of remaining files to compile
-		remaining = files.size - i
+	# Compute the number of files to compile based on the remaining number of files and maximum jobs
+	batch = min(files.size, jobs)
+	workers = List<Worker>(batch, false)
 
-		# Compute the number of files to compile based on the remaining number of files and maximum jobs
-		batch = min(remaining, jobs)
+	loop (i = 0, i < batch, i++) {
+		workers.add(start_worker(compiler, files[i], arguments))
+	}
 
-		# Save the process ids of next batch
-		pids = List<u64>(batch, false)
+	files.remove_all(0, batch)
 
-		# Compile the next batch of files.
-		loop (batch > 0, batch--) {
-			# Start a new process to compile the next file
-			process_arguments = List<String>(arguments)
-			process_arguments.add("-objects")
-			process_arguments.add("-filter")
-			process_arguments.add(files[i++])
+	loop (workers.size > 0) {
+		pids = workers.map<large>((i: Worker) -> i.pid)
+		exit_information = io.wait_for_any_to_exit(pids)
 
-			pid = io.start_process(compiler, process_arguments)
-
-			# Save the process id
-			pids.add(pid)
+		# Todo: Place a new flag here
+		if true {
+			console.write_line("Compiled " + to_string(++number_of_compiled_files) + " of " + to_string(number_of_files) + " files")
 		}
 
-		# Wait for the next batch of files to finish
-		loop pid in pids {
-			# Wait for the process to exit
-			exit_code = io.wait_for_exit(pid)
+		# If the worker failed, report the failure
+		if exit_information.exit_code != 0 {
+			worker = workers[exit_information.index]
+			abort("Failed to compile: " + worker.file)
+		}
 
-			# Check if the process finished successfully
-			if exit_code == 0 continue
+		# Remove the worker now that it has finished
+		workers.remove_at(exit_information.index)
 
-			abort('Failed to compile a source file')
+		# Start a new worker if we still have files
+		if files.size > 0 {
+			workers.add(start_worker(compiler, files[0], arguments))
+			files.remove_at(0)
 		}
 	}
 

@@ -302,6 +302,7 @@ configure(parameters: List<String>, files: List<String>, libraries: List<String>
 		if argument === none or as_integer(argument) has not jobs return Status('Expected the number of jobs to create')
 
 		settings.jobs = jobs
+	}
 	else value == '-windows' {
 		settings.is_target_windows = true
 	}

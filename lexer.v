@@ -658,10 +658,6 @@ Token KeywordToken {
 
 Token NumberToken {
 	data: large
-
-	bits => get_bytes(format) * 8
-	bytes => get_bytes(format)
-
 	format: normal
 	end: Position
 

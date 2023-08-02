@@ -659,8 +659,9 @@ implement_virtual_function_overrides(types: List<Type>, file: SourceFile): _ {
 			loop parameter in virtual_function.parameters { expected.add(parameter.type) }
 
 			loop overload in overloads {
+				# Todo: Remove?
 				# If the file filter is specified, skip all functions which are not defined inside that file
-				if file != none and (overload.start === none or overload.start.file != file) continue
+				# if file != none and (overload.start === none or overload.start.file != file) continue
 
 				actual = List<Type>()
 				loop parameter in overload.parameters { actual.add(parameter.type) }
@@ -771,13 +772,15 @@ apply_build_filter(context: Context): _ {
 
 			# Skip all functions that have parameters without explicit type
 			if function.parameters.any(i -> i.type === none) {
-				if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Parameters: " + function.name + ' ' + function.start.string())
+				# Todo: Remove?
+				# if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Parameters: " + function.name + ' ' + function.start.string())
 				continue
 			}
 
 			# Skip all functions that do not have explicit return type
 			if function.return_type === none {
-				if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Return type missing: " + function.name + ' ' + function.start.string())
+				# Todo: Remove?
+				# if not (function.is_template_function or function.name.starts_with('is_')) console.write_line("Return type missing: " + function.name + ' ' + function.start.string())
 				continue
 			}
 		}
@@ -1043,7 +1046,7 @@ print(node: Node): _ {
 	print(node, 0, 0)
 }
 
-print(node: Node, indentation: large, total: large): _ {
+print(node: Node, indentation: large, total: large): large {
 	padding = Array<char>(indentation * 2 + 1)
 	padding[padding.size - 1] = 0
 	fill(padding.data, padding.size, ` `)

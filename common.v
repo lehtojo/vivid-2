@@ -417,7 +417,7 @@ get_types(node: Node): List<Type> {
 
 	loop iterator in node {
 		type = iterator.try_get_type()
-		if type == none or type.is_unresolved return none
+		if type == none or type.is_unresolved return none as List<Type>
 		types.add(type)
 	}
 

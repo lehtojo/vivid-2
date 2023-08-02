@@ -499,32 +499,23 @@ try_register_virtual_function_implementation(type: Type, virtual_function: Virtu
 	return offset + SYSTEM_BYTES
 }
 
-copy_type_descriptors(type: Type, supertypes: List<Type>): List<Pair<Type, DataPointerNode>> {
-	if type.configuration == none return List<Pair<Type, DataPointerNode>>()
+build_type_runtime_configuration(type: Type, supertypes: List<Type>): _ {
+	# If the specified type does not have configuration variable, no need to build anything
+	if type.configuration === none return
 
 	configuration = type.configuration
-	descriptor_count = 0
-
-	if type.supertypes.size > 0 { descriptor_count = supertypes.size }
-	else { descriptor_count = supertypes.size + 1 }
-
-	descriptors = List<Pair<Type, DataPointerNode>>(descriptor_count, true)
+	if configuration.is_completed return
 
 	if not configuration.is_completed {
-		# Complete the descriptor of the type
+		# Add the size of the type and the number of supertypes
 		configuration.descriptor.add(type.content_size as normal)
 		configuration.descriptor.add(type.supertypes.size as normal)
 
+		# Add pointers to the supertypes
 		loop supertype in type.supertypes {
 			if supertype.configuration == none abort('Missing supertype runtime configuration')
 			configuration.descriptor.add(supertype.configuration.descriptor)
 		}
-	}
-
-	if type.supertypes.size == 0 {
-		# Even though there are no supertypes inherited, an instance of this type can be created and casted to a link.
-		# It should be possible to check whether the link represents this type or another
-		descriptors[descriptors.size - 1] = Pair<Type, DataPointerNode>(type, TableDataPointerNode(configuration.entry, 0, none as Position))
 	}
 
 	offset = SYSTEM_BYTES
@@ -532,7 +523,7 @@ copy_type_descriptors(type: Type, supertypes: List<Type>): List<Pair<Type, DataP
 	# Look for default implementations of virtual functions in the specified type
 	loop iterator in type.virtuals {
 		loop virtual_function in iterator.value.overloads {
-			# Register an implementation for the current virtual function.
+			# Register an implementation for the current virtual function
 			offset = try_register_virtual_function_implementation(type, virtual_function, configuration, offset)
 		}
 	}
@@ -540,16 +531,15 @@ copy_type_descriptors(type: Type, supertypes: List<Type>): List<Pair<Type, DataP
 	loop (i = 0, i < supertypes.size, i++) {
 		supertype = supertypes[i]
 
-		# Append configuration information only if it is not generated
+		# Add configuration information only if it is not generated
 		if not configuration.is_completed {
 			# Begin a new section inside the configuration table
 			configuration.entry.add(configuration.descriptor)
 		}
 
-		# Types should not inherit types which do not have runtime configurations such as standard integers
+		# Types should not inherit types which do not have runtime configurations such as primitive types (e.g. integer)
 		if supertype.configuration == none abort('Type inherited a type which did not have runtime configuration')
 
-		descriptors[i] = Pair<Type, DataPointerNode>(supertype, TableDataPointerNode(configuration.entry, offset, none as Position))
 		offset += SYSTEM_BYTES
 
 		# Iterate all virtual functions of this supertype and connect their implementations
@@ -562,6 +552,60 @@ copy_type_descriptors(type: Type, supertypes: List<Type>): List<Pair<Type, DataP
 	}
 
 	configuration.is_completed = true
+}
+
+get_type_runtime_configuration_pointers(type: Type, supertypes: List<Type>): List<Pair<Type, DataPointerNode>> {
+	# If the specified type does not have configuration variable, there are no pointers
+	if type.configuration == none return List<Pair<Type, DataPointerNode>>()
+
+	# Build the type runtime configuration if it is our job
+	if settings.build_filter === none or
+		type.position === none or
+		type.position.file === none or
+		type.position.file === settings.build_filter {
+
+		build_type_runtime_configuration(type, supertypes)
+	}
+
+	configuration = type.configuration
+
+	descriptor_count = max(type.supertypes.size, 1)
+	descriptors = List<Pair<Type, DataPointerNode>>(descriptor_count, true)
+
+	if type.supertypes.size == 0 {
+		# Even though there are no supertypes inherited, an instance of this type can be created and casted to a link.
+		# It should be possible to check whether the link represents this type or another.
+		descriptors[0] = Pair<Type, DataPointerNode>(type, TableDataPointerNode(configuration.entry, 0, none as Position))
+		return descriptors
+	}
+
+	offset = SYSTEM_BYTES
+
+	# Virtual functions of the type come now, skip them
+	loop iterator in type.virtuals {
+		loop virtual_function in iterator.value.overloads {
+			offset += SYSTEM_BYTES
+		}
+	}
+
+	loop (i = 0, i < supertypes.size, i++) {
+		supertype = supertypes[i]
+
+		# Types should not inherit types which do not have runtime configurations such as standard integers
+		if supertype.configuration == none abort('Type inherited a type which did not have runtime configuration')
+
+		descriptors[i] = Pair<Type, DataPointerNode>(supertype, TableDataPointerNode(configuration.entry, offset, none as Position))
+		offset += SYSTEM_BYTES
+
+		# Skip all virtual functions of this supertype
+		perspective = type
+		if i != 0 { perspective = supertype }
+		
+		loop virtual_function in perspective.get_all_virtual_functions() {
+			offset += SYSTEM_BYTES
+		}
+	}
+
 	return descriptors
 }
 
@@ -587,7 +631,7 @@ create_stack_construction(type: Type, construction: Node, constructor: FunctionN
 		}
 	}
 
-	descriptors = copy_type_descriptors(type, supertypes)
+	descriptors = get_type_runtime_configuration_pointers(type, supertypes)
 
 	# Register the runtime configurations
 	loop iterator in descriptors {
@@ -657,7 +701,7 @@ create_heap_construction(type: Type, construction: ConstructionNode, constructor
 		}
 	}
 
-	descriptors = copy_type_descriptors(type, supertypes)
+	descriptors = get_type_runtime_configuration_pointers(type, supertypes)
 
 	# Register the runtime configurations
 	loop iterator in descriptors {

@@ -1330,7 +1330,7 @@ Parameter {
 
 	init(name: String, type: Type) {
 		this.name = name
-		this.position = none
+		this.position = none as Position
 		this.type = type
 	}
 
@@ -2449,7 +2449,7 @@ Number ArrayType {
 
 	get_status(): Status {
 		if is_resolved return none as Status
-		return Status(start, 'Can not convert the size of the array to a constant number')
+		return Status(position, 'Can not convert the size of the array to a constant number')
 	}
 
 	override string() {

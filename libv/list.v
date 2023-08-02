@@ -393,7 +393,7 @@ List<T> {
 	}
 
 	# Summary: Returns the index of the last element, which passes the specified filter, otherwise the function returns -1
-	find_last_index(filter: (T) -> bool) {
+	find_last_index(filter: (T) -> bool): large {
 		loop (i = size - 1, i >= 0, i--) {
 			element = data[i]
 			if filter(element) return i

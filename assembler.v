@@ -334,7 +334,7 @@ Result {
 	is_data_section_handle => value.instance == INSTANCE_DATA_SECTION or value.instance == INSTANCE_CONSTANT_DATA_SECTION
 	is_stack_allocation => value.instance == INSTANCE_STACK_ALLOCATION
 
-	is_unsigned => is_unsigned(format)
+	is_unsigned => global.is_unsigned(format)
 
 	use(instruction: Instruction): _ {
 		contains = false
@@ -2431,7 +2431,8 @@ assemble(context: Context, files: List<SourceFile>, imports: List<String>, outpu
 		logger.verbose.write_line("- Packing the object file...")
 
 		if output_type == BINARY_TYPE_OBJECTS {
-			output_object_file(file.filename_without_extension + object_file_extension, sections, builder.exports)
+			output_object_file_path = io.path.folder(output_name) + `/` + file.filename_without_extension + object_file_extension
+			output_object_file(output_object_file_path, sections, builder.exports)
 			continue
 		}
 
