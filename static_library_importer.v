@@ -206,25 +206,48 @@ import_template_function_variants(context: Context, headers: List<StaticLibraryF
 # Summary:
 # Resolve issues such as parameter types in the imported context and node tree
 resolve(context: Context, root: Node): _ {
-	current = resolver.get_report(context, root)
+	cache = resolver.Cache()
+	cleared_cache = false
 	evaluated = false
+	current = resolver.get_report(context, root, cache)
 
 	# Try to resolve as long as errors change -- errors do not always decrease since the program may expand each cycle
 	loop {
 		previous = current
 
 		# Try to resolve problems in the node tree and get the status after that
-		resolver.resolve_context(context)
+		resolver.resolve_context(context, cache)
 		resolver.resolve(context, root)
 
-		current = resolver.get_report(context, root)
+		current = resolver.get_report(context, root, cache)
 
 		# Try again only if the errors have changed
-		if not resolver.are_reports_equal(previous, current) continue
+		if not resolver.are_reports_equal(previous, current) {
+			cleared_cache = false
+			continue
+		}
+
+		# Errors have not changed, so clear the cache and fully check everything.
+		# If we end up here again after clearing the cache, the problem is not the cache, instead the source code has errors.
+		if not cleared_cache {
+			cache.clear()
+			cleared_cache = true
+			continue
+		}
+
+		# If we already have done the evaluation step, we can stop
 		if evaluated stop
 
+		# Evaluate expressions and statements
 		evaluator.evaluate(context)
 		evaluated = true
+
+		# Because we modified the node trees, clear the cache as it no longer applies
+		cache.clear()
+		# Note: Yes, we cleared the cache, but this a flag for clearing cache after reports match and 
+		# we just want to start resolving again, so we need to match the state before entering this loop.
+		cleared_cache = false
+		current.clear() # Because we restart, reset the error list as well
 	}
 
 	if current.size > 0 {
@@ -358,6 +381,12 @@ load_file_headers(bytes: Array<byte>): List<StaticLibraryFormatFileHeader> {
 # Imports the specified file.
 # This function assumes the file represents a library
 import_static_library(context: Context, file: String, files: List<SourceFile>, object_files: Map<SourceFile, BinaryObjectFile>): bool {
+	# Save all types, functions and implementations parsed so far and remove them so that they will not mix up with importing
+	previous_all_types = common.all_types
+	previous_all_functions = common.all_functions
+	previous_all_implementations = common.all_implementations
+	common.initialize()
+
 	import_context = parser.create_root_context(context.create_identity())
 
 	internal_import_static_library(import_context, file, files, object_files)
@@ -393,5 +422,14 @@ import_static_library(context: Context, file: String, files: List<SourceFile>, o
 	}
 
 	context.merge(import_context)
+
+	# Restore the previous types, functions and implementations and add the newly imported ones
+	previous_all_types.add_all(common.all_types)
+	previous_all_functions.add_all(common.all_functions)
+	previous_all_implementations.add_all(common.all_implementations)
+
+	common.all_types = previous_all_types
+	common.all_functions = previous_all_functions
+	common.all_implementations = previous_all_implementations
 	return true
 }

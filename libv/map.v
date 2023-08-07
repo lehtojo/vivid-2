@@ -48,6 +48,43 @@ plain MapIterator<K, V> {
 	}
 }
 
+plain MapKeyIterator<K, V> {
+	slot: MapSlot<K, V>
+	slots: MapSlot<K, V>*
+	first: normal
+
+	init(slots: MapSlot<K, V>*, first: normal) {
+		this.slots = slots
+		this.first = first
+
+		if first < 0 return
+
+		slot.key = none as K
+		slot.value = none as V
+		slot.next = first + 1
+		slot.previous = 0
+	}
+
+	value(): K {
+		return slot.key
+	}
+
+	next(): bool {
+		if slot.next <= 0 return false
+
+		index = slot.next - 1
+		slot = slots[index]
+		return true
+	}
+
+	reset(): _ {
+		slot.key = none as K
+		slot.value = none as V
+		slot.next = first + 1
+		slot.previous = 0
+	}
+}
+
 pack MapSlot<K, V> {
 	key: K
 	value: V
@@ -310,6 +347,10 @@ Map<K, V> {
 
 	iterator(): MapIterator<K, V> {
 		return MapIterator<K, V>(slots, first)
+	}
+
+	key_iterator(): MapKeyIterator<K, V> {
+		return MapKeyIterator<K, V>(slots, first)
 	}
 
 	# Summary: Returns the keys associated with the values in this map as a list

@@ -1484,7 +1484,7 @@ get_text_section(implementation: FunctionImplementation): AssemblyBuilder {
 	fullname = implementation.get_fullname()
 
 	# Export the implementation if it is exported
-	if implementation.metadata.is_exported {
+	if settings.build_filter === none or implementation.metadata.is_exported {
 		builder.write(EXPORT_DIRECTIVE)
 		builder.write(` `)
 		builder.write_line(fullname)

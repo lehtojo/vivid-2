@@ -55,6 +55,7 @@ relative_file(name: link) {
 
 compile(output: link, source_files: List<String>, optimization: large, prebuilt: bool) {
 	String.empty = ""
+	common.initialize()
 	settings.initialize()
 	initialize_configuration()
 

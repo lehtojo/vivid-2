@@ -22,6 +22,16 @@ ACCESS_TYPE_WRITE = 2
 
 namespace common
 
+all_types: Set<Type>
+all_functions: Set<Function>
+all_implementations: Set<FunctionImplementation>
+
+initialize(): _ {
+	all_types = Set<Type>()
+	all_functions = Set<Function>()
+	all_implementations = Set<FunctionImplementation>()
+}
+
 # Summary: Creates an identical list of tokens compared to the specified list
 clone(tokens: List<Token>): List<Token> {
 	clone = List<Token>(tokens.size, true)
@@ -727,38 +737,14 @@ get_all_types(context: Context): List<Type> {
 
 # Summary: Collects all types and subtypes from the specified context
 get_all_types(context: Context, include_imported: bool): List<Type> {
-	result = List<Type>()
-
-	loop iterator in context.types {
-		type = iterator.value
-		if include_imported or not type.is_imported result.add(type)
-		result.add_all(get_all_types(type))
-	}
-
-	return result
+	return all_types.to_list()
 }
 
 # Summary:
 # Collects all functions from the specified context and its subcontexts.
 # NOTE: This function does not return lambda functions.
 get_all_visible_functions(context: Context): List<Function> {
-	# Collect all functions, constructors, destructors and virtual functions
-	functions = List<Function>()
-
-	loop type in get_all_types(context) {
-		loop a in type.functions { functions.add_all(a.value.overloads) }
-		loop b in type.virtuals { functions.add_all(b.value.overloads) }
-		loop c in type.overrides { functions.add_all(c.value.overloads) }
-
-		functions.add_all(type.constructors.overloads)
-		functions.add_all(type.destructors.overloads)
-	}
-
-	loop function in context.functions {
-		functions.add_all(function.value.overloads)
-	}
-	
-	return functions.distinct()
+	return all_functions.to_list().filter(i -> not i.is_lambda)
 }
 
 # Summary: Collects all function implementations from the specified context
@@ -768,33 +754,13 @@ get_all_function_implementations(context: Context): List<FunctionImplementation>
 
 # Summary: Collects all function implementations from the specified context
 get_all_function_implementations(context: Context, include_imported: bool): List<FunctionImplementation> {
-	# Collect all functions, constructors, destructors and virtual functions
-	functions = List<Function>()
+	result = all_implementations.to_list()
 
-	loop type in get_all_types(context) {
-		loop a in type.functions { functions.add_all(a.value.overloads) }
-		loop b in type.virtuals { functions.add_all(b.value.overloads) }
-		loop c in type.overrides { functions.add_all(c.value.overloads) }
-
-		functions.add_all(type.constructors.overloads)
-		functions.add_all(type.destructors.overloads)
+	if not include_imported {
+		result = result.filter(i -> not i.is_imported)
 	}
 
-	loop function in context.functions {
-		functions.add_all(function.value.overloads)
-	}
-
-	implementations = List<FunctionImplementation>()
-
-	# Collect all the implementations from the functions and collect the inner implementations as well such as lambdas
-	loop function in functions {
-		loop implementation in function.implementations {
-			implementations.add_all(get_all_function_implementations(implementation))
-			if include_imported or not implementation.is_imported implementations.add(implementation)
-		}
-	}
-
-	return implementations.distinct()
+	return result
 }
 
 # Summary: Try to determine the type of access related to the specified node

@@ -47,6 +47,7 @@ init(): large {
 	start = time.now()
 
 	String.empty = ""
+	common.initialize()
 	settings.initialize()
 	initialize_configuration()
 

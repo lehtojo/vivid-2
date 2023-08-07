@@ -1,5 +1,26 @@
 namespace resolver
 
+plain Cache {
+	resolved_types: Set<Type> = Set<Type>()
+	resolved_functions: Set<Function> = Set<Function>()
+	resolved_implementations: Set<FunctionImplementation> = Set<FunctionImplementation>()
+	size => resolved_types.size + resolved_functions.size + resolved_implementations.size
+
+	is_resolved(type: Type): bool { return resolved_types.contains(type) }
+	is_resolved(function: Function): bool { return resolved_functions.contains(function) }
+	is_resolved(implementation: FunctionImplementation): bool { return resolved_implementations.contains(implementation) }
+
+	set_resolved(type: Type): bool { return resolved_types.add(type) }
+	set_resolved(function: Function): bool { return resolved_functions.add(function) }
+	set_resolved(implementation: FunctionImplementation): bool { return resolved_implementations.add(implementation) }
+
+	clear(): _ {
+		resolved_types.clear()
+		resolved_functions.clear()
+		resolved_implementations.clear()
+	}
+}
+
 get_shared_type(expected: Type, actual: Type): Type {
 	if expected == none or actual == none return none as Type
 	if expected == actual or expected.match(actual) return expected
@@ -170,6 +191,7 @@ resolve_variables(context: Context): _ {
 	}
 
 	loop subcontext in context.subcontexts {
+		if not has_flag(subcontext.type, NORMAL_CONTEXT) continue
 		resolve_variables(subcontext)
 	}
 }
@@ -306,9 +328,14 @@ resolve_deinitializers(node: Node): _ {
 }
 
 # Summary: Tries to resolve every problem in the specified context
-resolve_context(context: Context): _ {
+resolve_context(context: Context, cache: Cache): _ {
 	functions = common.get_all_visible_functions(context)
-	loop function in functions { resolve(function) }
+
+	loop function in functions {
+		if cache.is_resolved(function) continue
+
+		resolve(function)
+	}
 
 	# Resolve imports in the current context
 	resolve_imports(context)
@@ -317,6 +344,8 @@ resolve_context(context: Context): _ {
 
 	# Resolve all the types
 	loop type in types {
+		if cache.is_resolved(type) continue
+
 		resolve_imports(type)
 		resolve_supertypes(context, type)
 
@@ -340,6 +369,8 @@ resolve_context(context: Context): _ {
 
 	# Resolve all implementation variables and node trees
 	loop implementation in implementations {
+		if cache.is_resolved(implementation) continue
+
 		resolve_return_type(implementation)
 		resolve_variables(implementation)
 
@@ -353,31 +384,15 @@ resolve_context(context: Context): _ {
 	resolve_variables(context)
 }
 
-get_tree_statuses(root: Node): List<Status> {
-	result = List<Status>()
-
+get_tree_errors(output: List<Status>, root: Node): _ {
 	loop child in root {
-		result.add_all(get_tree_statuses(child))
+		get_tree_errors(output, child)
 
 		status = child.get_status()
-		if status === none continue
-
-		result.add(status)
-	}
-
-	return result
-}
-
-get_tree_report(root: Node): List<Status> {
-	errors = List<Status>()
-	if root == none return errors
-
-	loop status in get_tree_statuses(root) {
 		if status === none or not status.problematic continue
-		errors.add(status)
-	}
 
-	return errors
+		output.add(status)
+	}
 }
 
 # Summary: Reports unresolved imports
@@ -424,15 +439,13 @@ report_illegal_cyclic_type(type: Type, errors: List<Status>): _ {
 	errors.add(Status(type.position, 'Illegal cyclic type'))
 }
 
-get_type_report(type: Type): List<Status> {
+get_type_report(type: Type, output: List<Status>, cache: Cache): _ {
+	if cache.is_resolved(type) return
+
 	errors = List<Status>()
 
 	# Report unresolved imports
 	get_import_report(type, errors)
-
-	if not (type.parent.is_global or type.parent.is_namespace) {
-		errors.add(Status(type.position, 'Types must be created in global scope or namespace'))
-	}
 
 	report_illegal_cyclic_type(type, errors)
 
@@ -443,7 +456,7 @@ get_type_report(type: Type): List<Status> {
 	}
 
 	loop initialization in type.initialization {
-		errors.add_all(get_tree_report(initialization))
+		get_tree_errors(errors, initialization)
 	}
 
 	loop supertype in type.supertypes {
@@ -451,12 +464,17 @@ get_type_report(type: Type): List<Status> {
 		errors.add(Status(type.position, 'Can not inherit the supertype'))
 	}
 
-	return errors
+	if errors.size == 0 {
+		cache.set_resolved(type)
+	}
+
+	output.add_all(errors)
 }
 
-get_function_report(function: Function): List<Status> {
+get_function_report(function: Function, output: List<Status>, cache: Cache): _ {
+	if cache.is_resolved(function) or function.is_template_function return
+
 	errors = List<Status>()
-	if function.is_template_function return errors
 
 	loop parameter in function.parameters {
 		# Explicit parameter types are optional, but they must be resolved if specified
@@ -474,10 +492,16 @@ get_function_report(function: Function): List<Status> {
 		}
 	}
 
-	return errors
+	if errors.size == 0 {
+		cache.set_resolved(function)
+	}
+
+	output.add_all(errors)
 }
 
-get_function_report(implementation: FunctionImplementation): List<Status> {
+get_function_report(implementation: FunctionImplementation, output: List<Status>, cache: Cache): _ {
+	if cache.is_resolved(implementation) return
+
 	errors = List<Status>()
 
 	loop variable in implementation.locals {
@@ -492,11 +516,16 @@ get_function_report(implementation: FunctionImplementation): List<Status> {
 		errors.add(Status(implementation.metadata.start, 'Array type is not allowed as a return type'))
 	}
 
-	errors.add_all(get_tree_report(implementation.node))
-	return errors
+	get_tree_errors(errors, implementation.node)
+
+	if errors.size == 0 {
+		cache.set_resolved(implementation)
+	}
+
+	output.add_all(errors)
 }
 
-get_report(context: Context, root: Node): List<Status> {
+get_report(context: Context, root: Node, cache: Cache): List<Status> {
 	errors = List<Status>()
 
 	# Report unresolved imports
@@ -506,24 +535,24 @@ get_report(context: Context, root: Node): List<Status> {
 	types = common.get_all_types(context)
 
 	loop type in types {
-		errors.add_all(get_type_report(type))
+		get_type_report(type, errors, cache)
 	}
 
 	# Report errors in function headers
 	functions = common.get_all_visible_functions(context)
 
 	loop function in functions {
-		errors.add_all(get_function_report(function))
+		get_function_report(function, errors, cache)
 	}
 
 	# Report errors in defined functions
 	implementations = common.get_all_function_implementations(context)
 
 	loop implementation in implementations {
-		errors.add_all(get_function_report(implementation))
+		get_function_report(implementation, errors, cache)
 	}
 
-	errors.add_all(get_tree_report(root))
+	get_tree_errors(errors, root)
 	return errors
 }
 
@@ -616,8 +645,10 @@ resolve(): Status {
 	context = parse.context
 	root = parse.root
 
-	current = get_report(context, root)
+	cache = Cache()
+	cleared_cache = false
 	evaluated = false
+	current = get_report(context, root, cache)
 
 	# Find the required functions and save them
 	register_default_functions(context)
@@ -626,14 +657,13 @@ resolve(): Status {
 	loop {
 		previous = current
 
-		parser.apply_extension_functions(context, root) # Todo: Remove?
 		parser.implement_functions(context, settings.build_filter, false)
 
 		# Try to resolve problems in the node tree and get the status after that
-		resolve_context(context)
+		resolve_context(context, cache)
 		resolve(context, root)
 
-		current = get_report(context, root)
+		current = get_report(context, root, cache)
 
 		if settings.is_verbose_output_enabled {
 			console.write('Resolving ')
@@ -642,11 +672,32 @@ resolve(): Status {
 		}
 
 		# Try again only if the errors have changed
-		if not are_reports_equal(previous, current) continue
+		if not are_reports_equal(previous, current) {
+			cleared_cache = false
+			continue
+		}
+
+		# Errors have not changed, so clear the cache and fully check everything.
+		# If we end up here again after clearing the cache, the problem is not the cache, instead the source code has errors.
+		if not cleared_cache {
+			cache.clear()
+			cleared_cache = true
+			continue
+		}
+
+		# If we already have done the evaluation step, we can stop
 		if evaluated stop
 
+		# Evaluate expressions and statements
 		evaluator.evaluate(context)
 		evaluated = true
+
+		# Because we modified the node trees, clear the cache as it no longer applies
+		cache.clear()
+		# Note: Yes, we cleared the cache, but this a flag for clearing cache after reports match and 
+		# we just want to start resolving again, so we need to match the state before entering this loop.
+		cleared_cache = false
+		current.clear() # Because we restart, reset the error list as well
 	}
 
 	# The compiler must not continue if there are errors in the report

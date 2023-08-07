@@ -699,7 +699,7 @@ implement_constructors(types: List<Type>, file: SourceFile): _ {
 		if type.is_template_type and not type.is_template_type_variant continue
 
 		# If a filter file is specified, use it
-		if file !== none and type.position !== none type.position.file !== none and type.position.file !== file continue
+		if file !== none and type.position !== none and type.position.file !== none and type.position.file !== file continue
 
 		type.constructors.get_implementation(List<Type>())
 	}
@@ -714,7 +714,7 @@ implement_functions(context: Context, file: SourceFile, all: bool): _ {
 		settings.output_type == BINARY_TYPE_OBJECTS or 
 		settings.output_type == BINARY_TYPE_RAW
 
-	if is_output_library implement_required_functions(context, file, all)
+	if is_output_library implement_required_functions(context, file, true)
 
 	types = common.get_all_types(context)
 
@@ -752,6 +752,9 @@ validate_shell(context: Context): Status {
 # Of course, this is not always completely possible, because the specified source file might use template objects from other files.
 # Basically, the idea is to remove tokens from external functions with return type, so that they will not be parsed or assembled. 
 apply_build_filter(context: Context): _ {
+	# Do nothing if we do not have a build filter set
+	if settings.build_filter === none return
+
 	functions = common.get_all_visible_functions(context)
 
 	loop function in functions {

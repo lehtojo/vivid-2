@@ -1,41 +1,41 @@
 Set<T> {
-	private inline container: List<T>
+	private inline container: Map<T, bool>
+	size => container.size
 
-	# Summary: Creates a list with the specified initial size
-	init(size: large, fill: bool) {
-		container.init(size, fill)
+	init(elements) {
+		container.init(elements.size)
+		add_all(elements)
 	}
 
-	# Summary: Creates a list with the specified initial size
-	init(elements: T*, size: large) {
-		container.init(elements, size)
-	}
-
-	# Summary: Creates a list with the same contents as the specified list
-	init(other: List<T>) {
-		container.init(other)
-	}
-
-	# Summary: Creates an empty list
 	init() {
 		container.init()
 	}
 
 	contains(element: T): bool {
-		return container.contains(element)
+		return container.contains_key(element)
 	}
 
 	add(element: T): bool {
-		if container.contains(element) return false
-		container.add(element)
+		if container.contains_key(element) return false
+		container.add(element, true)
 		return true
 	}
 
-	iterator(): SequentialIterator<T> {
-		return container.iterator()
+	add_all(elements): _ {
+		loop element in elements {
+			add(element)
+		}
+	}
+
+	clear(): _ {
+		container.clear()
+	}
+
+	iterator(): MapKeyIterator<T, bool> {
+		return container.key_iterator()
 	}
 
 	to_list(): List<T> {
-		return List<T>(container)
+		return container.get_keys()
 	}
 }

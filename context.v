@@ -178,7 +178,9 @@ Context {
 		if types.contains_key(type.name) return false
 
 		type.parent = this
+
 		types.add(type.name, type)
+		common.all_types.add(type)
 		return true
 	}
 
@@ -1251,6 +1253,7 @@ FunctionList {
 		}
 
 		overloads.add(function)
+		common.all_functions.add(function)
 		return none as Function
 	}
 
@@ -1412,6 +1415,7 @@ Context Function {
 		implementation.return_type = return_type # Force the return type, if user added it
 
 		implementations.add(implementation)
+		common.all_implementations.add(implementation)
 
 		implementation.implement(blueprint)
 	}
@@ -1441,6 +1445,7 @@ Context Function {
 
 		# Add the created implementation to the list
 		implementations.add(implementation)
+		common.all_implementations.add(implementation)
 
 		implementation.implement(common.clone(blueprint))
 
@@ -1822,6 +1827,7 @@ Function Lambda {
 
 		# Add the created implementation to the implementations list
 		implementations.add(implementation)
+		common.all_implementations.add(implementation)
 
 		implementation.implement(blueprint)
 		return implementation
