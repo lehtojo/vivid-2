@@ -7,7 +7,7 @@ Small self-hosted and dependency-free compiler for a programming language focusi
 1. Go to the [releases tab](https://github.com/lehtojo/vivid-2/releases) and download the latest release
 2. Open terminal and go to the folder containing the downloaded compiler.
 3. If you're on Linux, make the compiler executable by running `chmod +x ./v1`
-4. You can test compiler by executing ```./v1 --help```
+4. You can test compiler by executing ```./v1 -help```
 
 
 ### Building from source
@@ -21,15 +21,16 @@ Install [.NET 8](https://dotnet.microsoft.com/en-us/download) or later for build
 git clone https://github.com/lehtojo/vivid
 cd vivid/Vivid/
 ./Build.bat
-$env:Path += ';./bin/Release/net8.0/'
+$env:Path += ";" + Join-Path -Path $PWD -ChildPath "bin/Release/net8.0"
 ```
 
 ```bash
 # Linux:
 git clone https://github.com/lehtojo/vivid
 cd vivid/Vivid/
-./build.sh
-export PATH=$PATH:./bin/Release/net8.0/
+chmod +x ./Build.sh
+./Build.sh
+export PATH=$PATH:$PWD/bin/Release/net8.0/
 ```
 
 2. Build the second compiler
@@ -39,7 +40,6 @@ cd ../../
 git clone https://github.com/lehtojo/vivid-2
 cd vivid-2/
 ./build.ps1
-$env:Path += ';./'
 ```
 
 ```bash
@@ -47,8 +47,8 @@ $env:Path += ';./'
 cd ../../
 git clone https://github.com/lehtojo/vivid-2
 cd vivid-2/
+chmod +x ./build.sh
 ./build.sh
-export PATH=$PATH:./
 chmod +x v1
 ```
 
@@ -66,7 +66,7 @@ There was a small effort for ARM64 in the first compiler version built with C#. 
 
 ## Usage
 
-Running `v1 --help` will list all available command line options.
+Running `v1 -help` will list all available command line options.
 
 ```bash
 # Building a source file without any libraries

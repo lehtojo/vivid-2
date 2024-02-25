@@ -40,7 +40,7 @@ if ( !(Test-Path "v0.exe" -PathType Leaf) )
 
 Write-ColorOutput blue "Building the first stage..."
 
-./v0.exe $Arguments -o v1
+./v0.exe $Arguments -o v1 -windows
 
 # Verify the compiler exited successfully and the output file was created
 if ( ($LASTEXITCODE -ne 0) -or !(Test-Path "v1.exe" -PathType Leaf) )

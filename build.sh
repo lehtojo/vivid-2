@@ -18,7 +18,7 @@ fi
 
 echo "Building the first stage..."
 
-v0 ${arguments[@]} -o v1
+v0 ${arguments[@]} -o v1 -linux
 
 if [[ $? != 0 ]]; then
 	echo "Failed to compile the first stage"
