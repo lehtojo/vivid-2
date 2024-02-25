@@ -68,6 +68,66 @@ There was a small effort for ARM64 in the first compiler version built with C#. 
 
 Running `v1 --help` will list all available command line options.
 
+## Editors
+
+See repository for [Visual Studio Code extension](https://github.com/lehtojo/vivid-extension).
+
+Primitive Vim syntax file (place in Vim syntax folder):
+```vim
+syntax match Keywords /\v(<action>|<and>|<or>|<constant>|<continue>|<compiles>|<deinit>|<else>|<export>|<global>|<false>|<finally>|<has>|<if>|<import>|<in>|<init>|<inline>|<is>|<loop>|<nameof>|<mutating>|<namespace>|<none>|<not>|<open>|<outline>|<override>|<pack>|<plain>|<private>|<protected>|<public>|<readable>|<return>|<shared>|<sizeof>|<strideof>|<stop>|<super>|<this>|<true>|<when>)/
+
+syntax match VariableDeclaration /\zs\w\+\ze *\: */
+
+syntax match VariableDeclarationType1 /\zs\: *[a-zA-Z0-9_\.]\+\ze\v($|[^<])/
+syntax match VariableDeclarationType2 /\zs\<as\> *[a-zA-Z0-9_\.]\+\ze\v($|[^<])/
+
+syntax match TemplateArguments1 /\zs[a-zA-Z0-9_\.]\+\ze[<>]/
+syntax match TemplateArguments2 /<\zs[a-zA-Z0-9_\.]\+\ze\v($|[^<])/
+
+syntax match Comment /#.*/
+
+syntax match SinglyQuotedString1 /\zs\'[^\']*\\\ze\'/
+syntax match SinglyQuotedString2 /\'[^\']*\'/
+
+syntax match DoublyQuotedString1 /\zs\"[^\"]*\\\ze\"/
+syntax match DoublyQuotedString2 /\"[^\"]*\"/
+
+syntax match Character1 /\zs\`[^\`]*\\\ze\`/
+syntax match Character2 /\`[^\`]*\`/
+
+syntax match MemberAccess1 /\zs\w\+\ze\./
+syntax match MemberAccess2 /\.\zs\w\+\ze/
+
+syntax match XFunction /\zs\w\+ *\ze(/
+
+syntax match UsingExpression /) *using /
+
+syntax match DotCast /\.\zs([a-zA-Z0-9_\.]\+)\ze/
+```
+
+You'll also have to give colors to the syntax patterns. Here's an example of how to do it. Place the following inside Vim's `init.lua` :
+```lua
+vim.cmd("highlight Keywords ctermfg=red guifg=#d43552")
+vim.cmd("highlight VariableDeclaration ctermfg=cyan guifg=#ae9513")
+vim.cmd("highlight VariableDeclarationType1 ctermfg=red guifg=#6684e1")
+vim.cmd("highlight VariableDeclarationType2 ctermfg=red guifg=#6684e1")
+vim.cmd("highlight TemplateArguments1 ctermfg=red guifg=#6684e1")
+vim.cmd("highlight TemplateArguments2 ctermfg=red guifg=#6684e1")
+vim.cmd("highlight Comment ctermfg=green guifg=#1fad83")
+vim.cmd("highlight SinglyQuotedString1 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight SinglyQuotedString2 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight DoublyQuotedString1 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight DoublyQuotedString2 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight Character1 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight Character2 ctermfg=yellow guifg=#60ac39")
+vim.cmd("highlight MemberAccess1 ctermfg=cyan guifg=#b65611")
+vim.cmd("highlight MemberAccess2 ctermfg=cyan guifg=#b65611")
+vim.cmd("highlight XFunction ctermfg=yellow guifg=#ae9513")
+vim.cmd("highlight UsingExpression ctermfg=red guifg=#d43552")
+vim.cmd("highlight DotCast ctermfg=red guifg=#6684e1")
+vim.cmd("autocmd BufNewFile,BufRead *.v set filetype=v")
+```
+
 ## Programming language
 
 ### Contents
