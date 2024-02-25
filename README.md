@@ -88,6 +88,7 @@ Running `v1 --help` will list all available command line options.
     - [Normal functions](#normal-functions)
     - [Template functions](#template-functions)
     - [Entry point](#entry-point)
+    - [Mandatory functions](#mandatory-functions)
 - [Types](#types)
     - [Normal type definition](#normal-type-definition)
     - [Pack type definition](#pack-type-definition)
@@ -209,7 +210,7 @@ a = b--
 a = -b
 ```
 
-## Manual memory access
+### Manual memory access
 ```python
 pointer: u32* = 0x12345678
 
@@ -219,7 +220,7 @@ first_element = pointer[]
 third_element = pointer[1 + 1]
 ```
 
-## Casting
+### Casting
 Conversion between types can be achieved by using as-expressions.
 ```python
 i1 = 3
@@ -232,9 +233,9 @@ m1 = 0x12345678 as u8*
 ```
 There's also 'dot casting' that is introduced [below](#is-expression).
 
-## Control flow
+### Control flow
 
-### Conditional statements
+#### Conditional statements
 ```python
 a = 7
 b = 42
@@ -252,7 +253,7 @@ if a > b {
 }
 ```
 
-### When-statements
+#### When-statements
 ```python
 x = 42
 
@@ -273,14 +274,14 @@ result = when(x) {
 # }
 ```
 
-### Forever-loops
+#### Forever-loops
 ```python
 loop {
     # Executed for ever
 }
 ```
 
-### Conditional loops
+#### Conditional loops
 ```python
 i = 0
 
@@ -290,7 +291,7 @@ loop (i < 10) {
 }
 ```
 
-### Command keywords
+#### Command keywords
 ```python
 i = 0
 
@@ -316,7 +317,7 @@ loop {
 }
 ```
 
-### For-loops
+#### For-loops
 ```python
 loop (i = 0, i < 10, i++) {
     # Repeats 10 times
@@ -333,12 +334,12 @@ loop (j < 10, j++) {
 k = j
 ```
 
-### Iteration loops
+#### Iteration loops
 
 See [below](#iteration-loops-1).
 
-## Functions
-### Normal functions
+### Functions
+#### Normal functions
 ```python
 # Here we define a function that adds the parameters together and returns the result.
 # We don't specify the parameter types, so they can be anything. This applies to the return type as well.
@@ -374,7 +375,7 @@ test() {
 }
 ```
 
-### Template functions
+#### Template functions
 ```python
 # If you need to pass type information into the function, you can use template functions.
 addition<T1, T2>(a: T1, b: T1): T2 {
@@ -395,10 +396,10 @@ addition(a: i64, b: i64): i32 {
 }
 ```
 
-## Entry point
+#### Entry point
 When the application starts, the first function to be called is `internal_init`, which calls `init` afterwards.
 ```
-internal_init() {
+internal_init(stack_pointer: u8*) {
     # This is the first function that is called when the application starts.
     # This function is intended for hidden library functionality.
 
@@ -411,9 +412,21 @@ init() {
 }
 ```
 
-## Types
+#### Mandatory functions
 
-### Normal type definition
+All applications must implement the following functions in order to be compiled:
+
+| Signature                                                     | Description |
+|---------------------------------------------------------------|-------------|
+| init(): [ i64 \| _ ]                                          | User entry point function that optionally returns the application's exit code. |
+| internal_init(stack_pointer: u8*): [ i64 \| _ ]               | Entry point function that optionally returns the application's exit code. The function receives the stack pointer as a parameter that can be used to extract command line arguments passed by the kernel on Linux. This function is auto-generated if it's not implemented. |
+| internal_is(virtual_table_1: u8*, virtual_table_2: u8*): bool | Compares the two virtual tables and returns whether they are equal or one inherits the another. Used to implement the is-expressions. |
+| allocate(size: u64): u8*                                      | Global heap allocation function. |
+| deallocate(address: u8*): _                                   | Global heap deallocation function. |
+
+### Types
+
+#### Normal type definition
 Normal types are heap allocated and passed by reference.
 ```python
 # Here's a simple String object type
@@ -452,7 +465,7 @@ String* string(unsigned char* data, unsigned long long size) {
 }
 ```
 
-### Pack type definition
+#### Pack type definition
 Pack types are types passed by value. They're equilevant to structs in C-languages.
 ```python
 pack String {
@@ -473,7 +486,7 @@ init() {
 }
 ```
 
-### Constructors
+#### Constructors
 
 Instead of creating the string helper function, the user could define a constructor function:
 ```python
@@ -494,7 +507,7 @@ init() {
 }
 ```
 
-### Access modifiers
+#### Access modifiers
 
 The user could also restrict the access to the member variables as follows:
 ```python
@@ -534,7 +547,7 @@ init() {
 ```
 There's also support for `protected` access modifier that is useful for inheritance.
 
-### Member functions
+#### Member functions
 ```python
 String {
     # Shared access modifier is equilevant to 'static' keyword in many languages.
@@ -576,7 +589,7 @@ init() {
 }
 ```
 
-### Template types
+#### Template types
 ```python
 Array<T> {
     private data: T*
@@ -594,7 +607,7 @@ init() {
 }
 ```
 
-### Operator overloading
+#### Operator overloading
 ```python
 Array<T> {
     private data: T*
@@ -644,7 +657,7 @@ Other operators:
 | %=       | assign_remainder |
 | ==       | equals           |
 
-### Inheritance
+#### Inheritance
 ```python
 Animal {
     name: String
@@ -669,7 +682,7 @@ Animal Dog {
 }
 ```
 
-### Open functions
+#### Open functions
 Open functions are equilevant to virtual functions in many languages. Open functions are internally implemented using virtual tables.
 ```python
 Animal {
@@ -728,9 +741,17 @@ Animal Dog {
         return 0x424242
     }
 }
+
+init() {
+    animal1: Animal = Cat()
+    animal2: Animal = Dog()
+
+    animal1.react() # Prints 'Meow!'
+    animal2.react() # Prints 'Woof!'
+}
 ```
 
-### Expression variables
+#### Expression variables
 ```python
 constant UNSIGNED_FLAG = 1
 
@@ -765,7 +786,7 @@ init() {
 }
 ```
 
-### Namespaces and imports
+#### Namespaces and imports
 ```python
 # Namespaces are equilevant to types with 'shared' modifier
 namespace system.console {
@@ -792,17 +813,17 @@ init() {
 }
 ```
 
-### Non-heap based allocation
+#### Non-heap based allocation
 See [using-expressions](#using-expressions) and [pack types](#pack-type-definition).
 
-## String objects
+### String objects
 ```python
 string = "This is a string object"
 # Equilevant:
 # string = String('This is a string object')
 ```
 
-## Type inspection
+### Type inspection
 ```python
 plain String {
     private data: u8*
@@ -835,20 +856,20 @@ init() {
 }
 ```
 
-## Compiles-expressions
+### Compiles-expressions
 ```python
 Map<K, V> {
     # ...
 
     add(key: K, value: V) {
-		hash = key as i64
+        hash = key as i64
 
         # If the key has a 'hash' member function,
         # the compiles-expression will simplify to 'true' and the if-statement will be unwrapped.
         # Otherwise the whole if-statement is removed.
         # Compiles-expression will evaluate to 'true' when the expression inside doesn't emit any errors.
         # Otherwise it'll be evaluated to 'false'.
-		if compiles { key.hash() } {
+        if compiles { key.hash() } {
             hash = key.hash()
         }
 
@@ -859,8 +880,8 @@ Map<K, V> {
 }
 ```
 
-## Is-expressions
-Runtime type inspection can be achieved by using is-expressions. By default, is-expressions are implemented using virtual tables.
+### Is-expressions
+Runtime type inspection can be achieved by using is-expressions. By default, is-expressions are implemented using virtual tables. Is-expressions call `internal_is` function that can be implemented by the user or the standard library for example.
 ```python
 # We can't add 'plain' modifier, because we need virtual tables
 Animal {
@@ -882,10 +903,20 @@ init() {
     animal2 = Dog()
 
     if animal1 is Cat cat {
+        # Equilevent:
+        # if internal_is(<virtual table of animal1>, <virtual table of Cat>) {
+        #     cat = animal1 as Cat
+        #     # ...
+        # }
         console.write_line(cat.name) # Prints 'Cat'
     }
 
     if animal2 is not Cat {
+        # Equilevent:
+        # if !internal_is(<virtual table of animal2>, <virtual table of Cat>) {
+        #     # ...
+        # }
+
         # Dot casting:
         console.write_line(animal2.(Dog).name) # Prints 'Dog'
         # Equilevant:
@@ -894,7 +925,7 @@ init() {
 }
 ```
 
-## Has-expressions
+### Has-expressions
 ```python
 Optional<T> {
     value: T
@@ -942,7 +973,7 @@ init() {
 }
 ```
 
-## Ranges
+### Ranges
 Range-expressions are converted into objects:
 ```python
 init() {
@@ -956,7 +987,7 @@ init() {
 }
 ```
 
-## Iteration loops
+### Iteration loops
 ```python
 Array<T> {
     private data: T*
@@ -1018,23 +1049,23 @@ init() {
 }
 ```
 
-## Lambdas
+### Lambdas
 Lambdas are converted into heap allocated objects. Lambdas can capture variables from the visible scope.
 ```python
 List<T> {
     # ...
 
-	filter(filter: (T) -> bool) {
-		result = List<T>()
+    filter(filter: (T) -> bool) {
+        result = List<T>()
 
-		loop (i = 0, i < size, i++) {
-			if filter(data[i]) {
+        loop (i = 0, i < size, i++) {
+            if filter(data[i]) {
                 result.add(data[i])
             }
-		}
+        }
 
-		return result
-	}
+        return result
+    }
 
     # ...
 }
@@ -1052,7 +1083,7 @@ init() {
 }
 ```
 
-## Using-expressions
+### Using-expressions
 Using-expressions can be used for specifying the allocator to use for allocating an object.
 ```python
 # ...
@@ -1072,27 +1103,27 @@ create_kernel_thread(rip: u64): Process {
     # ...
     # The allocator can be a type.
     # Allocates the object by calling 'KernelHeap.allocate'.
-	memory = ProcessMemory(HeapAllocator.instance) using KernelHeap
+    memory = ProcessMemory(HeapAllocator.instance) using KernelHeap
     # ...
 }
 
 # ...
 
 TimerManager {
-	timers: List<Timer>
-	registers: u64*
+    timers: List<Timer>
+    registers: u64*
 
-	init(allocator: Allocator) {
+    init(allocator: Allocator) {
         # The allocator can be a variable.
         # Allocates the object by calling 'allocator.allocate'.
-		timers = List<Timer>(allocator) using allocator
-	}
+        timers = List<Timer>(allocator) using allocator
+    }
 
     # ...
 }
 ```
 
-## Deinitializer-statements
+### Deinitializer-statements
 Deinitializer-statements can be useful for cleanup code. Deinitializer-statements are executed when the function exits.
 ```python
 buffer = allocate(PAGE_SIZE)
@@ -1112,37 +1143,37 @@ if not validate(buffer) {
 # deinit { deallocate(buffer) }
 return 0
 ```
-## Macros
+### Macros
 ```php
 $add_to_list!(list) {}
 
 $add_to_list!(list, x, elements...) {
-	$list.add($x)
-	add_to_list!($list, $elements...)
+    $list.add($x)
+    add_to_list!($list, $elements...)
 }
 
 $list_of!(T, elements...) {
-	$list = List<$T>()
-	add_to_list!($list, $elements...)
-	$list
+    $list = List<$T>()
+    add_to_list!($list, $elements...)
+    $list
 }
 
 $loop!(n) {
-	loop ($i = 0, $i < $n, $i++)	
+    loop ($i = 0, $i < $n, $i++)
 }
 
 $print!() {}
 
 $print!(arguments..., argument) {
-	print!($arguments...)
-	console.write($argument)
+    print!($arguments...)
+    console.write($argument)
 }
 
 $foreach!(i, collection, body) {
-	loop ($l = $collection.iterator(), $l.next(), ) {
-		$i = $l.value()
-		$body
-	}
+    loop ($l = $collection.iterator(), $l.next(), ) {
+        $i = $l.value()
+        $body
+    }
 }
 
 # Outputs:
@@ -1158,24 +1189,24 @@ $foreach!(i, collection, body) {
 # Sum: 66
 # Goodbye!
 init() {
-	loop!(3) {
-		console.write_line("Hello there :^)!")
-	}
+    loop!(3) {
+        console.write_line("Hello there :^)!")
+    }
 
-	loop!(1) { console.write_line("Hello there again :^)!") }
+    loop!(1) { console.write_line("Hello there again :^)!") }
 
-	list = list_of!(u32, 3, 7, 8 + 6, 42)
-	sum = 0
+    list = list_of!(u32, 3, 7, 8 + 6, 42)
+    sum = 0
 
-	print!('Elements: \n')
+    print!('Elements: \n')
 
-	foreach!(i, list, 
-		print!(i, '\n')
-		sum += i
-	)
+    foreach!(i, list, 
+        print!(i, '\n')
+        sum += i
+    )
 
-	print!('Sum: ', sum, '\n', 'Goodbye!\n')
-	return 0
+    print!('Sum: ', sum, '\n', 'Goodbye!\n')
+    return 0
 }
 ```
 
