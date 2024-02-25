@@ -68,6 +68,34 @@ There was a small effort for ARM64 in the first compiler version built with C#. 
 
 Running `v1 --help` will list all available command line options.
 
+```bash
+# Building a source file without any libraries
+v1 source.v
+
+# Building a source folder without any libraries
+v1 source/
+
+# Specifying output name
+v1 source/ -o app
+
+# Including the core library (standard library).
+# Note: Expects 'core.lib' or 'core.a' to be present
+v1 source/ -l core
+
+# Including the core library by source (Windows).
+# Note: Expects the core library source folder 'libv' to be present.
+v1 source/ libv/ libv/windows-x64/ libv/allocator/allocator.v min.math.obj min.memory.obj min.tests.obj -l kernel32.dll
+
+# Including the core library by source (Linux)
+v1 source/ libv/ libv/linux-x64/ libv/allocator/allocator.v min.math.o min.memory.o min.system.o min.tests.o
+
+# Enabling debug information
+v1 source/ -debug
+
+# Outputting generated assembly
+v1 source/ -a
+```
+
 ## Editors
 
 See repository for [Visual Studio Code extension](https://github.com/lehtojo/vivid-extension).
@@ -128,7 +156,14 @@ vim.cmd("highlight DotCast ctermfg=red guifg=#6684e1")
 vim.cmd("autocmd BufNewFile,BufRead *.v set filetype=v")
 ```
 
+## Projects
+
+Projects that use this programming language:
+- This project
+- [Small kernel](https://github.com/lehtojo/kernel)
+
 ## Programming language
+If you want to see something practical, see [project section](#projects) above.
 
 ### Contents
 - [Variables](#variables)
