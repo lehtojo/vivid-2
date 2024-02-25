@@ -1,5 +1,5 @@
 # Vivid
-Small self-hosted and dependency free compiler for a programming language focusing on comfortability with a nice mix of powerful features.
+Small self-hosted and dependency-free compiler for a programming language focusing on comfortability with a nice mix of powerful features.
 
 ## Installation
 
@@ -1304,6 +1304,19 @@ init() {
     return 0
 }
 ```
+
+## Limitations
+- Suffers from extensive memory usage
+  - However, there's an incomplete implementation for reference counting. It has to be enabled manually.
+- No proper incremental or multi-threaded build support
+  - However, there's library support
+- No advanced optimizations. Supported optimizations:
+  - Function inlining
+  - Dead code elimination
+  - Simple algebraic optimizations
+  - Loop unwrapping and extraction
+- Heuristical linear scan register allocator that doesn't take live range gaps into account
+- Optimizing code size isn't supported. Machine code always uses 64-bit instructions if possible.
 
 ## License
 Vivid is distributed under the terms of MIT License. See [LICENSE](./LICENSE) file.
