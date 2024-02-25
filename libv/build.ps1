@@ -1,4 +1,4 @@
-$Arguments = './libv/', './libv/allocator/allocator.v', './libv/windows-x64/', 'min.math.obj', 'min.memory.obj', 'min.tests.obj', '-static', '-o', 'core'
+$Arguments = './libv/', './libv/allocator/allocator.v', './libv/windows-x64/', 'min.math.obj', 'min.memory.obj', 'min.tests.obj', '-static', '-o', 'core', '-windows'
 
 ./v0.exe $Arguments
 

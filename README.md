@@ -1315,7 +1315,7 @@ init() {
   - Dead code elimination
   - Simple algebraic optimizations
   - Loop unwrapping and extraction
-- Heuristical linear scan register allocator that doesn't take live range gaps into account
+- Heuristical linear scan register allocator that doesn't take live range holes into account
 - Optimizing code size isn't supported. Machine code always uses 64-bit instructions if possible.
 
 ## License
