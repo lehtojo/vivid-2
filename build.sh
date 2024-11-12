@@ -11,14 +11,14 @@ if [ ! -f ./v0 ]; then
 		exit 1
 	fi
 
-	chmod +x v0
+	chmod +x ./v0
 
 	echo "Successfully built the zeroth stage"
 fi
 
 echo "Building the first stage..."
 
-v0 ${arguments[@]} -o v1 -linux
+./v0 ${arguments[@]} -o v1 -linux
 
 if [[ $? != 0 ]]; then
 	echo "Failed to compile the first stage"
